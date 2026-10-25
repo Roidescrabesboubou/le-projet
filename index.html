@@ -216,6 +216,10 @@ function renderMenu(){
 renderMenu();
 let mode=1, remoteBusy=false;
 const net={role:null,peer:null,conn:null,guestName:""};
+const PEER_OPTS={config:{iceServers:[
+  {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
+  {urls:["turn:openrelay.metered.ca:80","turn:openrelay.metered.ca:443","turn:openrelay.metered.ca:443?transport=tcp"],username:"openrelayproject",credential:"openrelayproject"}
+]}};
 function setMode(m){
   mode=m;
   ["m1","m2","m3"].forEach((id,i)=>$(id).className=(i+1===m)?"":"off");
@@ -257,7 +261,7 @@ function netErr(e){$("netInfo").textContent="❌ Erreur réseau : "+(e.type||e)+
 $("btnHost").onclick=()=>{
   if(typeof Peer==="undefined"){alert("PeerJS n'a pas pu se charger (connexion internet ?).");return}
   const code=Math.random().toString(36).slice(2,7).toUpperCase();
-  net.role="host";net.peer=new Peer("nakano-"+code);
+  net.role="host";net.peer=new Peer("nakano-"+code,PEER_OPTS);
   $("netInfo").textContent="Création de la salle…";
   net.peer.on("open",()=>{$("netInfo").textContent="🏠 Code de la salle : "+code+" — donne-le à ton adversaire et attends sa connexion.";});
   net.peer.on("error",netErr);
@@ -273,12 +277,14 @@ $("btnHost").onclick=()=>{
 $("btnJoin").onclick=()=>{
   if(typeof Peer==="undefined"){alert("PeerJS n'a pas pu se charger (connexion internet ?).");return}
   const code=$("roomCode").value.trim().toUpperCase(); if(!code)return;
-  net.role="guest";net.peer=new Peer();
-  $("netInfo").textContent="Connexion…";
+  net.role="guest";net.peer=new Peer(undefined,PEER_OPTS);
+  $("netInfo").textContent="Étape 1/2 : connexion au serveur de rencontre…";
+  const to=setTimeout(()=>{if(!(net.conn&&net.conn.open))$("netInfo").textContent="❌ Délai dépassé. Vérifie que l'hôte a bien créé la salle et garde sa page ouverte au premier plan. Si ça persiste, vos réseaux bloquent la connexion directe : essayez un autre réseau (ex : partage de connexion 4G) ou désactivez VPN/bloqueurs.";},20000);
   net.peer.on("error",netErr);
   net.peer.on("open",()=>{
+    $("netInfo").textContent="Étape 2/2 : connexion à l'hôte…";
     const c=net.peer.connect("nakano-"+code,{reliable:true});net.conn=c;
-    c.on("open",()=>{c.send({t:"hello",name:$("p1").value.trim()||"Invité"});$("netInfo").textContent="✅ Connecté ! L'hôte choisit la sœur…";$("btnReset").classList.add("hidden");});
+    c.on("open",()=>{clearTimeout(to);c.send({t:"hello",name:$("p1").value.trim()||"Invité"});$("netInfo").textContent="✅ Connecté ! L'hôte choisit la sœur…";$("btnReset").classList.add("hidden");});
     c.on("data",d=>{if(d.t==="state")guestRender(d);});
     c.on("close",()=>{$("netInfo").textContent="⚠️ L'hôte s'est déconnecté.";addMsg("sys","⚠️ L'hôte s'est déconnecté.");});
   });
