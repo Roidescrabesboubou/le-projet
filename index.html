@@ -48,7 +48,6 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 .mode button.off{background:transparent;color:var(--text);border:1px solid var(--line)}
 #names{display:flex;gap:8px;flex-wrap:wrap}#names input{flex:1;min-width:120px}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 <header>
@@ -216,10 +215,26 @@ function renderMenu(){
 renderMenu();
 let mode=1, remoteBusy=false;
 const net={role:null,peer:null,conn:null,guestName:""};
-const PEER_OPTS={config:{iceServers:[
-  {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
-  {urls:["turn:openrelay.metered.ca:80","turn:openrelay.metered.ca:443","turn:openrelay.metered.ca:443?transport=tcp"],username:"openrelayproject",credential:"openrelayproject"}
-]}};
+Object.assign(net,{topic:"",seq:0,last:0,es:null});
+const NTFY="https://ntfy.sh/", myId=Math.random().toString(36).slice(2,10), seen=new Set();
+function publish(m){
+  m.from=myId;
+  fetch(NTFY+net.topic,{method:"POST",body:JSON.stringify(m)}).catch(()=>{});
+}
+function subscribe(onMsg,onOpen){
+  const es=new EventSource(NTFY+net.topic+"/sse");
+  es.onopen=onOpen;
+  es.onmessage=ev=>{
+    try{
+      const e=JSON.parse(ev.data);
+      if(e.event!=="message"||seen.has(e.id))return;
+      seen.add(e.id);
+      const m=JSON.parse(e.message);
+      if(m.from!==myId)onMsg(m);
+    }catch(_){}
+  };
+  net.es=es;
+}
 function setMode(m){
   mode=m;
   ["m1","m2","m3"].forEach((id,i)=>$(id).className=(i+1===m)?"":"off");
@@ -237,7 +252,13 @@ $("m1").onclick=()=>setMode(1);$("m2").onclick=()=>setMode(2);$("m3").onclick=()
 function broadcast(b){
   const st=state[current];
   if(!st||!net.conn||!net.conn.open)return;
-  net.conn.send({t:"state",sid:current,busy:!!b,st:{players:st.players,cur:st.cur,over:st.over,mood:st.mood,lines:st.lines,sc:st.sc,winner:st.winner}});
+  let lines=st.lines.slice(), m;
+  for(;;){
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players,cur:st.cur,over:st.over,mood:st.mood,lines,sc:st.sc,winner:st.winner}};
+    if(JSON.stringify(m).length<3000||lines.length<2)break;
+    net.seq--;lines=lines.slice(1);
+  }
+  net.conn.send(m);
 }
 function renderLine(l){
   const m=addMsg(l.cls,l.text);
@@ -257,36 +278,39 @@ function guestRender(m){
   updateBar();
   if(st.over)showEnd(st);
 }
-function netErr(e){$("netInfo").textContent="❌ Erreur réseau : "+(e.type||e)+" (code incorrect, ou réseau qui bloque le pair-à-pair ?)";}
 $("btnHost").onclick=()=>{
-  if(typeof Peer==="undefined"){alert("PeerJS n'a pas pu se charger (connexion internet ?).");return}
-  const code=Math.random().toString(36).slice(2,7).toUpperCase();
-  net.role="host";net.peer=new Peer("nakano-"+code,PEER_OPTS);
+  const code=Math.random().toString(36).slice(2,8).toUpperCase();
+  net.role="host";net.topic="nakano-"+code;net.conn=null;
   $("netInfo").textContent="Création de la salle…";
-  net.peer.on("open",()=>{$("netInfo").textContent="🏠 Code de la salle : "+code+" — donne-le à ton adversaire et attends sa connexion.";});
-  net.peer.on("error",netErr);
-  net.peer.on("connection",c=>{
-    net.conn=c;
-    c.on("data",d=>{
-      if(d.t==="hello"){net.guestName=String(d.name||"Invité").slice(0,20);$("netInfo").textContent="✅ "+net.guestName+" est connecté ! Choisis une sœur ci-dessous.";}
-      if(d.t==="answer"){const st=state[current];if(st&&st.cur===1&&!busy&&!st.over)turn(String(d.text).slice(0,500),false);}
-    });
-    c.on("close",()=>{net.conn=null;$("netInfo").textContent="⚠️ L'adversaire s'est déconnecté.";if(current)addMsg("sys","⚠️ L'adversaire s'est déconnecté.");});
-  });
+  subscribe(m=>{
+    if(m.t==="hello"){
+      net.guestName=String(m.name||"Invité").slice(0,20);
+      net.conn={open:true,send:publish};
+      publish({t:"ready"});
+      $("netInfo").textContent="✅ "+net.guestName+" est connecté ! Choisis une sœur ci-dessous.";
+      if(state[current])broadcast(busy);
+    }
+    if(m.t==="answer"){const st=state[current];if(st&&st.cur===1&&!busy&&!st.over)turn(String(m.text).slice(0,500),false);}
+  },()=>{$("netInfo").textContent="🏠 Code de la salle : "+code+" — donne-le à ton adversaire et garde cette page ouverte.";});
 };
 $("btnJoin").onclick=()=>{
-  if(typeof Peer==="undefined"){alert("PeerJS n'a pas pu se charger (connexion internet ?).");return}
   const code=$("roomCode").value.trim().toUpperCase(); if(!code)return;
-  net.role="guest";net.peer=new Peer(undefined,PEER_OPTS);
-  $("netInfo").textContent="Étape 1/2 : connexion au serveur de rencontre…";
-  const to=setTimeout(()=>{if(!(net.conn&&net.conn.open))$("netInfo").textContent="❌ Délai dépassé. Vérifie que l'hôte a bien créé la salle et garde sa page ouverte au premier plan. Si ça persiste, vos réseaux bloquent la connexion directe : essayez un autre réseau (ex : partage de connexion 4G) ou désactivez VPN/bloqueurs.";},20000);
-  net.peer.on("error",netErr);
-  net.peer.on("open",()=>{
-    $("netInfo").textContent="Étape 2/2 : connexion à l'hôte…";
-    const c=net.peer.connect("nakano-"+code,{reliable:true});net.conn=c;
-    c.on("open",()=>{clearTimeout(to);c.send({t:"hello",name:$("p1").value.trim()||"Invité"});$("netInfo").textContent="✅ Connecté ! L'hôte choisit la sœur…";$("btnReset").classList.add("hidden");});
-    c.on("data",d=>{if(d.t==="state")guestRender(d);});
-    c.on("close",()=>{$("netInfo").textContent="⚠️ L'hôte s'est déconnecté.";addMsg("sys","⚠️ L'hôte s'est déconnecté.");});
+  net.role="guest";net.topic="nakano-"+code;net.conn=null;
+  $("netInfo").textContent="Étape 1/2 : connexion au serveur…";
+  let tries=0, timer=null;
+  const hello=()=>{
+    if(net.conn&&net.conn.open){clearInterval(timer);return;}
+    if(++tries>7){clearInterval(timer);$("netInfo").textContent="❌ L'hôte ne répond pas : vérifie le code et que l'hôte a bien créé la salle (page ouverte).";return;}
+    publish({t:"hello",name:$("p1").value.trim()||"Invité"});
+  };
+  subscribe(m=>{
+    if(m.t==="ready"||m.t==="state"){
+      if(!net.conn){net.conn={open:true,send:publish};$("netInfo").textContent="✅ Connecté ! L'hôte choisit la sœur…";$("btnReset").classList.add("hidden");}
+    }
+    if(m.t==="state"){if(m.seq<=net.last)return;net.last=m.seq;guestRender(m);}
+  },()=>{
+    $("netInfo").textContent="Étape 2/2 : contact de l'hôte…";
+    hello();timer=setInterval(hello,3000);
   });
 };
 
