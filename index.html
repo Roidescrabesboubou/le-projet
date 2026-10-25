@@ -88,6 +88,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <input id="roomCode" placeholder="Code de la salle" maxlength="5" style="flex:1;min-width:120px;text-transform:uppercase">
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version en ligne : v5 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -278,6 +279,24 @@ function guestRender(m){
   updateBar();
   if(st.over)showEnd(st);
 }
+$("btnNetTest").onclick=async()=>{
+  const out=$("netInfo"), topic="nakano-test-"+Math.random().toString(36).slice(2,10);
+  const log=[];const show=()=>out.textContent="Diagnostic : "+log.join(" → ");
+  log.push("test…");show();
+  let es;
+  try{
+    const got=new Promise((res,rej)=>{
+      es=new EventSource(NTFY+topic+"/sse");
+      const t=setTimeout(()=>rej(new Error("aucun message reçu en 10 s")),10000);
+      es.onopen=()=>{log.push("flux ouvert ✅");show();
+        fetch(NTFY+topic,{method:"POST",body:"ping"}).then(r=>{log.push(r.ok?"envoi OK ✅":"envoi refusé ("+r.status+") ❌");show();}).catch(e=>rej(new Error("envoi impossible : "+e.message)));};
+      es.onmessage=ev=>{try{if(JSON.parse(ev.data).event==="message"){clearTimeout(t);res();}}catch(_){}};
+      es.onerror=()=>{};
+    });
+    await got;log.push("réception OK ✅ — le relais fonctionne sur ton réseau");
+  }catch(e){log.push("❌ "+e.message+" — ce réseau/navigateur bloque ntfy.sh");}
+  if(es)es.close();show();
+};
 $("btnHost").onclick=()=>{
   const code=Math.random().toString(36).slice(2,8).toUpperCase();
   net.role="host";net.topic="nakano-"+code;net.conn=null;
