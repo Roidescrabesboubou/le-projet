@@ -47,6 +47,10 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 .mode{display:flex;gap:8px;margin:8px 0}
 .mode button.off{background:transparent;color:var(--text);border:1px solid var(--line)}
 #names{display:flex;gap:8px;flex-wrap:wrap}#names input{flex:1;min-width:120px}
+.chatHead .av{width:64px;height:64px;background:transparent}.av svg{width:100%;height:100%}
+#fx{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}.fxp{position:absolute;bottom:-10px;font-size:1.6rem;animation:fl 2s ease-out forwards}
+@keyframes fl{to{transform:translateY(-85vh) rotate(20deg);opacity:0}}
+.shake{animation:sh .45s}@keyframes sh{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
 </style>
 </head>
 <body>
@@ -88,7 +92,8 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <input id="roomCode" placeholder="Code de la salle" maxlength="6" style="flex:1;min-width:120px;text-transform:uppercase">
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version en ligne : v6 (relais ntfy.sh)</small></div>
+        <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (les deux répondent en même temps)</label>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v7 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -111,8 +116,10 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
         <button class="ghost" id="btnBack">← Retour</button>
       </div>
     </div>
+    <div id="guess" style="margin:0 0 8px"></div>
     <div class="panel"><div id="log"></div>
       <div id="endBox"></div>
+      <div id="timer" style="font-weight:700;margin-top:8px"></div>
       <div class="send">
         <input id="input" placeholder="Ta réponse…" autocomplete="off">
         <button id="btnSend">Envoyer</button>
@@ -121,6 +128,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
   </section>
 </main>
 
+<div id="fx"></div>
 <script>
 const SISTERS = {
   ichika:{name:"Ichika",c:"#d96a8f",ini:"I",tag:"L'aînée, actrice, taquine",
@@ -208,13 +216,17 @@ function renderMenu(){
     const aff = state[id] ? Math.max(...state[id].players.map(p=>p.aff)) : 0;
     const d = document.createElement("div");
     d.className="sis"; d.style.setProperty("--c",s.c);
-    d.innerHTML = `<div class="av">${s.ini}</div><h3>${s.name}</h3><p>${s.tag}</p><div class="mini"><i style="width:${aff}%"></i></div>`;
-    d.onclick = () => openSister(id);
+    d.innerHTML = `<div class="av" style="background:transparent;width:64px;height:64px">${avatarSVG(id,"")}</div><h3>${s.name}</h3><p>${s.tag}</p><div class="mini"><i style="width:${aff}%"></i></div>`;
+    d.onclick = () => {mys=false;openSister(id);};
     $("grid").appendChild(d);
   }
+  const q=document.createElement("div");q.className="sis";q.style.setProperty("--c","#9a8fa5");
+  q.innerHTML=`<div class="av" style="background:transparent;width:64px;height:64px">${avatarSVG("miku","",true)}</div><h3>❓ Sœur mystère</h3><p>Une sœur au hasard : devine laquelle !</p>`;
+  q.onclick=()=>{const k=Object.keys(SISTERS);mys=true;openSister(k[Math.floor(Math.random()*k.length)]);};
+  $("grid").appendChild(q);
 }
 renderMenu();
-let mode=1, remoteBusy=false;
+let mode=1, remoteBusy=false, mys=false;
 const net={role:null,peer:null,conn:null,guestName:""};
 Object.assign(net,{topic:"",seq:0,last:0,es:null});
 const NTFY="https://ntfy.sh/", myId=Math.random().toString(36).slice(2,10), seen=new Set();
@@ -255,7 +267,7 @@ function broadcast(b){
   if(!st||!net.conn||!net.conn.open)return;
   let lines=st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players,cur:st.cur,over:st.over,mood:st.mood,lines,sc:st.sc,winner:st.winner}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players,cur:st.cur,over:st.over,mood:st.mood,lines,sc:st.sc,winner:st.winner,timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<3000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -263,6 +275,7 @@ function broadcast(b){
 }
 function renderLine(l){
   const m=addMsg(l.cls,l.text);
+  if(l.c)m.style.borderLeft="4px solid "+l.c;
   if(l.tag){const sp=document.createElement("span");sp.className="delta";sp.style.color=l.up?"#2fa35a":"#d64545";sp.textContent=l.tag;m.appendChild(sp);}
 }
 function guestRender(m){
@@ -275,6 +288,7 @@ function guestRender(m){
   $("gAv").textContent=sis.ini;$("endBox").innerHTML="";$("log").innerHTML="";
   addMsg("sys",`${st.sc.ico} ${st.sc.name} — ${st.sc.diff} · ${st.players[0].name} 🆚 ${st.players[1].name}`);
   st.lines.forEach(renderLine);
+  const last=st.lines[st.lines.length-1];if(last&&last.dv&&last.text!==net.lt)fx(last.dv);net.lt=last&&last.text;
   if(remoteBusy)addMsg("sys","…");
   updateBar();
   if(st.over)showEnd(st);
@@ -309,7 +323,10 @@ $("btnHost").onclick=()=>{
       $("netInfo").textContent="✅ "+net.guestName+" est connecté ! Choisis une sœur ci-dessous.";
       if(state[current])broadcast(busy);
     }
-    if(m.t==="answer"){const st=state[current];if(st&&st.cur===1&&!busy&&!st.over)turn(String(m.text).slice(0,500),false);}
+    if(m.t==="guess"&&state[current])applyGuess(1,m.sid);
+    if(m.t==="answer"){const st=state[current],tx=String(m.text).slice(0,500);
+      if(st&&st.sim){if(!st.answered[1]&&!busy&&!st.over)submitSim(1,tx);}
+      else if(st&&st.cur===1&&!busy&&!st.over)turn(tx,false);}
   },()=>{$("netInfo").textContent="🏠 Code de la salle : "+code+" — donne-le à ton adversaire et garde cette page ouverte.";});
 };
 $("btnJoin").onclick=()=>{
@@ -357,11 +374,17 @@ const SCENARIOS = [
    ctx:"Vous étiez amis mais une dispute (tu as oublié une promesse importante et dit des choses blessantes) vous a séparés. Elle est rancunière, blessée, et ne pardonne pas facilement. Il faudra de vraies excuses et de la constance."}
 ];
 
-function systemPrompt(id, sc, players){
+function systemPrompt(id, sc, players, st){
   const s = SISTERS[id];
   const duel = players.length>1 ? `MODE DUEL : deux garçons rivaux, ${players[0].name} et ${players[1].name}, se disputent ton cœur et répondent à tour de rôle sur le même écran. Chaque message est préfixé [Nom répond]. Tu n'évalues QUE la réponse de celui qui parle. Retiens séparément ce que chacun t'a dit (cohérence, répétitions, flatteries) et ne confonds jamais leurs propos. Tu peux comparer subtilement, être amusée, touchée ou agacée par leur rivalité, mais sans jamais révéler de scores. Chaque question que tu poses doit commencer par le prénom du joueur indiqué dans « Prochain joueur à qui poser ta question ». Si l'un dénigre l'autre, c'est un gros point négatif (-8 à -12).
 
 ` : "";
+  const ex=`FONCTIONNALITÉS SPÉCIALES :
+- INTERVENTIONS : environ 1 tour sur 4, une de ses sœurs (autre que ${s.name}) peut intervenir brièvement selon sa propre personnalité (conseiller, taquiner, jalouser, critiquer). Ajoute alors "guest":"ichika|nino|miku|yotsuba|itsuki" et "guest_line":"sa réplique (1 phrase)". Cela peut influencer le delta.
+- SOUVENIRS : dès l'étape 3, environ 1 tour sur 4, rappelle précisément une réponse antérieure du joueur et relie-la à ta réaction ou à ta question.
+- CHRONO : environ 1 question sur 5 (dès l'étape 2) est à répondre vite : ajoute "timed":true,"seconds":<15 à 30>. Si le joueur répond « ⏰ », il n'a pas répondu à temps : delta -5 à -8 et réagis.
+${st.mystery&&!st.revealed?"- MODE MYSTÈRE : tu ne révèles JAMAIS ton prénom ni celui de tes sœurs et ne te désignes pas ; le joueur doit deviner qui tu es à ta personnalité.\n":""}${st.sim?`- MODE SIMULTANÉ : les deux joueurs répondent en même temps à TA question (adressée aux deux). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun séparément et ajoute "results":[{"affection_delta":n,"too_fast":b}, …] dans l'ordre des joueurs (mets le affection_delta global à 0).`:""}
+`;
   const prog = `ÉVOLUTION DE LA RELATION (très important) :
 ${players.map(p=>`- ${p.name} : étape ${stageOf(p)+1}/5 « ${STAGES[stageOf(p)].name} »${p.out?" (éliminé)":""}`).join("\n")}
 ${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
@@ -395,6 +418,7 @@ RÉALISME ET LIMITES DE CONNAISSANCE (très important) :
 - Si le joueur l'explique ensuite, elle réagit de façon réaliste (curiosité, ennui, incompréhension). Parler longuement de choses sans rapport avec elle, en ignorant sa question, vaut un petit malus (-2 à -4) ; bien expliquer quelque chose qui la touche ou la fait sourire peut rapporter un petit bonus.
 - Elle ne sait rien du jeu, de l'IA, ni du fait qu'elle est un personnage de manga/anime. Si le joueur y fait allusion, elle est perplexe.
 
+${ex}
 ${prog}
 ${duel}RÈGLES DE FORME :
 - Réponds toujours en français, strictement dans le caractère de ${s.name}, à la première personne, 1 à 4 phrases, actions entre astérisques possibles (ex: *rougit*).
@@ -410,7 +434,10 @@ function parseAI(text){
   try{
     const m = text.match(/\{[\s\S]*\}/);
     const o = JSON.parse(m ? m[0] : text);
-    return {reply:String(o.reply||"…"),delta:Math.max(-15,Math.min(15,parseInt(o.affection_delta)||0)),mood:String(o.mood||""),tooFast:o.too_fast===true};
+    return {reply:String(o.reply||"…"),delta:Math.max(-15,Math.min(15,parseInt(o.affection_delta)||0)),mood:String(o.mood||""),tooFast:o.too_fast===true,
+      timed:o.timed===true?Math.max(10,Math.min(40,parseInt(o.seconds)||20)):0,
+      guest:SISTERS[o.guest]?o.guest:"",gline:String(o.guest_line||"").slice(0,300),
+      res:Array.isArray(o.results)?o.results.map(r=>({delta:Math.max(-15,Math.min(15,parseInt(r&&r.affection_delta)||0)),tooFast:!!(r&&r.too_fast)})):null};
   }catch(e){
     return {reply:text.replace(/[{}"]/g,"").slice(0,400),delta:0,mood:"",tooFast:false};
   }
@@ -421,7 +448,7 @@ function fetchT(url,opts){
 }
 async function callAI(id, history){
   const model = cfg.model || PROVIDERS[cfg.provider].model;
-  const sys = systemPrompt(id, state[id].sc, state[id].players);
+  const sys = systemPrompt(id, state[id].sc, state[id].players, state[id]);
   if(cfg.provider==="gemini"){
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(cfg.key)}`;
     const r = await fetchT(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
@@ -446,6 +473,98 @@ function addMsg(cls,text){
   const d=document.createElement("div");d.className="msg "+cls;d.textContent=text;
   $("log").appendChild(d);$("log").scrollTop=$("log").scrollHeight;return d;
 }
+function EXPR(m){m=(m||"").toLowerCase();return /ravi|heure|content|joie|joy|amus|touch|adore|sourir|fier/.test(m)?"happy":/gên|rouge|timid|embarr|troubl|flatt|rougi/.test(m)?"shy":/vex|fâch|furi|énerv|agac|col[eè]re|irrit|mécont|offens/.test(m)?"angry":/trist|déç|bless|peiné|froid|déce|rejet/.test(m)?"sad":/surpr|étonn|choqu|stup|perple/.test(m)?"surprised":"neutral";}
+function avatarSVG(id,mood,hide){
+  const HAIR={ichika:"#7a4a5c",nino:"#e7a0b5",miku:"#7a97bd",yotsuba:"#b8774a",itsuki:"#d9894c"};
+  const s=SISTERS[id],e=EXPR(mood),c=hide?"#9a8fa5":s.c,h=hide?"#6b6075":HAIR[id];
+  let g=`<circle cx="50" cy="50" r="48" fill="${c}" opacity=".22"/>`;
+  if(id==="nino"&&!hide)g+=`<ellipse cx="17" cy="62" rx="10" ry="22" fill="${h}"/><ellipse cx="83" cy="62" rx="10" ry="22" fill="${h}"/>`;
+  g+=`<ellipse cx="50" cy="50" rx="34" ry="38" fill="${h}"/><circle cx="50" cy="54" r="27" fill="#ffe3d0"/><path d="M23 50Q50 12 77 50Q64 33 50 38Q36 33 23 50Z" fill="${h}"/>`;
+  if(hide)return `<svg viewBox="0 0 100 100">${g}<text x="50" y="68" font-size="34" text-anchor="middle" fill="#6b6075">?</text></svg>`;
+  const r=e==="surprised"?4.5:3;
+  g+=e==="happy"?`<path d="M34 56Q39 49 44 56M56 56Q61 49 66 56" stroke="#333" stroke-width="2.5" fill="none"/>`:`<circle cx="39" cy="56" r="${r}" fill="#333"/><circle cx="61" cy="56" r="${r}" fill="#333"/>`;
+  if(e==="angry")g+=`<path d="M32 46L45 51M68 46L55 51" stroke="#333" stroke-width="2.5"/>`;
+  if(e==="sad")g+=`<path d="M32 51L45 46M68 51L55 46" stroke="#333" stroke-width="2.5"/>`;
+  const mo={neutral:"M44 68Q50 70 56 68",happy:"M41 65Q50 76 59 65",shy:"M46 68Q50 70 54 68",angry:"M43 71Q50 64 57 71",sad:"M43 71Q50 65 57 71"}[e];
+  g+=e==="surprised"?`<ellipse cx="50" cy="69" rx="3.5" ry="5" fill="#a33"/>`:`<path d="${mo}" stroke="#a33" stroke-width="2.5" fill="none"/>`;
+  if(e==="shy"||e==="happy")g+=`<ellipse cx="32" cy="64" rx="6" ry="3.5" fill="#ff7a9a" opacity=".55"/><ellipse cx="68" cy="64" rx="6" ry="3.5" fill="#ff7a9a" opacity=".55"/>`;
+  if(id==="nino")g+=`<circle cx="25" cy="34" r="7" fill="${c}"/><circle cx="75" cy="34" r="7" fill="${c}"/>`;
+  if(id==="miku")g+=`<path d="M17 52Q50 -4 83 52" stroke="#444" stroke-width="5" fill="none"/><circle cx="17" cy="54" r="8" fill="#444"/><circle cx="83" cy="54" r="8" fill="#444"/>`;
+  if(id==="yotsuba")g+=`<path d="M50 20L36 10V30ZM50 20L64 10V30Z" fill="${c}"/>`;
+  if(id==="itsuki")g+=`<text x="24" y="40" font-size="16" fill="${c}">★</text><text x="62" y="40" font-size="16" fill="${c}">★</text>`;
+  if(id==="ichika")g+=`<text x="66" y="38" font-size="16" fill="${c}">✿</text>`;
+  return `<svg viewBox="0 0 100 100">${g}</svg>`;
+}
+function fx(d){
+  const L=$("fx"), burst=(em,n)=>{for(let i=0;i<n;i++){const x=document.createElement("span");x.className="fxp";x.textContent=em;x.style.left=(8+Math.random()*84)+"%";x.style.animationDelay=(Math.random()*.5)+"s";L.appendChild(x);setTimeout(()=>x.remove(),2600);}};
+  if(d>=4)burst("💖",Math.min(30,d));
+  if(d<=-6){burst("💢",5);$("game").classList.add("shake");setTimeout(()=>$("game").classList.remove("shake"),500);}
+}
+function addGuest(st,o){
+  if(!o.guest||!o.gline||o.guest===current||(st.mystery&&!st.revealed))return;
+  const g=SISTERS[o.guest],L={cls:"her",text:g.name+" : "+o.gline,c:g.c};
+  st.lines.push(L);renderLine(L);
+}
+let tm=null,tmKey=-1;
+function syncTimer(st){
+  const el=$("timer"), me=net.role==="guest"?1:net.role==="host"?0:st.cur;
+  const mine=net.role?(st.sim?!st.answered[me]:st.cur===me):true;
+  if(!st.timed||st.over||!mine||(net.role==="guest"?remoteBusy:busy)){clearInterval(tm);tmKey=-1;el.textContent="";return;}
+  if(tmKey===st.qid)return;
+  tmKey=st.qid;let t=st.timed;clearInterval(tm);el.textContent="⏱️ "+t+" s";
+  tm=setInterval(()=>{t--;el.textContent="⏱️ "+t+" s";if(t<=0){clearInterval(tm);tmKey=-1;el.textContent="";$("input").value="⏰";send();}},1000);
+}
+function sysLine(st,t){addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
+function applyGuess(pi,sid){
+  const st=state[current],pl=st.players[pi];
+  if(!st||st.revealed||st.over||!pl)return;
+  if(sid===current){st.revealed=true;pl.aff=Math.min(99,pl.aff+15);sysLine(st,`🎉 ${pl.name} a deviné : c'est ${SISTERS[current].name} ! (+15)`);}
+  else{st.wrong.push(sid);pl.aff=Math.max(1,pl.aff-10);sysLine(st,`❌ ${pl.name} se trompe (−10).`);}
+  updateBar();
+}
+function guess(sid){
+  if(net.role==="guest"){net.conn&&net.conn.send({t:"guess",sid});return;}
+  applyGuess(net.role==="host"?0:state[current].cur,sid);
+}
+function score(st,pl,d,tooFast){
+  let note="";
+  if(d>0){const D=1+((st.sc.div||2)-1)*Math.pow(0.8,pl.turns);const raw=d;d=Math.max(1,Math.min(12,Math.round(d/D)));if(D>1.4&&raw>d)note=" 🐢";}
+  if(d<0)d=Math.max(-20,Math.round(d*1.5));
+  if(tooFast){d=Math.min(d,0)-5;note=" 😤";}
+  const prev=pl.aff;pl.turns++;pl.aff=Math.max(0,Math.min(100,pl.aff+d));
+  if(pl.turns<6)pl.aff=Math.min(pl.aff,99);
+  return {d:pl.aff-prev,note};
+}
+function submitSim(i,text){
+  const st=state[current];st.pending[i]=text;st.answered[i]=true;updateBar();
+  if(st.players.every((p,k)=>p.out||st.answered[k]))runRound(st);
+}
+async function runRound(st){
+  busy=true;$("btnSend").disabled=true;const id=current;
+  st.players.forEach((p,i)=>{if(!p.out){const c=i===0?"me":"me2",t=p.name+" : "+st.pending[i];addMsg(c,t);st.lines.push({cls:c,text:t});}});
+  st.history.push({role:"user",content:"[Réponses simultanées] "+st.players.map((p,i)=>p.out?"":p.name+" : "+st.pending[i]).filter(Boolean).join(" | ")});
+  broadcast(true);
+  const wait=addMsg("sys","…");
+  try{
+    const raw=await callAI(id,st.history);
+    if(!raw||!raw.trim())throw new Error("Réponse vide de l'IA");
+    const o=parseAI(raw);st.history.push({role:"assistant",content:raw});wait.remove();
+    const tags=[];let sum=0,best=0;
+    st.players.forEach((p,i)=>{if(p.out)return;const r=(o.res&&o.res[i])||{delta:0,tooFast:false},x=score(st,p,r.delta,r.tooFast);
+      tags.push(`${p.name} ${x.d>0?"+":""}${x.d} ❤${x.note}`);sum+=x.d;best=Math.max(best,x.d);if(p.aff<=0)p.out=true;});
+    st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
+    const L={cls:"her",text:o.reply,tag:tags.join(" · "),up:sum>=0,dv:best};st.lines.push(L);renderLine(L);fx(best);addGuest(st,o);
+    st.pending=[null,null];st.answered=[false,false];
+    const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
+    if(win){updateBar();await finish(st,id,"win",win);}
+    else if(st.players.every(p=>p.out)){updateBar();await finish(st,id,"lose",st.players[0]);}
+  }catch(e){
+    wait.textContent="Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();
+    st.pending=[null,null];st.answered=[false,false];
+  }
+  busy=false;$("btnSend").disabled=st.over;updateBar();syncTimer(st);
+  if(net.role==="host")broadcast(false);
+}
 function nextAlive(st){
   const n=st.players.length;
   for(let k=1;k<=n;k++){const i=(st.cur+k)%n;if(!st.players[i].out)return i;}
@@ -454,7 +573,7 @@ function nextAlive(st){
 function updateBar(){
   const st=state[current], el=$("bars"); el.innerHTML="";
   const head=document.createElement("div");
-  const b=document.createElement("b");b.textContent=SISTERS[current].name;
+  const b=document.createElement("b");b.textContent=st.mystery&&!st.revealed?"???":SISTERS[current].name;
   const sm=document.createElement("small");sm.textContent=st.mood?" · "+st.mood:"";
   head.append(b,sm);el.appendChild(head);
   const multi=st.players.length>1;
@@ -462,13 +581,20 @@ function updateBar(){
     const row=document.createElement("div");row.className="prow";
     row.style.setProperty("--pc",i===0?SISTERS[current].c:"#5b6bd0");
     const lab=document.createElement("div");
-    lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"% · "+STAGES[stageOf(pl)].name+(pl.out?" 💔 éliminé":"")+(multi&&i===st.cur&&!st.over&&!pl.out?"  ◀ à toi de jouer":"");
+    lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"% · "+STAGES[stageOf(pl)].name+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
     const big=document.createElement("div");big.className="big";
     const f=document.createElement("i");f.style.width=pl.aff+"%";big.appendChild(f);
     row.append(lab,big);el.appendChild(row);
   });
   $("input").placeholder=(multi&&!st.over?st.players[st.cur].name+", ":"")+"ta réponse…";
-  if(net.role==="guest"){const ok=st.cur===1&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
+  if(net.role==="guest"){const ok=(st.sim?!st.answered[1]:st.cur===1)&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
+  const hide=st.mystery&&!st.revealed;
+  document.documentElement.style.setProperty("--c",hide?"#9a8fa5":SISTERS[current].c);
+  $("gAv").innerHTML=avatarSVG(current,st.mood,hide);
+  const gb=$("guess");gb.innerHTML="";
+  if(hide&&!st.over){const l=document.createElement("small");l.textContent="Qui est-ce ? ";gb.appendChild(l);
+    Object.keys(SISTERS).forEach(k=>{const b=document.createElement("button");b.className="ghost";b.style.cssText="padding:3px 9px;font-size:.8rem;margin:2px";b.textContent=SISTERS[k].name;b.disabled=(st.wrong||[]).includes(k);b.onclick=()=>guess(k);gb.appendChild(b);});}
+  syncTimer(st);
   if(net.role==="host")broadcast(busy);
 }
 function openSister(id){
@@ -483,7 +609,7 @@ function openSister(id){
 function showScenarios(id){
   const s=SISTERS[id];
   $("menu").classList.add("hidden");$("game").classList.add("hidden");$("scen").classList.remove("hidden");
-  $("scTitle").textContent="Ta relation avec "+s.name;
+  $("scTitle").textContent="Ta relation avec "+(mys?"la sœur mystère":s.name);
   $("scGrid").innerHTML="";
   const list=[...SCENARIOS,{id:"random",ico:"🎲",name:"Surprise",diff:"???",ctx:"Une situation tirée au hasard."}];
   list.forEach(sc=>{
@@ -496,7 +622,7 @@ function showScenarios(id){
         names=mode===3?[$("p1").value.trim()||"Hôte",net.guestName||"Invité"]:[$("p1").value.trim()||"Joueur 1",$("p2").value.trim()||"Joueur 2"];
         if(names[0].toLowerCase()===names[1].toLowerCase()) names[1]+=" (2)";
       }
-      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false})),cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null};
+      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false})),cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys,revealed:false,wrong:[],sim:mode===3&&$("simChk").checked,answered:[false,false],pending:[null,null],qid:0,timed:0};
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -514,7 +640,7 @@ function enterGame(id){
   if(st.over) showEnd(st);
   else if(st.history.length===0){
     turn(multi
-      ? `[DÉBUT] Deux garçons, ${st.players[0].name} et ${st.players[1].name}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis pose ta première question à ${st.players[0].name}. affection_delta doit être 0 et too_fast false.`
+      ? `[DÉBUT] Deux garçons, ${st.players[0].name} et ${st.players[1].name}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis pose ta première question ${st.sim?'aux deux, qui répondront en même temps':'à '+st.players[0].name}. affection_delta doit être 0 et too_fast false.`
       : "[DÉBUT] Le joueur vient de te rejoindre dans la situation décrite. Réagis selon la situation et ton caractère, puis pose ta première question. affection_delta doit être 0 et too_fast false.",true);
   }
 }
@@ -537,7 +663,7 @@ async function turn(userText,hidden){
     const raw = await callAI(id,st.history);
     if(!raw||!raw.trim()) throw new Error("Réponse vide de l'IA");
     const o = parseAI(raw);
-    st.history.push({role:"assistant",content:JSON.stringify({reply:o.reply,affection_delta:o.delta,too_fast:o.tooFast,mood:o.mood})});
+    st.history.push({role:"assistant",content:raw});
     clearInterval(tick);wait.remove();
     let d=o.delta, note="";
     if(!hidden){
@@ -554,14 +680,15 @@ async function turn(userText,hidden){
       if(pl.turns<6) pl.aff=Math.min(pl.aff,99);
       d=pl.aff-prev;
     }
-    st.mood=o.mood;
+    st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     const m=addMsg("her",o.reply); st.lines.push({cls:"her",text:o.reply});
     if(!hidden && (d!==0||note)){
       const sp=document.createElement("span");sp.className="delta";
       sp.style.color=d>0?"#2fa35a":"#d64545";sp.textContent=(multi?pl.name+" ":"")+(d>0?"+":"")+d+" ❤"+note;
       m.appendChild(sp);
-      const L=st.lines[st.lines.length-1];L.tag=sp.textContent;L.up=d>0;
+      const L=st.lines[st.lines.length-1];L.tag=sp.textContent;L.up=d>0;L.dv=d;fx(d);
     }
+    addGuest(st,o);
     if(!hidden){
       if(pl.aff>=100){ updateBar(); await finish(st,id,"win",pl); }
       else{
@@ -586,6 +713,7 @@ async function turn(userText,hidden){
   }
   clearInterval(tick);
   busy=false;$("btnSend").disabled=state[id].over;$("input").focus();
+  syncTimer(state[id]);
   if(net.role==="host")broadcast(false);
 }
 async function finish(st,id,kind,pl){
@@ -610,6 +738,7 @@ async function finish(st,id,kind,pl){
   showEnd(st);
 }
 function showEnd(st){
+  fx(st.winner?30:-30);
   const multi=st.players.length>1, sis=SISTERS[current].name;
   let t;
   if(st.winner) t = multi ? `🏆 ${st.winner} remporte le cœur de ${sis} !` : "💖 Fin heureuse : elle t'a avoué ses sentiments !";
@@ -624,9 +753,15 @@ function showEnd(st){
 }
 function send(){
   const v=$("input").value.trim(); if(!v||state[current].over)return;
+  clearInterval(tm);tmKey=-1;$("timer").textContent="";
   if(net.role==="guest"){
-    if(state[current].cur!==1||remoteBusy||!net.conn||!net.conn.open)return;
+    const g=state[current];
+    if((g.sim?g.answered[1]:g.cur!==1)||remoteBusy||!net.conn||!net.conn.open)return;
     net.conn.send({t:"answer",text:v});$("input").value="";return;
+  }
+  if(state[current].sim&&net.role==="host"){
+    if(state[current].answered[0]||busy){addMsg("sys","⏳ Tu as déjà répondu, patiente…");return;}
+    $("input").value="";submitSim(0,v);return;
   }
   if(net.role==="host"&&state[current].cur!==0){addMsg("sys","C'est au tour de l'autre joueur…");return;}
   if(busy){addMsg("sys","Patiente, elle réfléchit encore…");return;}
