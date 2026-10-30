@@ -343,17 +343,17 @@ const STAGES=[
 ];
 const stageOf=pl=>pl.aff<20?0:pl.aff<40?1:pl.aff<60?2:pl.aff<80?3:4;
 const SCENARIOS = [
-  {id:"inconnus",ico:"👋",name:"Parfaits inconnus",diff:"Difficile",aff:10,
+  {id:"inconnus",ico:"👋",name:"Parfaits inconnus",diff:"Difficile",aff:10,div:3,
    ctx:"Vous ne vous êtes jamais parlé. Vous vous croisez pour la première fois (couloir, café, bibliothèque). Elle ne te connaît pas du tout et se méfie des inconnus trop familiers."},
-  {id:"classe",ico:"🏫",name:"Camarades de classe",diff:"Moyen",aff:25,
+  {id:"classe",ico:"🏫",name:"Camarades de classe",diff:"Moyen",aff:25,div:2,
    ctx:"Vous êtes dans la même classe depuis quelques mois. Vous vous connaissez de vue et avez échangé quelques mots, sans plus."},
-  {id:"tuteur",ico:"📚",name:"Nouveau tuteur",diff:"Difficile",aff:15,
+  {id:"tuteur",ico:"📚",name:"Nouveau tuteur",diff:"Difficile",aff:15,div:3,
    ctx:"Le joueur vient d'être engagé comme tuteur particulier pour la famille Nakano. Elle ne l'a pas choisi, doute de sa légitimité et le teste. Elle n'aime pas être jugée sur ses notes."},
-  {id:"enfance",ico:"🌸",name:"Ami d'enfance perdu de vue",diff:"Facile",aff:40,
+  {id:"enfance",ico:"🌸",name:"Ami d'enfance perdu de vue",diff:"Facile",aff:40,div:1.5,
    ctx:"Vous étiez très proches enfants, puis vous vous êtes perdus de vue des années. Vous vous retrouvez. Il y a de la nostalgie mais aussi de la gêne : vous avez tous deux changé."},
-  {id:"ami",ico:"🤝",name:"Bons amis",diff:"Facile",aff:50,
+  {id:"ami",ico:"🤝",name:"Bons amis",diff:"Facile",aff:50,div:1.3,
    ctx:"Vous êtes bons amis depuis longtemps. Elle te fait confiance, mais te voit comme un ami : passer à la romance est un grand pas et elle peut mal réagir si tu brusques l'amitié."},
-  {id:"brouille",ico:"💢",name:"Ancien ami brouillé",diff:"Extrême",aff:5,
+  {id:"brouille",ico:"💢",name:"Ancien ami brouillé",diff:"Extrême",aff:5,div:4,
    ctx:"Vous étiez amis mais une dispute (tu as oublié une promesse importante et dit des choses blessantes) vous a séparés. Elle est rancunière, blessée, et ne pardonne pas facilement. Il faudra de vraies excuses et de la constance."}
 ];
 
@@ -541,15 +541,17 @@ async function turn(userText,hidden){
     clearInterval(tick);wait.remove();
     let d=o.delta, note="";
     if(!hidden){
-      const cap = pl.turns<3?3 : pl.turns<6?6 : pl.aff>=60?12:8;
-      if(d>0) d=Math.min(d,cap);
+      if(d>0){
+        const D=1+((st.sc.div||2)-1)*Math.pow(0.8,pl.turns);
+        const raw=d; d=Math.max(1,Math.min(12,Math.round(d/D)));
+        if(D>1.4&&raw>d) note=" 🐢 elle se méfie encore";
+      }
       if(d<0) d=Math.max(-20,Math.round(d*1.5));
       if(o.tooFast){ d=Math.min(d,0)-5; note=" 😤 trop rapide !"; }
       const prev=pl.aff;
       pl.turns++;
       pl.aff=Math.max(0,Math.min(100,pl.aff+d));
-      const gate=Math.max(prev,30+pl.turns*6);
-      if(pl.aff>gate){pl.aff=gate;note+=" ⏳ trop tôt, elle a besoin de temps";}
+      if(pl.turns<6) pl.aff=Math.min(pl.aff,99);
       d=pl.aff-prev;
     }
     st.mood=o.mood;
