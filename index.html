@@ -334,6 +334,14 @@ $("btnJoin").onclick=()=>{
 };
 
 /* ---------- Prompt ---------- */
+const STAGES=[
+ {name:"Distante",g:"Elle ne te connaît presque pas. Questions SUPERFICIELLES et prudentes (présentations, goûts simples, quotidien, école). Ton réservé, réponses courtes. Elle ne se confie sur rien d'intime et recule si on devient trop personnel."},
+ {name:"Connaissances",g:"Elle commence à te cerner. Questions sur ses habitudes, ses centres d'intérêt, tes passions, ce que tu penses de l'école ou de ses sœurs. Elle partage de petites anecdotes mais reste sur ses gardes."},
+ {name:"Complices",g:"Un début de complicité. Questions plus PERSONNELLES : famille, sœurs, souvenirs, doutes du quotidien, ce que tu attends d'une amitié. Elle taquine, montre un peu de vulnérabilité. Elle peut glisser des questions-pièges légères."},
+ {name:"Proches",g:"Elle te fait confiance. Questions INTIMES : ses peurs, ses complexes, ses rêves d'avenir, ses blessures, ta façon d'aimer, tes défauts. Elle se confie vraiment. Elle teste ta sincérité et ta cohérence avec des pièges plus subtils (jalousie, dilemmes, mensonge tentant, comparaison avec ses sœurs)."},
+ {name:"Intimes",g:"Elle est très attachée mais a peur de se tromper. Questions TRÈS PROFONDES sur l'engagement, la peur d'être abandonnée, ce que tu es prêt à sacrifier, des scénarios où tu dois choisir. Pièges exigeants : elle cherche la moindre incohérence avec ce que tu as dit avant. Elle ne se déclare qu'à la toute fin."}
+];
+const stageOf=pl=>pl.aff<20?0:pl.aff<40?1:pl.aff<60?2:pl.aff<80?3:4;
 const SCENARIOS = [
   {id:"inconnus",ico:"👋",name:"Parfaits inconnus",diff:"Difficile",aff:10,
    ctx:"Vous ne vous êtes jamais parlé. Vous vous croisez pour la première fois (couloir, café, bibliothèque). Elle ne te connaît pas du tout et se méfie des inconnus trop familiers."},
@@ -354,6 +362,14 @@ function systemPrompt(id, sc, players){
   const duel = players.length>1 ? `MODE DUEL : deux garçons rivaux, ${players[0].name} et ${players[1].name}, se disputent ton cœur et répondent à tour de rôle sur le même écran. Chaque message est préfixé [Nom répond]. Tu n'évalues QUE la réponse de celui qui parle. Retiens séparément ce que chacun t'a dit (cohérence, répétitions, flatteries) et ne confonds jamais leurs propos. Tu peux comparer subtilement, être amusée, touchée ou agacée par leur rivalité, mais sans jamais révéler de scores. Chaque question que tu poses doit commencer par le prénom du joueur indiqué dans « Prochain joueur à qui poser ta question ». Si l'un dénigre l'autre, c'est un gros point négatif (-8 à -12).
 
 ` : "";
+  const prog = `ÉVOLUTION DE LA RELATION (très important) :
+${players.map(p=>`- ${p.name} : étape ${stageOf(p)+1}/5 « ${STAGES[stageOf(p)].name} »${p.out?" (éliminé)":""}`).join("\n")}
+${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
+- Tes questions et ton comportement doivent correspondre STRICTEMENT à l'étape actuelle : plus la relation avance, plus tes questions sont intimes et ton ton chaleureux ; mais ne saute JAMAIS d'étape (pas de questions intimes à un quasi-inconnu).
+- PIÈGES : à partir de l'étape « Connaissances », environ une question sur trois est un piège subtil (question orientée, dilemme sans bonne réponse évidente, test d'honnêteté, contradiction avec ce que le joueur a dit avant, tentation de flatter ou de mentir, comparaison avec une sœur ou un rival). Ne dis jamais que c'est un piège. Une réponse flatteuse, menteuse ou incohérente est punie ; une réponse honnête, nuancée et cohérente est récompensée.
+- Tu ne dis JAMAIS « je t'aime » ni ne te déclares avant le message final [FIN]. Le changement de sentiments est progressif : montre-le par de petits signes (ton, rougeurs, confidences), pas par un brusque revirement.
+- Un joueur trop rapide par rapport à l'étape (compliments intimes, déclarations) est rejeté, selon ton caractère.
+`;
   return `Tu incarnes ${s.name} Nakano dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets » (Gotoubun no Hanayome). Le joueur est un garçon de son entourage (ou deux, en mode duel).
 
 PERSONNAGE : ${s.bio}
@@ -379,6 +395,7 @@ RÉALISME ET LIMITES DE CONNAISSANCE (très important) :
 - Si le joueur l'explique ensuite, elle réagit de façon réaliste (curiosité, ennui, incompréhension). Parler longuement de choses sans rapport avec elle, en ignorant sa question, vaut un petit malus (-2 à -4) ; bien expliquer quelque chose qui la touche ou la fait sourire peut rapporter un petit bonus.
 - Elle ne sait rien du jeu, de l'IA, ni du fait qu'elle est un personnage de manga/anime. Si le joueur y fait allusion, elle est perplexe.
 
+${prog}
 ${duel}RÈGLES DE FORME :
 - Réponds toujours en français, strictement dans le caractère de ${s.name}, à la première personne, 1 à 4 phrases, actions entre astérisques possibles (ex: *rougit*).
 - À chaque tour : réagis à la dernière réponse selon ton caractère et la situation, puis pose UNE nouvelle question variée (goûts, valeurs, situations, rêves, mises en situation, souvenirs communs, sœurs, études…). Si tu es vexée ou froide, ta question peut être sèche ou tu peux la faire plus courte.
@@ -445,7 +462,7 @@ function updateBar(){
     const row=document.createElement("div");row.className="prow";
     row.style.setProperty("--pc",i===0?SISTERS[current].c:"#5b6bd0");
     const lab=document.createElement("div");
-    lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"%"+(pl.out?" 💔 éliminé":"")+(multi&&i===st.cur&&!st.over&&!pl.out?"  ◀ à toi de jouer":"");
+    lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"% · "+STAGES[stageOf(pl)].name+(pl.out?" 💔 éliminé":"")+(multi&&i===st.cur&&!st.over&&!pl.out?"  ◀ à toi de jouer":"");
     const big=document.createElement("div");big.className="big";
     const f=document.createElement("i");f.style.width=pl.aff+"%";big.appendChild(f);
     row.append(lab,big);el.appendChild(row);
@@ -528,13 +545,16 @@ async function turn(userText,hidden){
       if(d>0) d=Math.min(d,cap);
       if(d<0) d=Math.max(-20,Math.round(d*1.5));
       if(o.tooFast){ d=Math.min(d,0)-5; note=" 😤 trop rapide !"; }
+      const prev=pl.aff;
       pl.turns++;
       pl.aff=Math.max(0,Math.min(100,pl.aff+d));
-      if(pl.turns<8) pl.aff=Math.min(pl.aff,92);
+      const gate=Math.max(prev,30+pl.turns*6);
+      if(pl.aff>gate){pl.aff=gate;note+=" ⏳ trop tôt, elle a besoin de temps";}
+      d=pl.aff-prev;
     }
     st.mood=o.mood;
     const m=addMsg("her",o.reply); st.lines.push({cls:"her",text:o.reply});
-    if(!hidden && d!==0){
+    if(!hidden && (d!==0||note)){
       const sp=document.createElement("span");sp.className="delta";
       sp.style.color=d>0?"#2fa35a":"#d64545";sp.textContent=(multi?pl.name+" ":"")+(d>0?"+":"")+d+" ❤"+note;
       m.appendChild(sp);
