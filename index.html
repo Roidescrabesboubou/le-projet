@@ -51,6 +51,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 #fx{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}.fxp{position:absolute;bottom:-10px;font-size:1.6rem;animation:fl 2s ease-out forwards}
 @keyframes fl{to{transform:translateY(-85vh) rotate(20deg);opacity:0}}
 .shake{animation:sh .45s}@keyframes sh{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+#choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}#choices button{text-align:left;max-width:100%;white-space:normal}
 </style>
 </head>
 <body>
@@ -93,7 +94,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (les deux répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v7 (relais ntfy.sh)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v9 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -120,6 +121,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
     <div class="panel"><div id="log"></div>
       <div id="endBox"></div>
       <div id="timer" style="font-weight:700;margin-top:8px"></div>
+      <div id="choices"></div>
       <div class="send">
         <input id="input" placeholder="Ta réponse…" autocomplete="off">
         <button id="btnSend">Envoyer</button>
@@ -267,7 +269,7 @@ function broadcast(b){
   if(!st||!net.conn||!net.conn.open)return;
   let lines=st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players,cur:st.cur,over:st.over,mood:st.mood,lines,sc:st.sc,winner:st.winner,timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players,cur:st.cur,over:st.over,mood:st.mood,lines,sc:st.sc,winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<3000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -359,6 +361,177 @@ const STAGES=[
  {name:"Intimes",g:"Elle est très attachée mais a peur de se tromper. Questions TRÈS PROFONDES sur l'engagement, la peur d'être abandonnée, ce que tu es prêt à sacrifier, des scénarios où tu dois choisir. Pièges exigeants : elle cherche la moindre incohérence avec ce que tu as dit avant. Elle ne se déclare qu'à la toute fin."}
 ];
 const stageOf=pl=>pl.aff<20?0:pl.aff<40?1:pl.aff<60?2:pl.aff<80?3:4;
+const MS=[
+ {ico:"🤝",name:"Amitié",brief:"Étape AMITIÉ : une scène du quotidien (école, couloir, pause, retour de cours) où elle décide si le joueur peut devenir un vrai ami : elle a un petit souci ou lui demande un service qui révèle s'il est fiable et sincère."},
+ {ico:"🎬",name:"Premier rendez-vous",brief:"Étape PREMIER RENDEZ-VOUS : elle (ou lui) propose une sortie à deux pour la première fois (café, cinéma, librairie, parc…). Elle est un peu gênée ; mets en scène le lieu, une petite complication et un moment où le joueur doit bien réagir."},
+ {ico:"🌸",name:"Sortie en tête-à-tête",brief:"Étape SORTIE EN TÊTE-À-TÊTE : un vrai date romantique mais pudique (festival, balade au coucher du soleil, parc d'attractions, aquarium…). L'ambiance est chargée ; elle teste ses sentiments avec une situation délicate où le joueur doit choisir entre deux attitudes."},
+ {ico:"🌙",name:"Confidence",brief:"Étape CONFIDENCE : un moment calme et intime (soir, toit du lycée, retour à pied) où elle s'ouvre sur une peur ou une blessure profonde et attend de voir comment le joueur la soutient, sans se déclarer encore."}
+];
+const CAPS=[35,55,75,90,100];
+const msStart=aff=>{const i=CAPS.findIndex(c=>aff<=c);return i<0?4:i;};
+const mkEv=(min,list,f)=>list.map(([n,t,ch])=>({min,n,t,ch,for:f}));
+const EVENTS=[
+...mkEv(0,[
+ ["Objet qui tombe","Un petit objet (papier plié, porte-clés, carnet) tombe par terre entre vous deux, sans que personne ne l'ait vu tomber.",["Je le ramasse et je le lui tends","Je le ramasse et je regarde ce que c'est","Je le laisse là, ce n'est pas à moi","Je le jette à la poubelle"]],
+ ["Averse soudaine","Une averse éclate et vous n'avez qu'un seul parapluie (ou aucun).",["Je lui prête mon parapluie et je me mouille","Je propose de nous abriter ensemble sous le mien","On court se mettre à l'abri chacun de son côté","On attend sous un auvent en discutant"]],
+ ["Interruption d'une sœur","Une de ses sœurs débarque à l'improviste et interrompt votre échange."],
+ ["Camarade curieux","Un camarade de classe vous aborde et demande, un peu trop fort, si vous sortez ensemble.",["Je réponds calmement que ce n'est pas le cas","Je plaisante pour dévier la question","Je ne réponds pas et je change de sujet","Je laisse elle répondre en premier"]],
+ ["Appel au mauvais moment","Le téléphone du joueur sonne au pire moment.",["Je décroche et je dis que je rappelle","Je coupe et je mets le téléphone en silencieux","Je décroche et je m'éloigne pour parler","Je laisse sonner sans bouger"]],
+ ["Dernier dessert","Au konbini, il ne reste qu'un seul dessert que vous voulez tous les deux.",["Je le lui laisse","Je le prends, tant pis","Je propose de le partager en deux","Je lui en rachète un autre ailleurs"]],
+ ["Ventre qui gargouille","Son ventre gargouille bruyamment dans un moment de silence.",["Je fais comme si je n'avais rien entendu","Je propose d'aller manger quelque chose","Je plaisante gentiment","Je lui donne le snack que j'ai dans mon sac"]],
+ ["Faux pas","Elle trébuche légèrement sur une marche.",["Je la rattrape par le bras","Je lui demande si ça va sans la toucher","Je ne peux pas m'empêcher de rire","Je ramasse ses affaires tombées"]],
+ ["Dernier exemplaire","Vous tendez la main en même temps vers le dernier exemplaire d'un livre à la bibliothèque.",["Je lui laisse le livre","Je propose de le lire chacun son tour","Je garde le livre en souriant","Je lui propose de le lire ensemble sur place"]],
+ ["Train bondé","Le train est bondé et vous vous retrouvez serrés l'un contre l'autre.",["Je me place pour la protéger de la foule","Je m'écarte pour lui laisser de l'espace","Je lance la conversation pour détendre l'ambiance","Je regarde mon téléphone en silence"]],
+ ["Pétale dans les cheveux","Un pétale de cerisier est resté coincé dans ses cheveux.",["Je le lui enlève doucement","Je lui dis de l'enlever elle-même","Je ne dis rien, ça lui va bien","Je plaisante dessus"]],
+ ["Chat errant","Un chat errant s'approche et se frotte contre elle.",["Je caresse le chat avec elle","Je chasse doucement le chat","Je prends le chat dans mes bras","Je propose d'acheter de quoi le nourrir"]],
+ ["Distributeur capricieux","Le distributeur de boissons fait tomber deux canettes au lieu d'une.",["Je lui offre la deuxième canette","Je garde les deux","Je propose de la partager avec elle","Je signale la panne au lieu de la prendre"]],
+ ["Cahiers échangés","Vos cahiers ont été échangés par erreur.",["Je lui rends le sien sans l'ouvrir","Je jette un œil à son cahier avant de le rendre","Je lui avoue que j'ai tout lu","Je lui propose d'échanger exprès nos notes"]],
+ ["Stylo en panne","Elle n'a plus de stylo en plein contrôle.",["Je lui prête mon stylo","Je lui donne mon meilleur stylo et je prends le pire","Je lui dis de demander à quelqu'un d'autre","Je lui propose de partager mes notes à la place"]],
+ ["Touriste perdu","Un touriste vous demande son chemin dans un japonais hésitant.",["On l'aide ensemble","Je l'aide seul et elle regarde","Je dis que je ne sais pas","Je laisse elle répondre"]],
+ ["File d'attente","Une file interminable pour un stand de takoyaki.",["J'attends avec elle en discutant","Je propose de revenir plus tard","Je propose un jeu pour passer le temps","Je lui propose d'aller manger ailleurs"]],
+ ["Chaîne de vélo","La chaîne de son vélo déraille.",["Je répare comme je peux","Je propose de marcher à côté d'elle","Je l'aide à appeler quelqu'un","Je lui dis qu'elle aurait dû l'entretenir"]],
+ ["Corvée à deux","Un professeur vous confie une corvée à deux : porter des cartons de livres.",["Je porte les plus lourds","On se partage équitablement","Je traîne un peu","Je propose de faire vite pour passer à autre chose"]],
+ ["Photo volée","Un élève prend une photo de vous deux sans prévenir.",["Je lui demande de la supprimer","Je laisse faire","Je lui demande de me l'envoyer","Je demande à elle ce qu'elle veut faire"]]
+]),
+...mkEv(1,[
+ ["Oubli en panique","Elle réalise qu'elle a oublié quelque chose d'important (devoir, clé, porte-monnaie) et panique.",["Je l'aide à tout retourner","Je lui propose de partager le mien","Je lui dis de se calmer d'abord","Je cours chercher à sa place"]],
+ ["Interro surprise","Un test surprise est annoncé et elle te glisse qu'elle n'a rien révisé.",["Je lui souffle une réponse pendant le test","Je refuse de tricher et je l'encourage","Je lui passe mes notes avant","Je ne fais rien"]],
+ ["Rumeur","Elle a entendu une rumeur (fausse ou à moitié vraie) sur le joueur et lui demande des explications.",["Je lui dis toute la vérité","Je nie en bloc","Je minimise en plaisantant","Je lui demande qui lui a dit ça"]],
+ ["Panne","Un retard de train ou une coupure de courant vous oblige à attendre ensemble.",["Je propose un jeu pour passer le temps","Je lui parle de moi","Je la laisse tranquille avec ses pensées","Je lui propose d'aller chercher à boire"]],
+ ["Trop de sacs","Elle est chargée de sacs de courses visiblement trop lourds.",["Je propose d'en porter la moitié","Je prends tout sans demander","Je la laisse faire, elle est têtue","Je propose d'appeler une de ses sœurs"]],
+ ["Plat raté","Elle te fait goûter un plat un peu raté et attend ton avis.",["Je mange tout avec le sourire","Je dis honnêtement ce qui ne va pas","Je mens : c'est délicieux","Je propose de le refaire ensemble"]],
+ ["Devoir en binôme","Un devoir en binôme vous est imposé par le professeur.",["Je propose de tout planifier","Je lui laisse choisir le sujet","Je prends tout en charge","Je propose de travailler à la bibliothèque"]],
+ ["Porte-clés retrouvé","Tu retrouves un petit porte-clés qu'elle cherchait partout.",["Je le lui rends tout de suite","Je le garde un peu pour la taquiner","Je lui fais deviner où je l'ai trouvé","Je lui dis que c'est un cadeau"]],
+ ["Service entre sœurs","Une autre sœur lui demande un service devant toi, et elle hésite à accepter."],
+ ["Bus raté","Le bus part sous vos yeux.",["On court après","On attend le suivant en discutant","Je propose de marcher","Je lui propose un chocolat chaud en attendant"]],
+ ["Faux couple","Des camarades vous chambrent en vous traitant de couple.",["Je démens fermement","Je ris et je laisse dire","Je la défends en la regardant","Je plaisante en retour"]],
+ ["Message mystérieux","Elle reçoit un message, sourit, et tu aperçois le nom de l'expéditeur.",["Je demande qui c'est","Je fais semblant de ne pas avoir vu","Je plaisante là-dessus","Je me renferme un peu"]],
+ ["Salle d'arcade","Vous passez devant une salle d'arcade.",["Je la défie à un jeu","Je lui offre une partie","Je lui propose d'y aller plus tard","Je regarde sans rien proposer"]],
+ ["Grand froid","Il fait très froid dehors et elle frissonne.",["Je lui prête mon écharpe","Je lui propose un thé chaud","Je lui conseille de mieux se couvrir","Je me rapproche un peu d'elle"]],
+ ["Résultats affichés","Les résultats d'un test sont affichés dans le couloir et les siens sont décevants.",["Je la console sincèrement","Je dédramatise","Je compare avec mes propres notes","Je lui propose de réviser ensemble"]],
+ ["Sieste","Elle s'endort pendant les révisions.",["Je la laisse dormir","Je la réveille doucement","Je la couvre avec ma veste","Je profite du silence pour réviser"]]
+]),
+...mkEv(2,[
+ ["Fatigue cachée","Elle semble fatiguée ou légèrement malade et essaie de le cacher.",["Je lui demande franchement si elle va bien","Je lui propose de rentrer","Je fais semblant de ne rien voir","Je lui apporte de quoi manger"]],
+ ["Rival en vue","Un autre garçon vient lui parler devant le joueur, avec beaucoup d'assurance.",["Je me présente calmement","Je montre mon désaccord","Je laisse elle gérer","Je l'ignore et je lui parle à elle"]],
+ ["Objet personnel","Le joueur tombe sur un objet personnel à elle (carnet, photo) qu'elle aurait voulu garder secret.",["Je le lui rends sans rien dire","Je lui avoue que j'ai regardé","Je le garde pour lui demander plus tard","Je fais comme si de rien n'était"]],
+ ["Ambiance de festival","Un festival de quartier illumine la rue : lanternes, stands, musique.",["Je lui propose un jeu de stand","Je lui offre une friandise","Je lui prends la main pour ne pas la perdre","Je profite simplement de l'ambiance avec elle"]],
+ ["Perdus dans la foule","Vous perdez de vue ses sœurs dans la foule.",["Je reste avec elle et on les cherche","Je propose de les appeler","Je la rassure : on les retrouvera","Je lui prends la main pour ne pas nous séparer"]],
+ ["Coupure de lumière","Une coupure de courant plonge la pièce dans le noir et elle sursaute.",["Je reste près d'elle sans rien dire","Je plaisante pour la détendre","Je lui propose de sortir","Je lui prends la main"]],
+ ["Scène gênante","Au cinéma, une scène romantique un peu trop appuyée apparaît à l'écran.",["Je regarde l'écran, impassible","Je lui jette un regard en coin","Je fais un commentaire drôle","Je propose de sortir prendre l'air"]],
+ ["Cadeau d'un autre","Un camarade lui offre un petit cadeau devant le joueur.",["Je fais bonne figure","Je montre un peu de jalousie","Je lui fais une attention à mon tour","Je lui demande si ça lui a plu"]],
+ ["Souvenir de sa mère","Elle évoque avec émotion un souvenir de sa mère."],
+ ["Karaoké","On vous invite à chanter au karaoké.",["Je chante pour de bon","Je propose un duo avec elle","Je refuse poliment","Je fais le pitre pour détendre l'ambiance"]],
+ ["Cuisine commune","Vous cuisinez ensemble et elle te laisse surveiller la casserole.",["Je suis ses instructions à la lettre","Je tente ma propre recette","Je lui laisse tout et je regarde","Je goûte trop tôt et je me brûle"]],
+ ["Épaule","Elle s'endort sur ton épaule dans le train.",["Je reste immobile pour ne pas la réveiller","Je la réveille doucement","Je change de position délicatement","Je fais semblant de dormir aussi"]],
+ ["Mensonge tentant","Elle te demande si tu as vu une de ses sœurs faire une bêtise.",["Je dis la vérité","Je protège sa sœur par un petit mensonge","Je dévie la question","Je dis que je ne me souviens pas"]],
+ ["Coup de colère","Elle est en colère à cause d'un devoir raté et te prend à témoin.",["Je l'écoute sans l'interrompre","Je lui propose d'aller se défouler","Je dédramatise","Je lui dis qu'elle exagère"]],
+ ["Nouvelle coiffure","Elle a changé de coiffure ou de tenue aujourd'hui.",["Je le remarque avec un compliment précis","Je ne dis rien","Je plaisante gentiment","Je lui demande pourquoi ce changement"]],
+ ["Purikura","Vous passez devant un photomaton à autocollants (purikura).",["Je pose sérieusement","Je fais une grimace","Je propose une pose originale","Je refuse en riant"]]
+]),
+...mkEv(3,[
+ ["Dispute entre sœurs","Une dispute éclate entre ses sœurs et elle te demande de prendre parti.",["Je prends le parti de l'une","Je reste neutre","Je propose un compromis","Je laisse les sœurs se débrouiller"]],
+ ["Mauvaise nouvelle","Elle reçoit une mauvaise nouvelle et a besoin de soutien.",["Je l'écoute et je reste là","Je la serre dans mes bras","Je lui propose de marcher un peu","Je tente de lui changer les idées"]],
+ ["Cadeau délicat","C'est un jour spécial (anniversaire, fête) et tu veux lui faire une attention.",["Je lui offre un cadeau fait main","Je lui offre quelque chose de coûteux","Je lui écris un mot sincère","Je lui demande ce qu'elle aimerait"]],
+ ["Peur de décevoir","Elle confie avoir peur de décevoir ses sœurs et ses proches."],
+ ["Insomnie","Elle t'écrit tard le soir : elle n'arrive pas à dormir.",["Je réponds tout de suite","Je lui propose de l'appeler","Je lui conseille de dormir","Je lui envoie une blague pour la détendre"]],
+ ["Fièvre","Elle a de la fièvre mais refuse de l'admettre.",["Je lui apporte de la soupe","Je lui ordonne de rentrer","Je préviens ses sœurs","Je reste avec elle un moment"]],
+ ["Rumeur sur vous deux","Une rumeur sur vous deux circule dans l'école.",["Je prends la parole pour démentir","Je laisse dire","Je lui demande ce qu'elle veut faire","Je lui propose d'en rire"]],
+ ["Rival insistant","Un rival insiste lourdement auprès d'elle.",["Je m'interpose calmement","Je le laisse faire","Je lui demande si elle a besoin d'aide","Je réponds à sa place"]],
+ ["Anniversaire surprise","C'est bientôt l'anniversaire d'une de ses sœurs et on te propose de participer à la surprise.",["Je me lance à fond dans les préparatifs","Je donne un coup de main discret","Je propose une idée originale","Je décline poliment"]],
+ ["Orage","Un orage vous bloque ensemble sous un abri.",["Je reste silencieux","Je raconte une histoire pour la distraire","Je lui prête ma veste","Je propose de courir sous la pluie"]],
+ ["Promesse","Elle te rappelle une promesse que tu lui as faite plus tôt (ou te demande d'en faire une)."],
+ ["Feu d'artifice","Un feu d'artifice illumine le ciel ; le moment est calme.",["Je regarde le ciel à côté d'elle","Je lui dis quelque chose de sincère","Je la regarde elle plutôt que le ciel","Je prends une photo du feu d'artifice"]],
+ ["Raccourci risqué","Elle te propose de sécher un cours pour une escapade.",["J'accepte et je sèche","Je refuse et je l'en dissuade","Je propose une autre idée amusante","Je lui dis qu'on verra plus tard"]],
+ ["Objet précieux perdu","Elle perd un objet auquel elle tient énormément.",["Je cherche partout avec elle","Je lui dis qu'on en rachètera un","Je la rassure : il reviendra","Je la laisse chercher seule pour ne pas gêner"]],
+ ["Exposé","On vous demande de présenter un exposé à deux.",["Je prends le lead","Je lui laisse le lead","On se répartit à égalité","Je panique et je lui demande de l'aide"]],
+ ["Vieille photo","Elle te montre une vieille photo de famille qui lui tient à cœur."]
+]),
+...mkEv(0,[
+ ["Passion Sengoku","Elle t'entraîne devant un rayon de livres sur la période Sengoku et s'illumine.",["J'écoute avec attention","Je lui demande de m'apprendre","Je fais semblant d'en savoir long","Je lui avoue que l'histoire m'ennuie"]],
+ ["Casque sur les oreilles","Elle porte son casque et n'entend pas ton appel.",["Je lui tape doucement sur l'épaule","J'attends qu'elle me remarque","Je retire doucement son casque","Je lui fais signe de loin"]]
+],["miku"]),
+...mkEv(0,[
+ ["Nouvelle tenue","Elle essaie une nouvelle tenue et attend ton avis, l'air de rien.",["Je donne mon avis sincère","Je dis que c'est parfait pour lui faire plaisir","Je propose une autre couleur","Je ne sais pas trop quoi dire"]],
+ ["Concours de cuisine","Elle te fait goûter le plat qu'elle prépare pour un concours.",["Je goûte et je donne un avis honnête","Je dis que c'est délicieux sans réfléchir","Je propose d'y ajouter quelque chose","Je refuse de goûter"]]
+],["nino"]),
+...mkEv(0,[
+ ["Surprise à table","Elle est surprise en train de manger une quantité impressionnante.",["Je fais comme si je n'avais rien vu","Je plaisante gentiment","Je lui propose d'en reprendre","Je lui dis que j'aime les gens qui mangent avec plaisir"]],
+ ["Leçon de futur professeur","Elle te demande de jouer l'élève pour s'entraîner à enseigner.",["Je joue l'élève modèle","Je joue l'élève turbulent","Je pose de vraies questions","Je lui avoue que je n'ai pas compris sa leçon"]]
+],["itsuki"]),
+...mkEv(0,[
+ ["Renfort sportif","Elle t'embarque dans un club sportif qui manque de monde.",["J'accepte tout de suite","Je négocie un peu","Je propose quelqu'un d'autre","Je refuse poliment"]],
+ ["Trop généreuse","Elle se donne pour tout le monde et s'oublie complètement.",["Je lui dis de penser à elle","Je l'aide à porter sa charge","Je la laisse faire, elle aime ça","Je lui offre une vraie pause"]],
+ ["Course amicale","Elle te lance un défi de course jusqu'au portail.",["Je cours à fond","Je me laisse battre","Je propose un handicap","Je triche un peu"]]
+],["yotsuba"]),
+...mkEv(0,[
+ ["Répétition de scène","Elle répète une scène de tournage et te demande de donner la réplique.",["Je joue le jeu à fond","Je joue mal volontairement","Je la corrige gentiment","Je lui avoue que je suis gêné"]],
+ ["Fan dans la rue","Un fan la reconnaît dans la rue et s'approche.",["Je reste en retrait","Je fais barrière pour elle","Je dis que je suis son garde du corps","Je fais une blague pour détendre l'atmosphère"]],
+ ["Doute avant l'audition","Elle doute avant une audition importante.",["Je l'encourage sincèrement","Je lui rappelle tout ce qu'elle a déjà accompli","Je lui propose de répéter avec moi","Je lui change les idées"]]
+],["ichika"])
+];
+function rollEvent(st){
+  if(st.event)return;
+  if(st.evCool>0){st.evCool--;return;}
+  const alive=st.players.filter(p=>!p.out);
+  if(!alive.length||alive.some(p=>p.trial===2)||alive.every(p=>p.turns<2))return;
+  if(Math.random()>0.33)return;
+  const lvl=Math.max(...alive.map(stageOf)), hide=st.mystery&&!st.revealed;
+  const build=()=>EVENTS.map((e,i)=>[e,i]).filter(([e,i])=>e.min<=lvl&&(!e.for||(!hide&&e.for.includes(current)))&&!(st.evUsed||[]).includes(i));
+  let pool=build();
+  if(!pool.length){st.evUsed=[];pool=build();}
+  if(!pool.length)return;
+  const [e,i]=pool[Math.floor(Math.random()*pool.length)];
+  st.event=e;st.evUsed=(st.evUsed||[]).concat(i);st.evCool=1;
+}
+const FORMS={
+ talk:"CONVERSATION : ne pose AUCUNE question (pas de point d'interrogation). Réagis à ce que le joueur vient de dire, partage une anecdote, une opinion, une confidence ou une taquinerie liée à la discussion, puis laisse-lui l'initiative de rebondir, comme dans une vraie discussion. choices = [].",
+ follow:"RELANCE NATURELLE : rebondis sur un détail précis de sa dernière réponse (jamais sur un sujet sans rapport) avec UNE seule question OUVERTE, courte, formulée comme entre lycéens. choices = [].",
+ qcm:"QCM : pose une question SIMPLE (goût, préférence, choix entre plusieurs options) et mets 3 ou 4 propositions courtes dans choices (le joueur pourra aussi répondre librement).",
+ dilemma:"DILEMME : expose en 1 à 2 phrases un dilemme moral ou relationnel plausible, sans bonne réponse évidente, et mets 2 ou 3 options dans choices.",
+ action:"ACTION : fais surgir une petite scène concrète (objet qui tombe, bruit, rencontre, accident bénin, opportunité…) et mets 3 ou 4 actions possibles dans choices (« Je … »)."
+};
+function pickForm(st){
+  if(st.form)return;
+  const alive=st.players.filter(p=>!p.out);
+  if(!alive.length)return;
+  if(alive.some(p=>p.trial===2)){st.form="";return;}
+  if(st.event){st.form="event";return;}
+  const lvl=Math.max(...alive.map(stageOf)), last=st.lastForm||[];
+  const w={talk:30,follow:24,qcm:20,dilemma:lvl>=1?12:0,action:14};
+  if(last[0]==="talk"&&last[1]==="talk")w.talk=0;
+  if(last[0]==="follow"&&last[1]==="follow")w.follow=0;
+  for(const k of["qcm","dilemma","action"])if(last[0]===k)w[k]=0;
+  const tot=Object.values(w).reduce((a,b)=>a+b,0);
+  let r=Math.random()*tot;
+  for(const k in w){r-=w[k];if(r<0){st.form=k;return;}}
+  st.form="talk";
+}
+function setChoices(st,o){
+  let ch=o.choices||[];
+  if(ch.length<2&&st.event&&st.event.ch)ch=st.event.ch.slice(0,4);
+  st.choices=ch;
+}
+function consumeTurn(st){
+  st.event=null;st.inject=[];
+  if(st.form){st.lastForm=[st.form].concat(st.lastForm||[]).slice(0,2);}
+  st.form=null;
+}
+function canAct(st){
+  if(st.over)return false;
+  if(net.role==="guest")return(st.sim?!st.answered[1]:st.cur===1)&&!remoteBusy;
+  if(busy)return false;
+  if(net.role==="host")return st.sim?!st.answered[0]:st.cur===0;
+  return true;
+}
+function renderChoices(st){
+  const box=$("choices");if(!box)return;
+  box.innerHTML="";
+  if(!st||!st.choices||st.choices.length<2||!canAct(st))return;
+  const l=document.createElement("small");l.className="hint";l.style.width="100%";
+  l.textContent="Choisis une réaction (ou écris la tienne) :";box.appendChild(l);
+  st.choices.forEach(c=>{const b=document.createElement("button");b.className="ghost";b.textContent=c;b.onclick=()=>doSend(c);box.appendChild(b);});
+}
 const SCENARIOS = [
   {id:"inconnus",ico:"👋",name:"Parfaits inconnus",diff:"Difficile",aff:10,div:3,
    ctx:"Vous ne vous êtes jamais parlé. Vous vous croisez pour la première fois (couloir, café, bibliothèque). Elle ne te connaît pas du tout et se méfie des inconnus trop familiers."},
@@ -383,12 +556,19 @@ function systemPrompt(id, sc, players, st){
 - INTERVENTIONS : environ 1 tour sur 4, une de ses sœurs (autre que ${s.name}) peut intervenir brièvement selon sa propre personnalité (conseiller, taquiner, jalouser, critiquer). Ajoute alors "guest":"ichika|nino|miku|yotsuba|itsuki" et "guest_line":"sa réplique (1 phrase)". Cela peut influencer le delta.
 - SOUVENIRS : dès l'étape 3, environ 1 tour sur 4, rappelle précisément une réponse antérieure du joueur et relie-la à ta réaction ou à ta question.
 - CHRONO : environ 1 question sur 5 (dès l'étape 2) est à répondre vite : ajoute "timed":true,"seconds":<15 à 30>. Si le joueur répond « ⏰ », il n'a pas répondu à temps : delta -5 à -8 et réagis.
-${st.mystery&&!st.revealed?"- MODE MYSTÈRE : tu ne révèles JAMAIS ton prénom ni celui de tes sœurs et ne te désignes pas ; le joueur doit deviner qui tu es à ta personnalité.\n":""}${st.sim?`- MODE SIMULTANÉ : les deux joueurs répondent en même temps à TA question (adressée aux deux). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun séparément et ajoute "results":[{"affection_delta":n,"too_fast":b}, …] dans l'ordre des joueurs (mets le affection_delta global à 0).`:""}
+${st.mystery&&!st.revealed?"- MODE MYSTÈRE : tu ne révèles JAMAIS ton prénom ni celui de tes sœurs et ne te désignes pas ; le joueur doit deviner qui tu es à ta personnalité.\n":""}${st.sim?`- MODE SIMULTANÉ : les deux joueurs répondent en même temps à TA question (adressée aux deux). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun séparément et ajoute "results":[{"affection_delta":n,"too_fast":b,"milestone":null}, …] dans l'ordre des joueurs (mets le affection_delta global à 0).`:""}
 `;
+  const trials=players.filter(p=>p.trial===2&&!p.out);
+  const jal=`PROGRESSION PAR JALONS (la relation se construit dans le temps) :
+- Étapes à valider avant toute déclaration : ${MS.map(m=>m.ico+" "+m.name).join(" → ")} → 💖 Déclaration.
+${players.map(p=>`- ${p.name} : ${p.out?"éliminé":p.ms>=4?"tous les jalons validés, la déclaration est possible en fin de partie":`${p.ms}/4 jalons validés, prochain : « ${MS[p.ms].name} »`}`).join("\n")}
+- Les scènes de jalon sont lancées par le jeu via un message [JALON] : ne lance JAMAIS toi-même un rendez-vous, un date ou une scène de ce type, et ne te déclare pas. Tiens compte des jalons validés dans ton ton (ex : après « Amitié », vous êtes vraiment amis ; après « Premier rendez-vous », vous avez un souvenir commun).
+${trials.length?`- ÉPREUVE DÉCISIVE EN COURS pour ${trials.map(p=>`${p.name} (« ${MS[p.ms].name} »)`).join(", ")} : sa prochaine réponse à la scène en cours décide de la validation de l'étape. Ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse de ton caractère et bien adaptée à la scène ; sinon "milestone":"fail" (sois exigeante : une réponse moyenne, calculée ou maladroite échoue). Réagis ensuite à l'issue (soulagement, déception…). Ne te déclare pas. ${st.sim?"En mode simultané, mets ce champ dans l'élément de results du joueur concerné.":""}\n`:""}`;
+  const evTxt=(st.event?`ÉVÉNEMENT ALÉATOIRE À INTÉGRER MAINTENANT : ${st.event.t}\nNarre-le en une ou deux phrases (entre astérisques) dans ta réponse et réagis à la dernière réponse du joueur dans ce contexte. ${st.event.ch?`Puis laisse le joueur réagir par une ACTION : mets dans choices ces options (tu peux légèrement les reformuler) : ${JSON.stringify(st.event.ch)}.`:`Puis laisse le joueur réagir librement (ou propose 2 à 4 actions dans choices si c'est naturel).`} Ne dis jamais que l'événement est aléatoire.\n`:"")+(st.form&&st.form!=="event"&&FORMS[st.form]?`FORME DE CE TOUR (impératif) : ${FORMS[st.form]}\n`:"")+((st.inject||[]).length?st.inject.join("\n")+"\n":"");
   const prog = `ÉVOLUTION DE LA RELATION (très important) :
 ${players.map(p=>`- ${p.name} : étape ${stageOf(p)+1}/5 « ${STAGES[stageOf(p)].name} »${p.out?" (éliminé)":""}`).join("\n")}
 ${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
-- Tes questions et ton comportement doivent correspondre STRICTEMENT à l'étape actuelle : plus la relation avance, plus tes questions sont intimes et ton ton chaleureux ; mais ne saute JAMAIS d'étape (pas de questions intimes à un quasi-inconnu).
+- Les consignes d'étape décrivent les SUJETS et le ton à aborder (par une question OU une anecdote OU une réaction) : elles n'obligent pas à poser une question à chaque message. Tes propos et ton comportement doivent correspondre STRICTEMENT à l'étape actuelle : plus la relation avance, plus tes questions sont intimes et ton ton chaleureux ; mais ne saute JAMAIS d'étape (pas de questions intimes à un quasi-inconnu).
 - PIÈGES : à partir de l'étape « Connaissances », environ une question sur trois est un piège subtil (question orientée, dilemme sans bonne réponse évidente, test d'honnêteté, contradiction avec ce que le joueur a dit avant, tentation de flatter ou de mentir, comparaison avec une sœur ou un rival). Ne dis jamais que c'est un piège. Une réponse flatteuse, menteuse ou incohérente est punie ; une réponse honnête, nuancée et cohérente est récompensée.
 - Tu ne dis JAMAIS « je t'aime » ni ne te déclares avant le message final [FIN]. Le changement de sentiments est progressif : montre-le par de petits signes (ton, rougeurs, confidences), pas par un brusque revirement.
 - Un joueur trop rapide par rapport à l'étape (compliments intimes, déclarations) est rejeté, selon ton caractère.
@@ -419,14 +599,19 @@ RÉALISME ET LIMITES DE CONNAISSANCE (très important) :
 - Elle ne sait rien du jeu, de l'IA, ni du fait qu'elle est un personnage de manga/anime. Si le joueur y fait allusion, elle est perplexe.
 
 ${ex}
+${jal}
+${evTxt}
 ${prog}
 ${duel}RÈGLES DE FORME :
 - Réponds toujours en français, strictement dans le caractère de ${s.name}, à la première personne, 1 à 4 phrases, actions entre astérisques possibles (ex: *rougit*).
-- À chaque tour : réagis à la dernière réponse selon ton caractère et la situation, puis pose UNE nouvelle question variée (goûts, valeurs, situations, rêves, mises en situation, souvenirs communs, sœurs, études…). Si tu es vexée ou froide, ta question peut être sèche ou tu peux la faire plus courte.
+- CONVERSATION (très important) : ce n'est PAS un interrogatoire. Parle comme une vraie lycéenne : réagis, commente, raconte, taquine, partage tes propres expériences et opinions. Ne pose pas une question à chaque message : suis la « FORME DE CE TOUR » quand elle t'est donnée ; sinon alterne entre une réaction ou anecdote sans question, une relance sur ce qu'il vient de dire, et un choix. AU PLUS UNE question par message. Rebondis sur SES propres mots plutôt que d'enchaîner des sujets sans lien. S'il te pose une question, réponds-y réellement (selon ton caractère) avant de continuer. Si tu es vexée ou froide, sois plus brève et plus sèche.
+- Les questions simples ou fermées (goûts, préférences, A ou B, oui/non) se posent TOUJOURS avec des choix dans choices ; les questions ouvertes et la discussion libre n'ont pas de choices.
+- CHOIX : quand tu fournis choices, donne 2 à 4 options courtes à la première personne (« Je … »), toutes plausibles, aucune évidemment « la bonne » : leur valeur dépend de TON caractère, de la situation et de ce que le joueur a déjà dit. Ne répète pas les options dans reply. Si le joueur écrit librement à la place, ou répond par l'un des choix, évalue sa réponse normalement (l'option la plus « gentille » n'est pas toujours la meilleure).
 - Ne sors jamais du personnage, ne mentionne ni IA ni règles. Contenu tout public uniquement.
 
 FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour, sans balises markdown :
-{"reply":"ce que dit ${s.name}","affection_delta":<entier de -15 à 12>,"too_fast":<true|false>,"mood":"un mot-émotion court (ex: gênée, méfiante, vexée, touchée)"}`;
+{"reply":"ce que dit ${s.name}","affection_delta":<entier de -15 à 12>,"too_fast":<true|false>,"mood":"un mot-émotion court (ex: gênée, méfiante, vexée, touchée)","milestone":null,"choices":[]}
+(choices : tableau de 2 à 4 options courtes quand tu proposes un choix, sinon []. milestone : "pass" ou "fail" UNIQUEMENT pendant une ÉPREUVE DÉCISIVE, sinon null)`;
 }
 
 /* ---------- Appels API ---------- */
@@ -436,10 +621,12 @@ function parseAI(text){
     const o = JSON.parse(m ? m[0] : text);
     return {reply:String(o.reply||"…"),delta:Math.max(-15,Math.min(15,parseInt(o.affection_delta)||0)),mood:String(o.mood||""),tooFast:o.too_fast===true,
       timed:o.timed===true?Math.max(10,Math.min(40,parseInt(o.seconds)||20)):0,
+      ms:String(o.milestone||"").toLowerCase(),
+      choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
       guest:SISTERS[o.guest]?o.guest:"",gline:String(o.guest_line||"").slice(0,300),
-      res:Array.isArray(o.results)?o.results.map(r=>({delta:Math.max(-15,Math.min(15,parseInt(r&&r.affection_delta)||0)),tooFast:!!(r&&r.too_fast)})):null};
+      res:Array.isArray(o.results)?o.results.map(r=>({delta:Math.max(-15,Math.min(15,parseInt(r&&r.affection_delta)||0)),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
-    return {reply:text.replace(/[{}"]/g,"").slice(0,400),delta:0,mood:"",tooFast:false};
+    return {reply:text.replace(/[{}"]/g,"").slice(0,400),delta:0,mood:"",tooFast:false,choices:[]};
   }
 }
 function fetchT(url,opts){
@@ -495,8 +682,11 @@ function avatarSVG(id,mood,hide){
   if(id==="ichika")g+=`<text x="66" y="38" font-size="16" fill="${c}">✿</text>`;
   return `<svg viewBox="0 0 100 100">${g}</svg>`;
 }
+function burst(em,n){
+  const L=$("fx");if(!L)return;
+  for(let i=0;i<n;i++){const x=document.createElement("span");x.className="fxp";x.textContent=em;x.style.left=(8+Math.random()*84)+"%";x.style.animationDelay=(Math.random()*.5)+"s";L.appendChild(x);setTimeout(()=>x.remove(),2600);}
+}
 function fx(d){
-  const L=$("fx"), burst=(em,n)=>{for(let i=0;i<n;i++){const x=document.createElement("span");x.className="fxp";x.textContent=em;x.style.left=(8+Math.random()*84)+"%";x.style.animationDelay=(Math.random()*.5)+"s";L.appendChild(x);setTimeout(()=>x.remove(),2600);}};
   if(d>=4)burst("💖",Math.min(30,d));
   if(d<=-6){burst("💢",5);$("game").classList.add("shake");setTimeout(()=>$("game").classList.remove("shake"),500);}
 }
@@ -518,7 +708,7 @@ function sysLine(st,t){addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
 function applyGuess(pi,sid){
   const st=state[current],pl=st.players[pi];
   if(!st||st.revealed||st.over||!pl)return;
-  if(sid===current){st.revealed=true;pl.aff=Math.min(99,pl.aff+15);sysLine(st,`🎉 ${pl.name} a deviné : c'est ${SISTERS[current].name} ! (+15)`);}
+  if(sid===current){st.revealed=true;pl.aff=Math.min(99,CAPS[pl.ms==null?4:pl.ms],pl.aff+15);sysLine(st,`🎉 ${pl.name} a deviné : c'est ${SISTERS[current].name} ! (+15)`);}
   else{st.wrong.push(sid);pl.aff=Math.max(1,pl.aff-10);sysLine(st,`❌ ${pl.name} se trompe (−10).`);}
   updateBar();
 }
@@ -527,12 +717,14 @@ function guess(sid){
   applyGuess(net.role==="host"?0:state[current].cur,sid);
 }
 function score(st,pl,d,tooFast){
-  let note="";
+  let note="";const raw0=d;
   if(d>0){const D=1+((st.sc.div||2)-1)*Math.pow(0.8,pl.turns);const raw=d;d=Math.max(1,Math.min(12,Math.round(d/D)));if(D>1.4&&raw>d)note=" 🐢";}
   if(d<0)d=Math.max(-20,Math.round(d*1.5));
   if(tooFast){d=Math.min(d,0)-5;note=" 😤";}
   const prev=pl.aff;pl.turns++;pl.aff=Math.max(0,Math.min(100,pl.aff+d));
   if(pl.turns<6)pl.aff=Math.min(pl.aff,99);
+  const cap=CAPS[pl.ms==null?4:pl.ms];
+  if(pl.aff>cap){pl.aff=Math.max(prev,cap);if(raw0>0)note+=" 🔒 un jalon à valider";}
   return {d:pl.aff-prev,note};
 }
 function submitSim(i,text){
@@ -543,27 +735,73 @@ async function runRound(st){
   busy=true;$("btnSend").disabled=true;const id=current;
   st.players.forEach((p,i)=>{if(!p.out){const c=i===0?"me":"me2",t=p.name+" : "+st.pending[i];addMsg(c,t);st.lines.push({cls:c,text:t});}});
   st.history.push({role:"user",content:"[Réponses simultanées] "+st.players.map((p,i)=>p.out?"":p.name+" : "+st.pending[i]).filter(Boolean).join(" | ")});
+  rollEvent(st);pickForm(st);
   broadcast(true);
   const wait=addMsg("sys","…");
   try{
     const raw=await callAI(id,st.history);
     if(!raw||!raw.trim())throw new Error("Réponse vide de l'IA");
     const o=parseAI(raw);st.history.push({role:"assistant",content:raw});wait.remove();
-    const tags=[];let sum=0,best=0;
-    st.players.forEach((p,i)=>{if(p.out)return;const r=(o.res&&o.res[i])||{delta:0,tooFast:false},x=score(st,p,r.delta,r.tooFast);
+    const tags=[],verd=[];let sum=0,best=0;
+    st.players.forEach((p,i)=>{if(p.out)return;const r=(o.res&&o.res[i])||{delta:0,tooFast:false,ms:""},x=score(st,p,r.delta,r.tooFast);verd.push([p,r.ms,x.d]);
       tags.push(`${p.name} ${x.d>0?"+":""}${x.d} ❤${x.note}`);sum+=x.d;best=Math.max(best,x.d);if(p.aff<=0)p.out=true;});
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
+    setChoices(st,o);
+    if(st.event){sysLine(st,"🎲 Événement : "+st.event.n);}
+    consumeTurn(st);
     const L={cls:"her",text:o.reply,tag:tags.join(" · "),up:sum>=0,dv:best};st.lines.push(L);renderLine(L);fx(best);addGuest(st,o);
+    verd.forEach(([p,v,dd])=>resolveTrial(st,p,v,dd));
     st.pending=[null,null];st.answered=[false,false];
     const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
     if(win){updateBar();await finish(st,id,"win",win);}
     else if(st.players.every(p=>p.out)){updateBar();await finish(st,id,"lose",st.players[0]);}
+    else await launchTrials(st,id);
   }catch(e){
     wait.textContent="Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();
     st.pending=[null,null];st.answered=[false,false];
   }
   busy=false;$("btnSend").disabled=st.over;updateBar();syncTimer(st);
   if(net.role==="host")broadcast(false);
+}
+function resolveTrial(st,pl,verdict,d){
+  if(pl.trial!==2)return;
+  const m=MS[pl.ms];
+  const pass=verdict==="pass"?true:verdict==="fail"?false:d>=3;
+  pl.trial=0;
+  if(pass){
+    pl.ms++;pl.aff=Math.min(CAPS[pl.ms],pl.aff+4);
+    sysLine(st,`🏅 ${pl.name} valide l'étape « ${m.ico} ${m.name} » ! (${pl.ms}/4)`);
+    st.inject.push(`TRANSITION : du temps a passé (quelques jours) depuis la dernière scène. Commence par une très courte transition temporelle ; la relation avec ${pl.name} a franchi un cap (« ${m.name} »).`);
+    burst("🏅",6);
+  }else{
+    pl.tries[pl.ms]=(pl.tries[pl.ms]||0)+1;pl.aff=Math.max(1,pl.aff-12);
+    sysLine(st,`💔 ${pl.name} rate l'étape « ${m.ico} ${m.name} » (−12). Il faudra regagner sa confiance avant une nouvelle chance.`);
+    st.inject.push(`TRANSITION : après l'échec de « ${m.name} », ${pl.name} est plus distant ; reprends sur un ton un peu plus froid, sans rompre.`);
+    burst("💔",5);
+  }
+}
+async function launchTrial(st,id,pl){
+  const m=MS[pl.ms],k=(pl.tries[pl.ms]||0)+1;
+  pl.trial=1;
+  sysLine(st,`📍 Moment décisif pour ${pl.name} : « ${m.ico} ${m.name} »`+(k>1?" (nouvelle tentative)":""));
+  updateBar();
+  st.history.push({role:"user",content:`[JALON] ${pl.name} atteint l'étape « ${m.name} » (tentative ${k}). ${m.brief} Mets en scène cette situation de façon originale, dans un lieu précis, selon ton caractère et le niveau de relation avec ${pl.name}${k>1?" ; change complètement de scène par rapport aux tentatives précédentes":""}. Reste dans le personnage et termine par une question ou une situation décisive à laquelle ${pl.name} doit répondre. Ne te déclare pas. affection_delta = 0, too_fast = false, milestone = null, timed = false.`});
+  try{
+    const o=parseAI(await callAI(id,st.history));
+    st.history.push({role:"assistant",content:JSON.stringify({reply:o.reply,affection_delta:0,too_fast:false,mood:o.mood,milestone:null})});
+    st.mood=o.mood;st.timed=0;st.choices=o.choices||[];
+    const L={cls:"her",text:o.reply};st.lines.push(L);renderLine(L);
+    pl.trial=2;
+  }catch(e){
+    st.history.pop();pl.trial=0;
+    sysLine(st,"⚠️ La scène n'a pas pu être lancée (erreur IA) : elle sera retentée après ta prochaine réponse.");
+  }
+}
+async function launchTrials(st,id){
+  for(const pl of st.players){
+    if(pl.out||pl.ms>=4||pl.trial!==0||pl.aff<CAPS[pl.ms])continue;
+    await launchTrial(st,id,pl);
+  }
 }
 function nextAlive(st){
   const n=st.players.length;
@@ -584,7 +822,9 @@ function updateBar(){
     lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"% · "+STAGES[stageOf(pl)].name+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
     const big=document.createElement("div");big.className="big";
     const f=document.createElement("i");f.style.width=pl.aff+"%";big.appendChild(f);
-    row.append(lab,big);el.appendChild(row);
+    const trk=document.createElement("small");trk.className="hint";
+    trk.textContent="Jalons : "+MS.map((m,k)=>k<pl.ms?m.ico+"✅":k===pl.ms?(pl.trial===2?"🔥"+m.ico:"➡️"+m.ico):"🔒").join("  ")+"  💖"+(pl.ms<4?" · prochain : "+MS[pl.ms].name+" ("+CAPS[pl.ms]+" %)":" · déclaration possible !");
+    row.append(lab,big,trk);el.appendChild(row);
   });
   $("input").placeholder=(multi&&!st.over?st.players[st.cur].name+", ":"")+"ta réponse…";
   if(net.role==="guest"){const ok=(st.sim?!st.answered[1]:st.cur===1)&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
@@ -594,6 +834,7 @@ function updateBar(){
   const gb=$("guess");gb.innerHTML="";
   if(hide&&!st.over){const l=document.createElement("small");l.textContent="Qui est-ce ? ";gb.appendChild(l);
     Object.keys(SISTERS).forEach(k=>{const b=document.createElement("button");b.className="ghost";b.style.cssText="padding:3px 9px;font-size:.8rem;margin:2px";b.textContent=SISTERS[k].name;b.disabled=(st.wrong||[]).includes(k);b.onclick=()=>guess(k);gb.appendChild(b);});}
+  renderChoices(st);
   syncTimer(st);
   if(net.role==="host")broadcast(busy);
 }
@@ -622,7 +863,7 @@ function showScenarios(id){
         names=mode===3?[$("p1").value.trim()||"Hôte",net.guestName||"Invité"]:[$("p1").value.trim()||"Joueur 1",$("p2").value.trim()||"Joueur 2"];
         if(names[0].toLowerCase()===names[1].toLowerCase()) names[1]+=" (2)";
       }
-      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false})),cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys,revealed:false,wrong:[],sim:mode===3&&$("simChk").checked,answered:[false,false],pending:[null,null],qid:0,timed:0};
+      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys,revealed:false,wrong:[],sim:mode===3&&$("simChk").checked,answered:[false,false],pending:[null,null],qid:0,timed:0};
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -656,6 +897,7 @@ async function turn(userText,hidden){
     sent=multi?`[${pl.name} répond] ${userText}\n(Prochain joueur à qui poser ta question : ${st.players[nextAlive(st)].name})`:userText;
   }
   st.history.push({role:"user",content:sent});
+  if(!hidden){rollEvent(st);pickForm(st);}
   if(net.role==="host")broadcast(true);
   const wait=addMsg("sys","…");
   let sec=0;const tick=setInterval(()=>{sec++;wait.textContent="… ("+sec+" s)";},1000);
@@ -666,21 +908,11 @@ async function turn(userText,hidden){
     st.history.push({role:"assistant",content:raw});
     clearInterval(tick);wait.remove();
     let d=o.delta, note="";
-    if(!hidden){
-      if(d>0){
-        const D=1+((st.sc.div||2)-1)*Math.pow(0.8,pl.turns);
-        const raw=d; d=Math.max(1,Math.min(12,Math.round(d/D)));
-        if(D>1.4&&raw>d) note=" 🐢 elle se méfie encore";
-      }
-      if(d<0) d=Math.max(-20,Math.round(d*1.5));
-      if(o.tooFast){ d=Math.min(d,0)-5; note=" 😤 trop rapide !"; }
-      const prev=pl.aff;
-      pl.turns++;
-      pl.aff=Math.max(0,Math.min(100,pl.aff+d));
-      if(pl.turns<6) pl.aff=Math.min(pl.aff,99);
-      d=pl.aff-prev;
-    }
+    if(!hidden){ const x=score(st,pl,d,o.tooFast); d=x.d; note=x.note; }
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
+    setChoices(st,o);
+    if(st.event){sysLine(st,"🎲 Événement : "+st.event.n);}
+    consumeTurn(st);
     const m=addMsg("her",o.reply); st.lines.push({cls:"her",text:o.reply});
     if(!hidden && (d!==0||note)){
       const sp=document.createElement("span");sp.className="delta";
@@ -689,6 +921,7 @@ async function turn(userText,hidden){
       const L=st.lines[st.lines.length-1];L.tag=sp.textContent;L.up=d>0;L.dv=d;fx(d);
     }
     addGuest(st,o);
+    if(!hidden)resolveTrial(st,pl,o.ms,d);
     if(!hidden){
       if(pl.aff>=100){ updateBar(); await finish(st,id,"win",pl); }
       else{
@@ -698,7 +931,9 @@ async function turn(userText,hidden){
         }
         if(st.players.every(p=>p.out)){ updateBar(); await finish(st,id,"lose",pl); }
         else{
-          st.cur=nextAlive(st);
+          await launchTrials(st,id);
+          const ti=st.players.findIndex(p=>p.trial===2);
+          st.cur=ti>=0?ti:nextAlive(st);
           if(multi){const t=`👉 Au tour de ${st.players[st.cur].name}`;addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
           updateBar();
         }
@@ -713,11 +948,12 @@ async function turn(userText,hidden){
   }
   clearInterval(tick);
   busy=false;$("btnSend").disabled=state[id].over;$("input").focus();
+  renderChoices(state[id]);
   syncTimer(state[id]);
   if(net.role==="host")broadcast(false);
 }
 async function finish(st,id,kind,pl){
-  st.over=true;
+  st.over=true;st.choices=[];$("choices").innerHTML="";
   const multi=st.players.length>1;
   let msg;
   if(kind==="win"){
@@ -751,8 +987,9 @@ function showEnd(st){
   if(net.role!=="guest")div.appendChild(b);box.appendChild(div);
   $("input").disabled=true;$("btnSend").disabled=true;
 }
-function send(){
-  const v=$("input").value.trim(); if(!v||state[current].over)return;
+function send(){doSend($("input").value.trim());}
+function doSend(v){
+  if(!v||!state[current]||state[current].over)return;
   clearInterval(tm);tmKey=-1;$("timer").textContent="";
   if(net.role==="guest"){
     const g=state[current];
