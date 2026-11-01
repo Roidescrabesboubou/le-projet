@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paysdle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef5f7;--card:#fff;--text:#16242c;--muted:#66767f;--line:#d6e3e8;--soft:#e2edf1;
+  --ok:#2fa36b;--mid:#e3a12b;--no:#d65151;--accent:#1f7fb8}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1a20;--card:#17252d;--text:#e8f2f5;--muted:#93a6af;--line:#26363f;--soft:#1e2f38}}
+*{box-sizing:border-box}
+body{margin:0;font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+  background-image:radial-gradient(circle at 12% 6%,rgba(31,127,184,.15),transparent 40%),radial-gradient(circle at 88% 25%,rgba(47,163,107,.13),transparent 40%)}
+button{font:inherit;cursor:pointer;color:inherit}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-weight:700;white-space:nowrap}
+header h1{font-family:Fredoka,sans-serif;font-size:1.35rem;margin:0;text-align:center;flex:1}
+.icons{display:flex;gap:4px}
+.icons button{background:transparent;border:0;font-size:1.25rem;padding:6px;border-radius:10px}
+.icons button:hover{background:var(--soft)}
+main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
+.modes{display:flex;justify-content:center;gap:6px}
+.modes button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-weight:700;font-size:.9rem}
+.modes button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.sub{text-align:center;color:var(--muted);font-size:.85rem;margin:6px 0 14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;text-align:center}
+.panel h2{font-family:Fredoka,sans-serif;margin:0 0 4px;font-size:1.2rem}
+.panel p{margin:0;color:var(--muted);font-size:.9rem}
+.search{position:relative;margin-top:12px;display:flex;gap:8px}
+.search input{flex:1;font:inherit;font-weight:700;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--text);min-width:0}
+.search input:focus{outline:none;border-color:var(--accent)}
+.search button{border:0;border-radius:12px;padding:0 18px;background:var(--accent);color:#fff;font-weight:800}
+#sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;max-height:260px;overflow:auto;z-index:20;text-align:left;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+#sugg div{padding:9px 12px;cursor:pointer;font-weight:700}
+#sugg div.sel,#sugg div:hover{background:var(--soft)}
+.tries{display:flex;gap:5px;justify-content:center;margin-top:12px}
+.tries i{width:22px;height:8px;border-radius:4px;background:var(--line)}
+.tries i.used{background:var(--muted)}.tries i.win{background:var(--ok)}
+.hints{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.hints button{border:1px dashed var(--line);background:transparent;border-radius:10px;padding:6px 12px;font-size:.85rem;font-weight:700}
+.hints button:disabled{opacity:.55;cursor:default}
+.hints button.shown{border-style:solid;border-color:var(--accent);opacity:1}
+#list{display:flex;flex-direction:column;gap:8px}
+.g{display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:stretch}
+.g>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 10px;display:flex;align-items:center;justify-content:center;font-weight:800;gap:6px;text-align:center}
+.g .n{justify-content:flex-start;text-align:left}
+.g .d{min-width:88px}.g .a{font-size:1.4rem;min-width:52px}.g .p{min-width:62px}
+.g.win>div{background:var(--ok);border-color:var(--ok);color:#fff}
+.chips{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;background:transparent!important;border:0!important;padding:0!important;justify-content:flex-start!important}
+.chip{font-size:.78rem;font-weight:800;padding:4px 10px;border-radius:999px;color:#fff}
+.chip.ok{background:var(--ok)}.chip.no{background:var(--no)}.chip.mid{background:var(--mid)}
+.g.new{animation:in .45s ease both}
+@keyframes in{from{opacity:0;transform:translateY(-8px)}}
+.head{display:grid;grid-template-columns:1fr auto auto auto;gap:6px;font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin-bottom:2px}
+.head span:nth-child(2){min-width:88px;text-align:center}.head span:nth-child(3){min-width:52px;text-align:center}.head span:nth-child(4){min-width:62px;text-align:center}
+.shake{animation:shake .4s}@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;z-index:50;pointer-events:none}
+#toast div{background:var(--text);color:var(--bg);padding:9px 16px;border-radius:10px;font-weight:700;animation:fade 2.2s forwards}
+@keyframes fade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:40}
+.modal.hidden{display:none}
+.box{background:var(--card);border-radius:20px;padding:22px;max-width:430px;width:100%;position:relative;max-height:90vh;overflow:auto}
+.box h2{font-family:Fredoka,sans-serif;margin:0 0 12px;text-align:center}
+.close{position:absolute;top:8px;right:10px;background:transparent;border:0;font-size:1.4rem;color:var(--muted)}
+.found{text-align:center;margin-bottom:14px}
+.found .fl{font-size:3rem;line-height:1}
+.found b{display:block;font-family:Fredoka,sans-serif;font-size:1.6rem}
+.found small{color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:6px;margin-bottom:14px}
+.stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.6rem}
+.stats small{color:var(--muted);font-size:.72rem}
+.dist{display:flex;flex-direction:column;gap:4px;margin:6px 0 14px}
+.dist div{display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:700}
+.dist i{display:block;background:var(--muted);color:#fff;font-style:normal;text-align:right;padding:2px 7px;border-radius:5px;min-width:22px}
+.dist i.cur{background:var(--ok)}
+.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{border:0;border-radius:12px;padding:10px 18px;font-weight:800;background:var(--ok);color:#fff}
+.btn.alt{background:var(--accent)}
+.next{text-align:center;color:var(--muted);font-size:.9rem;margin-top:14px}
+.next b{display:block;font-family:Fredoka,sans-serif;font-size:1.5rem;color:var(--text)}
+.help p,.help li{font-size:.93rem;margin:6px 0}.help ul{padding-left:18px}
+</style>
+</head>
+<body>
+<header>
+  <a href="../../">← Jeux</a>
+  <h1>🌍 Paysdle</h1>
+  <div class="icons">
+    <button id="bHelp" title="Règles">❓</button>
+    <button id="bStats" title="Statistiques">📊</button>
+  </div>
+</header>
+<main>
+  <div class="modes">
+    <button id="mDaily" class="on">📅 Pays du jour</button>
+    <button id="mFree">♾️ Partie libre</button>
+  </div>
+  <div class="sub" id="sub"></div>
+
+  <div class="panel">
+    <h2>Quel est le pays mystère ?</h2>
+    <p>Propose un pays : on te dit à quelle distance et dans quelle direction il se trouve.</p>
+    <div class="search" id="search">
+      <input id="inp" placeholder="Nom d'un pays…" autocomplete="off" spellcheck="false">
+      <button id="bGo">Valider</button>
+      <div id="sugg" hidden></div>
+    </div>
+    <div class="tries" id="tries"></div>
+    <div class="hints">
+      <button id="h1" disabled></button>
+      <button id="h2" disabled></button>
+    </div>
+  </div>
+
+  <div class="head" id="head" hidden><span>Pays</span><span>Distance</span><span>Direction</span><span>Proximité</span></div>
+  <div id="list"></div>
+</main>
+<div id="toast"></div>
+
+<div class="modal hidden" id="mdEnd"><div class="box">
+  <button class="close" data-close>✕</button>
+  <h2 id="endTitle"></h2>
+  <div class="found" id="found"></div>
+  <div class="stats" id="endStats"></div>
+  <b>Répartition des essais</b>
+  <div class="dist" id="endDist"></div>
+  <div class="actions">
+    <button class="btn" id="bShare">📋 Partager</button>
+    <button class="btn alt" id="bAgain">♾️ Partie libre</button>
+  </div>
+  <div class="next" id="nextBox">Prochain pays dans<b id="countdown">--:--:--</b></div>
+</div></div>
+
+<div class="modal hidden" id="mdHelp"><div class="box help">
+  <button class="close" data-close>✕</button>
+  <h2>Comment jouer</h2>
+  <p>Trouve le pays mystère en <b>8 essais</b>. Après chaque proposition, tu obtiens :</p>
+  <ul>
+    <li>📏 la <b>distance</b> entre les capitales des deux pays ;</li>
+    <li>🧭 la <b>direction</b> dans laquelle chercher (➡️ = plus à l'est) ;</li>
+    <li>🎯 la <b>proximité</b> en % (100 % = trouvé) ;</li>
+    <li>des indices : <b>continent</b>, <b>population</b> (⬆️ plus peuplé / ⬇️ moins peuplé) et <b>langue</b> principale.</li>
+  </ul>
+  <p>Après 3 et 6 essais, tu peux révéler un indice supplémentaire.</p>
+  <p>📅 Le <b>pays du jour</b> change automatiquement à minuit. ♾️ La <b>partie libre</b> est illimitée.</p>
+</div></div>
+
+<script src="pays.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem("paysdle_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem("paysdle_"+k,JSON.stringify(v))}catch(e){}}};
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z]/g,"");
+function toast(t){const d=document.createElement("div");d.textContent=t;$("toast").appendChild(d);setTimeout(()=>d.remove(),2300);}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const flag=iso=>[...iso].map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join("");
+const BY={};PAYS.forEach(p=>BY[p.nom]=p);
+const ANSWERS=PAYS.filter(p=>p.pop>=0.5).map(p=>p.nom); // les micro-États restent jouables comme essais
+const MAX=8;
+
+/* ---------- Pays du jour ---------- */
+const START=Date.UTC(2026,10,1);
+function parisDay(){const [y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);}
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const ORDER=(()=>{const a=[...ANSWERS].sort(),r=rng(777);for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;})();
+const dailyName=d=>ORDER[((d%ORDER.length)+ORDER.length)%ORDER.length];
+
+/* ---------- Géographie ---------- */
+const rad=x=>x*Math.PI/180;
+function distance(a,b){
+  const dl=rad(b.lat-a.lat),dg=rad(b.lon-a.lon);
+  const h=Math.sin(dl/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dg/2)**2;
+  return Math.round(6371*2*Math.asin(Math.sqrt(h)));
+}
+function bearing(a,b){
+  const y=Math.sin(rad(b.lon-a.lon))*Math.cos(rad(b.lat));
+  const x=Math.cos(rad(a.lat))*Math.sin(rad(b.lat))-Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lon-a.lon));
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+const ARROWS=["⬆️","↗️","➡️","↘️","⬇️","↙️","⬅️","↖️"];
+function info(name){
+  const g=BY[name],a=answer;
+  if(name===a.nom)return{d:0,arr:"🎉",prox:100};
+  const d=distance(g,a);
+  return{d,arr:ARROWS[Math.round(bearing(g,a)/45)%8],prox:Math.max(0,Math.round((1-d/20015)*100))};
+}
+
+/* ---------- État ---------- */
+let mode="daily",answer=null,guesses=[],over=false,won=false,selIdx=0,shown={h1:false,h2:false};
+const defStats=()=>({played:0,wins:0,streak:0,best:0,dist:Array(MAX).fill(0),lastWin:null,last:null});
+
+function fmtPop(p){return p>=1?`${p.toLocaleString("fr-FR")} M`:`${Math.round(p*1000).toLocaleString("fr-FR")} k`;}
+function rowHTML(name,isNew){
+  const g=BY[name],r=info(name),a=answer,win=name===a.nom;
+  const pop=g.pop===a.pop||win?"ok":"mid",popArr=win?"":a.pop>g.pop?" ⬆️":" ⬇️";
+  return`<div class="g${win?" win":""}${isNew?" new":""}">
+    <div class="n">${flag(g.iso)} ${esc(g.nom)}</div>
+    <div class="d">${r.d.toLocaleString("fr-FR")} km</div>
+    <div class="a">${r.arr}</div>
+    <div class="p">${r.prox} %</div>
+    <div class="chips">
+      <span class="chip ${g.continent===a.continent?"ok":"no"}">${esc(g.continent)}</span>
+      <span class="chip ${pop}">👥 ${fmtPop(g.pop)}${popArr}</span>
+      <span class="chip ${g.langue===a.langue?"ok":"no"}">🗣️ ${esc(g.langue)}</span>
+    </div></div>`;
+}
+function draw(newest){
+  $("list").innerHTML=[...guesses].reverse().map((n,i)=>rowHTML(n,newest&&i===0)).join("");
+  $("head").hidden=!guesses.length;
+  $("tries").innerHTML=Array.from({length:MAX},(_,i)=>`<i class="${i<guesses.length?(won&&i===guesses.length-1?"win":"used"):""}"></i>`).join("");
+  $("inp").disabled=$("bGo").disabled=over;
+  $("inp").placeholder=over?(won?"Trouvé ! ":"Perdu… ")+(mode==="daily"?"Reviens demain ou lance une partie libre":"Lance un nouveau pays"):"Nom d'un pays…";
+  updateHints();
+}
+function updateHints(){
+  const h=[["h1",3,"🏛️ Capitale",()=>`🏛️ Capitale : ${answer.capitale}`],
+           ["h2",6,"🏳️ Drapeau",()=>`Drapeau : ${flag(answer.iso)}`]];
+  for(const [id,n,label,reveal] of h){
+    const b=$(id),left=n-guesses.length;
+    if(shown[id]||over){b.textContent=reveal();b.disabled=true;b.className="shown";}
+    else if(left>0){b.textContent=`${label} (dans ${left})`;b.disabled=true;b.className="";}
+    else{b.textContent=label+" — voir";b.disabled=false;b.className="";}
+  }
+}
+["h1","h2"].forEach(id=>$(id).onclick=()=>{shown[id]=true;save();updateHints();});
+
+/* ---------- Saisie ---------- */
+function matches(q){
+  const n=norm(q);if(!n)return[];
+  const pool=PAYS.filter(p=>!guesses.includes(p.nom));
+  return pool.filter(p=>norm(p.nom).startsWith(n)).concat(pool.filter(p=>!norm(p.nom).startsWith(n)&&norm(p.nom).includes(n))).slice(0,8);
+}
+function renderSugg(){
+  const list=matches($("inp").value),box=$("sugg");
+  if(!list.length||over){box.hidden=true;return;}
+  selIdx=Math.min(selIdx,list.length-1);
+  box.innerHTML=list.map((p,i)=>`<div data-n="${esc(p.nom)}" class="${i===selIdx?"sel":""}">${flag(p.iso)} ${esc(p.nom)}</div>`).join("");
+  box.hidden=false;
+  box.querySelectorAll("div").forEach(d=>d.onmousedown=e=>{e.preventDefault();guess(d.dataset.n);});
+}
+$("inp").addEventListener("input",()=>{selIdx=0;renderSugg();});
+$("inp").addEventListener("blur",()=>setTimeout(()=>$("sugg").hidden=true,100));
+$("inp").addEventListener("focus",renderSugg);
+$("inp").addEventListener("keydown",e=>{
+  const list=matches($("inp").value);
+  if(e.key==="ArrowDown"){e.preventDefault();selIdx=Math.min(selIdx+1,list.length-1);renderSugg();}
+  else if(e.key==="ArrowUp"){e.preventDefault();selIdx=Math.max(selIdx-1,0);renderSugg();}
+  else if(e.key==="Enter"){e.preventDefault();submit();}
+  else if(e.key==="Escape")$("sugg").hidden=true;
+});
+$("bGo").onclick=submit;
+function submit(){
+  const v=$("inp").value,exact=PAYS.find(p=>norm(p.nom)===norm(v));
+  if(exact&&guesses.includes(exact.nom)){toast("Déjà proposé !");return shakeIt();}
+  const list=matches(v),pick=exact||list[selIdx]||list[0];
+  if(!pick){toast("Pays inconnu");return shakeIt();}
+  guess(pick.nom);
+}
+function shakeIt(){const s=$("search");s.classList.remove("shake");void s.offsetWidth;s.classList.add("shake");}
+function guess(name){
+  if(over||guesses.includes(name))return;
+  guesses.push(name);$("inp").value="";$("sugg").hidden=true;selIdx=0;
+  won=name===answer.nom;
+  if(won||guesses.length>=MAX){over=true;recordStats();if(!won)toast(`C'était : ${answer.nom}`);}
+  save();draw(true);
+  if(over)setTimeout(showEnd,won?1200:1800);else $("inp").focus();
+}
+
+/* ---------- Sauvegarde & stats ---------- */
+function save(){
+  if(mode==="daily")store.set("daily",{day:parisDay(),guesses,shown});
+  else store.set("free",{answer:answer.nom,guesses,over,shown});
+}
+function recordStats(){
+  const key=mode==="daily"?"statsDaily":"statsFree",s=store.get(key,defStats());
+  if(mode==="daily"){const d=parisDay();if(s.last===d)return;s.streak=won?(s.lastWin===d-1?s.streak+1:1):0;if(won)s.lastWin=d;s.last=d;}
+  else s.streak=won?s.streak+1:0;
+  s.played++;if(won){s.wins++;s.dist[guesses.length-1]++;}
+  s.best=Math.max(s.best,s.streak);store.set(key,s);
+}
+
+/* ---------- Modes ---------- */
+function startDaily(){
+  mode="daily";const d=parisDay();answer=BY[dailyName(d)];
+  const sv=store.get("daily",null),ok=sv&&sv.day===d;
+  guesses=ok?sv.guesses.filter(n=>BY[n]):[];shown=ok&&sv.shown?sv.shown:{h1:false,h2:false};
+  won=guesses.includes(answer.nom);over=won||guesses.length>=MAX;
+  $("sub").textContent=`Pays n°${d+1} · ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",timeZone:"Europe/Paris"})}`;
+  setBtns();draw(false);
+}
+function startFree(fresh){
+  mode="free";const sv=store.get("free",null);
+  if(!fresh&&sv&&BY[sv.answer]&&!sv.over){answer=BY[sv.answer];guesses=sv.guesses;shown=sv.shown||{h1:false,h2:false};}
+  else{let n;do{n=ANSWERS[Math.floor(Math.random()*ANSWERS.length)];}while(answer&&n===answer.nom);answer=BY[n];guesses=[];shown={h1:false,h2:false};}
+  won=false;over=false;save();
+  $("sub").textContent="Partie libre · un pays au hasard à chaque partie";
+  setBtns();draw(false);$("inp").focus();
+}
+function setBtns(){$("mDaily").className=mode==="daily"?"on":"";$("mFree").className=mode==="free"?"on":"";}
+$("mDaily").onclick=()=>{closeAll();startDaily();};
+$("mFree").onclick=()=>{closeAll();startFree(false);};
+
+/* ---------- Fin ---------- */
+function showEnd(){
+  const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
+  $("endTitle").textContent=!over?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?`🎉 Trouvé en ${guesses.length} essai${guesses.length>1?"s":""} !`:"😢 Perdu…";
+  $("found").innerHTML=over?`<div class="fl">${flag(answer.iso)}</div><b>${esc(answer.nom)}</b><small>Capitale : ${esc(answer.capitale)} · ${fmtPop(answer.pop)} hab.</small>`:"";
+  const pct=s.played?Math.round(s.wins/s.played*100):0;
+  $("endStats").innerHTML=[[s.played,"Parties"],[pct,"% victoires"],[s.streak,"Série"],[s.best,"Meilleure série"]].map(([v,l])=>`<div><b>${v}</b><small>${l}</small></div>`).join("");
+  const m=Math.max(1,...s.dist),hi=won?guesses.length-1:-1;
+  $("endDist").innerHTML=s.dist.map((n,i)=>`<div>${i+1}<i class="${over&&i===hi?"cur":""}" style="width:${Math.max(8,n/m*100)}%">${n}</i></div>`).join("");
+  $("bShare").style.display=over?"":"none";
+  $("bAgain").textContent=mode==="free"?"🔁 Nouveau pays":"♾️ Partie libre";
+  $("nextBox").style.display=mode==="daily"?"":"none";
+  $("mdEnd").classList.remove("hidden");
+}
+$("bAgain").onclick=()=>{closeAll();startFree(true);};
+$("bShare").onclick=async()=>{
+  const head=mode==="daily"?`Paysdle n°${parisDay()+1}`:"Paysdle (partie libre)";
+  const lines=guesses.map(n=>{const r=info(n),full=Math.round(r.prox/20);return"🟩".repeat(full)+"⬜".repeat(5-full)+" "+r.arr;});
+  const txt=`${head} ${won?guesses.length:"X"}/${MAX}\n${lines.join("\n")}\n\n${location.href.split("#")[0]}`;
+  try{await navigator.clipboard.writeText(txt);toast("Résultat copié !");}
+  catch(e){if(navigator.share)navigator.share({text:txt}).catch(()=>{});else toast("Copie impossible");}
+};
+function tick(){
+  const p=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(new Date()).split(":").map(Number);
+  let left=86400-(p[0]*3600+p[1]*60+p[2]);if(left>=86400)left=0;
+  const f=n=>String(n).padStart(2,"0");
+  $("countdown").textContent=`${f(Math.floor(left/3600))}:${f(Math.floor(left/60)%60)}:${f(left%60)}`;
+  if(mode==="daily"&&answer&&answer.nom!==dailyName(parisDay())){closeAll();startDaily();toast("Nouveau pays du jour !");}
+}
+setInterval(tick,1000);
+function closeAll(){document.querySelectorAll(".modal").forEach(m=>m.classList.add("hidden"));}
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m||e.target.hasAttribute("data-close"))closeAll();}));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll();});
+$("bHelp").onclick=()=>$("mdHelp").classList.remove("hidden");
+$("bStats").onclick=showEnd;
+
+startDaily();tick();
+if(!store.get("seenHelp",false)){store.set("seenHelp",true);$("mdHelp").classList.remove("hidden");}
+</script>
+</body>
+</html>
