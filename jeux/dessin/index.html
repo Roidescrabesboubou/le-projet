@@ -68,6 +68,9 @@ label.l{display:block;font-size:.82rem;font-weight:800;color:var(--muted);margin
 .round{font-weight:800;color:var(--muted);font-size:.85rem;white-space:nowrap}
 .board{position:relative;background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3;box-shadow:0 8px 24px rgba(0,0,0,.06)}
 #cv{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#cv.brush{cursor:none}
+#brush{position:absolute;left:0;top:0;border-radius:50%;pointer-events:none;border:1.5px solid #222;box-shadow:0 0 0 1px #fff;transform:translate(-50%,-50%);display:none}
+#brush.er{background:rgba(255,255,255,.55);border-style:dashed}
 .ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:rgba(34,25,43,.82);color:#fff;text-align:center;padding:20px}
 .ov h3{font-size:1.6rem}
 .ov .opts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -140,7 +143,7 @@ label.l{display:block;font-size:.82rem;font-weight:800;color:var(--muted);margin
     <div class="hero">
       <div class="logo">🎨</div>
       <h2>Dessine & Devine</h2>
-      <p class="hint">Un joueur dessine, les autres devinent le mot. Choisis tes thèmes parmi plus de 1 400 mots, ou ajoute tes propres mots.</p>
+      <p class="hint">Un joueur dessine, les autres devinent le mot. Choisis tes thèmes parmi près de 1 500 mots, ou ajoute tes propres mots.</p>
     </div>
     <div class="card">
       <label class="l">Ton profil</label>
@@ -217,6 +220,7 @@ label.l{display:block;font-size:.82rem;font-weight:800;color:var(--muted);margin
         </div>
         <div class="board">
           <canvas id="cv" width="800" height="600"></canvas>
+          <div id="brush"></div>
           <div class="ov hidden" id="ov"></div>
         </div>
         <div class="tools hidden" id="tools">
@@ -872,10 +876,24 @@ cv.addEventListener("pointerdown",ev=>{
   addPt(x,y);
 });
 cv.addEventListener("pointermove",ev=>{
+  moveBrush(ev);
   if(!cur)return;
   const evs=ev.getCoalescedEvents?ev.getCoalescedEvents():[ev];
   for(const e of evs){const[x,y]=pos(e);if(Math.hypot(x-cur.lx,y-cur.ly)>=2){cur.lx=x;cur.ly=y;addPt(x,y);}}
 });
+/* Curseur rond qui montre la taille du pinceau / de la gomme */
+function moveBrush(ev){
+  const b=$("brush"),on=amDrawer()&&tool!=="fill"&&ev.pointerType!=="touch";
+  cv.classList.toggle("brush",on);
+  if(!on){b.style.display="none";return;}
+  const r=cv.getBoundingClientRect(),d=Math.max(4,size*r.width/W);
+  b.style.display="block";b.style.width=b.style.height=d+"px";
+  b.style.left=(ev.clientX-r.left)+"px";b.style.top=(ev.clientY-r.top)+"px";
+  b.classList.toggle("er",tool==="eraser");
+  b.style.background=tool==="eraser"?"":color+"55";
+}
+cv.addEventListener("pointerleave",()=>{$("brush").style.display="none";});
+cv.addEventListener("pointerenter",moveBrush);
 const endStroke=()=>{if(!cur)return;flush();cur=null;};
 cv.addEventListener("pointerup",endStroke);cv.addEventListener("pointercancel",endStroke);
 function addPt(x,y){
