@@ -269,6 +269,20 @@ function lev(a,b){
     d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
   return d[a.length][b.length];
 }
+/* Forme « phonétique » : ignore espaces, ponctuation, lettres doublées, h muets, y/i, ph/f, c/k/q… */
+function loose(s){
+  return norm(s).replace(/ /g,"")
+    .replace(/ch/g,"$").replace(/sh/g,"$").replace(/ph/g,"f").replace(/ck/g,"k").replace(/qu/g,"k").replace(/q/g,"k")
+    .replace(/c(?=[eiy])/g,"s").replace(/c/g,"k")
+    .replace(/eau/g,"o").replace(/au/g,"o").replace(/ou/g,"u")
+    .replace(/y/g,"i").replace(/h/g,"").replace(/w/g,"v")
+    .replace(/(.)\1+/g,"$1").replace(/(.{3,}?)[sx]?$/,"$1");
+}
+/* Fautes de frappe tolérées selon la longueur du mot */
+const tol=w=>w.length>=11?2:w.length>=6?1:0;
+/* pool = tous les mots possibles : une faute n'est tolérée que si la réponse n'est pas elle-même un autre mot */
+function isRight(g,w,pool){const a=loose(g),b=loose(w);if(!a)return false;if(a===b)return true;
+  if(lev(a,b)>tol(b))return false;return !(pool||[]).some(x=>x!==w&&loose(x)===a);}
 const isLetter=c=>/[\p{L}\p{N}]/u.test(c);
 
 /* Thèmes */
@@ -531,8 +545,9 @@ function handleGuess(p,text){
   if(G.phase==="draw"){
     const n=norm(text),w=norm(G.word);
     if(p.id!==G.drawer&&!p.guessed){
-      if(n===w||n.replace(/ /g,"")===w.replace(/ /g,""))return award(p);
-      if(w.length>=4&&lev(n,w)<=(w.length>=8?2:1))toPlayer(p.id,{t:"chat",kind:"close",text:`« ${text} » : tu y es presque !`});
+      if(isRight(text,G.word,wordPool()))return award(p);
+      const lw=loose(G.word),lg=loose(text);
+      if(lw.length>=4&&lev(lg,lw)<=tol(lw)+1)toPlayer(p.id,{t:"chat",kind:"close",text:`« ${text} » : tu y es presque !`});
       return hostChat({t:"chat",name:p.name,text});
     }
     if(w&&(` ${n} `).includes(` ${w} `)||(n.replace(/ /g,"").includes(w.replace(/ /g,""))&&w.length>3))
