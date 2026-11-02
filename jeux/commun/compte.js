@@ -181,6 +181,15 @@ const FIREBASE = {
     }
     return cacheReglages;
   }
+  /* Trie le catalogue selon l'ordre choisi dans le panel admin.
+     Les jeux absents de cet ordre (ajoutés depuis) gardent leur
+     ordre du catalogue et passent après. */
+  function trier(liste, regl){
+    const ordre = Array.isArray(regl && regl.ordre) ? regl.ordre
+      : (regl && regl.ordre && typeof regl.ordre === "object" ? Object.keys(regl.ordre).sort((a, b) => a - b).map(k => regl.ordre[k]) : []);
+    const rang = s => { const i = ordre.indexOf(s); return i < 0 ? 1e6 : i; };
+    return liste.map((g, i) => [g, i]).sort((a, b) => (rang(a[0].slug) - rang(b[0].slug)) || (a[1] - b[1])).map(x => x[0]);
+  }
   /* Fusionne le catalogue et les réglages admin */
   function etatDe(jeu, regl){
     const o = (regl && regl.jeux && regl.jeux[jeu.slug]) || {};
@@ -312,7 +321,7 @@ const FIREBASE = {
     pret: !!KEY, DB, RACINE,
     session: () => session,
     jeton, db, actualiser, inscrire, connecter, deconnecter,
-    reglages, etatDe, cleDePseudo, bouton, ouvrir,
+    reglages, etatDe, trier, cleDePseudo, bouton, ouvrir,
     surChangement: f => { ecouteurs.push(f); }
   };
 

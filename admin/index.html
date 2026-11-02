@@ -26,7 +26,7 @@ textarea,input[type=text]{width:100%;font:inherit;padding:9px 11px;border-radius
 textarea{min-height:70px;resize:vertical}
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .jeux{display:flex;flex-direction:column;gap:8px}
-.jeu{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.jeu{display:grid;grid-template-columns:30px 44px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
 .jeu .em{font-size:1.7rem;text-align:center}
 .jeu b{display:block}
 .jeu small{color:var(--muted)}
@@ -50,7 +50,12 @@ th{color:var(--muted);font-weight:700;font-size:.8rem;text-transform:uppercase;l
 .centre .big{font-size:3rem}
 ol{padding-left:20px;line-height:1.7}
 code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.88em}
-@media (max-width:620px){.jeu{grid-template-columns:36px 1fr}.jeu .ctl{grid-column:1/-1;justify-content:flex-start}}
+.fleches{display:flex;flex-direction:column;gap:2px}
+.fleches button{padding:0;width:28px;height:22px;font-size:.75rem;line-height:1;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:7px}
+.fleches button:disabled{opacity:.25}
+.jeu.bouge{outline:2px solid var(--accent);transition:outline-color .6s}
+.tete{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+@media (max-width:620px){.jeu{grid-template-columns:30px 36px 1fr}.jeu .ctl{grid-column:1/-1;justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -140,12 +145,54 @@ async function panel(){
 
   /* Jeux */
   const pj = el("div", "", "panel");
-  pj.appendChild(el("h2", "🎮 Jeux"));
-  pj.appendChild(el("p", "Visible = sur l'accueil et jouable · Bientôt = grisé, sans lien · Caché = absent de l'accueil et bloqué par adresse directe (sauf pour les admins). Les changements sont enregistrés tout de suite.", "hint"));
+  const tete = el("div", "", "tete"); tete.appendChild(el("h2", "🎮 Jeux"));
+  const razOrdre = el("button", "↺ Ordre du code", "ghost mini");
+  razOrdre.title = "Revenir à l'ordre défini dans catalogue.js";
+  razOrdre.disabled = !regl.ordre;
+  tete.appendChild(razOrdre); pj.appendChild(tete);
+  pj.appendChild(el("p", "▲▼ = ordre d'affichage sur l'accueil · Visible = sur l'accueil et jouable · Bientôt = grisé, sans lien · Caché = absent de l'accueil et bloqué par adresse directe (sauf pour les admins). Les changements sont enregistrés tout de suite.", "hint"));
   const liste = el("div", "", "jeux"); pj.appendChild(liste); main.appendChild(pj);
   const jeuxRegl = regl.jeux || {};
-  for(const g of SALLE_CATALOGUE){
-    const ligne = el("div", "", "jeu");
+
+  /* Ordre d'affichage */
+  const majFleches = () => {
+    const l = [...liste.children];
+    l.forEach((r, i) => { r.querySelector(".haut").disabled = i === 0; r.querySelector(".bas").disabled = i === l.length - 1; });
+  };
+  let tOrdre;
+  const sauverOrdre = () => {
+    clearTimeout(tOrdre);
+    tOrdre = setTimeout(async () => {
+      const ordre = [...liste.children].map(r => r.dataset.slug);
+      try{ await Compte.db("reglages/ordre", {method: "PUT", body: ordre}); razOrdre.disabled = false; toast("Ordre enregistré"); }
+      catch(e){ toast(e.message, true); }
+    }, 500);
+  };
+  const deplacer = (ligne, sens) => {
+    const voisin = sens < 0 ? ligne.previousElementSibling : ligne.nextElementSibling;
+    if(!voisin) return;
+    if(sens < 0) liste.insertBefore(ligne, voisin); else liste.insertBefore(voisin, ligne);
+    ligne.classList.add("bouge"); setTimeout(() => ligne.classList.remove("bouge"), 400);
+    ligne.scrollIntoView({block: "nearest", behavior: "smooth"});
+    majFleches(); sauverOrdre();
+  };
+  razOrdre.onclick = async () => {
+    if(!confirm("Remettre les jeux dans l'ordre du code ?")) return;
+    razOrdre.disabled = true;
+    try{
+      await Compte.db("reglages/ordre", {method: "DELETE"});
+      SALLE_CATALOGUE.forEach(g => { const r = liste.querySelector(`[data-slug="${g.slug}"]`); if(r) liste.appendChild(r); });
+      majFleches(); toast("Ordre du code rétabli");
+    }catch(e){ razOrdre.disabled = false; toast(e.message, true); }
+  };
+
+  for(const g of Compte.trier(SALLE_CATALOGUE, regl)){
+    const ligne = el("div", "", "jeu"); ligne.dataset.slug = g.slug;
+    const fl = el("div", "", "fleches");
+    const up = el("button", "▲", "haut"); up.title = "Monter"; up.setAttribute("aria-label", "Monter " + g.title);
+    const dn = el("button", "▼", "bas"); dn.title = "Descendre"; dn.setAttribute("aria-label", "Descendre " + g.title);
+    up.onclick = () => deplacer(ligne, -1); dn.onclick = () => deplacer(ligne, 1);
+    fl.append(up, dn);
     const em = el("div", g.emoji || "🎲", "em");
     const info = el("div"); info.appendChild(el("b", g.title + (g.ia ? " 🤖" : "")));
     const def = el("small"); info.appendChild(def);
@@ -185,10 +232,11 @@ async function panel(){
     };
     if(g.sansPage) voir.style.visibility = "hidden";
     ctl.append(seg, badge, voir, raz);
-    ligne.append(em, info, ctl);
+    ligne.append(fl, em, info, ctl);
     liste.appendChild(ligne);
     maj();
   }
+  majFleches();
 
   /* Comptes */
   const pc = el("div", "", "panel");

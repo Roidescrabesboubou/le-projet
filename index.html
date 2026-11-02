@@ -75,7 +75,7 @@ Compte.bouton(document.getElementById("compte"));
 /* Jeux tels qu'ils doivent apparaître (réglages admin appliqués) */
 function visibles(){
   const admin = !!(Compte.session() && Compte.session().admin);
-  return GAMES.map(g => ({...g, ...Compte.etatDe(g, regl)}))
+  return Compte.trier(GAMES, regl).map(g => ({...g, ...Compte.etatDe(g, regl)}))
     .filter(g => g.etat !== "cache" || admin);
 }
 
