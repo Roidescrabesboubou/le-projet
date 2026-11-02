@@ -56,6 +56,13 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 @keyframes fl{to{transform:translateY(-85vh) rotate(20deg);opacity:0}}
 .shake{animation:sh .45s}@keyframes sh{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
 #choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}#choices button{text-align:left;max-width:100%;white-space:normal}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow-y:auto}
+.modal.hidden{display:none}
+.modal .box{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;max-width:640px;width:100%;padding:20px 22px 22px}
+.modal .close{position:absolute;top:10px;right:10px;background:transparent;color:var(--text);border:1px solid var(--line);padding:4px 10px}
+.help h2{margin:0 0 6px;font-size:1.25rem}.help h3{margin:18px 0 4px;font-size:1rem;color:var(--accent)}
+.help p,.help li{font-size:.92rem;margin:5px 0;line-height:1.45}.help ul{padding-left:20px;margin:4px 0}
+.help table{border-collapse:collapse;width:100%;font-size:.88rem;margin:6px 0}.help td,.help th{border:1px solid var(--line);padding:5px 8px;text-align:left}
 </style>
 </head>
 <body>
@@ -63,6 +70,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
   <div style="display:flex;align-items:center;gap:10px"><a href="../../" class="home" title="Retour à l'accueil">🏠</a><h1>💞 Les Quintuplées – Jeu de séduction</h1></div>
   <div style="display:flex;gap:8px">
     <select id="aiSel" class="hidden" title="IA utilisée (changeable à tout moment)" style="width:auto;padding:6px 8px;font-size:.85rem"></select>
+    <button class="ghost" id="btnHelp" title="Comment jouer">❓</button>
     <button class="ghost" id="btnReset">🔄 Reset</button>
     <button class="ghost" id="btnSettings">⚙️ Clé API</button>
   </div>
@@ -109,7 +117,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.3 (relais ntfy.sh)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.4 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -146,6 +154,79 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 </main>
 
 <div id="fx"></div>
+<div class="modal hidden" id="mdHelp"><div class="box help">
+  <button class="close" id="helpClose">✕</button>
+  <h2>💞 Comment jouer</h2>
+  <p>Tu discutes avec l'une des cinq sœurs Nakano, jouée par une IA fidèle à son caractère. Ton but : <b>faire monter sa jauge d'affection jusqu'à 100</b>, en passant par plusieurs étapes, puis lui déclarer ta flamme.</p>
+
+  <h3>🎯 Le principe</h3>
+  <ul>
+    <li>Choisis une sœur (ou <b>❓ Sœur mystère</b> : une sœur au hasard dont tu dois deviner l'identité), puis une <b>situation de départ</b>.</li>
+    <li>Réponds à ses questions et à la scène en cours. Chaque réponse fait varier l'affection : <b>+</b> si ça lui plaît, <b>−</b> si ça la blesse ou la rend méfiante. Le verdict s'affiche sous sa réplique.</li>
+    <li>À 0 d'affection, tu es <b>éliminé(e)</b>.</li>
+  </ul>
+
+  <h3>🎬 Situations de départ</h3>
+  <table>
+    <tr><th>Situation</th><th>Difficulté</th><th>Affection de départ</th></tr>
+    <tr><td>Ami d'enfance perdu de vue</td><td>Facile</td><td>40</td></tr>
+    <tr><td>Bons amis</td><td>Facile</td><td>50</td></tr>
+    <tr><td>Camarades de classe</td><td>Moyen</td><td>25</td></tr>
+    <tr><td>Nouveau tuteur</td><td>Difficile</td><td>15</td></tr>
+    <tr><td>Parfaits inconnus</td><td>Difficile</td><td>10</td></tr>
+    <tr><td>Ancien ami brouillé</td><td>Extrême</td><td>5</td></tr>
+  </table>
+  <p>Plus tu pars de bas, plus les premiers points sont durs à gagner. Les gains sont <b>divisés</b> au début, puis la division s'atténue peu à peu.</p>
+
+  <h3>⚠️ Pas de précipitation</h3>
+  <ul>
+    <li>Les compliments ou déclarations <b>trop rapides</b> sont punis : elle recule, et les pertes comptent plus que les gains.</li>
+    <li>Elle ne sait que ce qu'elle peut savoir : si tu parles de quelque chose qu'elle ne connaît pas, elle le dira. Tu peux inventer des souvenirs et des détails (le « lore »), mais reste cohérent : <b>elle remarque les contradictions et les mensonges</b>.</li>
+    <li>Plus la relation avance, plus les questions deviennent <b>intimes</b> et <b>piégeuses</b>.</li>
+  </ul>
+
+  <h3>🧭 Les étapes de la relation</h3>
+  <p>Selon l'affection, elle passe de <b>Distante</b> à <b>Connaissances</b>, <b>Complices</b>, <b>Proches</b>, puis <b>Intimes</b> : son ton et ses questions changent.</p>
+  <p>Tu dois aussi valider <b>4 jalons</b>, chacun par une scène décisive :</p>
+  <ul>
+    <li>🤝 <b>Amitié</b> · 🎬 <b>Premier rendez-vous</b> · 🌸 <b>Sortie en tête-à-tête</b> · 🌙 <b>Confidence</b></li>
+    <li>Tant qu'un jalon n'est pas validé, l'affection est <b>plafonnée</b> (35 · 55 · 75 · 90), même si tes réponses sont excellentes. La déclaration finale n'est possible qu'une fois les 4 validés.</li>
+    <li>Si tu rates une scène décisive, tu perds de l'affection, mais tu peux retenter plus tard.</li>
+  </ul>
+
+  <h3>🎲 Événements, choix et questions chronométrées</h3>
+  <ul>
+    <li><b>Événements imprévus</b> : l'IA invente une surprise adaptée à la scène (une averse, un objet qui tombe, une sœur qui débarque…). Réagis-y comme tu le ferais vraiment.</li>
+    <li><b>Boutons de choix</b> (QCM, dilemmes, actions « Je … ») : clique ou réponds librement avec ton propre texte.</li>
+    <li><b>⏱️ Questions chronométrées</b> : réponds avant la fin du compte à rebours, sinon c'est considéré comme une hésitation.</li>
+    <li><b>Autres sœurs</b> : elles interviennent parfois dans la conversation, pour t'aider… ou pour te piéger.</li>
+    <li>Si la discussion tourne en rond, un événement la relance. <b>Développe</b> tes réponses et ajoute du contexte, ça rend le jeu bien plus vivant qu'un simple interrogatoire.</li>
+    <li>Le <b>narrateur</b> (texte en italique) décrit la scène ; la sœur parle ensuite.</li>
+  </ul>
+
+  <h3>👥 Modes de jeu</h3>
+  <ul>
+    <li><b>👤 Solo</b> : toi seul(e) face à la sœur.</li>
+    <li><b>👥 Local (2 à 4)</b> : à tour de rôle sur le même écran. <b>Le premier à atteindre 100 gagne la sœur.</b> Un message d'un joueur peut aussi faire monter ou baisser l'affection d'un autre (rumeurs, coups bas…).</li>
+    <li><b>🌐 En ligne (2 à 4)</b> : l'hôte crée une salle et partage le <b>code à 6 caractères</b> ; chaque ami le saisit pour rejoindre depuis son appareil. Seul l'hôte a besoin d'une clé API.</li>
+    <li><b>⚡ Réponses simultanées</b> : tout le monde répond en même temps, puis l'IA juge toutes les réponses d'un coup.</li>
+  </ul>
+
+  <h3>🤖 L'IA et les clés API</h3>
+  <ul>
+    <li>Le jeu a besoin d'au moins une <b>clé API</b> (⚙️ Clé API). Gemini, Groq, Mistral et OpenRouter ont un palier gratuit ; Claude (Anthropic) est payant. Les clés restent dans ton navigateur.</li>
+    <li>Tu peux en enregistrer plusieurs : quand une IA atteint sa limite ou tombe en panne, la partie <b>passe automatiquement à la suivante</b>, avec un <b>résumé de la partie</b> transmis pour garder la même histoire.</li>
+    <li>Le menu <b>🤖</b> en haut permet de changer d'IA à tout moment.</li>
+  </ul>
+
+  <h3>🔄 Divers</h3>
+  <ul>
+    <li><b>🔄 Reset</b> efface la partie en cours pour recommencer.</li>
+    <li><b>🏠</b> te ramène à l'accueil des mini-jeux.</li>
+    <li>Cette aide reste disponible avec le bouton <b>❓</b> en haut.</li>
+  </ul>
+  <p style="text-align:center;margin-top:14px"><button id="helpOk">C'est parti !</button></p>
+</div></div>
 <script>
 const SISTERS = {
   ichika:{name:"Ichika",c:"#d96a8f",ini:"I",tag:"L'aînée, actrice, taquine",
@@ -281,6 +362,11 @@ $("btnTest").onclick = async () => {
   }
 };
 loadForm(cfg.primary);refreshSelects();refreshAiSel();
+const openHelp=()=>$("mdHelp").classList.remove("hidden"), closeHelp=()=>$("mdHelp").classList.add("hidden");
+$("btnHelp").onclick=openHelp;$("helpClose").onclick=$("helpOk").onclick=closeHelp;
+$("mdHelp").onclick=e=>{if(e.target===$("mdHelp"))closeHelp();};
+document.addEventListener&&document.addEventListener("keydown",e=>{if(e.key==="Escape")closeHelp();});
+if(!store.get("seenHelp","")){store.set("seenHelp","1");openHelp();}
 if(!aiOrder().length) $("settings").classList.remove("hidden");
 
 /* ---------- Menu ---------- */
