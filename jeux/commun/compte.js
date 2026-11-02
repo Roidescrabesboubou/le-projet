@@ -17,7 +17,7 @@
       n'y a encore aucun admin).
    ============================================================ */
 const FIREBASE = {
-  apiKey: "",
+  apiKey: "AIzaSyCa87MssuYmrRZNA6sIc3GSTgrA-MpK1UE",
   databaseURL: "https://salle-de-jeux-249d2-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
