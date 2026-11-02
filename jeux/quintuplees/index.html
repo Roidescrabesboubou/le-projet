@@ -70,7 +70,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 <main>
   <div class="panel hidden" id="settings">
     <b>Connexion à l'IA</b>
-    <p class="hint">Configure une ou plusieurs IA. Par défaut : <b>Gemini</b> en principal et <b>Claude Haiku 5.5</b> en secours (relais automatique quand Gemini atteint sa limite).</p>
+    <p class="hint">Configure une ou plusieurs IA. Mets la clé de plusieurs IA gratuites (<b>Gemini, Groq, Mistral, OpenRouter</b>) : quand l'une atteint sa limite, la partie passe automatiquement à la suivante (Claude, payant, vient en tout dernier). Toutes les IA qui ont une clé servent de relais.</p>
     <label>Fournisseur à configurer</label>
     <select id="provider"></select>
     <label>Modèle (modifiable)</label>
@@ -81,7 +81,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
     <p class="hint" id="provStatus"></p>
     <label>IA utilisée en priorité</label>
     <select id="aiMain"></select>
-    <label>IA de secours (relais automatique en cas de limite ou d'erreur)</label>
+    <label>IA de secours en premier (puis les autres IA avec clé, dans l'ordre)</label>
     <select id="aiBackup"></select>
     <p class="hint">À chaque changement d'IA (à la main avec le menu 🤖 en haut, ou automatiquement), un <b>résumé de la partie</b> est rédigé et transmis à la nouvelle IA pour qu'elle continue la même histoire. Les clés sont stockées uniquement dans ton navigateur et envoyées uniquement à leur fournisseur.</p>
     <button id="btnSave">Enregistrer</button>
@@ -179,7 +179,7 @@ const store = {
   set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 };
 function loadCfg(){
-  const c={keys:{},models:{},active:"gemini",primary:"gemini",fallback:"anthropic"};
+  const c={keys:{},models:{},active:"gemini",primary:"gemini",fallback:"groq"};
   let sv=null;try{sv=JSON.parse(store.get("cfg2","null"));}catch(e){}
   if(sv&&typeof sv==="object"){
     Object.assign(c.keys,sv.keys||{});Object.assign(c.models,sv.models||{});
@@ -187,7 +187,7 @@ function loadCfg(){
     if(sv.fallback===""||PROVIDERS[sv.fallback])c.fallback=sv.fallback;
   }else{
     const op=store.get("provider",""),ok=store.get("key",""),om=store.get("model","");   // ancienne version : une seule IA
-    if(PROVIDERS[op]&&ok){c.keys[op]=ok;if(om&&om!=="gemini-2.5-flash")c.models[op]=om;c.primary=c.active=op;c.fallback=op==="anthropic"?"gemini":"anthropic";}
+    if(PROVIDERS[op]&&ok){c.keys[op]=ok;if(om&&om!=="gemini-2.5-flash")c.models[op]=om;c.primary=c.active=op;c.fallback=op==="gemini"?"groq":"gemini";}
   }
   if(c.models.gemini==="gemini-2.5-flash")delete c.models.gemini;
   return c;
@@ -197,7 +197,8 @@ function saveCfg(){store.set("cfg2",JSON.stringify({keys:cfg.keys,models:cfg.mod
 const usable=p=>!!(p&&PROVIDERS[p]&&cfg.keys[p]);
 const provModel=p=>cfg.models[p]||PROVIDERS[p].model;
 const provName=p=>PROVIDERS[p].short+" ("+provModel(p)+")";
-function aiOrder(){const out=[];[cfg.active,cfg.primary,cfg.fallback].forEach(p=>{if(usable(p)&&!out.includes(p))out.push(p);});return out;}
+const CHAIN=["gemini","groq","mistral","openrouter","anthropic"];   // ordre du relais : gratuits d'abord, Claude (payant) en dernier
+function aiOrder(){const out=[];[cfg.active,cfg.primary,cfg.fallback,...CHAIN].forEach(p=>{if(usable(p)&&!out.includes(p))out.push(p);});return out;}
 const state = {}; // par soeur : {aff, history, turns, over}
 let current = null, busy = false;
 
@@ -846,10 +847,10 @@ async function callAI(id, history){
     const prov=order[k];
     try{
       if(st.prov!==prov&&(st.prov||k>0)){
-        const did=await compact(st,id,(k===0&&st.prov?[st.prov,prov]:[prov]).filter(usable));
+        const did=await compact(st,id,(k===0&&st.prov?[st.prov,...order]:order.slice(k)).filter((p,i,a)=>usable(p)&&a.indexOf(p)===i));
         if(did)addMsg("sys","🔁 Résumé de la partie transmis à "+PROVIDERS[prov].short+".");
       }else if(needsCompaction(st)){
-        await compact(st,id,[prov]);
+        await compact(st,id,order.slice(k));
       }
       const raw=await callProvider(prov,id,st);
       if(prov!==cfg.active){
