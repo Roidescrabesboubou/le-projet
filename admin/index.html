@@ -26,7 +26,7 @@ textarea,input[type=text]{width:100%;font:inherit;padding:9px 11px;border-radius
 textarea{min-height:70px;resize:vertical}
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .jeux{display:flex;flex-direction:column;gap:8px}
-.jeu{display:grid;grid-template-columns:30px 44px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.jeu{display:grid;grid-template-columns:22px 30px 44px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
 .jeu .em{font-size:1.7rem;text-align:center}
 .jeu b{display:block}
 .jeu small{color:var(--muted)}
@@ -51,11 +51,16 @@ th{color:var(--muted);font-weight:700;font-size:.8rem;text-transform:uppercase;l
 ol{padding-left:20px;line-height:1.7}
 code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.88em}
 .fleches{display:flex;flex-direction:column;gap:2px}
+.poignee{display:flex;align-items:center;justify-content:center;align-self:stretch;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:var(--muted);font-size:1.15rem;border-radius:8px}
+.poignee:hover{background:var(--card);color:var(--text)}
+.jeu.glisse{position:relative;z-index:2;background:var(--card);box-shadow:0 12px 28px rgba(0,0,0,.2);outline:2px solid var(--accent)}
+.jeu.glisse .poignee{cursor:grabbing}
+body.en-glisse,body.en-glisse *{cursor:grabbing!important;user-select:none!important;-webkit-user-select:none!important}
 .fleches button{padding:0;width:28px;height:22px;font-size:.75rem;line-height:1;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:7px}
 .fleches button:disabled{opacity:.25}
 .jeu.bouge{outline:2px solid var(--accent);transition:outline-color .6s}
 .tete{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-@media (max-width:620px){.jeu{grid-template-columns:30px 36px 1fr}.jeu .ctl{grid-column:1/-1;justify-content:flex-start}}
+@media (max-width:620px){.jeu{grid-template-columns:22px 30px 36px 1fr}.jeu .ctl{grid-column:1/-1;justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -150,7 +155,7 @@ async function panel(){
   razOrdre.title = "Revenir à l'ordre défini dans catalogue.js";
   razOrdre.disabled = !regl.ordre;
   tete.appendChild(razOrdre); pj.appendChild(tete);
-  pj.appendChild(el("p", "▲▼ = ordre d'affichage sur l'accueil · Visible = sur l'accueil et jouable · Bientôt = grisé, sans lien · Caché = absent de l'accueil et bloqué par adresse directe (sauf pour les admins). Les changements sont enregistrés tout de suite.", "hint"));
+  pj.appendChild(el("p", "Ordre sur l'accueil : glisse un jeu par sa poignée ⠿ (ou utilise ▲▼) · Visible = sur l'accueil et jouable · Bientôt = grisé, sans lien · Caché = absent de l'accueil et bloqué par adresse directe (sauf pour les admins). Les changements sont enregistrés tout de suite.", "hint"));
   const liste = el("div", "", "jeux"); pj.appendChild(liste); main.appendChild(pj);
   const jeuxRegl = regl.jeux || {};
 
@@ -193,6 +198,49 @@ async function panel(){
     const dn = el("button", "▼", "bas"); dn.title = "Descendre"; dn.setAttribute("aria-label", "Descendre " + g.title);
     up.onclick = () => deplacer(ligne, -1); dn.onclick = () => deplacer(ligne, 1);
     fl.append(up, dn);
+    const poignee = el("div", "⠿", "poignee"); poignee.title = "Glisser pour déplacer"; poignee.setAttribute("aria-hidden", "true");
+    let glisse = null, defile = null;
+    const survoler = y => {
+      for(const r of liste.children){
+        if(r === ligne) continue;
+        const b = r.getBoundingClientRect();
+        if(y >= b.top && y <= b.bottom){
+          const ref = y < b.top + b.height / 2 ? r : r.nextSibling;
+          if(ref !== ligne && ref !== ligne.nextSibling) liste.insertBefore(ligne, ref);
+          break;
+        }
+      }
+    };
+    poignee.onpointerdown = e => {
+      if(e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+      glisse = {y: e.clientY, id: e.pointerId, avant: [...liste.children].map(r => r.dataset.slug).join()};
+      /* suivi au niveau de la fenêtre : déplacer la ligne dans la page ne coupe pas le glisser */
+      addEventListener("pointermove", bouger);
+      addEventListener("pointerup", lacher);
+      addEventListener("pointercancel", lacher);
+      ligne.classList.add("glisse"); document.body.classList.add("en-glisse");
+      /* défilement automatique près des bords de l'écran */
+      defile = setInterval(() => {
+        if(!glisse) return;
+        const v = glisse.y < 70 ? -14 : glisse.y > innerHeight - 70 ? 14 : 0;
+        if(v){ window.scrollBy(0, v); survoler(glisse.y); }
+      }, 30);
+    };
+    const bouger = e => { if(!glisse || e.pointerId !== glisse.id) return; e.preventDefault(); glisse.y = e.clientY; survoler(e.clientY); };
+    const lacher = e => {
+      if(!glisse || (e && e.pointerId !== glisse.id)) return;
+      clearInterval(defile);
+      removeEventListener("pointermove", bouger);
+      removeEventListener("pointerup", lacher);
+      removeEventListener("pointercancel", lacher);
+      const change = [...liste.children].map(r => r.dataset.slug).join() !== glisse.avant;
+      glisse = null;
+      ligne.classList.remove("glisse"); document.body.classList.remove("en-glisse");
+      majFleches();
+      if(change){ ligne.classList.add("bouge"); setTimeout(() => ligne.classList.remove("bouge"), 400); sauverOrdre(); }
+    };
+
     const em = el("div", g.emoji || "🎲", "em");
     const info = el("div"); info.appendChild(el("b", g.title + (g.ia ? " 🤖" : "")));
     const def = el("small"); info.appendChild(def);
@@ -232,7 +280,7 @@ async function panel(){
     };
     if(g.sansPage) voir.style.visibility = "hidden";
     ctl.append(seg, badge, voir, raz);
-    ligne.append(fl, em, info, ctl);
+    ligne.append(poignee, fl, em, info, ctl);
     liste.appendChild(ligne);
     maj();
   }
