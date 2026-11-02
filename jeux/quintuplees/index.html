@@ -63,6 +63,10 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 .help h2{margin:0 0 6px;font-size:1.25rem}.help h3{margin:18px 0 4px;font-size:1rem;color:var(--accent)}
 .help p,.help li{font-size:.92rem;margin:5px 0;line-height:1.45}.help ul{padding-left:20px;margin:4px 0}
 .help table{border-collapse:collapse;width:100%;font-size:.88rem;margin:6px 0}.help td,.help th{border:1px solid var(--line);padding:5px 8px;text-align:left}
+/* Lien de salle + invités arrivés par un lien (classe posée par commun/garde.js) */
+#roomLink{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+#roomLink input{flex:1;min-width:180px;font-size:.85rem}
+body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-seul #btnSettings,body.invite-seul #settings,body.invite-seul #nplRow,body.invite-seul #grid,body.invite-seul #simRow,body.invite-seul #aiSel{display:none!important}
 </style>
 </head>
 <body>
@@ -116,9 +120,10 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <input id="roomCode" placeholder="Code de la salle" maxlength="6" style="flex:1;min-width:120px;text-transform:uppercase">
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
-        <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
+        <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
         <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.4 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
+        <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
     </div>
@@ -367,7 +372,8 @@ $("btnHelp").onclick=openHelp;$("helpClose").onclick=$("helpOk").onclick=closeHe
 $("mdHelp").onclick=e=>{if(e.target===$("mdHelp"))closeHelp();};
 document.addEventListener&&document.addEventListener("keydown",e=>{if(e.key==="Escape")closeHelp();});
 if(!store.get("seenHelp","")){store.set("seenHelp","1");openHelp();}
-if(!aiOrder().length) $("settings").classList.remove("hidden");
+const qsRoom=(new URLSearchParams(location.search).get("salle")||"").trim().toUpperCase().slice(0,6);
+if(!aiOrder().length&&!qsRoom) $("settings").classList.remove("hidden");
 
 /* ---------- Menu ---------- */
 function renderMenu(){
@@ -521,7 +527,16 @@ $("btnHost").onclick=()=>{
     if(m.t==="answer"){const tx=String(m.text).slice(0,500);
       if(st.sim){if(!st.answered[gi+1]&&!busy&&!st.over)submitSim(gi+1,tx);}
       else if(st.cur===gi+1&&!busy&&!st.over)turn(tx,false);}
-  },()=>{$("netInfo").textContent="🏠 Code de la salle : "+code+" — donne-le aux autres joueurs et garde cette page ouverte."+" (max "+$("nPl").value+" joueurs)";});
+  },()=>{
+    $("netInfo").textContent="🏠 Salle "+code+" créée — envoie ce lien aux autres joueurs (ou le code) et garde cette page ouverte. (max "+$("nPl").value+" joueurs)";
+    $("roomUrl").value=location.href.split(/[?#]/)[0]+"?salle="+code;
+    $("roomLink").classList.remove("hidden");
+  });
+};
+$("btnCopy").onclick=async()=>{
+  const u=$("roomUrl").value;
+  try{await navigator.clipboard.writeText(u);}catch(e){$("roomUrl").select();try{document.execCommand("copy");}catch(_){}}
+  $("btnCopy").textContent="✅ Copié !";setTimeout(()=>$("btnCopy").textContent="📋 Copier le lien",1500);
 };
 $("btnJoin").onclick=()=>{
   const code=$("roomCode").value.trim().toUpperCase(); if(!code)return;
@@ -1378,6 +1393,16 @@ $("btnBack").onclick=()=>{
   $("game").classList.add("hidden");$("menu").classList.remove("hidden");
   $("input").disabled=false;$("btnSend").disabled=false;renderMenu();
 };
+
+/* ---------- Arrivée par un lien de salle (?salle=CODE) ---------- */
+if(qsRoom){
+  setMode(3);
+  $("roomCode").value=qsRoom;
+  let ps="";try{ps=JSON.parse(localStorage.getItem("salle_pseudo"))||"";}catch(e){}
+  if(ps&&!$("p1").value)$("p1").value=String(ps).slice(0,20);
+  if($("p1").value.trim()){$("btnJoin").click();}
+  else{$("netInfo").textContent="🔗 Invitation à la salle "+qsRoom+" : écris ton prénom puis clique « Rejoindre ».";$("p1").focus();}
+}
 </script>
 <script src="../commun/garde.js"></script>
 </body>

@@ -147,7 +147,7 @@ async function panel(){
   for(const g of SALLE_CATALOGUE){
     const ligne = el("div", "", "jeu");
     const em = el("div", g.emoji || "🎲", "em");
-    const info = el("div"); info.appendChild(el("b", g.title));
+    const info = el("div"); info.appendChild(el("b", g.title + (g.ia ? " 🤖" : "")));
     const def = el("small"); info.appendChild(def);
     const ctl = el("div", "", "ctl");
     const seg = el("div", "", "seg");
@@ -196,13 +196,15 @@ async function panel(){
   const zc = el("div"); zc.appendChild(el("p", "Chargement…", "hint"));
   pc.appendChild(zc); main.appendChild(pc);
   try{
-    const [comptes, admins] = await Promise.all([Compte.db("comptes"), Compte.db("admins")]);
+    const [comptes, admins0, ia0] = await Promise.all([Compte.db("comptes"), Compte.db("admins"), Compte.db("acces_ia").catch(() => null)]);
+    const admins = admins0 || {}, ia = ia0 || {};
     const l = Object.entries(comptes || {}).map(([uid, c]) => ({uid, ...c})).sort((a, b) => (b.cree || 0) - (a.cree || 0));
     zc.innerHTML = "";
-    zc.appendChild(el("p", `${l.length} compte${l.length > 1 ? "s" : ""} · ${Object.keys(admins || {}).length} admin${Object.keys(admins || {}).length > 1 ? "s" : ""}`, "hint"));
+    const nIA = l.filter(c => admins[c.uid] || ia[c.uid]).length;
+    zc.appendChild(el("p", `${l.length} compte${l.length > 1 ? "s" : ""} · ${Object.keys(admins).length} admin${Object.keys(admins).length > 1 ? "s" : ""} · ${nIA} avec accès IA. Les jeux IA (🤖) sont réservés aux comptes avec accès IA ; les autres ne peuvent que rejoindre une salle avec un lien envoyé par un membre.`, "hint"));
     if(!l.length) return;
     const t = el("table");
-    t.innerHTML = "<thead><tr><th>Pseudo</th><th>Inscrit le</th><th>Admin</th></tr></thead>";
+    t.innerHTML = "<thead><tr><th>Pseudo</th><th>Inscrit le</th><th>🤖 Accès IA</th><th>Admin</th></tr></thead>";
     const tb = el("tbody"); t.appendChild(tb);
     const moi = Compte.session().uid;
     for(const c of l){
@@ -210,6 +212,24 @@ async function panel(){
       const td1 = el("td", (c.pseudo || "?") + (c.uid === moi ? " (toi)" : ""));
       const td2 = el("td", c.cree ? new Date(c.cree).toLocaleDateString("fr-FR", {day: "numeric", month: "short", year: "numeric"}) : "—");
       const td3 = el("td");
+      const tdIA = el("td");
+      const bIA = el("button");
+      const majIA = () => {
+        if(admins[c.uid]){ bIA.textContent = "✅ Oui (admin)"; bIA.className = "ghost mini"; bIA.disabled = true; bIA.title = "Les admins ont toujours accès"; return; }
+        bIA.disabled = false; bIA.title = "";
+        bIA.textContent = ia[c.uid] ? "✅ Autorisé" : "Autoriser"; bIA.className = ia[c.uid] ? "mini" : "ghost mini";
+      };
+      bIA.onclick = async () => {
+        const devient = !ia[c.uid];
+        bIA.disabled = true;
+        try{
+          await Compte.db("acces_ia/" + c.uid, devient ? {method: "PUT", body: true} : {method: "DELETE"});
+          if(devient) ia[c.uid] = true; else delete ia[c.uid];
+          toast(devient ? c.pseudo + " a accès aux jeux IA" : c.pseudo + " n'a plus accès aux jeux IA");
+        }catch(e){ toast(e.message, true); }
+        majIA();
+      };
+      majIA(); tdIA.appendChild(bIA);
       const est = !!(admins && admins[c.uid]);
       const b = el("button", est ? "⭐ Admin" : "Nommer admin", est ? "mini" : "ghost mini");
       if(c.uid === moi){ b.disabled = true; b.title = "Tu ne peux pas te retirer toi-même"; }
@@ -220,13 +240,13 @@ async function panel(){
         try{
           await Compte.db("admins/" + c.uid, devient ? {method: "PUT", body: true} : {method: "DELETE"});
           if(devient) admins[c.uid] = true; else delete admins[c.uid];
-          b.textContent = devient ? "⭐ Admin" : "Nommer admin"; b.className = devient ? "mini" : "ghost mini";
+          b.textContent = devient ? "⭐ Admin" : "Nommer admin"; b.className = devient ? "mini" : "ghost mini"; majIA();
           toast(devient ? c.pseudo + " est admin" : c.pseudo + " n'est plus admin");
         }catch(e){ toast(e.message, true); }
         b.disabled = false;
       };
       td3.appendChild(b);
-      tr.append(td1, td2, td3); tb.appendChild(tr);
+      tr.append(td1, td2, tdIA, td3); tb.appendChild(tr);
     }
     zc.appendChild(t);
   }catch(e){

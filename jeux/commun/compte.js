@@ -113,7 +113,7 @@ const FIREBASE = {
   }
 
   function ouvrirSession(j, pseudo){
-    session = {uid: j.localId, email: j.email, pseudo: pseudo || "", admin: false,
+    session = {uid: j.localId, email: j.email, pseudo: pseudo || "", admin: false, ia: false,
       id: j.idToken, refresh: j.refreshToken, exp: Date.now() + (parseInt(j.expiresIn) || 3600) * 1000};
     ecrire(session);
   }
@@ -122,13 +122,15 @@ const FIREBASE = {
   async function actualiser(){
     if(!session) return session;
     try{
-      const [profil, admin] = await Promise.all([
+      const [profil, admin, ia] = await Promise.all([
         db(`comptes/${session.uid}`).catch(() => null),
-        db(`admins/${session.uid}`).catch(() => null)
+        db(`admins/${session.uid}`).catch(() => null),
+        db(`acces_ia/${session.uid}`).catch(() => null)
       ]);
       if(!session) return null;
       if(profil && profil.pseudo) session.pseudo = profil.pseudo;
       session.admin = admin === true;
+      session.ia = session.admin || ia === true;
       ecrire(session);
     }catch(e){}
     notifier();

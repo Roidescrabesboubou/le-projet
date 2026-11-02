@@ -10,6 +10,8 @@
      "dispo"   → visible et jouable
      "bientot" → affiché grisé, sans lien
      "cache"   → absent de l'accueil
+   ia: true → jeu qui utilise une IA : réservé aux comptes autorisés
+     dans le panel admin (sauf invités arrivés par un lien de salle).
    Le panel admin (/admin/) peut changer l'état et le badge de
    chaque jeu sans toucher au code : son choix passe avant celui-ci.
    ============================================================ */
@@ -22,6 +24,7 @@ window.SALLE_CATALOGUE = [
     tags: ["IA", "Histoire", "Multijoueur"],
     colors: ["#f6a6c1", "#8e5bd0"],
     etat: "dispo",
+    ia: true
   },
   {
     slug: "blindtest",
