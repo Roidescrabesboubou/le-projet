@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Coup de Feu</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#e2582c;--fond1:rgba(226,88,44,.14);--fond2:rgba(242,193,78,.14);
+  --L:#3f9f52;--V:#cf4a45;--P:#3a82cf;--F:#d9a321;--pts:#3a82cf;--mul:#e2482c}
+body{touch-action:manipulation}
+.b-page{max-width:720px;padding:10px 10px 24px;gap:10px}
+
+/* ---------- Menu ---------- */
+#menu{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;text-align:center}
+.logo{font-size:3.4rem;line-height:1;margin-top:6px}
+#menu h2{margin:0;font-size:1.8rem}
+#menu .sous{margin:0;color:var(--muted);max-width:420px}
+.choix{display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px}
+.choix .btn{padding:14px 18px;font-size:1.05rem;display:flex;flex-direction:column;align-items:center;gap:2px}
+.choix .btn small{font-weight:700;opacity:.85;font-size:.8rem}
+.rec{font-weight:800;background:var(--soft);border-radius:12px;padding:8px 14px}
+
+/* ---------- Jeu ---------- */
+#jeu{width:100%;display:flex;flex-direction:column;gap:8px}
+.haut{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800;font-size:.9rem}
+.haut .etape{font-family:Fredoka,sans-serif;font-size:1.05rem}
+.haut .tag{color:var(--muted);font-size:.8rem}
+.crit{background:#2b2236;color:#f6e7c8;border-radius:12px;padding:7px 12px;font-size:.85rem;font-weight:700;text-align:center}
+.crit b{color:#f2c14e}
+.crit.annonce{background:var(--soft);color:var(--muted)}
+.brigade{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-height:68px}
+.mb{position:relative;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:5px 3px;text-align:center;
+  user-select:none;-webkit-user-select:none;touch-action:none;cursor:grab;transition:transform .12s}
+.mb .e{font-size:1.5rem;line-height:1.2;display:block}
+.mb .n{font-size:.62rem;font-weight:800;line-height:1.1;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mb .c{position:absolute;top:2px;right:4px;font-size:.6rem;font-weight:800;color:var(--muted)}
+.mb.r1{border-color:#5b8bd9}.mb.r2{border-color:#e0a526;background:linear-gradient(160deg,var(--card),rgba(242,193,78,.25))}
+.mb.vide{border-style:dashed;background:transparent;cursor:default;display:flex;align-items:center;justify-content:center;color:var(--line);font-size:1.2rem}
+.mb.drag{z-index:5;box-shadow:0 8px 20px rgba(0,0,0,.25);cursor:grabbing;transition:none}
+.mb.pulse,.carte.pulse{animation:pulse .3s}
+@keyframes pulse{50%{transform:scale(1.14)}}
+.stats{display:grid;grid-template-columns:1.2fr 1.4fr .9fr .9fr .9fr;gap:6px}
+.st{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:5px 4px;text-align:center;min-width:0}
+.st small{display:block;font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.st b{font-family:Fredoka,sans-serif;font-size:1.02rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barre{height:5px;background:var(--soft);border-radius:5px;overflow:hidden;margin-top:3px}
+.barre i{display:block;height:100%;width:0;background:var(--ok);transition:width .4s}
+#tuto{background:#fff4c9;color:#5b4300;border-radius:12px;padding:8px 12px;font-size:.88rem;font-weight:700}
+@media (prefers-color-scheme:dark){#tuto{background:#3d3416;color:#f6e4a6}}
+.table{background:radial-gradient(circle at 50% 0,rgba(255,255,255,.06),transparent 70%),#2c3b2f;border-radius:16px;padding:10px;color:#fff;
+  min-height:150px;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+.recette{font-family:Fredoka,sans-serif;font-size:1.1rem;min-height:1.4em;text-align:center}
+.recette small{opacity:.7;font-size:.8rem;margin-left:6px}
+.calc{display:flex;align-items:center;gap:6px;font-family:Fredoka,sans-serif;font-size:1.5rem}
+.calc span{min-width:68px;text-align:center;border-radius:10px;padding:2px 10px;transition:transform .1s}
+.calc .pts{background:var(--pts)}.calc .mul{background:var(--mul)}
+.calc .x{min-width:0;background:none;padding:0;opacity:.8}
+.calc span.bump{transform:scale(1.18)}
+.plat{font-family:Fredoka,sans-serif;font-size:1.5rem;min-height:1.3em;color:#f2c14e}
+.pose{display:flex;gap:6px;justify-content:center;min-height:0}
+.pose .carte{flex:0 1 52px}
+.table .vite{position:absolute;right:10px;top:8px;font-size:.68rem;opacity:.55}
+.main{display:flex;gap:4px;justify-content:center;padding-top:16px;min-height:118px}
+.carte{flex:0 1 66px;min-width:0;aspect-ratio:5/7;border-radius:10px;background:#fffdf8;color:#22192b;border:2px solid var(--fc);position:relative;
+  box-shadow:0 2px 6px rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform .15s,opacity .2s;
+  user-select:none;-webkit-user-select:none;cursor:pointer;overflow:hidden}
+.carte .v{position:absolute;top:2px;left:5px;font-family:Fredoka,sans-serif;font-size:1.05rem;color:var(--fc);line-height:1}
+.carte .em{font-size:1.5rem;line-height:1}
+.carte .nm{position:absolute;bottom:3px;left:2px;right:2px;text-align:center;font-size:.52rem;font-weight:800;line-height:1.05;overflow:hidden;max-height:2.1em}
+.carte .bad{position:absolute;top:2px;right:3px;font-size:.75rem}
+.carte.sel{transform:translateY(-14px);box-shadow:0 8px 16px rgba(0,0,0,.28)}
+.carte.deb{filter:grayscale(1);opacity:.55}
+.carte.doree{background:linear-gradient(160deg,#fff7d6,#ffe08a)}
+.carte.surgele{background:linear-gradient(160deg,#eef8ff,#cfeaff)}
+.carte.L{--fc:var(--L)}.carte.V{--fc:var(--V)}.carte.P{--fc:var(--P)}.carte.F{--fc:var(--F)}
+.actions{display:grid;grid-template-columns:auto auto 1fr 1fr;gap:6px}
+.actions .btn{padding:12px 10px}
+.actions .btn small{opacity:.85}
+#bJeter{background:#7a6f80}
+.flot{position:fixed;z-index:60;pointer-events:none;font-family:Fredoka,sans-serif;font-weight:700;font-size:1.05rem;padding:1px 7px;border-radius:8px;color:#fff;
+  transform:translate(-50%,0);animation:flot .9s ease-out forwards;white-space:nowrap}
+.flot.p{background:var(--pts)}.flot.m{background:var(--mul)}.flot.x{background:#8e3fd0}.flot.e{background:#2f9e5a}.flot.k{background:#555}
+@keyframes flot{0%{opacity:0;transform:translate(-50%,6px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-34px)}}
+
+/* ---------- Boutique ---------- */
+#boutique{display:flex;flex-direction:column;gap:10px}
+#boutique h3{margin:4px 0 0;font-size:1.05rem}
+.etal{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.art{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:4px;text-align:center}
+.art .e{font-size:1.9rem;line-height:1.1}
+.art b{font-family:Fredoka,sans-serif}
+.art p{margin:0;font-size:.8rem;color:var(--muted);flex:1}
+.art .rar{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.art.vendu{opacity:.4}
+.rar0{color:var(--muted)}.rar1{color:#3f72c9}.rar2{color:#c48a10}
+.bas{display:flex;gap:8px}
+.bas .btn{flex:1;white-space:nowrap;padding:12px 8px}
+.bas .btn.ico{flex:0 0 auto}
+
+/* ---------- Fin ---------- */
+#fin{width:100%;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+#fin h2{margin:0;font-size:1.7rem}
+.resume{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.resume .st b{font-size:1.15rem}
+.namerow{display:flex;gap:6px;width:100%;max-width:300px}
+.namerow input{flex:1;min-width:0}
+.lb{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;width:100%}
+.lb li{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:var(--soft);font-weight:700;font-size:.9rem}
+.lb li .r{width:22px;color:var(--muted);text-align:center}
+.lb li .n{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb li .v{font-family:Fredoka,sans-serif;white-space:nowrap}
+.lb li.moi{outline:2px solid var(--ok)}
+.note{font-size:.8rem;color:var(--muted);margin:4px 0}
+.ligne{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.ligne:last-child{border:0;font-weight:800}
+table.recs{width:100%;border-collapse:collapse;font-size:.85rem}
+table.recs td,table.recs th{padding:5px 4px;border-bottom:1px solid var(--line);text-align:left}
+table.recs td.b{white-space:nowrap;font-family:Fredoka,sans-serif}
+.picks{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.picks .carte{flex:0 0 58px}
+@media (max-width:420px){
+  .stats{gap:4px}.st b{font-size:.92rem}.st small{font-size:.56rem}
+  .calc{font-size:1.3rem}.calc span{min-width:56px}
+  .carte .em{font-size:1.2rem}.carte .v{font-size:.95rem}.carte .nm{font-size:.46rem}
+}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <!-- MENU -->
+  <section id="menu">
+    <div class="logo">🔥🍳</div>
+    <h2>Coup de Feu</h2>
+    <p class="sous">Compose des recettes avec tes cartes-ingrédients, recrute ta brigade et tiens ta cuisine le plus longtemps possible.</p>
+    <div class="choix">
+      <button class="btn cache" id="bReprendre">▶️ Reprendre la partie<small id="reprInfo"></small></button>
+      <button class="btn" id="bJour">📅 Partie du jour<small id="jourInfo"></small></button>
+      <button class="btn ghost" id="bLibre">🎲 Partie libre<small>Tirage au hasard, illimité</small></button>
+      <button class="btn ghost" id="bClass">🏆 Classements</button>
+    </div>
+    <p class="rec cache" id="monRecord"></p>
+  </section>
+
+  <!-- JEU -->
+  <section id="jeu" class="cache">
+    <div class="haut"><span class="etape" id="etape"></span><span class="tag" id="modeTag"></span></div>
+    <div class="crit cache" id="critBan"></div>
+    <div class="brigade" id="brigade"></div>
+    <div class="stats">
+      <div class="st"><small>Objectif</small><b id="sObj">0</b></div>
+      <div class="st"><small>Score</small><b id="sScore">0</b><div class="barre"><i id="sBarre"></i></div></div>
+      <div class="st"><small>Caisse</small><b id="sArgent">0 €</b></div>
+      <div class="st"><small>Plats</small><b id="sPlats">4</b></div>
+      <div class="st"><small>Jets</small><b id="sJets">3</b></div>
+    </div>
+    <div id="tuto" class="cache"></div>
+
+    <div id="zoneService">
+      <div class="table" id="table">
+        <div class="recette" id="recette">Choisis tes cartes</div>
+        <div class="calc"><span class="pts" id="pts">0</span><span class="x">×</span><span class="mul" id="mul">0</span></div>
+        <div class="plat" id="plat"></div>
+        <div class="pose" id="pose"></div>
+        <span class="vite cache" id="vite">touche pour accélérer</span>
+      </div>
+      <div class="main" id="main"></div>
+      <div class="actions">
+        <button class="btn ghost" id="bTri">⇅ Saveur</button>
+        <button class="btn ghost" id="bRecettes" title="Recettes">📖</button>
+        <button class="btn" id="bJeter">🗑️ Jeter <small id="jLeft"></small></button>
+        <button class="btn" id="bServir">🍽️ Servir</button>
+      </div>
+    </div>
+
+    <div id="boutique" class="cache">
+      <h3>🛒 Boutique <small class="muted" id="bqInfo"></small></h3>
+      <div class="etal" id="etalBrigade"></div>
+      <div class="etal" id="etalCuisine"></div>
+      <div class="bas">
+        <button class="btn ghost ico" id="bRelancer">🔄</button>
+        <button class="btn ghost ico" id="bRecettes2" title="Recettes">📖</button>
+        <button class="btn" id="bSuivant">Service suivant ▶</button>
+      </div>
+      <p class="note">Astuce : fais glisser les membres de ta brigade pour changer leur ordre. Touche-en un pour le revendre.</p>
+    </div>
+  </section>
+
+  <!-- FIN -->
+  <section id="fin" class="cache"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const el = Base.el;
+const stock = Base.stock("cdf_");
+
+/* =================== DONNÉES =================== */
+const FAM = {
+  L:{nom:"Légumes", em:"🥕", noms:["Radis","Navet","Poireau","Carotte","Courgette","Poivron","Tomate","Aubergine","Champignon","Asperge","Artichaut","Cèpe","Truffe"]},
+  V:{nom:"Viandes", em:"🍗", noms:["Lardons","Saucisse","Jambon","Poulet","Porc","Dinde","Agneau","Canard","Veau","Bœuf","Magret","Filet mignon","Wagyu"]},
+  P:{nom:"Poissons",em:"🐟", noms:["Sardine","Anchois","Maquereau","Moules","Merlu","Truite","Crevettes","Saumon","Dorade","Thon","St-Jacques","Homard","Caviar"]},
+  F:{nom:"Fromages",em:"🧀", noms:["Fromage frais","Mozzarella","Feta","Emmental","Cantal","Raclette","Tomme","Camembert","Brie","Reblochon","Comté","Roquefort","Beaufort"]}
+};
+const FAMS = ["L","V","P","F"];
+
+/* Ordre = priorité de reconnaissance (de la plus forte à la plus faible) */
+const RECETTES = [
+  {id:"grandmenu",  nom:"Grand menu",      cond:"Assortiment d'une même famille", p:100,m:8, ip:40,im:4},
+  {id:"carre",      nom:"Carré du chef",   cond:"4 cartes de même saveur",        p:60, m:7, ip:30,im:3},
+  {id:"complet",    nom:"Menu complet",    cond:"Un Trio + un Duo",               p:40, m:4, ip:25,im:2},
+  {id:"terroir",    nom:"Plat du terroir", cond:"5 cartes de la même famille",    p:35, m:4, ip:15,im:2},
+  {id:"assortiment",nom:"Assortiment",     cond:"5 saveurs qui se suivent",       p:30, m:4, ip:30,im:3},
+  {id:"trio",       nom:"Trio",            cond:"3 cartes de même saveur",        p:30, m:3, ip:20,im:2},
+  {id:"tour",       nom:"Tour du monde",   cond:"Les 4 familles différentes",     p:25, m:3, ip:20,im:2},
+  {id:"doubleduo",  nom:"Double duo",      cond:"2 paires",                       p:20, m:2, ip:20,im:1},
+  {id:"duo",        nom:"Duo",             cond:"2 cartes de même saveur",        p:10, m:2, ip:15,im:1},
+  {id:"bouchee",    nom:"Bouchée",         cond:"1 carte (la meilleure)",         p:5,  m:1, ip:10,im:1}
+];
+const REC = Object.fromEntries(RECETTES.map(r => [r.id, r]));
+const AVEC_DUO = ["duo","doubleduo","trio","complet","carre"];
+
+const RARETE = ["Commun","Rare","Légendaire"], PRIX_R = [4,7,12];
+/* f(ctx, membre) → {p, m, x} (points ajoutés, mult. ajouté, mult. multiplié) ou null */
+const MEMBRES = {
+  commis:     {nom:"Commis",           em:"👦", r:0, txt:"+4 au multiplicateur", f:() => ({m:4})},
+  poissonnier:{nom:"Poissonnier",      em:"🎣", r:0, txt:"+3 au multiplicateur par carte Poisson jouée", f:c => c.fam.P ? {m:3*c.fam.P} : null},
+  boucher:    {nom:"Boucher",          em:"🥩", r:0, txt:"+3 au multiplicateur par carte Viande jouée", f:c => c.fam.V ? {m:3*c.fam.V} : null},
+  maraicher:  {nom:"Maraîcher",        em:"🧑‍🌾", r:0, txt:"+3 au multiplicateur par carte Légume jouée", f:c => c.fam.L ? {m:3*c.fam.L} : null},
+  fromager:   {nom:"Fromager",         em:"🫕", r:0, txt:"+3 au multiplicateur par carte Fromage jouée", f:c => c.fam.F ? {m:3*c.fam.F} : null},
+  couteau:    {nom:"Couteau de chef",  em:"🔪", r:0, txt:"+50 points si le plat contient 5 cartes", f:c => c.nJoue === 5 ? {p:50} : null},
+  sel:        {nom:"Sel fin",          em:"🧂", r:0, txt:"+10 points par carte de saveur 2 à 5", f:c => { const n = c.sc.filter(x => x.v >= 2 && x.v <= 5).length; return n ? {p:10*n} : null; }},
+  tirelire:   {nom:"Tirelire",         em:"🐷", r:0, txt:"+2 € à chaque service réussi", f:() => null},
+  saucier:    {nom:"Saucier",          em:"🥄", r:0, txt:"+8 au multiplicateur si le plat contient un Duo (Duo, Double duo, Trio, Menu complet, Carré)", f:c => AVEC_DUO.includes(c.rec) ? {m:8} : null},
+  livreur:    {nom:"Livreur",          em:"🛵", r:0, txt:"+30 points si le plat compte 3 cartes ou moins", f:c => c.nJoue <= 3 ? {p:30} : null},
+  wok:        {nom:"Wok",              em:"🥘", r:1, txt:"Multiplicateur ×2 sur un Assortiment (ou un Grand menu)", f:c => (c.rec === "assortiment" || c.rec === "grandmenu") ? {x:2} : null},
+  minuteur:   {nom:"Minuteur",         em:"⏲️", r:1, txt:"Multiplicateur ×3 sur le dernier plat du service", f:c => c.dernier ? {x:3} : null},
+  tablier:    {nom:"Tablier taché",    em:"🥼", r:1, txt:"+3 au multiplicateur par jet non utilisé", f:c => c.jets ? {m:3*c.jets} : null},
+  grandmere:  {nom:"Livre de grand-mère", em:"📒", r:1, txt:"+5 points par niveau total des recettes", f:c => ({p:5*c.niveaux})},
+  cocotte:    {nom:"Cocotte en fonte", em:"🍲", r:1, txt:"+1 au multiplicateur à vie à chaque Trio servi", compteur:"mult.", f:(c, mb) => mb.x ? {m:mb.x} : null},
+  plongeur:   {nom:"Plongeur",         em:"🧽", r:1, txt:"+2 points à vie par carte jetée", compteur:"pts", f:(c, mb) => mb.x ? {p:mb.x} : null},
+  sommelier:  {nom:"Sommelier",        em:"🍷", r:1, txt:"+1 au multiplicateur par tranche de 5 € en caisse", f:c => c.argent >= 5 ? {m:Math.floor(c.argent/5)} : null},
+  mandoline:  {nom:"Mandoline",        em:"🥒", r:1, txt:"+2 au multiplicateur par carte de saveur paire", f:c => { const n = c.sc.filter(x => x.v % 2 === 0).length; return n ? {m:2*n} : null; }},
+  etoile:     {nom:"Chef étoilé",      em:"⭐", r:2, txt:"Multiplicateur ×1,5 par autre membre de la brigade", f:c => c.nb > 1 ? {x:Math.pow(1.5, c.nb - 1)} : null},
+  maitre:     {nom:"Maître d'hôtel",   em:"🎩", r:2, txt:"+1 plat à chaque service", f:() => null}
+};
+
+const AMELIO = {
+  bio:    {nom:"Bio",      em:"🌱", txt:"+4 au multiplicateur quand elle est jouée"},
+  epice:  {nom:"Épicée",   em:"🌶️", txt:"Multiplicateur ×1,5 quand elle est jouée"},
+  doree:  {nom:"Dorée",    em:"✨", txt:"+3 € si elle reste en main à la fin d'un service réussi"},
+  surgele:{nom:"Surgelée", em:"❄️", txt:"Revient dans ta main après avoir été servie ou jetée"}
+};
+
+const CRITIQUES = [
+  {id:"poisson",  nom:"Allergique",            txt:"les Poissons ne rapportent rien."},
+  {id:"viande",   nom:"Végétarien",            txt:"les Viandes ne rapportent rien."},
+  {id:"lactose",  nom:"Intolérant au lactose", txt:"les Fromages ne rapportent rien."},
+  {id:"presse",   nom:"Pressé",                txt:"un plat de plus que d'habitude, mais aucun jet."},
+  {id:"difficile",nom:"Difficile",             txt:"les recettes de moins de 4 cartes ne comptent pas."},
+  {id:"moites",   nom:"Mains moites",          txt:"tu joues avec 6 cartes en main."},
+  {id:"exigeant", nom:"Exigeant",              txt:"chaque recette ne compte qu'une fois dans le service."},
+  {id:"gourmet",  nom:"Gourmet",               txt:"les cartes de saveur 1 à 5 ne rapportent rien."}
+];
+const CRIT = Object.fromEntries(CRITIQUES.map(c => [c.id, c]));
+const SERVICES = ["Midi","Soir","Le critique"];
+const OBJ_BASE = [300, 800, 2000, 5000, 11000, 20000, 35000, 50000];
+const OBJ_MULT = [1, 1.5, 2];
+const GAIN = [3, 4, 5];
+const NB_JOURS = 8, MAX_BRIGADE = 5, DECK_MIN = 40;
+
+/* =================== OUTILS =================== */
+const fmt = n => { n = Math.floor(n || 0); if(!isFinite(n)) return "∞"; return Math.abs(n) < 1e13 ? n.toLocaleString("fr-FR") : n.toExponential(2).replace(".", ","); };
+const fmtM = n => { if(!isFinite(n)) return "∞"; return Number.isInteger(n) ? fmt(n) : n < 1000 ? String(Math.round(n * 10) / 10).replace(".", ",") : fmt(n); };
+const h32 = s => { let h = 2166136261; for(let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
+const START = Date.UTC(2026, 10, 1);
+function jourParis(){
+  const p = new Intl.DateTimeFormat("en-CA", {timeZone:"Europe/Paris", year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date());
+  const [y, m, d] = p.split("-").map(Number);
+  return Math.floor((Date.UTC(y, m - 1, d) - START) / 864e5);
+}
+function idJoueur(){
+  let id = ""; try{ id = JSON.parse(localStorage.getItem("salle_joueur_id")) || ""; }catch(e){}
+  if(!/^[a-z0-9]{20}$/.test(id)){
+    const a = new Uint8Array(20); crypto.getRandomValues(a);
+    id = [...a].map(x => "abcdefghijklmnopqrstuvwxyz0123456789"[x % 36]).join("");
+    try{ localStorage.setItem("salle_joueur_id", JSON.stringify(id)); }catch(e){}
+  }
+  return id;
+}
+
+let R = null;            // la partie en cours (sauvegardée telle quelle)
+let busy = false, vitesse = 1, selection = [];
+let son = stock.lire("son", true), tri = stock.lire("tri", "v");
+
+/* ----- Hasard reproductible (même tirage pour tous en partie du jour) ----- */
+function graine(flux, cle){ R.rs[flux] = h32(R.seed + "|" + flux + "|" + cle) | 0; }
+function hasard(flux){
+  let s = R.rs[flux] | 0; s = s + 0x6D2B79F5 | 0; R.rs[flux] = s;
+  let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+const entier = (flux, n) => Math.floor(hasard(flux) * n);
+function melanger(a, flux){ for(let i = a.length - 1; i > 0; i--){ const j = entier(flux, i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ----- Sons ----- */
+let actx = null;
+function bip(freq, dur, type, vol){
+  if(!son) return;
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    o.type = type || "triangle"; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || .12, t); g.gain.exponentialRampToValueAtTime(.001, t + (dur || .12));
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + (dur || .12));
+  }catch(e){}
+}
+const sonPiece = () => { bip(988, .08, "square", .06); setTimeout(() => bip(1319, .14, "square", .06), 70); };
+
+const dodo = ms => new Promise(r => setTimeout(r, ms / vitesse));
+
+/* =================== RECETTES =================== */
+function evaluer(cartes){
+  const n = cartes.length;
+  if(!n) return null;
+  const par = {};
+  cartes.forEach(c => (par[c.v] = par[c.v] || []).push(c));
+  const groupes = Object.values(par).sort((a, b) => b.length - a.length || b[0].v - a[0].v);
+  const fams = new Set(cartes.map(c => c.f));
+  const meme = n === 5 && fams.size === 1;
+  const vs = cartes.map(c => c.v).sort((a, b) => a - b);
+  const suite = n === 5 && vs.every((v, i) => i === 0 || v === vs[i - 1] + 1);
+  const g0 = groupes[0], g1 = groupes[1];
+  let id, sc;
+  if(suite && meme){ id = "grandmenu"; sc = cartes; }
+  else if(g0.length === 4){ id = "carre"; sc = g0; }
+  else if(g0.length === 3 && g1 && g1.length >= 2){ id = "complet"; sc = cartes; }
+  else if(meme){ id = "terroir"; sc = cartes; }
+  else if(suite){ id = "assortiment"; sc = cartes; }
+  else if(g0.length === 3){ id = "trio"; sc = g0; }
+  else if(fams.size === 4){ id = "tour"; sc = cartes; }
+  else if(g0.length === 2 && g1 && g1.length === 2){ id = "doubleduo"; sc = g0.concat(g1); }
+  else if(g0.length === 2){ id = "duo"; sc = g0; }
+  else { id = "bouchee"; sc = [cartes.reduce((a, b) => b.v > a.v ? b : a)]; }
+  sc = cartes.filter(c => sc.includes(c));   // garde l'ordre de la main
+  return {id, sc};
+}
+const niveau = id => R.niv[id] || 1;
+const baseRec = id => { const r = REC[id], l = niveau(id) - 1; return {p:r.p + l * r.ip, m:r.m + l * r.im}; };
+function neRapportePas(c){
+  if(!R || R.svc !== 2) return false;
+  const k = R.sv.crit;
+  return (k === "poisson" && c.f === "P") || (k === "viande" && c.f === "V") || (k === "lactose" && c.f === "F") || (k === "gourmet" && c.v <= 5);
+}
+
+/* =================== PARTIE =================== */
+function nouveauPaquet(){
+  const d = []; let id = 0;
+  FAMS.forEach(f => { for(let v = 1; v <= 13; v++) d.push({id:id++, f, v, e:null}); });
+  return d;
+}
+function nouvellePartie(mode){
+  const j = jourParis();
+  const seed = mode === "jour" ? "cdf-jour-" + j : "cdf-libre-" + Date.now() + "-" + Math.random();
+  let premier = false;
+  if(mode === "jour"){
+    const n = stock.lire("jour_essais_" + j, 0);
+    premier = n === 0;
+    stock.ecrire("jour_essais_" + j, n + 1);
+  }
+  R = {v:1, mode, j: mode === "jour" ? j : null, premier, seed, rs:{},
+       jour:1, svc:0, phase:"service", argent:4, infini:false,
+       paquet:nouveauPaquet(), prochainId:52, niv:{}, brigade:[],
+       stats:{total:0, plat:0, platRec:"", plats:0, recettes:{}},
+       sv:null, bq:null};
+  debutService();
+}
+function critiqueDu(jour){
+  let prec = null, c = null;
+  for(let d = 1; d <= jour; d++){
+    const liste = CRITIQUES.filter(x => x.id !== prec);
+    c = liste[h32(R.seed + "|crit|" + d) % liste.length].id; prec = c;
+  }
+  return c;
+}
+function objectif(jour, svc){
+  const b = jour <= NB_JOURS ? OBJ_BASE[jour - 1] : OBJ_BASE[NB_JOURS - 1] * Math.pow(1.9, jour - NB_JOURS);
+  const v = b * OBJ_MULT[svc];
+  const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(v)) - 1));
+  return Math.round(v / p) * p;
+}
+const numService = () => (R.jour - 1) * 3 + R.svc;
+const aMembre = id => R.brigade.some(m => m.id === id);
+
+function debutService(){
+  const crit = R.svc === 2 ? critiqueDu(R.jour) : null;
+  graine("paquet", numService());
+  const pioche = melanger(R.paquet.map(c => c.id), "paquet");
+  R.sv = {
+    crit, obj:objectif(R.jour, R.svc), score:0,
+    plats:4 + (crit === "presse" ? 1 : 0) + (aMembre("maitre") ? 1 : 0),
+    jets: crit === "presse" ? 0 : 3,
+    taille: crit === "moites" ? 6 : 8,
+    pioche, main:[], defausse:[], servies:[]
+  };
+  R.phase = "service";
+  selection = [];
+  piocher();
+  sauver(); rendre();
+}
+const carte = id => R.paquet.find(c => c.id === id);
+function piocher(){
+  const sv = R.sv;
+  while(sv.main.length < sv.taille && sv.pioche.length) sv.main.push(sv.pioche.shift());
+  trier();
+}
+function trier(){
+  const m = R.sv.main.map(carte).filter(Boolean);
+  if(tri === "v") m.sort((a, b) => b.v - a.v || FAMS.indexOf(a.f) - FAMS.indexOf(b.f));
+  else m.sort((a, b) => FAMS.indexOf(a.f) - FAMS.indexOf(b.f) || b.v - a.v);
+  R.sv.main = m.map(c => c.id);
+}
+function sauver(){ if(R && R.phase !== "fin") stock.ecrire("partie", R); }
+
+/* =================== RENDU =================== */
+function vueCarte(c, opts){
+  opts = opts || {};
+  const d = el("div", null, "carte " + c.f + (c.e === "doree" ? " doree" : "") + (c.e === "surgele" ? " surgele" : ""));
+  d.dataset.id = c.id;
+  d.append(el("span", String(c.v), "v"), el("span", FAM[c.f].em, "em"), el("span", FAM[c.f].noms[c.v - 1], "nm"));
+  if(c.e) d.appendChild(el("span", AMELIO[c.e].em, "bad"));
+  if(opts.deb) d.classList.add("deb");
+  return d;
+}
+function montrer(ecran){
+  ["menu","jeu","fin"].forEach(k => $(k).classList.toggle("cache", k !== ecran));
+}
+function rendre(){
+  if(!R){ rendreMenu(); return; }
+  if(R.phase === "fin") return;
+  montrer("jeu");
+  const sv = R.sv, enService = R.phase === "service";
+  $("etape").textContent = `Journée ${R.jour}${R.infini ? " ♾️" : "/" + NB_JOURS} · ${SERVICES[R.svc]}`;
+  $("modeTag").textContent = R.mode === "jour" ? `📅 Partie du jour n°${R.j + 1}` : "🎲 Partie libre";
+  const cb = $("critBan");
+  if(R.svc === 2 && sv.crit){
+    cb.className = "crit"; cb.innerHTML = "";
+    cb.append("🧐 Le critique ", el("b", CRIT[sv.crit].nom), " : " + CRIT[sv.crit].txt);
+  }else{
+    const c = CRIT[critiqueDu(R.jour)];
+    cb.className = "crit annonce"; cb.textContent = `Ce soir, le critique sera « ${c.nom} » : ${c.txt}`;
+  }
+  rendreBrigade();
+  $("sObj").textContent = fmt(sv.obj);
+  $("sScore").textContent = fmt(sv.score);
+  $("sBarre").style.width = Math.min(100, sv.score / sv.obj * 100) + "%";
+  $("sArgent").textContent = R.argent + " €";
+  $("sPlats").textContent = sv.plats;
+  $("sJets").textContent = sv.jets;
+  $("zoneService").classList.toggle("cache", !enService);
+  $("boutique").classList.toggle("cache", R.phase !== "boutique");
+  if(enService){ rendreMain(); majApercu(); }
+  else if(R.bq) rendreBoutique();
+  rendreTuto();
+}
+function rendreMain(){
+  const z = $("main"); z.innerHTML = "";
+  R.sv.main.forEach(id => {
+    const c = carte(id); if(!c) return;
+    const d = vueCarte(c, {deb:neRapportePas(c)});
+    if(selection.includes(id)) d.classList.add("sel");
+    d.onclick = () => basculer(id);
+    z.appendChild(d);
+  });
+  $("bTri").textContent = tri === "v" ? "⇅ Saveur" : "⇅ Famille";
+  $("jLeft").textContent = "(" + R.sv.jets + ")";
+  $("bJeter").disabled = busy || !selection.length || !R.sv.jets;
+  $("bServir").disabled = busy || !selection.length;
+}
+function majApercu(){
+  if(busy) return;
+  const cs = selection.map(carte);
+  const ev = evaluer(cs);
+  if(!ev){
+    $("recette").textContent = "Choisis jusqu'à 5 cartes";
+    $("pts").textContent = "0"; $("mul").textContent = "0";
+  }else{
+    const b = baseRec(ev.id);
+    $("recette").innerHTML = "";
+    $("recette").append(REC[ev.id].nom, el("small", "niv. " + niveau(ev.id)));
+    $("pts").textContent = fmt(b.p); $("mul").textContent = fmtM(b.m);
+  }
+  $("plat").textContent = ""; $("pose").innerHTML = "";
+  $("bJeter").disabled = busy || !selection.length || !R.sv.jets;
+  $("bServir").disabled = busy || !selection.length;
+}
+function basculer(id){
+  if(busy || R.phase !== "service") return;
+  const i = selection.indexOf(id);
+  if(i >= 0) selection.splice(i, 1);
+  else if(selection.length < 5) selection.push(id);
+  else { Base.toast("5 cartes au maximum par plat"); return; }
+  bip(520 + selection.length * 60, .05);
+  if(tutoEtape() === 0 && selection.length) tutoSuivant();
+  rendreMain(); majApercu();
+}
+
+/* ----- Brigade (glisser-déposer pour réordonner) ----- */
+function rendreBrigade(){
+  const z = $("brigade"); z.innerHTML = "";
+  for(let i = 0; i < MAX_BRIGADE; i++){
+    const mb = R.brigade[i];
+    if(!mb){ z.appendChild(el("div", "+", "mb vide")); continue; }
+    const M = MEMBRES[mb.id];
+    const d = el("div", null, "mb r" + M.r);
+    d.dataset.i = i;
+    d.append(el("span", M.em, "e"), el("span", M.nom, "n"));
+    if(M.compteur && mb.x) d.appendChild(el("span", "+" + mb.x, "c"));
+    brancherGlisser(d, i);
+    z.appendChild(d);
+  }
+}
+function brancherGlisser(d, i){
+  let x0 = 0, y0 = 0, bouge = false, id = null, rects = null;
+  d.onpointerdown = e => {
+    if(busy) return;
+    id = e.pointerId; x0 = e.clientX; y0 = e.clientY; bouge = false;
+    rects = [...$("brigade").children].slice(0, R.brigade.length).map(n => n.getBoundingClientRect());
+    try{ d.setPointerCapture(id); }catch(_){}
+  };
+  d.onpointermove = e => {
+    if(e.pointerId !== id) return;
+    const dx = e.clientX - x0;
+    if(!bouge && Math.abs(dx) + Math.abs(e.clientY - y0) > 8) bouge = true;
+    if(bouge){ d.classList.add("drag"); d.style.transform = `translate(${dx}px,${e.clientY - y0}px)`; }
+  };
+  const fin = e => {
+    if(e.pointerId !== id) return;
+    id = null;
+    if(!bouge){ infoMembre(i); return; }
+    const cx = e.clientX;
+    let cible = rects.findIndex(r => cx < r.left + r.width / 2);
+    if(cible < 0) cible = rects.length - 1;
+    else if(cible > i) cible--;
+    const [m] = R.brigade.splice(i, 1);
+    R.brigade.splice(Math.max(0, cible), 0, m);
+    sauver(); rendreBrigade();
+  };
+  d.onpointerup = fin;
+  d.onpointercancel = e => { id = null; d.classList.remove("drag"); d.style.transform = ""; };
+}
+const prixVente = mb => Math.max(1, Math.floor(PRIX_R[MEMBRES[mb.id].r] / 2));
+function infoMembre(i){
+  const mb = R.brigade[i], M = MEMBRES[mb.id];
+  const box = el("div");
+  box.appendChild(el("p", RARETE[M.r], "rar rar" + M.r));
+  box.appendChild(el("p", M.txt));
+  if(M.compteur) box.appendChild(el("p", `Bonus accumulé : +${mb.x || 0} ${M.compteur}`, "muted"));
+  const row = el("div", null, "bas"); row.style.marginTop = "10px";
+  const g = el("button", "◀", "btn ghost"), dr = el("button", "▶", "btn ghost"), v = el("button", `Revendre (+${prixVente(mb)} €)`, "btn");
+  g.disabled = i === 0; dr.disabled = i === R.brigade.length - 1; v.disabled = busy;
+  const dlg = Base.fenetre(M.em + " " + M.nom, box, {bouton:"Fermer"});
+  const bouger = k => { const [m] = R.brigade.splice(i, 1); R.brigade.splice(i + k, 0, m); sauver(); dlg.close(); rendreBrigade(); };
+  g.onclick = () => bouger(-1); dr.onclick = () => bouger(1);
+  v.onclick = () => {
+    if(!confirm(`Revendre ${M.nom} pour ${prixVente(mb)} € ?`)) return;
+    R.argent += prixVente(mb); R.brigade.splice(i, 1); sonPiece();
+    if(R.phase === "service" && mb.id === "maitre" && R.sv.plats > 0) R.sv.plats--;
+    sauver(); dlg.close(); rendre();
+  };
+  row.append(g, v, dr); box.appendChild(row);
+}
+
+/* ----- Effets visuels ----- */
+function flotter(node, txt, cls){
+  if(!node) return;
+  const r = node.getBoundingClientRect();
+  const f = el("div", txt, "flot " + cls);
+  f.style.left = (r.left + r.width / 2) + "px"; f.style.top = (r.top - 6) + "px";
+  document.body.appendChild(f); setTimeout(() => f.remove(), 950);
+}
+function pulser(node){ if(!node) return; node.classList.remove("pulse"); void node.offsetWidth; node.classList.add("pulse"); }
+function bump(id, val){ const n = $(id); n.textContent = val; n.classList.add("bump"); setTimeout(() => n.classList.remove("bump"), 110); }
+
+/* =================== ACTIONS =================== */
+async function servir(){
+  if(busy || R.phase !== "service" || !selection.length) return;
+  busy = true; vitesse = 1;
+  const sv = R.sv;
+  const cartes = selection.map(carte);
+  selection = [];
+  sv.main = sv.main.filter(id => !cartes.some(c => c.id === id));
+  rendreMain();
+  const ev = evaluer(cartes), r = REC[ev.id], b = baseRec(ev.id);
+  $("recette").innerHTML = ""; $("recette").append(r.nom, el("small", "niv. " + niveau(ev.id)));
+  let pts = b.p, mul = b.m;
+  $("pts").textContent = fmt(pts); $("mul").textContent = fmtM(mul); $("plat").textContent = "";
+  const pose = $("pose"); pose.innerHTML = "";
+  const vues = new Map();
+  cartes.forEach(c => { const v = vueCarte(c, {deb:neRapportePas(c)}); if(!ev.sc.includes(c)) v.style.opacity = ".45"; pose.appendChild(v); vues.set(c.id, v); });
+  $("vite").classList.remove("cache");
+  await dodo(450);
+
+  let refus = null;
+  if(sv.crit === "difficile" && cartes.length < 4) refus = "Le critique refuse les recettes de moins de 4 cartes !";
+  if(sv.crit === "exigeant" && sv.servies.includes(ev.id)) refus = "Le critique a déjà goûté ce plat : il ne compte pas !";
+  let plat = 0, note = 0;
+  if(refus){
+    Base.toast("🧐 " + refus); bip(160, .3, "sawtooth", .08);
+    pts = 0; $("pts").textContent = "0";
+    await dodo(900);
+  }else{
+    const actives = [];
+    for(const c of ev.sc){
+      const v = vues.get(c.id);
+      if(neRapportePas(c)){ flotter(v, "✗", "k"); pulser(v); bip(180, .1, "sawtooth", .06); await dodo(320); continue; }
+      actives.push(c);
+      pts += c.v; bump("pts", fmt(pts)); flotter(v, "+" + c.v, "p"); pulser(v); bip(440 + note++ * 50, .08); await dodo(300);
+      if(c.e === "bio"){ mul += 4; bump("mul", fmtM(mul)); flotter(v, "+4 mult", "m"); bip(660, .08); await dodo(300); }
+      if(c.e === "epice"){ mul *= 1.5; bump("mul", fmtM(mul)); flotter(v, "×1,5", "x"); bip(780, .1); await dodo(300); }
+    }
+    if(ev.id === "trio") R.brigade.forEach(mb => { if(mb.id === "cocotte") mb.x = (mb.x || 0) + 1; });
+    const fam = {L:0, V:0, P:0, F:0}; actives.forEach(c => fam[c.f]++);
+    const ctx = {sc:actives, fam, nJoue:cartes.length, rec:ev.id, dernier:sv.plats === 1, jets:sv.jets, argent:R.argent,
+                 niveaux:RECETTES.reduce((s, x) => s + niveau(x.id), 0), nb:R.brigade.length};
+    const tuiles = $("brigade").children;
+    for(let i = 0; i < R.brigade.length; i++){
+      const mb = R.brigade[i], eff = MEMBRES[mb.id].f(ctx, mb);
+      if(!eff) continue;
+      const t = tuiles[i];
+      if(eff.p){ pts += eff.p; bump("pts", fmt(pts)); flotter(t, "+" + fmt(eff.p), "p"); }
+      if(eff.m){ mul += eff.m; bump("mul", fmtM(mul)); flotter(t, "+" + fmtM(eff.m) + " mult", "m"); }
+      if(eff.x){ mul *= eff.x; bump("mul", fmtM(mul)); flotter(t, "×" + fmtM(eff.x), "x"); }
+      pulser(t); bip(520 + note++ * 45, .09, "square", .07);
+      await dodo(380);
+    }
+    plat = Math.min(1e15, Math.floor(pts * mul));
+  }
+  $("plat").textContent = "= " + fmt(plat);
+  if(plat) { bip(880, .2, "triangle", .12); setTimeout(() => bip(1175, .25, "triangle", .1), 90); }
+  await dodo(650);
+
+  sv.score += plat; R.stats.total += plat; R.stats.plats++;
+  R.stats.recettes[ev.id] = (R.stats.recettes[ev.id] || 0) + 1;
+  if(plat > R.stats.plat){ R.stats.plat = plat; R.stats.platRec = r.nom; }
+  sv.servies.push(ev.id);
+  sv.plats--;
+  rangerApres(cartes);
+  piocher();
+  $("vite").classList.add("cache");
+  busy = false; vitesse = 1;
+  if(tutoEtape() === 1) tutoSuivant();
+  if(sv.score >= sv.obj){ rendre(); finService(); return; }
+  if(sv.plats <= 0 || !sv.main.length){ rendre(); await dodo(300); perdu(); return; }
+  sauver(); rendre();
+}
+function rangerApres(cartes){
+  cartes.forEach(c => { if(c.e === "surgele") R.sv.main.push(c.id); else R.sv.defausse.push(c.id); });
+}
+function jeter(){
+  if(busy || R.phase !== "service" || !selection.length || !R.sv.jets) return;
+  const cartes = selection.map(carte);
+  R.sv.main = R.sv.main.filter(id => !selection.includes(id));
+  selection = [];
+  R.sv.jets--;
+  R.brigade.forEach(mb => { if(mb.id === "plongeur") mb.x = (mb.x || 0) + 2 * cartes.length; });
+  rangerApres(cartes);
+  piocher();
+  bip(300, .1, "sine");
+  if(tutoEtape() === 1) tutoSuivant();
+  sauver(); rendre();
+}
+
+/* =================== FIN DE SERVICE =================== */
+function finService(){
+  const sv = R.sv, lignes = [];
+  lignes.push([`Service réussi (${SERVICES[R.svc]})`, GAIN[R.svc]]);
+  if(sv.plats) lignes.push([`Plats non utilisés (${sv.plats})`, sv.plats]);
+  const interet = Math.min(5, Math.floor(R.argent / 5));
+  if(interet) lignes.push(["Intérêts (1 € par 5 € gardés, max 5)", interet]);
+  R.brigade.filter(m => m.id === "tirelire").forEach(() => lignes.push(["🐷 Tirelire", 2]));
+  const dorees = sv.main.map(carte).filter(c => c && c.e === "doree").length;
+  if(dorees) lignes.push([`✨ Cartes dorées en main (${dorees})`, 3 * dorees]);
+  const total = lignes.reduce((s, l) => s + l[1], 0);
+  R.argent += total;
+  const fini = R.jour === NB_JOURS && R.svc === 2 && !R.infini;
+  R.phase = "boutique"; R.bq = null;
+  if(tutoEtape() === 2) tutoSuivant();
+  sauver();
+  sonPiece();
+
+  const box = el("div");
+  box.appendChild(el("p", `Score : ${fmt(sv.score)} / ${fmt(sv.obj)}`, "muted"));
+  lignes.forEach(([t, v]) => { const l = el("div", null, "ligne"); l.append(el("span", t), el("b", "+" + v + " €")); box.appendChild(l); });
+  const l = el("div", null, "ligne"); l.append(el("span", "Total"), el("span", "+" + total + " €")); box.appendChild(l);
+  Base.fenetre("🎉 Service réussi !", box, {bouton: fini ? "Continuer" : "Aller à la boutique", fermeture: () => {
+    if(fini) victoire(); else { ouvrirBoutique(); }
+  }});
+}
+function victoire(){
+  burst();
+  const box = el("div");
+  box.appendChild(el("p", `Tu as tenu ta cuisine pendant ${NB_JOURS} journées : le guide te décerne sa plus belle étoile ! ⭐`));
+  box.appendChild(el("p", "Tu peux continuer en mode infini pour aller chercher le record (les objectifs grimpent encore plus vite), ou t'arrêter ici.", "muted"));
+  const row = el("div", null, "bas");
+  const a = el("button", "♾️ Continuer", "btn"), b2 = el("button", "🏁 Terminer", "btn ghost");
+  row.append(b2, a); box.appendChild(row);
+  let choix = "continuer";
+  const dlg = Base.fenetre("🏆 Victoire !", box, {bouton:"Fermer", fermeture: () => {
+    if(choix === "terminer") finPartie(true);
+    else { R.infini = true; sauver(); ouvrirBoutique(); }
+  }});
+  a.onclick = () => { choix = "continuer"; dlg.close(); };
+  b2.onclick = () => { choix = "terminer"; dlg.close(); };
+}
+function burst(){ ["🔥","⭐","🍳","🎉"].forEach((e, k) => setTimeout(() => { for(let i = 0; i < 6; i++){ const f = el("div", e, "flot k"); f.style.background = "none"; f.style.fontSize = "1.8rem"; f.style.left = (10 + Math.random() * 80) + "vw"; f.style.top = (40 + Math.random() * 40) + "vh"; document.body.appendChild(f); setTimeout(() => f.remove(), 950); } }, k * 200)); }
+function perdu(){
+  bip(220, .3, "sawtooth", .08); setTimeout(() => bip(150, .5, "sawtooth", .08), 250);
+  finPartie(false);
+}
+
+/* =================== BOUTIQUE =================== */
+function ouvrirBoutique(){
+  R.phase = "boutique";
+  if(!R.bq){
+    graine("boutique", numService());
+    R.bq = {relance:5, art:[]};
+    remplirEtal();
+  }
+  sauver(); rendre();
+  if(!stock.lire("tuto_boutique", false)){
+    stock.ecrire("tuto_boutique", true);
+    Base.fenetre("🛒 La boutique", `<p>Entre deux services, dépense tes pourboires :</p><ul>
+      <li><b>Brigade</b> : des cuisiniers et ustensiles qui ajoutent des points ou du multiplicateur à chaque plat (5 places).</li>
+      <li><b>Livres de recettes</b> : une recette monte de niveau et rapporte plus.</li>
+      <li><b>Ingrédients spéciaux</b> : améliore une carte de ton paquet.</li></ul>
+      <p>L'ordre de la brigade compte : les bonus « + » avant les « × » donnent les gros scores. Garde un peu d'argent : 1 € d'intérêt par tranche de 5 €.</p>`, {html:true, bouton:"Compris"});
+  }
+}
+function tirerMembre(exclus){
+  const x = hasard("boutique"), r = x < .7 ? 0 : x < .95 ? 1 : 2;
+  let pool = Object.keys(MEMBRES).filter(k => MEMBRES[k].r === r && !exclus.includes(k));
+  if(!pool.length) pool = Object.keys(MEMBRES).filter(k => !exclus.includes(k));
+  if(!pool.length) return null;
+  return pool[entier("boutique", pool.length)];
+}
+function tirerCuisine(){
+  const x = hasard("boutique");
+  if(x < .45) return {k:"livre", rec:RECETTES[entier("boutique", RECETTES.length)].id, prix:3};
+  if(x < .82) return {k:"ingr", e:Object.keys(AMELIO)[entier("boutique", 4)], prix:3};
+  if(x < .91) return {k:"couperet", prix:3};
+  return {k:"arrivage", prix:2};
+}
+function remplirEtal(){
+  const art = [], exclus = R.brigade.map(m => m.id);
+  for(let i = 0; i < 2; i++){
+    const id = tirerMembre(exclus);
+    if(id){ exclus.push(id); art.push({k:"membre", id, prix:PRIX_R[MEMBRES[id].r]}); }
+  }
+  for(let i = 0; i < 2; i++) art.push(tirerCuisine());
+  R.bq.art = art;
+}
+function infoArticle(a){
+  if(a.k === "membre"){ const M = MEMBRES[a.id]; return {em:M.em, nom:M.nom, txt:M.txt, rar:M.r}; }
+  if(a.k === "livre"){ const r = REC[a.rec], n = niveau(a.rec), b = baseRec(a.rec); return {em:"📕", nom:"Livre : " + r.nom, txt:`Niveau ${n} → ${n + 1} : ${fmt(b.p)} × ${b.m} → ${fmt(b.p + r.ip)} × ${b.m + r.im}`}; }
+  if(a.k === "ingr"){ const e = AMELIO[a.e]; return {em:e.em, nom:"Ingrédient " + e.nom.toLowerCase(), txt:"Améliore une carte de ton paquet : " + e.txt.charAt(0).toLowerCase() + e.txt.slice(1) + "."}; }
+  if(a.k === "couperet") return {em:"🪓", nom:"Tri du frigo", txt:"Retire une carte de ton paquet (au choix parmi 5)."};
+  return {em:"📦", nom:"Arrivage", txt:"Ajoute une carte-ingrédient au hasard à ton paquet."};
+}
+function rendreBoutique(){
+  $("bqInfo").textContent = `· prochain : ${prochainLibelle()}`;
+  [["etalBrigade", 0, 2], ["etalCuisine", 2, 4]].forEach(([z, a0, a1]) => {
+    const zone = $(z); zone.innerHTML = "";
+    R.bq.art.slice(a0, a1).forEach((a, k) => {
+      const i = a0 + k, inf = infoArticle(a);
+      const d = el("div", null, "art" + (a.vendu ? " vendu" : ""));
+      d.appendChild(el("span", inf.em, "e"));
+      d.appendChild(el("b", inf.nom));
+      if(inf.rar != null) d.appendChild(el("span", RARETE[inf.rar], "rar rar" + inf.rar));
+      d.appendChild(el("p", inf.txt));
+      const bt = el("button", a.vendu ? "Acheté" : `Acheter · ${a.prix} €`, "btn petit");
+      bt.disabled = a.vendu || R.argent < a.prix || (a.k === "membre" && R.brigade.length >= MAX_BRIGADE) || (a.k === "couperet" && R.paquet.length <= DECK_MIN);
+      if(!a.vendu && a.k === "membre" && R.brigade.length >= MAX_BRIGADE) bt.textContent = "Brigade complète";
+      bt.onclick = () => acheter(i);
+      d.appendChild(bt);
+      zone.appendChild(d);
+    });
+  });
+  $("bRelancer").textContent = `🔄 ${R.bq.relance} €`;
+  $("bRelancer").title = "Relancer la boutique";
+  $("bRelancer").disabled = R.argent < R.bq.relance;
+}
+function prochainLibelle(){
+  let j = R.jour, s = R.svc + 1;
+  if(s > 2){ s = 0; j++; }
+  return `Journée ${j} · ${SERVICES[s]} (objectif ${fmt(objectif(j, s))})`;
+}
+function acheter(i){
+  const a = R.bq.art[i];
+  if(!a || a.vendu || R.argent < a.prix) return;
+  if(a.k === "membre"){
+    if(R.brigade.length >= MAX_BRIGADE) return;
+    R.brigade.push({id:a.id, x:0});
+    payer(a); Base.toast(MEMBRES[a.id].em + " " + MEMBRES[a.id].nom + " rejoint ta brigade !");
+  }else if(a.k === "livre"){
+    R.niv[a.rec] = niveau(a.rec) + 1;
+    payer(a); Base.toast(`📕 ${REC[a.rec].nom} passe au niveau ${R.niv[a.rec]} !`);
+  }else if(a.k === "ingr" || a.k === "couperet"){
+    choisirCarte(a, c => {
+      if(a.k === "ingr"){ c.e = a.e; Base.toast(`${AMELIO[a.e].em} ${FAM[c.f].noms[c.v - 1]} est maintenant ${AMELIO[a.e].nom.toLowerCase()} !`); }
+      else { R.paquet = R.paquet.filter(x => x.id !== c.id); Base.toast(`🪓 ${FAM[c.f].noms[c.v - 1]} retiré du paquet (${R.paquet.length} cartes)`); }
+      payer(a);
+    });
+    return;
+  }else if(a.k === "arrivage"){
+    const c = {id:R.prochainId++, f:FAMS[entier("boutique", 4)], v:1 + entier("boutique", 13), e:null};
+    R.paquet.push(c);
+    payer(a); Base.toast(`📦 Arrivage : ${FAM[c.f].noms[c.v - 1]} (${c.v}) ajouté au paquet !`);
+  }
+}
+function payer(a){ R.argent -= a.prix; a.vendu = true; sonPiece(); sauver(); rendre(); }
+function choisirCarte(a, ok){
+  const ids = R.paquet.map(c => c.id);
+  const pris = [];
+  while(pris.length < Math.min(5, ids.length)){
+    const id = ids[entier("boutique", ids.length)];
+    if(!pris.includes(id)) pris.push(id);
+  }
+  sauver();   // le tirage des 5 cartes est fixé même si on annule
+  const box = el("div");
+  box.appendChild(el("p", a.k === "ingr" ? `Choisis la carte à rendre ${AMELIO[a.e].nom.toLowerCase()} ${AMELIO[a.e].em} :` : "Choisis la carte à retirer du paquet :"));
+  if(a.k === "ingr") box.appendChild(el("p", AMELIO[a.e].txt + ". Une carte n'a qu'une amélioration à la fois.", "note"));
+  const z = el("div", null, "picks");
+  let dlg = null;
+  pris.map(carte).forEach(c => {
+    const v = vueCarte(c);
+    v.onclick = () => { dlg.close(); ok(c); };
+    z.appendChild(v);
+  });
+  box.appendChild(z);
+  dlg = Base.fenetre(a.k === "ingr" ? "🧺 Ingrédient spécial" : "🪓 Tri du frigo", box, {bouton:"Annuler"});
+}
+function relancer(){
+  if(R.argent < R.bq.relance) return;
+  R.argent -= R.bq.relance; R.bq.relance++;
+  remplirEtal(); bip(600, .08); sauver(); rendre();
+}
+function serviceSuivant(){
+  R.svc++;
+  if(R.svc > 2){ R.svc = 0; R.jour++; }
+  R.bq = null;
+  debutService();
+  if(R.svc === 2) Base.fenetre("🧐 Le critique arrive", `<p><b>${CRIT[R.sv.crit].nom}</b> : ${CRIT[R.sv.crit].txt}</p><p class="muted">Objectif : ${fmt(R.sv.obj)} points.</p>`, {html:true, bouton:"En cuisine !"});
+}
+
+/* =================== RECETTES (fenêtre) =================== */
+function fenetreRecettes(){
+  const t = el("table", null, "recs");
+  const h = el("tr"); ["Recette","Niv.","Base","Servie"].forEach(x => h.appendChild(el("th", x))); t.appendChild(h);
+  RECETTES.slice().reverse().forEach(r => {
+    const tr = el("tr");
+    const c1 = el("td"); c1.append(el("b", r.nom), el("br"), el("small", r.cond, "muted"));
+    const b = R ? baseRec(r.id) : {p:r.p, m:r.m};
+    tr.append(c1, el("td", String(R ? niveau(r.id) : 1)), el("td", `${fmt(b.p)} × ${b.m}`, "b"), el("td", String(R ? R.stats.recettes[r.id] || 0 : 0)));
+    t.appendChild(tr);
+  });
+  const box = el("div");
+  box.appendChild(el("p", "Score d'un plat = (points de la recette + saveur des cartes qui comptent) × multiplicateur, puis la brigade s'ajoute de gauche à droite.", "note"));
+  box.appendChild(t);
+  if(R){ const n = el("p", `Paquet : ${R.paquet.length} cartes · améliorées : ${R.paquet.filter(c => c.e).length}`, "note"); box.appendChild(n); }
+  Base.fenetre("📖 Recettes", box, {bouton:"Fermer"});
+}
+
+/* =================== TUTORIEL =================== */
+const TUTO = [
+  "👆 Touche des cartes (jusqu'à 5) pour composer une recette. Les cartes de même saveur font des Duos, des Trios…",
+  "👀 La recette reconnue et ce qu'elle rapporte s'affichent sur la table. Sers-la avec 🍽️ Servir, ou 🗑️ Jette les cartes pour en piocher d'autres.",
+  "🎯 Chaque plat ajoute ses points au score. Atteins l'objectif avant d'avoir servi tous tes plats !"
+];
+const tutoEtape = () => stock.lire("tuto", 0);
+function tutoSuivant(){ stock.ecrire("tuto", tutoEtape() + 1); rendreTuto(); }
+function rendreTuto(){
+  const e = tutoEtape(), t = $("tuto");
+  const on = R && R.phase === "service" && e < TUTO.length;
+  t.classList.toggle("cache", !on);
+  if(on) t.textContent = TUTO[e];
+}
+
+/* =================== FIN DE PARTIE =================== */
+const cleClass = (lv, s) => lv * 1e9 + Math.min(999999999, Math.floor(s));
+function finPartie(gagne){
+  const res = {lv:R.jour, s:Math.floor(R.stats.total), plat:Math.floor(R.stats.plat), rec:R.stats.platRec,
+               gagne, svc:R.svc, mode:R.mode, j:R.j, premier:R.premier, brigade:R.brigade.map(m => m.id), plats:R.stats.plats};
+  res.k = cleClass(res.lv, res.s);
+  R.phase = "fin";
+  stock.effacer("partie");
+  if(R.mode === "jour" && R.j != null) stock.ecrire("jour_fait_" + R.j, Math.max(stock.lire("jour_fait_" + R.j, 0), res.k));
+  // Record local (affiché sur l'accueil)
+  const best = stock.lire("best", {k:0, lv:0, plat:0});
+  if(res.k > best.k){ best.k = res.k; best.lv = res.lv; }
+  if(res.plat > best.plat) best.plat = res.plat;
+  stock.ecrire("best", best);
+  try{
+    const tous = Base.records();
+    tous.coupdefeu = {v:best.k, texte:`Journée ${best.lv} · plus gros plat ${fmt(best.plat)}`, d:Date.now()};
+    localStorage.setItem("salle_records", JSON.stringify(tous));
+  }catch(e){}
+  ajouterLocal("top_jour", {n:Base.joueur.pseudo() || "Moi", lv:res.lv, s:res.s, k:res.k}, "k");
+  if(res.plat > 0) ajouterLocal("top_plat", {n:Base.joueur.pseudo() || "Moi", s:res.plat, r:res.rec, lv:res.lv}, "s");
+  rendreFin(res);
+}
+function ajouterLocal(cle, e, champ){
+  const l = stock.lire(cle, []); l.push({...e, d:Date.now()});
+  l.sort((a, b) => b[champ] - a[champ]); stock.ecrire(cle, l.slice(0, 10));
+}
+function recap(res){
+  const lignes = [
+    `🔥 Coup de Feu — ${res.mode === "jour" ? "Partie du jour n°" + (res.j + 1) : "Partie libre"}`,
+    res.gagne ? `🏆 ${NB_JOURS} journées tenues ! · ${fmt(res.s)} pts` : `Journée ${res.lv} (${SERVICES[res.svc]}) · ${fmt(res.s)} pts`,
+    `🍽️ Plus gros plat : ${fmt(res.plat)}${res.rec ? " (" + res.rec + ")" : ""}`,
+    `👨‍🍳 Brigade : ${res.brigade.length ? res.brigade.map(id => MEMBRES[id].em).join("") : "aucune"}`,
+    location.href.split("?")[0].split("#")[0]
+  ];
+  return lignes.join("\n");
+}
+function rendreFin(res){
+  montrer("fin");
+  const z = $("fin"); z.innerHTML = "";
+  z.appendChild(el("div", res.gagne ? "🏆" : "🧯", "logo"));
+  z.appendChild(el("h2", res.gagne ? "Victoire !" : "Coup de feu fatal…"));
+  z.appendChild(el("p", res.gagne ? `Ta cuisine a tenu ${NB_JOURS} journées.` : `Ta cuisine a fermé pendant le service « ${SERVICES[res.svc]} » de la journée ${res.lv}.`, "muted"));
+  const g = el("div", null, "resume");
+  [["Journée", res.lv], ["Score total", fmt(res.s)], ["Plus gros plat", fmt(res.plat)], ["Plats servis", res.plats]].forEach(([t, v]) => {
+    const s = el("div", null, "st"); s.append(el("small", t), el("b", String(v))); g.appendChild(s);
+  });
+  z.appendChild(g);
+  if(res.rec) z.appendChild(el("p", "Recette du plus gros plat : " + res.rec, "note"));
+
+  const partage = el("button", "📋 Copier le récapitulatif", "btn ghost");
+  partage.onclick = async () => {
+    const t = recap(res);
+    try{
+      if(navigator.share && matchMedia("(pointer:coarse)").matches) await navigator.share({text:t});
+      else { await navigator.clipboard.writeText(t); Base.toast("Récapitulatif copié !"); }
+    }catch(e){ try{ await navigator.clipboard.writeText(t); Base.toast("Récapitulatif copié !"); }catch(_){ Base.fenetre("Récapitulatif", t); } }
+  };
+  z.appendChild(partage);
+
+  const env = el("div"); env.style.width = "100%"; z.appendChild(env);
+  const nom = Base.joueur.pseudo();
+  if(Classement.enLigne && res.s > 0){
+    if(nom) envoyer(res, nom, env);
+    else {
+      env.appendChild(el("p", "Ton prénom pour les classements :"));
+      const row = el("div", null, "namerow"); row.style.margin = "0 auto";
+      const inp = el("input"); inp.className = "champ"; inp.maxLength = 16; inp.placeholder = "Prénom";
+      const ok = el("button", "OK", "btn");
+      const go = () => { const n = inp.value.trim().slice(0, 16); if(!n) return; Base.joueur.changerPseudo(n); env.innerHTML = ""; envoyer(res, n, env); };
+      ok.onclick = go; inp.onkeydown = e => { if(e.key === "Enter") go(); };
+      row.append(inp, ok); env.appendChild(row);
+    }
+  }
+  const row = el("div", null, "bas"); row.style.width = "100%";
+  const m = el("button", "🏠 Menu", "btn ghost"), c = el("button", "🏆 Classements", "btn ghost"), n = el("button", "🎲 Rejouer", "btn");
+  m.onclick = () => { R = null; rendreMenu(); };
+  c.onclick = () => fenetreClassements(res.mode === "jour" ? "premier" : "web");
+  n.onclick = () => { nouvellePartie("libre"); };
+  row.append(m, c, n); z.appendChild(row);
+}
+async function envoyer(res, n, zone){
+  const p = el("p", "Envoi aux classements…", "note"); zone.appendChild(p);
+  const msgs = [];
+  try{
+    const l = await Classement.top("coupdefeu", "k", false);
+    if(l.length < 10 || res.k > l[l.length - 1].k){ await Classement.ajouter("coupdefeu", {n, lv:res.lv, s:Math.min(res.s, 1e15), k:res.k}); msgs.push("🌍 Tu entres dans le top 10 « journée la plus lointaine » !"); }
+  }catch(e){ msgs.push("Classement mondial indisponible pour le moment."); }
+  if(res.plat > 0){
+    try{
+      const l = await Classement.top("coupdefeu_plat", "s", false);
+      if(l.length < 10 || res.plat > l[l.length - 1].s){ await Classement.ajouter("coupdefeu_plat", {n, s:Math.min(res.plat, 1e15), lv:res.lv, r:(res.rec || "?").slice(0, 20)}); msgs.push("🍽️ Ton plat entre dans le top 10 des plus gros plats !"); }
+    }catch(e){}
+  }
+  if(res.mode === "jour" && res.j != null){
+    const corps = {n, lv:res.lv, s:Math.max(1, Math.min(res.s, 1e15)), k:res.k, d:{".sv":"timestamp"}};
+    const url = m => `${CLASSEMENT_URL}/cdf_jour/${res.j}/${m}/${idJoueur()}.json`;
+    if(res.premier){
+      try{ const r = await fetch(url("premier"), {method:"PUT", body:JSON.stringify(corps)}); if(r.ok) msgs.push("📅 Premier essai du jour enregistré."); }catch(e){}
+    }
+    const mb = stock.lire("jour_envoye_" + res.j, 0);
+    if(res.k > mb){
+      try{ const r = await fetch(url("meilleur"), {method:"PUT", body:JSON.stringify(corps)}); if(r.ok){ stock.ecrire("jour_envoye_" + res.j, res.k); msgs.push("📅 Meilleur essai du jour mis à jour."); } }catch(e){}
+    }
+  }
+  p.remove();
+  msgs.forEach(t => zone.appendChild(el("p", t, "note")));
+}
+
+/* =================== CLASSEMENTS =================== */
+async function lireJour(j, m){
+  const r = await fetch(`${CLASSEMENT_URL}/cdf_jour/${j}/${m}.json?orderBy=${encodeURIComponent('"k"')}&limitToLast=10`);
+  if(!r.ok) throw new Error("HTTP " + r.status);
+  const o = (await r.json()) || {};
+  return Object.entries(o).map(([id, e]) => ({...e, id})).filter(e => e && typeof e.k === "number").sort((a, b) => b.k - a.k);
+}
+function liste(zone, l, val, moi){
+  zone.innerHTML = "";
+  if(!l.length){ zone.appendChild(el("p", "Personne pour l'instant. À toi de jouer !", "note")); return; }
+  const ol = el("ol", null, "lb");
+  l.forEach((e, i) => {
+    const li = el("li", null, (moi && moi(e)) ? "moi" : "");
+    li.append(el("span", ["🥇","🥈","🥉"][i] || String(i + 1), "r"), el("span", e.n, "n"), el("span", val(e), "v"));
+    ol.appendChild(li);
+  });
+  zone.appendChild(ol);
+}
+const valJour = e => `J${e.lv} · ${fmt(e.s)}`;
+function fenetreClassements(onglet){
+  const box = el("div");
+  const tabs = el("div", null, "pilules"); tabs.style.marginBottom = "10px";
+  const zone = el("div");
+  const j = jourParis(), id = idJoueur();
+  const T = [
+    ["premier", "📅 1er essai"], ["meilleur", "📅 Meilleur essai"], ["web", "🌍 Journée"], ["plat", "🍽️ Gros plat"]
+  ];
+  const ouvrir = async k => {
+    [...tabs.children].forEach((b, i) => b.classList.toggle("on", T[i][0] === k));
+    zone.innerHTML = ""; zone.appendChild(el("p", "Chargement…", "note"));
+    const titre = {premier:`Partie du jour n°${j + 1} — seul le premier essai compte`, meilleur:`Partie du jour n°${j + 1} — meilleur de tous tes essais`,
+                   web:"Journée la plus lointaine (le score total départage)", plat:"Plus gros plat jamais servi"}[k];
+    const corps = el("div");
+    try{
+      if(!Classement.enLigne) throw new Error("hors ligne");
+      if(k === "premier" || k === "meilleur") liste(corps, await lireJour(j, k), valJour, e => e.id === id);
+      else if(k === "web") liste(corps, await Classement.top("coupdefeu", "k", false), valJour);
+      else liste(corps, await Classement.top("coupdefeu_plat", "s", false), e => fmt(e.s) + (e.r ? " · " + e.r : ""));
+    }catch(err){
+      corps.appendChild(el("p", "Classement en ligne indisponible pour le moment.", "note"));
+      if(k === "web"){ corps.appendChild(el("p", "📱 Sur cet appareil :", "note")); const z2 = el("div"); liste(z2, stock.lire("top_jour", []), valJour); corps.appendChild(z2); }
+      if(k === "plat"){ corps.appendChild(el("p", "📱 Sur cet appareil :", "note")); const z2 = el("div"); liste(z2, stock.lire("top_plat", []), e => fmt(e.s) + (e.r ? " · " + e.r : "")); corps.appendChild(z2); }
+    }
+    zone.innerHTML = ""; zone.appendChild(el("p", titre, "note")); zone.appendChild(corps);
+  };
+  T.forEach(([k, t]) => { const b = el("button", t); b.onclick = () => ouvrir(k); tabs.appendChild(b); });
+  box.append(tabs, zone);
+  Base.fenetre("🏆 Classements", box, {bouton:"Fermer"});
+  ouvrir(onglet || "premier");
+}
+
+/* =================== MENU =================== */
+function rendreMenu(){
+  montrer("menu");
+  const sauv = stock.lire("partie", null);
+  const j = jourParis();
+  $("bReprendre").classList.toggle("cache", !sauv);
+  if(sauv) $("reprInfo").textContent = `${sauv.mode === "jour" ? "Partie du jour" : "Partie libre"} · Journée ${sauv.jour} · ${SERVICES[sauv.svc]}`;
+  const essais = stock.lire("jour_essais_" + j, 0), fait = stock.lire("jour_fait_" + j, 0);
+  $("jourInfo").textContent = `n°${j + 1} · même tirage pour tout le monde` + (essais ? ` · ${essais} essai${essais > 1 ? "s" : ""}` + (fait ? `, meilleur : journée ${Math.floor(fait / 1e9)}` : "") : "");
+  const best = stock.lire("best", null);
+  $("monRecord").classList.toggle("cache", !best || !best.k);
+  if(best && best.k) $("monRecord").textContent = `🏆 Ton record : Journée ${best.lv} · plus gros plat ${fmt(best.plat)}`;
+}
+function lancer(mode){
+  const sauv = stock.lire("partie", null);
+  if(sauv && !confirm("Une partie est en cours : la commencer à nouveau l'abandonne (elle sera comptée comme terminée). Continuer ?")) return;
+  if(sauv){ R = sauv; finPartieSilencieuse(); }
+  if(mode === "jour"){
+    const j = jourParis(), n = stock.lire("jour_essais_" + j, 0);
+    if(n && !confirm("Tu as déjà joué la partie du jour : ce nouvel essai ne comptera que pour le classement « meilleur essai ». On y va ?")) return;
+  }
+  nouvellePartie(mode);
+}
+function finPartieSilencieuse(){
+  // partie abandonnée : on enregistre quand même le résultat atteint
+  const res = {lv:R.jour, s:Math.floor(R.stats.total), plat:Math.floor(R.stats.plat), rec:R.stats.platRec, mode:R.mode, j:R.j, premier:R.premier};
+  res.k = cleClass(res.lv, res.s);
+  stock.effacer("partie");
+  if(R.mode === "jour" && R.j != null) stock.ecrire("jour_fait_" + R.j, Math.max(stock.lire("jour_fait_" + R.j, 0), res.k));
+  const nom = Base.joueur.pseudo();
+  if(nom && Classement.enLigne && res.s > 0) envoyer({...res, gagne:false}, nom, el("div"));
+  R = null;
+}
+
+/* =================== BRANCHEMENTS =================== */
+const bSon = el("button", son ? "🔊" : "🔇", "b-ico"); bSon.title = "Sons";
+bSon.onclick = () => { son = !son; stock.ecrire("son", son); bSon.textContent = son ? "🔊" : "🔇"; if(son) bip(660, .08); };
+const bMenu = el("button", "☰", "b-ico"); bMenu.title = "Menu du jeu";
+bMenu.onclick = () => {
+  if(!R || R.phase === "fin" || busy){ if(!busy){ R = null; rendreMenu(); } return; }
+  sauver(); R = null; rendreMenu(); Base.toast("Partie sauvegardée");
+};
+Base.entete({
+  titre:"Coup de Feu", emoji:"🔥", boutons:[bSon, bMenu],
+  aide:`<p>Tu es un jeune chef : tiens ta cuisine le plus longtemps possible ! Chaque <b>service</b> fixe un score à atteindre ; le rater termine la partie.</p>
+  <ul>
+    <li>Ta main compte <b>8 cartes-ingrédients</b> (4 familles : 🥕 Légumes, 🍗 Viandes, 🐟 Poissons, 🧀 Fromages ; saveur de 1 à 13).</li>
+    <li>Choisis jusqu'à <b>5 cartes</b> : la recette reconnue s'affiche (Duo, Trio, Tour du monde, Assortiment…). Touche 📖 pour toutes les voir.</li>
+    <li><b>🍽️ Servir</b> : 4 plats par service. <b>🗑️ Jeter</b> : 3 jets pour changer des cartes.</li>
+    <li>Score d'un plat = (points de la recette + saveur des cartes) × multiplicateur.</li>
+    <li>Chaque journée : <b>Midi</b>, <b>Soir</b>, puis <b>le critique</b> et sa règle spéciale. 8 journées, puis mode infini.</li>
+    <li>Entre les services, la <b>boutique</b> : brigade (5 places, l'ordre compte, glisse pour réordonner), livres de recettes, ingrédients spéciaux.</li>
+  </ul>
+  <p>📅 La <b>partie du jour</b> est la même pour tout le monde (seul le 1er essai compte au classement principal). 🎲 La <b>partie libre</b> est illimitée.</p>`
+});
+
+$("bJour").onclick = () => lancer("jour");
+$("bLibre").onclick = () => lancer("libre");
+$("bReprendre").onclick = () => { R = stock.lire("partie", null); if(!R){ rendreMenu(); return; } selection = []; if(R.phase === "boutique" && !R.bq) ouvrirBoutique(); else rendre(); };
+$("bClass").onclick = () => fenetreClassements("premier");
+$("bServir").onclick = servir;
+$("bJeter").onclick = jeter;
+$("bTri").onclick = () => { tri = tri === "v" ? "f" : "v"; stock.ecrire("tri", tri); trier(); sauver(); rendreMain(); };
+$("bRecettes").onclick = fenetreRecettes;
+$("bRecettes2").onclick = fenetreRecettes;
+$("bRelancer").onclick = relancer;
+$("bSuivant").onclick = () => { if(R && R.phase === "boutique") serviceSuivant(); };
+$("table").onclick = () => { if(busy) vitesse = 4; };
+document.addEventListener("keydown", e => {
+  if(!R || R.phase !== "service" || e.target.tagName === "INPUT" || document.querySelector("dialog[open]")) return;
+  if(e.key === "Enter") servir();
+  else if(e.key === "Delete" || e.key === "Backspace") jeter();
+  else if(/^[1-8]$/.test(e.key)){ const id = R.sv.main[+e.key - 1]; if(id != null) basculer(id); }
+});
+
+rendreMenu();
+</script>
+</body>
+</html>

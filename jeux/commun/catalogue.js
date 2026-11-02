@@ -33,6 +33,16 @@ window.SALLE_CATALOGUE = [
     ia: true
   },
   {
+    slug: "coupdefeu",
+    title: "Coup de Feu",
+    emoji: "🔥",
+    desc: "Deck-building culinaire façon Balatro : compose des recettes avec tes cartes-ingrédients, recrute ta brigade et tiens ta cuisine face aux services et aux critiques. Partie du jour identique pour tous, plus une partie libre.",
+    tags: ["Cartes", "Réflexion", "Quotidien", "Solo"],
+    colors: ["#ff9a3d", "#c2362b"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "blindtest",
     title: "Blind Test",
     emoji: "🎧",

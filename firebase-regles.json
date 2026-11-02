@@ -2,14 +2,15 @@
   "rules": {
     "scores": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert)$/)",
+        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat)$/)",
         ".indexOn": [
           "s",
-          "t"
+          "t",
+          "k"
         ],
         "$id": {
-          ".write": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert)$/) && !data.exists() && newData.exists()",
-          ".validate": "newData.hasChildren(['n', 'd']) && ($jeu.beginsWith('demineur_') ? newData.hasChildren(['t']) : newData.hasChildren(['s', 'lv']))",
+          ".write": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat)$/) && !data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['n', 'd']) && ($jeu.beginsWith('demineur_') ? newData.hasChildren(['t']) : $jeu === 'coupdefeu' ? newData.hasChildren(['s', 'lv', 'k']) : newData.hasChildren(['s', 'lv']))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
           },
@@ -17,13 +18,19 @@
             ".validate": "newData.val() == now"
           },
           "s": {
-            ".validate": "!$jeu.beginsWith('demineur_') && newData.isNumber() && newData.val() > 0 && newData.val() <= 10000000"
+            ".validate": "!$jeu.beginsWith('demineur_') && newData.isNumber() && newData.val() > 0 && newData.val() <= ($jeu.beginsWith('coupdefeu') ? 1000000000000000 : 10000000)"
           },
           "lv": {
             ".validate": "!$jeu.beginsWith('demineur_') && newData.isNumber() && newData.val() >= 1 && newData.val() <= 999"
           },
           "t": {
             ".validate": "$jeu.beginsWith('demineur_') && newData.isNumber() && newData.val() >= 1000 && newData.val() <= 3600000"
+          },
+          "k": {
+            ".validate": "$jeu === 'coupdefeu' && newData.isNumber() && newData.val() >= newData.parent().child('lv').val() * 1000000000 && newData.val() < (newData.parent().child('lv').val() + 1) * 1000000000"
+          },
+          "r": {
+            ".validate": "$jeu === 'coupdefeu_plat' && newData.isString() && newData.val().length <= 20"
           },
           "$autre": {
             ".validate": false
@@ -85,6 +92,38 @@
           },
           "$autre": {
             ".validate": false
+          }
+        }
+      }
+    },
+    "cdf_jour": {
+      "$j": {
+        "$mode": {
+          ".read": "$j.matches(/^[0-9]{1,5}$/) && $mode.matches(/^(premier|meilleur)$/)",
+          ".indexOn": [
+            "k"
+          ],
+          "$id": {
+            ".write": "$j.matches(/^[0-9]{1,5}$/) && $mode.matches(/^(premier|meilleur)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && ($mode === 'premier' ? !data.exists() : (!data.exists() || newData.child('k').val() > data.child('k').val()))",
+            ".validate": "newData.hasChildren(['n', 's', 'lv', 'k', 'd'])",
+            "n": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+            },
+            "s": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 1000000000000000"
+            },
+            "lv": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 999"
+            },
+            "k": {
+              ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('lv').val() * 1000000000 && newData.val() < (newData.parent().child('lv').val() + 1) * 1000000000"
+            },
+            "d": {
+              ".validate": "newData.val() == now"
+            },
+            "$autre": {
+              ".validate": false
+            }
           }
         }
       }
