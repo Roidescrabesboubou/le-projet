@@ -2,10 +2,10 @@
   "rules": {
     "scores": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(blocs|labyrinthe|demineur_facile|demineur_moyen|demineur_expert)$/)",
+        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|demineur_facile|demineur_moyen|demineur_expert)$/)",
         ".indexOn": ["s", "t"],
         "$id": {
-          ".write": "$jeu.matches(/^(blocs|labyrinthe|demineur_facile|demineur_moyen|demineur_expert)$/) && !data.exists() && newData.exists()",
+          ".write": "$jeu.matches(/^(blocs|labyrinthe|blindtest|demineur_facile|demineur_moyen|demineur_expert)$/) && !data.exists() && newData.exists()",
           ".validate": "newData.hasChildren(['n', 'd']) && ($jeu.beginsWith('demineur_') ? newData.hasChildren(['t']) : newData.hasChildren(['s', 'lv']))",
           "n": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
           "d": { ".validate": "newData.val() == now" },
