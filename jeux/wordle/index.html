@@ -107,6 +107,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;justify-conten
     <button class="btn alt" id="bAgain">♾️ Partie libre</button>
   </div>
   <div class="next" id="nextBox" style="margin-top:14px">Prochain mot dans<b id="countdown">--:--:--</b></div>
+  <div id="ajZone"></div>
   <div id="srZone"></div>
 </div></div>
 
@@ -308,6 +309,7 @@ function showEnd(){
   const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
   const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
   if(mode==="daily")Series.panneau($("srZone"),"wordle",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
+  if(mode==="daily")Series.aujourdhui($("ajZone"),"wordle",jourAuj,{moi:over?{e:guesses.length,g:guesses.includes(answer)}:null,unite:"coup",gagnantsSeulement:true,reussite:true});else $("ajZone").innerHTML="";
   const won=guesses.includes(answer),fin=over;
   $("endTitle").textContent=!fin?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?"🎉 Bravo !":"😢 Perdu…";
   $("endWord").textContent=fin?answer:"?????";

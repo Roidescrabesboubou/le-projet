@@ -158,5 +158,62 @@
     else afficher();
   }
 
-  window.Series = { enLigne, envoyer, panneau, courante, idJoueur };
+  /* ---------- Résultats du jour (anonymes) : moyenne des joueurs ----------
+     resultats/<jeu>/<id> = { j: jour, e: nombre de coups (ou d'erreurs), g: gagné }
+     Une seule entrée par joueur et par jour (écrasée le lendemain). */
+  async function envoyerResultat(jeu, jour, e, g){
+    if(!enLigne) return;
+    const cle = "salle_res_" + jeu;
+    if(lire(cle, null) === jour) return;
+    try{
+      const r = await fetchT(`${URL_BASE}/resultats/${jeu}/${idJoueur()}.json`,
+        {method:"PUT", body:JSON.stringify({j:jour, e:Math.max(0, Math.min(500, e|0)), g:!!g, d:{".sv":"timestamp"}})});
+      if(r.ok || r.status === 401) ecrire(cle, jour); // 401 = déjà envoyé aujourd'hui
+    }catch(err){}
+  }
+
+  /* o = { moi: {e, g} si la partie du jour est finie, sinon null,
+           unite: "coup" | "erreur", gagnantsSeulement: true/false,
+           reussite: afficher le % de réussite } */
+  async function aujourdhui(zone, jeu, jour, o){
+    zone.innerHTML = "";
+    if(!enLigne) return;
+    const box = el("div", null, "sr aj"); zone.appendChild(box);
+    box.appendChild(el("h3", "📊 Les joueurs aujourd'hui"));
+    const ligne = el("p", "Chargement…", "note"); box.appendChild(ligne);
+    if(o.moi) await envoyerResultat(jeu, jour, o.moi.e, o.moi.g);
+    try{
+      const r = await fetchT(`${URL_BASE}/resultats/${jeu}.json?orderBy=${encodeURIComponent('"j"')}&equalTo=${jour}`);
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      const l = Object.values((await r.json()) || {}).filter(x => x && x.j === jour && typeof x.e === "number");
+      box.innerHTML = ""; box.appendChild(el("h3", "📊 Les joueurs aujourd'hui"));
+      if(!l.length){ box.appendChild(el("p", "Personne n'a encore terminé le défi du jour. Sois le premier !", "note")); return; }
+      const base = o.gagnantsSeulement ? l.filter(x => x.g) : l;
+      const moy = base.length ? base.reduce((a, x) => a + x.e, 0) / base.length : null;
+      const u = (n, v) => `${n} ${o.unite}${v >= 2 ? "s" : ""}`;
+      const fmt = v => v.toLocaleString("fr-FR", {maximumFractionDigits:1, minimumFractionDigits:1});
+      const grille = el("div", null, "aj-grid");
+      const tuile = (v, t) => { const d = el("div"); d.append(el("b", v), el("small", t)); grille.appendChild(d); };
+      tuile(moy == null ? "–" : fmt(moy), `${o.unite}s en moyenne${o.gagnantsSeulement ? " (gagnants)" : ""}`);
+      tuile(String(l.length), `joueur${l.length > 1 ? "s" : ""}`);
+      if(o.reussite) tuile(Math.round(l.filter(x => x.g).length / l.length * 100) + " %", "de réussite");
+      box.appendChild(grille);
+      if(o.moi && moy != null && (o.moi.g || !o.gagnantsSeulement)){
+        const diff = o.moi.e - moy;
+        const txt = Math.abs(diff) < 0.05 ? "pile dans la moyenne 😉" : diff < 0 ? "mieux que la moyenne 🎉" : "un peu au-dessus de la moyenne";
+        box.appendChild(el("p", `Toi : ${u(o.moi.e, o.moi.e)}, ${txt}`, "moiligne"));
+      }
+    }catch(err){
+      ligne.textContent = "Statistiques du jour indisponibles pour le moment (connexion ?).";
+    }
+  }
+
+  const css2 = document.createElement("style");
+  css2.textContent = `.aj-grid{display:flex;gap:6px}
+.aj-grid div{flex:1;background:var(--soft);border-radius:12px;padding:8px 4px;text-align:center}
+.aj-grid b{display:block;font-family:Fredoka,sans-serif;font-size:1.4rem}
+.aj-grid small{color:var(--muted);font-size:.72rem}`;
+  document.head.appendChild(css2);
+
+  window.Series = { enLigne, envoyer, panneau, courante, idJoueur, aujourdhui };
 })();

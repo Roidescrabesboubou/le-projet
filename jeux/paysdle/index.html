@@ -131,6 +131,7 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
     <button class="btn alt" id="bAgain">♾️ Partie libre</button>
   </div>
   <div class="next" id="nextBox">Prochain pays dans<b id="countdown">--:--:--</b></div>
+  <div id="ajZone"></div>
   <div id="srZone"></div>
 </div></div>
 
@@ -311,6 +312,7 @@ function showEnd(){
   const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
   const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
   if(mode==="daily")Series.panneau($("srZone"),"paysdle",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
+  if(mode==="daily")Series.aujourdhui($("ajZone"),"paysdle",jourAuj,{moi:over?{e:guesses.length,g:won}:null,unite:"coup",gagnantsSeulement:true,reussite:true});else $("ajZone").innerHTML="";
   $("endTitle").textContent=!over?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?`🎉 Trouvé en ${guesses.length} essai${guesses.length>1?"s":""} !`:"😢 Perdu…";
   $("found").innerHTML=over?`<div class="fl">${flag(answer.iso)}</div><b>${esc(answer.nom)}</b><small>Capitale : ${esc(answer.capitale)} · ${fmtPop(answer.pop)} hab.</small>`:"";
   const pct=s.played?Math.round(s.wins/s.played*100):0;

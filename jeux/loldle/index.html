@@ -137,6 +137,7 @@ tr.new td:nth-child(5){animation-delay:.6s}tr.new td:nth-child(6){animation-dela
     <button class="btn alt" id="bAgain">♾️ Partie libre</button>
   </div>
   <div class="next" id="nextBox">Prochain champion dans<b id="countdown">--:--:--</b></div>
+  <div id="ajZone"></div>
   <div id="srZone"></div>
 </div></div>
 
@@ -303,6 +304,7 @@ function showEnd(){
   const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
   const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
   if(mode==="daily")Series.panneau($("srZone"),"loldle",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
+  if(mode==="daily")Series.aujourdhui($("ajZone"),"loldle",jourAuj,{moi:over?{e:guesses.length,g:true}:null,unite:"coup",gagnantsSeulement:false,reussite:false});else $("ajZone").innerHTML="";
   $("endTitle").textContent=over?`🎉 Trouvé en ${guesses.length} essai${guesses.length>1?"s":""} !`:(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)");
   $("found").innerHTML=over?avatar(answer.name)+`<b>${esc(answer.name)}</b>`:"";
   const avg=s.wins?(s.total/s.wins).toFixed(1):"–";

@@ -61,6 +61,33 @@
           }
         }
       }
+    },
+    "resultats": {
+      "$jeu": {
+        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions)$/)",
+        ".indexOn": [
+          "j"
+        ],
+        "$id": {
+          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && (!data.exists() || newData.child('j').val() > data.child('j').val())",
+          ".validate": "newData.hasChildren(['j', 'e', 'g', 'd'])",
+          "j": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + newData.val() * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() + 1) * 86400000"
+          },
+          "e": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
+          },
+          "g": {
+            ".validate": "newData.isBoolean()"
+          },
+          "d": {
+            ".validate": "newData.val() == now"
+          },
+          "$autre": {
+            ".validate": false
+          }
+        }
+      }
     }
   }
 }

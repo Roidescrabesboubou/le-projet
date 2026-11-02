@@ -107,6 +107,7 @@ main{max-width:600px;margin:0 auto;padding:14px 12px 50px}
     <button class="btn alt" id="bAgain">♾️ Partie libre</button>
   </div>
   <div class="next" id="nextBox">Prochaine grille dans<b id="countdown">--:--:--</b></div>
+  <div id="ajZone"></div>
   <div id="srZone"></div>
 </div></div>
 
@@ -240,6 +241,7 @@ function showEnd(){
   const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
   const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
   if(mode==="daily")Series.panneau($("srZone"),"connexions",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
+  if(mode==="daily")Series.aujourdhui($("ajZone"),"connexions",jourAuj,{moi:over?{e:mistakes(),g:won}:null,unite:"erreur",gagnantsSeulement:false,reussite:true});else $("ajZone").innerHTML="";
   $("endTitle").textContent=!over?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?(mistakes()?"🎉 Bravo !":"🌟 Parfait, sans erreur !"):"😢 Perdu…";
   $("recap").innerHTML=over?recapText().replace(/\n/g,"<br>"):"";
   const pct=s.played?Math.round(s.wins/s.played*100):0;
