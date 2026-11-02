@@ -39,6 +39,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 .me2{background:#5b6bd0;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .me3{background:#2f9e8a;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .me4{background:#c9822b;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.nar{align-self:stretch;max-width:100%;background:transparent;border:0;border-left:3px solid var(--c);border-radius:0;color:var(--muted);font-style:italic;padding:4px 12px}
 .sys{align-self:center;color:var(--muted);font-size:.85rem}
 .delta{font-weight:700;margin-left:6px}
 .send{display:flex;gap:8px;margin-top:10px}
@@ -101,7 +102,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v10 (relais ntfy.sh)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v11 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -294,6 +295,12 @@ function renderLine(l){
   const m=addMsg(l.cls,l.text);
   if(l.c)m.style.borderLeft="4px solid "+l.c;
   if(l.tag){const sp=document.createElement("span");sp.className="delta";sp.style.color=l.up?"#2fa35a":"#d64545";sp.textContent=l.tag;m.appendChild(sp);}
+  return m;
+}
+function pushAI(st,o){
+  if(o.narr){const N={cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
+  const L={cls:"her",text:o.reply};st.lines.push(L);
+  return [L,renderLine(L)];
 }
 function guestRender(m){
   current=m.sid;remoteBusy=!!m.busy;
@@ -510,10 +517,11 @@ const EVENTS=[
 ];
 function rollEvent(st){
   if(st.event)return;
-  if(st.evCool>0){st.evCool--;return;}
+  const force=!!st.unblock;
+  if(!force&&st.evCool>0){st.evCool--;return;}
   const alive=st.players.filter(p=>!p.out);
-  if(!alive.length||alive.some(p=>p.trial===2)||alive.every(p=>p.turns<2))return;
-  if(Math.random()>0.33)return;
+  if(!alive.length||alive.some(p=>p.trial===2)||(!force&&alive.every(p=>p.turns<2)))return;
+  if(!force&&Math.random()>0.33)return;
   const lvl=Math.max(...alive.map(stageOf)), hide=st.mystery&&!st.revealed;
   const build=()=>EVENTS.map((e,i)=>[e,i]).filter(([e,i])=>e.min<=lvl&&(!e.for||(!hide&&e.for.includes(current)))&&!(st.evUsed||[]).includes(i));
   let pool=build();
@@ -521,6 +529,7 @@ function rollEvent(st){
   if(!pool.length)return;
   const [e,i]=pool[Math.floor(Math.random()*pool.length)];
   st.event=e;st.evUsed=(st.evUsed||[]).concat(i);st.evCool=1;
+  if(force){st.unblock=false;st.evForced=true;st.evCool=2;}
 }
 const FORMS={
  talk:"CONVERSATION : ne pose AUCUNE question (pas de point d'interrogation). Réagis à ce que le joueur vient de dire, partage une anecdote, une opinion, une confidence ou une taquinerie liée à la discussion, puis laisse-lui l'initiative de rebondir, comme dans une vraie discussion. choices = [].",
@@ -539,6 +548,8 @@ function pickForm(st){
   const w={talk:30,follow:24,qcm:20,dilemma:lvl>=1?12:0,action:14};
   if(last[0]==="talk"&&last[1]==="talk")w.talk=0;
   if(last[0]==="follow"&&last[1]==="follow")w.follow=0;
+  if(st.devel){w.talk*=1.8;w.follow*=1.3;w.qcm*=0.4;w.action*=0.5;w.dilemma*=0.5;}
+  if(st.players.length>1)w.follow*=0.6;
   for(const k of["qcm","dilemma","action"])if(last[0]===k)w[k]=0;
   const tot=Object.values(w).reduce((a,b)=>a+b,0);
   let r=Math.random()*tot;
@@ -551,7 +562,7 @@ function setChoices(st,o){
   st.choices=ch;
 }
 function consumeTurn(st){
-  st.event=null;st.inject=[];
+  st.event=null;st.evForced=false;st.inject=[];
   if(st.form){st.lastForm=[st.form].concat(st.lastForm||[]).slice(0,2);}
   st.form=null;
 }
@@ -587,22 +598,30 @@ const SCENARIOS = [
 
 function systemPrompt(id, sc, players, st){
   const s = SISTERS[id];
-  const duel = players.length>1 ? `MODE MULTIJOUEUR : ${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) se disputent ton cœur et répondent chacun leur tour. Tu ne dis jamais que ce sont des « joueurs ». Chaque message est préfixé [Nom répond]. Tu n'évalues QUE la réponse de celui qui parle. Retiens séparément ce que chacun t'a dit (cohérence, répétitions, flatteries) et ne confonds jamais leurs propos. Tu peux comparer subtilement, être amusée, touchée ou agacée par leur rivalité, mais sans jamais révéler de scores. Chaque question que tu poses doit commencer par le prénom du joueur indiqué dans « Prochain joueur à qui poser ta question ». Si l'un dénigre un autre garçon, c'est un gros point négatif (-8 à -12).
+  const duel = players.length>1 ? `MODE MULTIJOUEUR : ${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) sont avec toi dans la même scène et se disputent ton cœur. Le jeu donne la parole à l'un après l'autre ; chaque message est préfixé [Nom répond]. Les autres sont toujours présents : ils entendent tout, et ce qui est dit fait partie de la discussion commune. Tu ne dis jamais que ce sont des « joueurs ».
+- Retiens séparément ce que chacun t'a dit (cohérence, répétitions, flatteries) et ne confonds jamais leurs propos. Tu peux comparer, être amusée, touchée ou agacée par leur rivalité, mais sans jamais révéler de scores.
+- ÉVALUATION CROISÉE (très important) : un message peut affecter d'AUTRES garçons que celui qui parle. Pour CHAQUE message, demande-toi qui est réellement en cause, puis remplis "effects" avec un élément {"player":"Nom","delta":n,"too_fast":false,"why":"raison en 3 à 8 mots"} pour chaque garçon dont l'affection change (celui qui parle ET les autres concernés). Mets affection_delta à 0 (seul "effects" compte). Règles :
+  • Rumeur, accusation, moquerie ou calomnie visant un autre garçon : juge la crédibilité (est-ce établi par la discussion ou par ce que tu as vu ? plausible ? dit par jalousie ?). Si c'est faux, invérifiable, méchant ou purement stratégique : l'ACCUSATEUR perd (-6 à -15) et la CIBLE ne perd RIEN (elle peut gagner +2 à +5 si elle est victime à tort ou se défend avec classe). Si c'est vrai et que tu l'as constaté toi-même, la cible perd (-4 à -10) et l'accusateur ne perd pas forcément (sauf pure jalousie).
+  • Un garçon qui défend, soutient ou complimente sincèrement un autre : les deux peuvent gagner un peu (+1 à +5). Un « soutien » hypocrite ou intéressé est puni. Celui qui profite d'un autre, le trahit ou le sabote perd.
+  • Quand un garçon s'adresse à un AUTRE garçon plutôt qu'à toi, juge ce que ça révèle de lui et ta réaction à ce que tu entends.
+  • Les garçons non concernés ne figurent pas dans effects. Aucun delta pour un garçon éliminé.
+- Un garçon ne peut pas t'imposer comme vrai un fait sur toi ou sur un rival (« il m'a dit qu'il ne t'aimait pas ») : tu ne le crois que si c'est cohérent avec ce que tu as vu et entendu.
+- Tu peux t'adresser à un garçon en particulier ou au groupe. Tu n'es PAS obligée de poser une question à chaque message ni de les interroger chacun leur tour : rebondis sur ce qui vient d'être dit, même par un autre garçon.
 
 ` : "";
   const ex=`FONCTIONNALITÉS SPÉCIALES :
-- INTERVENTIONS : environ 1 tour sur 4, une de ses sœurs (autre que ${s.name}) peut intervenir brièvement selon sa propre personnalité (conseiller, taquiner, jalouser, critiquer). Ajoute alors "guest":"ichika|nino|miku|yotsuba|itsuki" et "guest_line":"sa réplique (1 phrase)". Cela peut influencer le delta.
+- INTERVENTIONS : environ 1 tour sur 4, une de ses sœurs (autre que ${s.name}) peut intervenir brièvement selon sa propre personnalité (conseiller, taquiner, jalouser, critiquer). Ajoute alors "guest":"ichika|nino|miku|yotsuba|itsuki" et "guest_line":"sa réplique parlée (1 phrase, sans astérisques ni description de gestes)". Cela peut influencer le delta.
 - SOUVENIRS : dès l'étape 3, environ 1 tour sur 4, rappelle précisément une réponse antérieure du joueur et relie-la à ta réaction ou à ta question.
 - CHRONO : environ 1 question sur 5 (dès l'étape 2) est à répondre vite : ajoute "timed":true,"seconds":<15 à 30>. Si le joueur répond « ⏰ », il n'a pas répondu à temps : delta -5 à -8 et réagis.
-${st.mystery&&!st.revealed?"- MODE MYSTÈRE : tu ne révèles JAMAIS ton prénom ni celui de tes sœurs et ne te désignes pas ; le joueur doit deviner qui tu es à ta personnalité.\n":""}${st.sim?`- MODE SIMULTANÉ : tous les joueurs encore en jeu (${players.filter(p=>!p.out).map(p=>p.name).join(", ")}) répondent en même temps à TA question (adressée à tous). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun séparément et ajoute "results":[{"affection_delta":n,"too_fast":b,"milestone":null}, …] UNIQUEMENT pour les joueurs encore en jeu, dans l'ordre exact de cette liste : ${players.filter(p=>!p.out).map(p=>p.name).join(", ")} (mets le affection_delta global à 0).`:""}
+${st.mystery&&!st.revealed?"- MODE MYSTÈRE : tu ne révèles JAMAIS ton prénom ni celui de tes sœurs et ne te désignes pas ; le joueur doit deviner qui tu es à ta personnalité.\n":""}${st.sim?`- MODE SIMULTANÉ : tous les garçons encore en jeu (${players.filter(p=>!p.out).map(p=>p.name).join(", ")}) répondent en même temps à TA question (adressée à tous). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun, ainsi que l'effet de ses propos sur les autres (rumeur, soutien…), et remplis "effects" avec un élément {"player":"Nom","delta":n,"too_fast":false,"milestone":null,"why":"raison courte"} par garçon dont l'affection change (affection_delta global = 0).`:""}
 `;
   const trials=players.filter(p=>p.trial===2&&!p.out);
   const jal=`PROGRESSION PAR JALONS (la relation se construit dans le temps) :
 - Étapes à valider avant toute déclaration : ${MS.map(m=>m.ico+" "+m.name).join(" → ")} → 💖 Déclaration.
 ${players.map(p=>`- ${p.name} : ${p.out?"éliminé":p.ms>=4?"tous les jalons validés, la déclaration est possible en fin de partie":`${p.ms}/4 jalons validés, prochain : « ${MS[p.ms].name} »`}`).join("\n")}
 - Les scènes de jalon sont lancées par le jeu via un message [JALON] : ne lance JAMAIS toi-même un rendez-vous, un date ou une scène de ce type, et ne te déclare pas. Tiens compte des jalons validés dans ton ton (ex : après « Amitié », vous êtes vraiment amis ; après « Premier rendez-vous », vous avez un souvenir commun).
-${trials.length?`- ÉPREUVE DÉCISIVE EN COURS pour ${trials.map(p=>`${p.name} (« ${MS[p.ms].name} »)`).join(", ")} : sa prochaine réponse à la scène en cours décide de la validation de l'étape. Ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse de ton caractère et bien adaptée à la scène ; sinon "milestone":"fail" (sois exigeante : une réponse moyenne, calculée ou maladroite échoue). Réagis ensuite à l'issue (soulagement, déception…). Ne te déclare pas. ${st.sim?"En mode simultané, mets ce champ dans l'élément de results du joueur concerné.":""}\n`:""}`;
-  const evTxt=(st.event?`ÉVÉNEMENT ALÉATOIRE À INTÉGRER MAINTENANT : ${st.event.t}\nNarre-le en une ou deux phrases (entre astérisques) dans ta réponse et réagis à la dernière réponse du joueur dans ce contexte. ${st.event.ch?`Puis laisse le joueur réagir par une ACTION : mets dans choices ces options (tu peux légèrement les reformuler) : ${JSON.stringify(st.event.ch)}.`:`Puis laisse le joueur réagir librement (ou propose 2 à 4 actions dans choices si c'est naturel).`} Ne dis jamais que l'événement est aléatoire.\n`:"")+(st.form&&st.form!=="event"&&FORMS[st.form]?`FORME DE CE TOUR (impératif) : ${FORMS[st.form]}\n`:"")+((st.inject||[]).length?st.inject.join("\n")+"\n":"");
+${trials.length?`- ÉPREUVE DÉCISIVE EN COURS pour ${trials.map(p=>`${p.name} (« ${MS[p.ms].name} »)`).join(", ")} : sa prochaine réponse à la scène en cours décide de la validation de l'étape. Ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse de ton caractère et bien adaptée à la scène ; sinon "milestone":"fail" (sois exigeante : une réponse moyenne, calculée ou maladroite échoue). Réagis ensuite à l'issue (soulagement, déception…). Ne te déclare pas. ${st.sim?"En mode simultané, mets ce champ dans l'élément effects du joueur concerné.":""}\n`:""}`;
+  const evTxt=(st.event?`ÉVÉNEMENT ALÉATOIRE À INTÉGRER MAINTENANT : ${st.event.t}\n${st.evForced?"La discussion s'essoufflait : sers-toi de cet événement pour la débloquer et ouvrir un nouveau fil naturel (sans reprendre le sujet épuisé).\n":""}Décris-le dans "narration" (1 à 3 phrases, voix du narrateur) et réagis dans "reply" à la dernière réponse du joueur dans ce contexte. ${st.event.ch?`Puis laisse le joueur réagir par une ACTION : mets dans choices ces options (tu peux légèrement les reformuler) : ${JSON.stringify(st.event.ch)}.`:`Puis laisse le joueur réagir librement (ou propose 2 à 4 actions dans choices si c'est naturel).`} Ne dis jamais que l'événement est aléatoire.\n`:"")+(st.form&&st.form!=="event"&&FORMS[st.form]?`FORME DE CE TOUR (impératif) : ${FORMS[st.form]}\n`:"")+((st.inject||[]).length?st.inject.join("\n")+"\n":"");
   const prog = `ÉVOLUTION DE LA RELATION (très important) :
 ${players.map(p=>`- ${p.name} : étape ${stageOf(p)+1}/5 « ${STAGES[stageOf(p)].name} »${p.out?" (éliminé)":""}`).join("\n")}
 ${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
@@ -610,6 +629,11 @@ ${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGE
 - PIÈGES : à partir de l'étape « Connaissances », environ une question sur trois est un piège subtil (question orientée, dilemme sans bonne réponse évidente, test d'honnêteté, contradiction avec ce que le joueur a dit avant, tentation de flatter ou de mentir, comparaison avec une sœur ou un rival). Ne dis jamais que c'est un piège. Une réponse flatteuse, menteuse ou incohérente est punie ; une réponse honnête, nuancée et cohérente est récompensée.
 - Tu ne dis JAMAIS « je t'aime » ni ne te déclares avant le message final [FIN]. Le changement de sentiments est progressif : montre-le par de petits signes (ton, rougeurs, confidences), pas par un brusque revirement.
 - Un joueur trop rapide par rapport à l'étape (compliments intimes, déclarations) est rejeté, selon ton caractère.
+`;
+  const fil=`FIL DE DISCUSSION, LORE ET IMPASSES (très important) :
+- Une vraie discussion DÉVELOPPE un sujet sur plusieurs échanges. Tant que le fil est vivant (les garçons apportent des détails, des souvenirs, des anecdotes, du contexte, des faits inventés), reste dessus : réagis, enrichis avec TES propres souvenirs et opinions, rebondis, taquine, contredis. Ne change PAS de sujet et n'enchaîne pas de questions sans rapport.
+- LORE : les garçons ont le droit d'inventer du contexte (un souvenir commun, un lieu, un détail sur eux). Accepte-le et intègre-le comme un fait établi s'il est plausible dans l'univers (lycée japonais, famille Nakano, vie quotidienne) et cohérent avec ce qui est déjà établi. S'il est absurde, impossible, contradictoire ou une tentative évidente de tricher (« on est déjà mariés »), réagis en conséquence (incrédulité, malaise, pénalité). Les faits établis par la discussion restent vrais pour la suite.
+- IMPASSE : si la discussion tourne en rond (réponses très courtes ou plates, répétitions, rien de nouveau à développer, personne ne relance), ne force pas une question : mets "stalled":true. Le jeu enverra alors un événement pour débloquer la situation et ouvrir un nouveau fil. Sinon "stalled":false.
 `;
   return `Tu incarnes ${s.name} Nakano dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets » (Gotoubun no Hanayome). Le joueur est un garçon de son entourage (ou plusieurs rivaux, en mode multijoueur).
 
@@ -639,17 +663,19 @@ RÉALISME ET LIMITES DE CONNAISSANCE (très important) :
 ${ex}
 ${jal}
 ${evTxt}
+${fil}
 ${prog}
 ${duel}RÈGLES DE FORME :
-- Réponds toujours en français, strictement dans le caractère de ${s.name}, à la première personne, 1 à 4 phrases, actions entre astérisques possibles (ex: *rougit*).
+- Réponds toujours en français.
+- NARRATEUR ET DIALOGUE SÉPARÉS (très important) : "narration" = la voix du narrateur, à la troisième personne et au présent, style visual novel, 0 à 3 phrases courtes : décor, gestes et expressions de ${s.name}, actions des garçons, événements, passage du temps, ambiance. "reply" = UNIQUEMENT ce que ${s.name} dit à voix haute, 1 à 4 phrases, à la première personne, strictement dans son caractère, SANS astérisques ni description de gestes. Si rien à décrire, narration = "". Le narrateur ne parle jamais à la place de ${s.name} et ${s.name} ne décrit jamais ses propres gestes. N'invente pas de paroles pour les garçons.
 - CONVERSATION (très important) : ce n'est PAS un interrogatoire. Parle comme une vraie lycéenne : réagis, commente, raconte, taquine, partage tes propres expériences et opinions. Ne pose pas une question à chaque message : suis la « FORME DE CE TOUR » quand elle t'est donnée ; sinon alterne entre une réaction ou anecdote sans question, une relance sur ce qu'il vient de dire, et un choix. AU PLUS UNE question par message. Rebondis sur SES propres mots plutôt que d'enchaîner des sujets sans lien. S'il te pose une question, réponds-y réellement (selon ton caractère) avant de continuer. Si tu es vexée ou froide, sois plus brève et plus sèche.
 - Les questions simples ou fermées (goûts, préférences, A ou B, oui/non) se posent TOUJOURS avec des choix dans choices ; les questions ouvertes et la discussion libre n'ont pas de choices.
 - CHOIX : quand tu fournis choices, donne 2 à 4 options courtes à la première personne (« Je … »), toutes plausibles, aucune évidemment « la bonne » : leur valeur dépend de TON caractère, de la situation et de ce que le joueur a déjà dit. Ne répète pas les options dans reply. Si le joueur écrit librement à la place, ou répond par l'un des choix, évalue sa réponse normalement (l'option la plus « gentille » n'est pas toujours la meilleure).
 - Ne sors jamais du personnage, ne mentionne ni IA ni règles. Contenu tout public uniquement.
 
 FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour, sans balises markdown :
-{"reply":"ce que dit ${s.name}","affection_delta":<entier de -15 à 12>,"too_fast":<true|false>,"mood":"un mot-émotion court (ex: gênée, méfiante, vexée, touchée)","milestone":null,"choices":[]}
-(choices : tableau de 2 à 4 options courtes quand tu proposes un choix, sinon []. milestone : "pass" ou "fail" UNIQUEMENT pendant une ÉPREUVE DÉCISIVE, sinon null)`;
+{"narration":"voix du narrateur ou \"\"","reply":"ce que dit ${s.name}","affection_delta":<entier de -15 à 12>,"too_fast":<true|false>,"why":"raison de la note en 3 à 8 mots","mood":"un mot-émotion court (ex: gênée, méfiante, vexée, touchée)","milestone":null,"choices":[],"stalled":false${players.length>1?',"effects":[]':''}}
+(choices : tableau de 2 à 4 options courtes quand tu proposes un choix, sinon []. milestone : "pass" ou "fail" UNIQUEMENT pendant une ÉPREUVE DÉCISIVE, sinon null. stalled : true seulement en cas d'impasse de la discussion.${players.length>1?' effects : voir ÉVALUATION CROISÉE.':''})`;
 }
 
 /* ---------- Appels API ---------- */
@@ -657,14 +683,21 @@ function parseAI(text){
   try{
     const m = text.match(/\{[\s\S]*\}/);
     const o = JSON.parse(m ? m[0] : text);
-    return {reply:String(o.reply||"…"),delta:Math.max(-15,Math.min(15,parseInt(o.affection_delta)||0)),mood:String(o.mood||""),tooFast:o.too_fast===true,
+    let reply=String(o.reply||"…"), narr=String(o.narration||"").trim().slice(0,600);
+    const acts=[];
+    reply=reply.replace(/\*([^*]{1,200})\*/g,(_,a)=>{acts.push(a.trim().replace(/^./,c=>c.toUpperCase()));return" ";}).replace(/\s+/g," ").trim()||"…";
+    if(acts.length)narr=(narr?narr+" ":"")+acts.join(". ")+".";
+    const cl=(v,a,b)=>Math.max(a,Math.min(b,parseInt(v)||0));
+    return {reply,narr,delta:cl(o.affection_delta,-15,15),mood:String(o.mood||""),tooFast:o.too_fast===true,
+      why:String(o.why||"").trim().slice(0,60),stalled:o.stalled===true,
       timed:o.timed===true?Math.max(10,Math.min(40,parseInt(o.seconds)||20)):0,
       ms:String(o.milestone||"").toLowerCase(),
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
-      guest:SISTERS[o.guest]?o.guest:"",gline:String(o.guest_line||"").slice(0,300),
-      res:Array.isArray(o.results)?o.results.map(r=>({delta:Math.max(-15,Math.min(15,parseInt(r&&r.affection_delta)||0)),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
+      guest:SISTERS[o.guest]?o.guest:"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),
+      fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&e.player).map(e=>({player:String(e.player).trim(),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
+      res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
-    return {reply:text.replace(/[{}"]/g,"").slice(0,400),delta:0,mood:"",tooFast:false,choices:[]};
+    return {reply:text.replace(/[{}"]/g,"").slice(0,400),narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
   }
 }
 function fetchT(url,opts){
@@ -754,16 +787,45 @@ function guess(sid){
   if(net.role==="guest"){net.conn&&net.conn.send({t:"guess",sid});return;}
   applyGuess(net.role==="host"?0:state[current].cur,sid);
 }
-function score(st,pl,d,tooFast){
+function score(st,pl,d,tooFast,other){
   let note="";const raw0=d;
+  if(other)d=Math.max(-12,Math.min(8,d));
   if(d>0){const D=1+((st.sc.div||2)-1)*Math.pow(0.8,pl.turns);const raw=d;d=Math.max(1,Math.min(12,Math.round(d/D)));if(D>1.4&&raw>d)note=" 🐢";}
-  if(d<0)d=Math.max(-20,Math.round(d*1.5));
-  if(tooFast){d=Math.min(d,0)-5;note=" 😤";}
-  const prev=pl.aff;pl.turns++;pl.aff=Math.max(0,Math.min(100,pl.aff+d));
+  if(d<0&&!other)d=Math.max(-20,Math.round(d*1.5));
+  if(tooFast&&!other){d=Math.min(d,0)-5;note=" 😤";}
+  const prev=pl.aff;if(!other)pl.turns++;pl.aff=Math.max(0,Math.min(100,pl.aff+d));
   if(pl.turns<6)pl.aff=Math.min(pl.aff,99);
   const cap=CAPS[pl.ms==null?4:pl.ms];
   if(pl.aff>cap){pl.aff=Math.max(prev,cap);if(raw0>0)note+=" 🔒 un jalon à valider";}
   return {d:pl.aff-prev,note};
+}
+function matchPlayer(st,name){
+  const n=String(name||"").toLowerCase().trim();if(!n)return-1;
+  let i=st.players.findIndex(p=>p.name.toLowerCase()===n);
+  if(i<0)i=st.players.findIndex(p=>{const q=p.name.toLowerCase();return q.startsWith(n)||n.startsWith(q);});
+  return i;
+}
+function collectEffects(st,o){
+  const eff=new Map();
+  (o.fx||[]).forEach(e=>{
+    const i=matchPlayer(st,e.player);if(i<0||st.players[i].out)return;
+    const c=eff.get(i)||{delta:0,tooFast:false,ms:"",why:""};
+    c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.ms=c.ms||e.ms;c.why=c.why||e.why;eff.set(i,c);
+  });
+  return eff;
+}
+function applyEffects(st,o,s){
+  const eff=collectEffects(st,o);
+  if(!eff.has(s))eff.set(s,{delta:o.delta,tooFast:o.tooFast,ms:o.ms,why:o.why});
+  else{const c=eff.get(s);c.ms=c.ms||o.ms;c.why=c.why||o.why;}
+  const multi=st.players.length>1,tags=[];let spk=0,best=0,sum=0;
+  [...eff.keys()].sort((a,b)=>a===s?-1:b===s?1:a-b).forEach(i=>{
+    const p=st.players[i],c=eff.get(i),x=score(st,p,c.delta,i===s?c.tooFast:false,i!==s);
+    if(i===s)spk=x.d;
+    sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
+    if(x.d!==0||x.note)tags.push((multi?p.name+" ":"")+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
+  });
+  return{tags,spk,best,sum,ms:eff.get(s).ms};
 }
 function submitSim(i,text){
   const st=state[current];st.pending[i]=text;st.answered[i]=true;updateBar();
@@ -773,6 +835,10 @@ async function runRound(st){
   busy=true;$("btnSend").disabled=true;const id=current;
   st.players.forEach((p,i)=>{if(!p.out){const c=pcls(i),t=p.name+" : "+st.pending[i];addMsg(c,t);st.lines.push({cls:c,text:t});}});
   st.history.push({role:"user",content:"[Réponses simultanées] "+st.players.map((p,i)=>p.out?"":p.name+" : "+st.pending[i]).filter(Boolean).join(" | ")});
+  {const ts=st.players.map((p,i)=>p.out?null:st.pending[i]).filter(t=>t!=null),isCh=t=>(st.choices||[]).includes(t);
+   st.flat=(ts.length&&ts.every(t=>t.length<15&&!isCh(t)))?(st.flat||0)+1:0;
+   st.devel=ts.some(t=>t.length>=40&&!isCh(t));
+   if(st.flat>=2){st.unblock=true;st.flat=0;}}
   rollEvent(st);pickForm(st);
   broadcast(true);
   const wait=addMsg("sys","…");
@@ -781,12 +847,16 @@ async function runRound(st){
     if(!raw||!raw.trim())throw new Error("Réponse vide de l'IA");
     const o=parseAI(raw);st.history.push({role:"assistant",content:raw});wait.remove();
     const tags=[],verd=[];let sum=0,best=0;
-    st.players.filter(p=>!p.out).forEach((p,i)=>{const r=(o.res&&o.res[i])||{delta:0,tooFast:false,ms:""},x=score(st,p,r.delta,r.tooFast);verd.push([p,r.ms,x.d]);
-      tags.push(`${p.name} ${x.d>0?"+":""}${x.d} ❤${x.note}`);sum+=x.d;best=Math.max(best,x.d);if(p.aff<=0)p.out=true;});
+    const alive=st.players.map((p,i)=>[p,i]).filter(([p])=>!p.out), eff=collectEffects(st,o);
+    if(!eff.size&&o.res)alive.forEach(([p,i],k)=>{const r=o.res[k];if(r)eff.set(i,{delta:r.delta,tooFast:r.tooFast,ms:r.ms,why:""});});
+    alive.forEach(([p,i])=>{const c=eff.get(i)||{delta:0,tooFast:false,ms:"",why:""},x=score(st,p,c.delta,c.tooFast);verd.push([p,c.ms,x.d]);
+      tags.push(`${p.name} ${x.d>0?"+":""}${x.d} ❤${x.note}${c.why?" ("+c.why+")":""}`);sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;if(p.aff<=0)p.out=true;});
+    if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
-    if(st.event){sysLine(st,"🎲 Événement : "+st.event.n);}
+    if(st.event){sysLine(st,"🎲 Événement : "+st.event.n+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
     consumeTurn(st);
+    if(o.narr){const N={cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
     const L={cls:"her",text:o.reply,tag:tags.join(" · "),up:sum>=0,dv:best};st.lines.push(L);renderLine(L);fx(best);addGuest(st,o);
     verd.forEach(([p,v,dd])=>resolveTrial(st,p,v,dd));
     st.pending=st.players.map(()=>null);st.answered=st.players.map(()=>false);
@@ -826,9 +896,9 @@ async function launchTrial(st,id,pl){
   st.history.push({role:"user",content:`[JALON] ${pl.name} atteint l'étape « ${m.name} » (tentative ${k}). ${m.brief} Mets en scène cette situation de façon originale, dans un lieu précis, selon ton caractère et le niveau de relation avec ${pl.name}${k>1?" ; change complètement de scène par rapport aux tentatives précédentes":""}. Reste dans le personnage et termine par une question ou une situation décisive à laquelle ${pl.name} doit répondre. Ne te déclare pas. affection_delta = 0, too_fast = false, milestone = null, timed = false.`});
   try{
     const o=parseAI(await callAI(id,st.history));
-    st.history.push({role:"assistant",content:JSON.stringify({reply:o.reply,affection_delta:0,too_fast:false,mood:o.mood,milestone:null})});
+    st.history.push({role:"assistant",content:JSON.stringify({narration:o.narr,reply:o.reply,affection_delta:0,too_fast:false,mood:o.mood,milestone:null})});
     st.mood=o.mood;st.timed=0;st.choices=o.choices||[];
-    const L={cls:"her",text:o.reply};st.lines.push(L);renderLine(L);
+    pushAI(st,o);
     pl.trial=2;
   }catch(e){
     st.history.pop();pl.trial=0;
@@ -919,7 +989,7 @@ function enterGame(id){
   if(st.over) showEnd(st);
   else if(st.history.length===0){
     turn(multi
-      ? `[DÉBUT] ${st.players.length} garçons, ${st.players.map(p=>p.name).join(", ")}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis pose ta première question ${st.sim?'à tous, qui répondront en même temps':'à '+st.players[0].name}. affection_delta doit être 0 et too_fast false.`
+      ? `[DÉBUT] ${st.players.length} garçons, ${st.players.map(p=>p.name).join(", ")}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis lance la discussion ${st.sim?"en t'adressant à tous (ils répondront en même temps)":'en commençant par '+st.players[0].name}. affection_delta doit être 0 et too_fast false.`
       : "[DÉBUT] Le joueur vient de te rejoindre dans la situation décrite. Réagis selon la situation et ton caractère, puis pose ta première question. affection_delta doit être 0 et too_fast false.",true);
   }
 }
@@ -932,10 +1002,16 @@ async function turn(userText,hidden){
     const label=multi?`${pl.name} : ${userText}`:userText;
     const cls=pcls(st.cur);
     addMsg(cls,label);st.lines.push({cls,text:label});
-    sent=multi?`[${pl.name} répond] ${userText}\n(Prochain joueur à qui poser ta question : ${st.players[nextAlive(st)].name})`:userText;
+    sent=multi?`[${pl.name} répond] ${userText}\n(Joueur qui aura la parole ensuite : ${st.players[nextAlive(st)].name})`:userText;
   }
   st.history.push({role:"user",content:sent});
-  if(!hidden){rollEvent(st);pickForm(st);}
+  if(!hidden){
+    const isCh=(st.choices||[]).includes(userText);
+    st.flat=(!isCh&&userText.length<15)?(st.flat||0)+1:0;
+    st.devel=!isCh&&userText.length>=40;
+    if(st.flat>=3){st.unblock=true;st.flat=0;}
+    rollEvent(st);pickForm(st);
+  }
   if(net.role==="host")broadcast(true);
   const wait=addMsg("sys","…");
   let sec=0;const tick=setInterval(()=>{sec++;wait.textContent="… ("+sec+" s)";},1000);
@@ -945,28 +1021,32 @@ async function turn(userText,hidden){
     const o = parseAI(raw);
     st.history.push({role:"assistant",content:raw});
     clearInterval(tick);wait.remove();
-    let d=o.delta, note="";
-    if(!hidden){ const x=score(st,pl,d,o.tooFast); d=x.d; note=x.note; }
+    let eff=null;
+    if(!hidden)eff=applyEffects(st,o,st.cur);
+    if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
-    if(st.event){sysLine(st,"🎲 Événement : "+st.event.n);}
+    if(st.event){sysLine(st,"🎲 Événement : "+st.event.n+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
     consumeTurn(st);
-    const m=addMsg("her",o.reply); st.lines.push({cls:"her",text:o.reply});
-    if(!hidden && (d!==0||note)){
+    const [L0,m]=pushAI(st,o);
+    if(eff&&eff.tags.length){
       const sp=document.createElement("span");sp.className="delta";
-      sp.style.color=d>0?"#2fa35a":"#d64545";sp.textContent=(multi?pl.name+" ":"")+(d>0?"+":"")+d+" ❤"+note;
+      sp.style.color=eff.sum>=0?"#2fa35a":"#d64545";sp.textContent=eff.tags.join(" · ");
       m.appendChild(sp);
-      const L=st.lines[st.lines.length-1];L.tag=sp.textContent;L.up=d>0;L.dv=d;fx(d);
+      L0.tag=sp.textContent;L0.up=eff.sum>=0;L0.dv=eff.best;fx(eff.best);
     }
     addGuest(st,o);
-    if(!hidden)resolveTrial(st,pl,o.ms,d);
     if(!hidden){
-      if(pl.aff>=100){ updateBar(); await finish(st,id,"win",pl); }
+      resolveTrial(st,pl,eff.ms,eff.spk);
+      const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
+      if(win){ updateBar(); await finish(st,id,"win",win); }
       else{
-        if(pl.aff<=0){
-          pl.out=true;
-          if(multi){const t=`💔 ${pl.name} a été éconduit et quitte la compétition.`;addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
-        }
+        st.players.forEach(q=>{
+          if(!q.out&&q.aff<=0){
+            q.out=true;
+            if(multi){const t=`💔 ${q.name} a été éconduit et quitte la compétition.`;addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
+          }
+        });
         if(st.players.every(p=>p.out)){ updateBar(); await finish(st,id,"lose",pl); }
         else{
           await launchTrials(st,id);
@@ -1007,7 +1087,7 @@ async function finish(st,id,kind,pl){
   st.history.push({role:"user",content:msg});
   try{
     const o=parseAI(await callAI(id,st.history));
-    addMsg("her",o.reply);st.lines.push({cls:"her",text:o.reply});
+    pushAI(st,o);
   }catch(e){}
   showEnd(st);
 }
