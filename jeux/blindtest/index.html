@@ -406,7 +406,7 @@ const renderBest=()=>Classement.tableau($("bestZone"),{cle:"blindtest",champ:"s"
 const seen = new Set(lsGet("bt_seen",[]));
 function markSeen(k){seen.add(k);lsSet("bt_seen",[...seen].slice(-500))}
 
-const COMPIL=/g[ée]n[ée]rique|compil|best of|meilleur|hits|top |vol\.|volume|collection|essentiel|tubes|ann[ée]es|greatest/i; // noms d'albums de compilation à ne pas afficher
+const COMPIL=/g[ée]n[ée]rique|compil|best of|meilleur|hits|top |vol\.|volume|collection|essentiel|tubes|ann[ée]es|greatest|disney|karaok|chant(e|ent)|enfant|kids|cover|tribute|piano|lullab|berceuse|deluxe|we love/i; // noms d'albums de compilation à ne pas afficher
 /* Nom d'œuvre caché dans un titre : « Zoo (De "Zootopie 2") », « Blood Upon the Snow (From "God of War") » */
 function fromWork(s){
   const out=[];
@@ -445,7 +445,7 @@ async function enrich(R){
       if(norm(clean(t.title_short||t.title))!==want)continue;
       add.push(...fromWork(t.title));
       const a=t.album&&t.album.title;
-      if(a&&/bande originale|soundtrack|original|motion picture|\bfrom\b|film|\bost\b|\bb\.?o\b|disney/i.test(a)&&goodWork(workName(a)))add.push(workName(a));
+      if(a&&/bande originale|soundtrack|original|motion picture|\bfrom\b|film|\bost\b|\bb\.?o\b/i.test(a)&&goodWork(workName(a)))add.push(workName(a));
     }
     const fresh=[...new Set(add)].filter(w=>w&&norm(w)!==want&&!f.works.some(x=>norm(x)===norm(w)));
     if(fresh.length){f.works.push(...fresh.slice(0,4));f.answers=uniq([...f.answers,...variants(fresh.slice(0,4))]);f.show=showWork(f);if(current()===R&&R.state==="reveal")renderRound()}
@@ -576,7 +576,7 @@ async function startGame(){
 function current(){return G&&G.rounds[G.i]}
 const canAnswer = R => R&&(R.state==="listen"||R.state==="paused"||R.state==="grace");
 async function nextRound(){
-  cancelAnimationFrame(raf);clearInterval(buzzTimer);audio.pause();
+  clearInterval(raf);clearInterval(buzzTimer);audio.pause();
   G.i++;
   if(G.i>=G.rounds.length){endGame();return}
   let R=current();
@@ -615,11 +615,11 @@ function loadAudio(R){
   });
 }
 function loop(){
-  cancelAnimationFrame(raf);
+  clearInterval(raf);
   let last=performance.now();
-  const tick=now=>{
-    const R=current(); if(!R||R.state==="reveal")return;
-    const dt=(now-last)/1000; last=now;
+  raf=setInterval(()=>{
+    const R=current(); if(!R||R.state==="reveal"){clearInterval(raf);return}
+    const now=performance.now(), dt=Math.min(1,(now-last)/1000); last=now;
     if(R.state==="listen"&&!audio.paused)R.elapsed+=dt;
     if(R.state==="grace")R.grace-=dt;
     const left=Math.max(0,set.dur-R.elapsed);
@@ -631,10 +631,8 @@ function loop(){
     else if(R.state==="paused"){tt.className="ttxt paused";tt.textContent="⏸ En pause — une réponse trouvée après une pause rapporte moins de points"}
     else{tt.className="ttxt";tt.textContent=R.state==="loading"?"":Math.ceil(left)+" s"}
     if(R.state==="listen"&&left<=0){R.state="grace";R.grace=GRACE;renderRound()}   // fin de l'extrait → suspense
-    if(R.state==="grace"&&R.grace<=0){reveal();return}
-    raf=requestAnimationFrame(tick);
-  };
-  raf=requestAnimationFrame(tick);
+    if(R.state==="grace"&&R.grace<=0)reveal();
+  },100);
 }
 function renderRound(){
   const R=current(), rev=R.state==="reveal";
@@ -757,7 +755,7 @@ document.addEventListener("keydown",e=>{
 function reveal(){
   const R=current(); if(!R||R.state==="reveal")return;
   clearInterval(buzzTimer);$("buzzAnswer").classList.add("hidden");
-  R.state="reveal";R.revealedAt=performance.now();cancelAnimationFrame(raf);
+  R.state="reveal";R.revealedAt=performance.now();clearInterval(raf);
   $("timerBar").style.width="0%";
   if(audio.paused&&audio.src&&!audio.ended)audio.play().catch(()=>{}); // la musique continue pendant la révélation
   const all=R.found.every(Boolean), none=!R.found.some(Boolean);
@@ -767,7 +765,7 @@ function reveal(){
   $("guess").blur();
 }
 function endGame(){
-  audio.pause();cancelAnimationFrame(raf);clearInterval(buzzTimer);
+  audio.pause();clearInterval(raf);clearInterval(buzzTimer);
   show("end");
   const ps=G.players.slice().sort((a,b)=>b.score-a.score);
   const total=G.recap.length, max=G.recap.reduce((s,r)=>s+r.R.fields.length,0);
@@ -799,7 +797,7 @@ function endGame(){
 $("btnNext").onclick=()=>{const R=current();if(R&&R.state==="reveal"&&performance.now()-R.revealedAt>400)nextRound()};
 $("btnSkip").onclick=()=>{const R=current();if(R&&R.state!=="loading"&&R.state!=="answer")reveal()};
 $("btnReplay").onclick=()=>{const R=current();if(!R||R.state==="loading"||R.state==="answer")return;audio.currentTime=Math.max(0,R.start);if(R.state!=="paused")audio.play().catch(()=>{})};
-$("btnQuit").onclick=()=>{if(confirm("Quitter la partie en cours ?")){audio.pause();cancelAnimationFrame(raf);clearInterval(buzzTimer);G=null;show("home");renderBest()}};
+$("btnQuit").onclick=()=>{if(confirm("Quitter la partie en cours ?")){audio.pause();clearInterval(raf);clearInterval(buzzTimer);G=null;show("home");renderBest()}};
 $("btnAgain").onclick=startGame;
 $("btnHome").onclick=()=>{show("home");renderHome();renderBest()};
 $("btnGo").onclick=startGame;
