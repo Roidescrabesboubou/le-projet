@@ -62,6 +62,10 @@ label.l:first-child{margin-top:0}
 .timer{height:12px;background:var(--soft);border-radius:12px;overflow:hidden;margin-bottom:16px}
 .timer i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:12px}
 .timer.low i{background:var(--ko)}
+.timer{margin-bottom:6px}
+.ttxt{text-align:right;font-weight:800;font-size:.85rem;color:var(--muted);min-height:1.2em;margin-bottom:10px}
+.ttxt.grace{color:var(--ko);text-align:center;font-size:1.05rem;animation:pulse 1s infinite}
+.ttxt.paused{color:var(--accent2);text-align:center}
 .stage{display:flex;gap:18px;align-items:center;min-height:170px}
 .disc{width:150px;height:150px;flex:none;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:4rem;overflow:hidden;position:relative}
 .disc img{width:100%;height:100%;object-fit:cover}
@@ -180,6 +184,7 @@ label.l:first-child{margin-top:0}
         <button class="ghost" id="btnQuit">✕ Quitter</button>
       </div>
       <div class="timer" id="timer"><i id="timerBar"></i></div>
+      <div class="ttxt" id="timeTxt"></div>
       <div class="stage">
         <div class="disc" id="disc"><span>🎵</span></div>
         <div class="info">
@@ -205,6 +210,7 @@ label.l:first-child{margin-top:0}
       <div class="fb" id="fb"></div>
       <div class="scorebar" id="scorebar"></div>
       <div class="controls">
+        <button class="ghost" id="btnPause">⏸ Pause</button>
         <button class="ghost" id="btnReplay">↺ Réécouter</button>
         <button class="ghost" id="btnSkip">⏭ Passer</button>
         <button id="btnNext" class="hidden">Extrait suivant →</button>
@@ -401,15 +407,49 @@ const seen = new Set(lsGet("bt_seen",[]));
 function markSeen(k){seen.add(k);lsSet("bt_seen",[...seen].slice(-500))}
 
 const COMPIL=/g[ée]n[ée]rique|compil|best of|meilleur|hits|top |vol\.|volume|collection|essentiel|tubes|ann[ée]es|greatest/i; // noms d'albums de compilation à ne pas afficher
+/* Nom d'œuvre caché dans un titre : « Zoo (De "Zootopie 2") », « Blood Upon the Snow (From "God of War") » */
+function fromWork(s){
+  const out=[];
+  for(const m of String(s||"").matchAll(/[\(\[]\s*(?:theme\s+)?(?:from|de|du|d'|tir[ée]e? de|extrait de|bande originale (?:du film|de)|music from|from the (?:film|movie|motion picture|documentary|series|video game))\s*(?:disney'?s?\s*)?(?:the\s+(?:film|movie)\s+)?[«"“']?\s*([^"”»\)\]]+?)\s*[»"”']?(?:\s*(?:-|soundtrack|original|music|the album|bande).*)?[\)\]]/gi))
+    if(m[1]&&m[1].length>=2)out.push(m[1].trim());
+  return out;
+}
+/* « Hades: Original Soundtrack », « The Music of Red Dead Redemption 2 », « Le Roi Lion (Bande originale) » → nom de l'œuvre */
+const OST=/\b(original\s+(motion\s+picture\s+)?soundtrack|soundtrack|ost|bande originale.*|b\.?o\.?|music from.*|original score|score|the album|version fran[cç]aise|vf)\b/gi;
+const workName = a => clean(String(a||"").replace(/^(the music of|music from|musiques? (du film|de)|bande originale (du film|de))\s+/i,"")).replace(/\s*:\s*$/,"").replace(OST,"").replace(/[\s:–-]+$/,"").trim();
+const goodWork = a => a&&a.length>=2&&a.length<=50&&!COMPIL.test(a);
+
 function deezerItem(t,cat){
   const title=t.title_short||t.title, artist=t.artist&&t.artist.name, album=t.album&&t.album.title;
   const cover=t.album&&(t.album.cover_medium||t.album.cover);
-  const f=cat.ecran
-    ? [{label:"Œuvre / titre",pts:150,answers:variants([title,t.title,album]),show:clean(title)+(album&&clean(album).length<=45&&!COMPIL.test(album)&&!norm(clean(album)).includes(norm(clean(title)))?" · "+clean(album):"")},
-       {label:"Artiste",pts:50,answers:variants(artistParts(artist)),show:artist}]
-    : [{label:"Titre",pts:100,answers:variants([title,t.title]),show:clean(title)},
-       {label:"Artiste",pts:100,answers:variants(artistParts(artist)),show:artist}];
+  if(cat.ecran){
+    // Une seule réponse attendue : le titre de la chanson OU l'œuvre (film, série, jeu) comptent tous les deux.
+    const works=[...fromWork(t.title),...(goodWork(workName(album))?[workName(album)]:[])].filter(w=>norm(w)!==norm(clean(title)));
+    const f={label:"Titre ou œuvre",pts:200,answers:variants([title,t.title,...works]),works:[...new Set(works)],title:clean(title)};
+    f.show=showWork(f);
+    return {key:"dz"+t.id,cat,src:t.preview,start:0,cover,line:artist+" — "+(t.title||title),fields:[f],dz:{id:t.id,title:clean(title),artist}};
+  }
+  const f=[{label:"Titre",pts:100,answers:variants([title,t.title]),show:clean(title)},
+           {label:"Artiste",pts:100,answers:variants(artistParts(artist)),show:artist}];
   return {key:"dz"+t.id,cat,src:t.preview,start:0,cover,line:artist+" — "+(t.title||title),fields:f};
+}
+const showWork = f => f.title+(f.works.length?" · "+f.works[0]:"");
+/* Quand l'album est une compilation, on cherche les autres versions de la chanson sur Deezer :
+   leurs albums de bande originale donnent le nom du film (« Le Livre de la jungle »). */
+async function enrich(R){
+  if(!R||!R.dz||R.enriched)return; R.enriched=true;
+  try{
+    const d=await jsonp("https://api.deezer.com/search?q="+encodeURIComponent('track:"'+R.dz.title+'"')+"&limit=25");
+    const f=R.fields[0], want=norm(R.dz.title), add=[];
+    for(const t of (d.data||[])){
+      if(norm(clean(t.title_short||t.title))!==want)continue;
+      add.push(...fromWork(t.title));
+      const a=t.album&&t.album.title;
+      if(a&&/bande originale|soundtrack|original|motion picture|\bfrom\b|film|\bost\b|\bb\.?o\b|disney/i.test(a)&&goodWork(workName(a)))add.push(workName(a));
+    }
+    const fresh=[...new Set(add)].filter(w=>w&&norm(w)!==want&&!f.works.some(x=>norm(x)===norm(w)));
+    if(fresh.length){f.works.push(...fresh.slice(0,4));f.answers=uniq([...f.answers,...variants(fresh.slice(0,4))]);f.show=showWork(f);if(current()===R&&R.state==="reveal")renderRound()}
+  }catch(e){}
 }
 async function loadDeezer(cat){
   let tracks=[];
@@ -458,8 +498,7 @@ function animeItem(cat,theme,anime,al){
   const cover=(al&&al.coverImage&&al.coverImage.large)||((anime.images||[]).find(i=>/Large|Cover/.test(i.facet))||{}).link||"";
   return {key:"at"+link,cat,src:link,start:set.diff==="d"?-1:0,cover,
     line:(theme.slug||cat.anime)+(song.title?" — « "+song.title+" »":"")+(artists.length?" par "+artists.join(", "):""),
-    fields:[{label:"Animé",pts:150,answers:variants(names,true),show:(al&&(al.title.english||al.title.romaji))&&norm(al.title.english||al.title.romaji)!==norm(anime.name)?anime.name+" ("+(al.title.english||al.title.romaji)+")":anime.name},
-            {label:"Chanson",pts:50,answers:variants([song.title,...artists]),show:(song.title||"?")+(artists.length?" · "+artists.join(", "):"")}]};
+    fields:[{label:"Animé",pts:200,answers:variants(names,true),show:(al&&(al.title.english||al.title.romaji))&&norm(al.title.english||al.title.romaji)!==norm(anime.name)?anime.name+" ("+(al.title.english||al.title.romaji)+")":anime.name}]};
 }
 async function loadAnime(cat,need){
   const items=[];
@@ -508,7 +547,13 @@ async function buildRounds(){
 
 /* ============================================================
    PARTIE
+   États d'un extrait : loading → listen ⇄ paused / answer (buzz) → grace (3 s) → reveal
+   - Pause : la musique et le chrono s'arrêtent ; tout ce qui est trouvé ensuite
+     dans cet extrait ne rapporte qu'un petit montant (PAUSE_RATIO).
+   - Fin du temps : 3 s de suspense pendant lesquelles on peut encore répondre.
+   - La révélation reste affichée jusqu'au clic sur « Extrait suivant ».
    ============================================================ */
+const GRACE=3, PAUSE_RATIO=0.25;
 let G=null, raf=0, buzzTimer=0;
 function newPlayers(){
   return (set.mode==="buzz"?set.players.map((n,i)=>(n||"").trim()||"Joueur "+(i+1)):["Toi"]).map((n,i)=>({name:n,score:0,found:0,col:PCOL[i]}));
@@ -529,28 +574,30 @@ async function startGame(){
   nextRound();
 }
 function current(){return G&&G.rounds[G.i]}
+const canAnswer = R => R&&(R.state==="listen"||R.state==="paused"||R.state==="grace");
 async function nextRound(){
   cancelAnimationFrame(raf);clearInterval(buzzTimer);audio.pause();
   G.i++;
   if(G.i>=G.rounds.length){endGame();return}
   let R=current();
-  R.found=R.fields.map(()=>null); R.locked=new Set(); R.elapsed=0; R.state="loading"; R.pts=0; R.buzzer=-1;
+  Object.assign(R,{found:R.fields.map(()=>null),locked:new Set(),elapsed:0,grace:GRACE,state:"loading",pts:0,buzzer:-1,paused:false,back:"listen"});
   $("pRound").textContent="Extrait "+(G.i+1)+" / "+G.rounds.length;
   renderScore(); renderRound();
   setFb(G.i===0&&G.warn?G.warn:"","neu");
+  enrich(R); enrich(G.rounds[G.i+1]);
   // chargement de l'audio (si l'extrait est cassé, on prend un remplaçant de la même catégorie)
   for(let tries=0;tries<4;tries++){
     const ok=await loadAudio(R);
     if(ok)break;
     const rep=R.spare&&R.spare.shift();
     if(!rep){R=null;break}
-    Object.assign(R,rep,{found:rep.fields.map(()=>null)});
+    Object.assign(R,rep,{found:rep.fields.map(()=>null),enriched:false});enrich(R);
   }
   if(!R){setFb("Extrait illisible, on passe au suivant.","ko");setTimeout(nextRound,1200);return}
   if(current()!==R)return;
   markSeen(R.key);
+  R.state="listen";
   renderRound();
-  R.state="listen"; R.t0=performance.now();
   audio.play().catch(()=>setFb("▶ Clique sur « Réécouter » pour lancer le son.","neu"));
   if(!G.buzz)setTimeout(()=>$("guess").focus(),50);
   loop();
@@ -572,13 +619,19 @@ function loop(){
   let last=performance.now();
   const tick=now=>{
     const R=current(); if(!R||R.state==="reveal")return;
-    if(R.state==="listen"&&!audio.paused)R.elapsed+=(now-last)/1000;
-    last=now;
+    const dt=(now-last)/1000; last=now;
+    if(R.state==="listen"&&!audio.paused)R.elapsed+=dt;
+    if(R.state==="grace")R.grace-=dt;
     const left=Math.max(0,set.dur-R.elapsed);
-    $("timerBar").style.width=(left/set.dur*100)+"%";
+    $("timerBar").style.width=(R.state==="grace"?0:left/set.dur*100)+"%";
     $("timer").classList.toggle("low",left<5);
     $("eq").classList.toggle("off",audio.paused);
-    if(R.state==="listen"&&(left<=0||audio.ended)){reveal();return}
+    const tt=$("timeTxt");
+    if(R.state==="grace"){tt.className="ttxt grace";tt.textContent="⏳ Dernière chance… "+Math.max(1,Math.ceil(R.grace))}
+    else if(R.state==="paused"){tt.className="ttxt paused";tt.textContent="⏸ En pause — une réponse trouvée après une pause rapporte moins de points"}
+    else{tt.className="ttxt";tt.textContent=R.state==="loading"?"":Math.ceil(left)+" s"}
+    if(R.state==="listen"&&left<=0){R.state="grace";R.grace=GRACE;renderRound()}   // fin de l'extrait → suspense
+    if(R.state==="grace"&&R.grace<=0){reveal();return}
     raf=requestAnimationFrame(tick);
   };
   raf=requestAnimationFrame(tick);
@@ -600,9 +653,13 @@ function renderRound(){
     f.appendChild(row);
   });
   if(rev)f.appendChild(el("div","hint",R.line));
+  if(rev){$("timeTxt").className="ttxt";$("timeTxt").textContent=""}
   $("btnNext").classList.toggle("hidden",!rev);
   $("btnSkip").classList.toggle("hidden",rev);
-  $("btnGuess").disabled=$("guess").disabled=rev;
+  $("btnPause").classList.toggle("hidden",rev||R.state==="loading"||R.state==="grace");
+  $("btnPause").textContent=R.state==="paused"?"▶ Reprendre":"⏸ Pause";
+  $("btnReplay").classList.toggle("hidden",rev);
+  $("btnGuess").disabled=$("guess").disabled=!canAnswer(R)&&R.state!=="loading";
   if(G.buzz)renderBuzzers();
 }
 function renderScore(){
@@ -620,25 +677,36 @@ function check(guess,player){
   R.fields.forEach((f,i)=>{
     if(R.found[i])return;
     if(matches(guess,f.answers)){
-      const left=Math.max(0,set.dur-R.elapsed)/set.dur;
-      const pts=f.pts+Math.round(f.pts*0.5*left);
-      R.found[i]=player;player.score+=pts;player.found++;R.pts+=pts;got.push(f.label+" +"+pts);
+      const left=R.state==="grace"?0:Math.max(0,set.dur-R.elapsed)/set.dur;
+      const pts=R.paused?Math.round(f.pts*PAUSE_RATIO):f.pts+Math.round(f.pts*0.5*left);
+      R.found[i]=player;player.score+=pts;player.found++;R.pts+=pts;
+      got.push((R.fields.length>1?f.label+" ":"")+"+"+pts+(R.paused?" (après pause)":""));
     }
   });
   return got;
 }
 function soloGuess(){
   const v=$("guess").value.trim(); if(!v)return;
-  const R=current(); if(!R||R.state!=="listen"&&R.state!=="loading")return;
+  const R=current(); if(!canAnswer(R))return;
   const got=check(v,G.players[0]);
   $("guess").value="";
-  if(got.length){setFb("✅ "+got.join(" · "),"ok");if(window.navigator.vibrate)navigator.vibrate(30)}
+  if(got.length){setFb("✅ "+got.join(" · "),"ok");if(navigator.vibrate)navigator.vibrate(30)}
   else setFb("❌ « "+v+" » — essaie encore !","ko");
-  renderRound();renderScore();
-  if(R.found.every(Boolean))reveal();
+  renderScore();
+  if(R.found.every(Boolean))reveal(); else renderRound();
 }
 $("btnGuess").onclick=soloGuess;
-$("guess").onkeydown=e=>{if(e.key==="Enter")soloGuess()};
+$("guess").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();soloGuess()}};
+
+/* ---------- Pause ---------- */
+function togglePause(){
+  const R=current(); if(!R)return;
+  if(R.state==="listen"){R.state="paused";R.paused=true;audio.pause()}
+  else if(R.state==="paused"){R.state="listen";audio.play().catch(()=>{})}
+  else return;
+  renderRound();
+}
+$("btnPause").onclick=togglePause;
 
 /* ---------- Buzzers ---------- */
 function renderBuzzers(){
@@ -647,14 +715,14 @@ function renderBuzzers(){
     const b=el("button","bz"+(R.locked.has(i)?" locked":"")+(R.buzzer===i?" active":""));
     b.style.setProperty("--pc",p.col);
     b.append(el("span",null,"🔔 "+p.name),el("small",null,R.locked.has(i)?"bloqué":"touche "+PKEYS[i]));
-    b.disabled=R.state!=="listen"||R.locked.has(i);
+    b.disabled=!canAnswer(R)||R.locked.has(i);
     b.onclick=()=>buzz(i);
     box.appendChild(b);
   });
 }
 function buzz(i){
-  const R=current(); if(!G||!G.buzz||!R||R.state!=="listen"||R.locked.has(i))return;
-  R.state="answer";R.buzzer=i;audio.pause();
+  const R=current(); if(!G||!G.buzz||!canAnswer(R)||R.locked.has(i))return;
+  R.back=R.state==="grace"?"grace":R.state;R.state="answer";R.buzzer=i;audio.pause();
   const p=G.players[i];
   $("buzzAnswer").classList.remove("hidden");$("bguess").value="";$("bguess").placeholder=p.name+", ta réponse…";
   setTimeout(()=>$("bguess").focus(),30);
@@ -667,20 +735,20 @@ function buzzAnswer(timeout){
   const R=current(); if(!R||R.state!=="answer")return;
   clearInterval(buzzTimer);
   const i=R.buzzer,p=G.players[i],v=timeout?"":$("bguess").value.trim();
+  R.state=R.back; // check() tient compte de la pause / du suspense
   const got=v?check(v,p):[];
   $("buzzAnswer").classList.add("hidden");R.buzzer=-1;
   if(got.length)setFb("✅ "+p.name+" : "+got.join(" · "),"ok");
   else{R.locked.add(i);setFb(timeout?"⏰ "+p.name+" n'a pas répondu à temps : bloqué pour cet extrait.":"❌ « "+v+" » — "+p.name+" est bloqué pour cet extrait.","ko")}
   renderScore();
   if(R.found.every(Boolean)||R.locked.size>=G.players.length){reveal();return}
-  R.state="listen";audio.play().catch(()=>{});renderRound();
+  if(R.state!=="paused")audio.play().catch(()=>{});
+  renderRound();
 }
 $("btnBGuess").onclick=()=>buzzAnswer(false);
-$("bguess").onkeydown=e=>{e.stopPropagation();if(e.key==="Enter")buzzAnswer(false)};
+$("bguess").onkeydown=e=>{e.stopPropagation();if(e.key==="Enter"){e.preventDefault();buzzAnswer(false)}};
 document.addEventListener("keydown",e=>{
-  if(!G||!G.buzz||$("play").classList.contains("hidden")||e.target.tagName==="INPUT")return;
-  const R=current();
-  if(R&&R.state==="reveal"&&(e.key==="Enter"||e.key===" ")){e.preventDefault();nextRound();return}
+  if(!G||!G.buzz||$("play").classList.contains("hidden")||e.target.tagName==="INPUT"||e.repeat)return;
   const i=PKEYS.indexOf(e.key.toUpperCase());
   if(i>=0&&i<G.players.length){e.preventDefault();buzz(i)}
 });
@@ -689,30 +757,30 @@ document.addEventListener("keydown",e=>{
 function reveal(){
   const R=current(); if(!R||R.state==="reveal")return;
   clearInterval(buzzTimer);$("buzzAnswer").classList.add("hidden");
-  R.state="reveal";cancelAnimationFrame(raf);
+  R.state="reveal";R.revealedAt=performance.now();cancelAnimationFrame(raf);
   $("timerBar").style.width="0%";
-  if(audio.paused&&audio.src)audio.play().catch(()=>{}); // on laisse la musique tourner pendant la révélation
+  if(audio.paused&&audio.src&&!audio.ended)audio.play().catch(()=>{}); // la musique continue pendant la révélation
   const all=R.found.every(Boolean), none=!R.found.some(Boolean);
-  if(!$("fb").classList.contains("ok")||none)setFb(all?"🎉 Tout trouvé !":none?"😶 Personne n'a trouvé…":"Presque !",all?"ok":none?"ko":"neu");
-  G.recap.push({cover:R.cover,cat:R.cat,show:R.fields.map(f=>f.show).join(" · "),pts:R.pts,found:R.found.map(Boolean)});
+  setFb(all?"🎉 Trouvé ! +"+R.pts+" pts":none?"😶 Personne n'a trouvé…":"Presque ! +"+R.pts+" pts",all?"ok":none?"ko":"neu");
+  G.recap.push({R,cat:R.cat,pts:R.pts});
   renderRound();renderScore();
-  if(!G.buzz)$("btnNext").focus();
+  $("guess").blur();
 }
 function endGame(){
   audio.pause();cancelAnimationFrame(raf);clearInterval(buzzTimer);
   show("end");
   const ps=G.players.slice().sort((a,b)=>b.score-a.score);
-  const total=G.recap.length;
+  const total=G.recap.length, max=G.recap.reduce((s,r)=>s+r.R.fields.length,0);
   if(G.buzz){
     const top=ps[0], tie=ps[1]&&ps[1].score===top.score;
     $("eBig").textContent=tie?"🤝":"🏆";
     $("eTitle").textContent=tie?"Égalité !":top.name+" gagne !";
     $("eSub").textContent=total+" extraits joués";
   }else{
-    const p=G.players[0], max=G.recap.length*2;
+    const p=G.players[0];
     $("eBig").textContent=p.found>=max*0.7?"🏆":p.found>=max*0.35?"🎶":"🙉";
     $("eTitle").textContent=p.score.toLocaleString("fr-FR")+" points";
-    $("eSub").textContent=p.found+" éléments trouvés sur "+max+(G.ranked?"":" · le classement ne compte que les parties solo de 10 extraits");
+    $("eSub").textContent=p.found+" réponse"+(p.found>1?"s":"")+" trouvée"+(p.found>1?"s":"")+" sur "+max+(G.ranked?"":" · le classement ne compte que les parties solo de 10 extraits");
   }
   const eb=$("eBoard");eb.innerHTML="";
   if(G.buzz)ps.forEach((p,i)=>{const d=el("div");d.style.setProperty("--pc",p.col);d.append(el("span",null,(["🥇","🥈","🥉"][i]||"")+" "+p.name),el("span",null,p.score.toLocaleString("fr-FR")));eb.appendChild(d)});
@@ -720,21 +788,21 @@ function endGame(){
   if(G.ranked)Classement.finDePartie({zone:z,cle:"blindtest",champ:"s",entree:{s:G.players[0].score,lv:Math.max(1,G.players[0].found)},
     local:{qualifie:qualifies,ajouter:addScore,liste:loadScores},rendu:renderList});
   const rc=$("recap");rc.innerHTML="";
-  G.recap.forEach(r=>{
-    const li=el("li"),img=el("img");img.alt="";if(r.cover)img.src=r.cover;img.onerror=()=>img.style.visibility="hidden";
-    const t=el("div","t");t.append(el("span",null,r.show),el("small",null,r.cat.ico+" "+r.cat.name));
-    li.append(img,t,el("span","pts",r.found.map(x=>x?"✅":"❌").join("")+(G.buzz?"":" "+r.pts)));
+  G.recap.forEach(({R,cat,pts})=>{
+    const li=el("li"),img=el("img");img.alt="";if(R.cover)img.src=R.cover;img.onerror=()=>img.style.visibility="hidden";
+    const t=el("div","t");t.append(el("span",null,R.fields.map(f=>f.show).join(" · ")),el("small",null,cat.ico+" "+cat.name+" · "+R.line));
+    li.append(img,t,el("span","pts",R.found.map(x=>x?"✅":"❌").join("")+(G.buzz?"":" "+pts)));
     rc.appendChild(li);
   });
 }
-$("btnNext").onclick=()=>nextRound();
-$("btnSkip").onclick=()=>{const R=current();if(R&&R.state!=="loading")reveal()};
-$("btnReplay").onclick=()=>{const R=current();if(!R||R.state==="loading")return;audio.currentTime=Math.max(0,R.start);audio.play().catch(()=>{})};
+// Le passage à l'extrait suivant se fait uniquement au clic (le délai évite qu'un Entrée validant la réponse ne saute la révélation).
+$("btnNext").onclick=()=>{const R=current();if(R&&R.state==="reveal"&&performance.now()-R.revealedAt>400)nextRound()};
+$("btnSkip").onclick=()=>{const R=current();if(R&&R.state!=="loading"&&R.state!=="answer")reveal()};
+$("btnReplay").onclick=()=>{const R=current();if(!R||R.state==="loading"||R.state==="answer")return;audio.currentTime=Math.max(0,R.start);if(R.state!=="paused")audio.play().catch(()=>{})};
 $("btnQuit").onclick=()=>{if(confirm("Quitter la partie en cours ?")){audio.pause();cancelAnimationFrame(raf);clearInterval(buzzTimer);G=null;show("home");renderBest()}};
 $("btnAgain").onclick=startGame;
 $("btnHome").onclick=()=>{show("home");renderHome();renderBest()};
 $("btnGo").onclick=startGame;
-
 renderHome();renderBest();
 </script>
 </body>
