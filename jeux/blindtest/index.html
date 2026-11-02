@@ -968,7 +968,7 @@ $("btnNetTest").onclick=async()=>{
 };
 function leaveNet(msg){
   if(NET.host)pub({t:"close"});else if(NET.joined)pub({t:"bye"});
-  try{NET.client&&NET.client.end(true)}catch(e){}
+  const c=NET.client;if(c)setTimeout(()=>{try{c.end()}catch(e){}},600);   // laisse le temps au message de partir
   Object.assign(NET,{on:false,host:false,client:null,joined:false,V:null,key:"",loaded:"",started:""});
   H=null;clearInterval(netTick);audio.pause();banner("");
   $("home").insertBefore($("setCard"),$("btnGo"));
@@ -993,7 +993,7 @@ function hostHandle(m){
   if(p.gone&&m.t!=="bye"){p.gone=false;push()}
   const R=H.rounds[H.i];
   if(m.t==="rdy"&&R&&m.i===H.i&&m.src===R.src){R.rdy.add(p.id);if(H.phase==="ready")maybeGo()}
-  if(m.t==="pz"&&R&&m.i===H.i)R.pz[p.id]=true;
+  if(m.t==="pz"&&R&&m.i===H.i&&!R.pz[p.id]){R.pz[p.id]=true;push()}
   if(m.t==="g"&&R&&m.i===H.i)hostGuess(p,R,String(m.v||"").slice(0,120));
   if(m.t==="bye"){p.gone=true;if(H.phase==="lobby")H.players=H.players.filter(x=>x!==p);checkRoundDone();push()}
 }
