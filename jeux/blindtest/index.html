@@ -108,7 +108,7 @@ label.l:first-child{margin-top:0}
 .final{text-align:center}
 .final .big{font-size:3.2rem}
 .final h2{font-size:2rem;margin:6px 0}
-@media (max-width:560px){.stage{flex-direction:column;align-items:stretch}.disc{width:100%;height:130px}.field b{min-width:70px}}
+@media (max-width:560px){header{padding:10px 12px}header h1{font-size:1.05rem;white-space:nowrap}header a{font-size:.85rem}.hdr input[type=range]{width:60px}.stage{flex-direction:column;align-items:stretch}.disc{width:100%;height:130px}.field b{min-width:70px}}
 </style>
 </head>
 <body>
@@ -400,11 +400,12 @@ const renderBest=()=>Classement.tableau($("bestZone"),{cle:"blindtest",champ:"s"
 const seen = new Set(lsGet("bt_seen",[]));
 function markSeen(k){seen.add(k);lsSet("bt_seen",[...seen].slice(-500))}
 
+const COMPIL=/g[ée]n[ée]rique|compil|best of|meilleur|hits|top |vol\.|volume|collection|essentiel|tubes|ann[ée]es|greatest/i; // noms d'albums de compilation à ne pas afficher
 function deezerItem(t,cat){
   const title=t.title_short||t.title, artist=t.artist&&t.artist.name, album=t.album&&t.album.title;
   const cover=t.album&&(t.album.cover_medium||t.album.cover);
   const f=cat.ecran
-    ? [{label:"Œuvre / titre",pts:150,answers:variants([title,t.title,album]),show:clean(title)+(album&&norm(album)!==norm(title)?" · "+clean(album):"")},
+    ? [{label:"Œuvre / titre",pts:150,answers:variants([title,t.title,album]),show:clean(title)+(album&&clean(album).length<=45&&!COMPIL.test(album)&&!norm(clean(album)).includes(norm(clean(title)))?" · "+clean(album):"")},
        {label:"Artiste",pts:50,answers:variants(artistParts(artist)),show:artist}]
     : [{label:"Titre",pts:100,answers:variants([title,t.title]),show:clean(title)},
        {label:"Artiste",pts:100,answers:variants(artistParts(artist)),show:artist}];
