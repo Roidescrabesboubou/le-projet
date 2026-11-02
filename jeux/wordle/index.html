@@ -352,5 +352,6 @@ $("oCb").onchange=e=>{opts.cb=e.target.checked;store.set("opts",opts);applyOpts(
 buildKb();applyOpts();startDaily();
 if(!store.get("seenHelp",false)){store.set("seenHelp",true);$("mdHelp").classList.remove("hidden");}
 </script>
+<script src="../commun/garde.js"></script>
 </body>
 </html>

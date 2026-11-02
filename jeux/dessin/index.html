@@ -974,5 +974,6 @@ $("bClear").onclick=()=>{if(amDrawer()&&strokes.length)emit({t:"clear"});};
 document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="z"&&amDrawer()){e.preventDefault();$("bUndo").onclick();}});
 updTools();clearCanvas();
 </script>
+<script src="../commun/garde.js"></script>
 </body>
 </html>

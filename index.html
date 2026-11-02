@@ -35,11 +35,17 @@ a.card:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.12)}
 .card.soon .cover{background:var(--soon);filter:grayscale(.4)}
 .card.soon .play{background:transparent;color:var(--muted);border:1px dashed var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:30px}
+
+.topbar{position:absolute;top:14px;right:16px;z-index:10}
+.annonce{margin:0 auto 24px;max-width:720px;padding:12px 18px;border-radius:14px;background:var(--card);border:2px dashed var(--accent);text-align:center;font-weight:700;white-space:pre-wrap}
+.card.hidden-admin{opacity:.6;outline:2px dashed var(--muted)}
 footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
 </style>
 </head>
 <body>
+<div class="topbar" id="compte"></div>
 <main>
+  <div class="annonce" id="annonce" hidden></div>
   <section class="hero">
     <div class="logo">🎮</div>
     <h1>Salle de jeux</h1>
@@ -52,174 +58,37 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
   <footer><span id="count"></span></footer>
 </main>
 
+<script src="jeux/commun/catalogue.js"></script>
+<script src="jeux/commun/compte.js"></script>
 <script>
-/* ============================================================
-   LISTE DES JEUX
-   Pour ajouter un jeu : crée un dossier jeux/<nom>/index.html
-   puis ajoute une entrée ci-dessous (status "dispo").
-   Les jeux "bientot" s'affichent grisés, sans lien.
-   ============================================================ */
-const GAMES = [
-  {
-    title: "Les Quintuplées",
-    emoji: "💞",
-    desc: "Jeu de séduction avec IA : choisis une des cinq sœurs Nakano et gagne son cœur, seul ou jusqu'à 4 joueurs, en local ou en ligne.",
-    url: "jeux/quintuplees/",
-    tags: ["IA", "Histoire", "Multijoueur"],
-    colors: ["#f6a6c1", "#8e5bd0"],
-    status: "dispo",
-  },
-  {
-    title: "Blind Test",
-    emoji: "🎧",
-    desc: "Écoute l'extrait et trouve le titre, l'artiste ou l'œuvre : hits, années 80 à 2010, rap FR, génériques TV, BO de films et jeux vidéo, openings et endings d'animé. En solo, avec des buzzers sur un écran ou en ligne, chacun sur son appareil.",
-    url: "jeux/blindtest/",
-    tags: ["Musique", "Quiz", "Party", "Solo", "Multijoueur"],
-    colors: ["#ff4f7b", "#3d3aa8"],
-    status: "dispo",
-    badge: "Nouveau"
-  },
-  {
-    title: "Dessine & Devine",
-    emoji: "🎨",
-    desc: "Un joueur dessine, les autres devinent ! 19 thèmes (dont Animé) et près de 1 500 mots, plus tes propres mots. En ligne ou sur un seul écran.",
-    url: "jeux/dessin/",
-    tags: ["Dessin", "Multijoueur", "Party"],
-    colors: ["#ffb37a", "#5b6bd0"],
-    status: "dispo",
-  },
-  {
-    title: "Téléphone dessiné",
-    emoji: "📞",
-    desc: "Le téléphone arabe en dessins : écris une phrase, le suivant la dessine, le suivant devine le dessin… puis découvrez ensemble les albums et leurs dérapages. En ligne ou en se passant un seul appareil.",
-    url: "jeux/telephone/",
-    tags: ["Dessin", "Multijoueur", "Party"],
-    colors: ["#b48cf2", "#ff6b8b"],
-    status: "dispo",
-    badge: "Nouveau"
-  },
-  {
-    title: "Mot du jour",
-    emoji: "🟩",
-    desc: "Le Wordle en français : devine le mot de 5 lettres en 6 essais. Un nouveau mot chaque jour à minuit, plus une partie libre illimitée.",
-    url: "jeux/wordle/",
-    tags: ["Mots", "Quotidien", "Solo"],
-    colors: ["#7fd6a3", "#e0a526"],
-    status: "dispo",
-  },
-  {
-    title: "LoL-dle",
-    emoji: "⚔️",
-    desc: "Devine le champion de League of Legends grâce à ses caractéristiques : genre, poste, espèce, région, année… Un nouveau champion chaque jour, plus une partie libre.",
-    url: "jeux/loldle/",
-    tags: ["Quotidien", "Solo", "Jeux vidéo"],
-    colors: ["#c8aa6e", "#0a8fa8"],
-    status: "dispo",
-  },
-  {
-    title: "One Piece-dle",
-    emoji: "🏴‍☠️",
-    desc: "Devine le personnage de One Piece : affiliation, fruit du démon, haki, prime, taille, origine, premier arc… Un nouveau personnage chaque jour, plus une partie libre.",
-    url: "jeux/onepiecedle/",
-    tags: ["Quotidien", "Solo", "Animé"],
-    colors: ["#f2c14e", "#d63d3d"],
-    status: "dispo",
-    badge: "Nouveau"
-  },
-  {
-    title: "Pokédle",
-    emoji: "⚡",
-    desc: "Devine le Pokémon mystère parmi les 1 025 : types, couleur, stade d'évolution, taille, poids, génération… Un nouveau Pokémon chaque jour, plus une partie libre par génération.",
-    url: "jeux/pokedle/",
-    tags: ["Quotidien", "Solo", "Jeux vidéo"],
-    colors: ["#ffcb05", "#e53b3b"],
-    status: "dispo",
-    badge: "Nouveau"
-  },
-  {
-    title: "Paysdle",
-    emoji: "🌍",
-    desc: "Trouve le pays mystère en 8 essais grâce à la distance, la direction, le continent, la population et la langue. Un nouveau pays chaque jour.",
-    url: "jeux/paysdle/",
-    tags: ["Géographie", "Quotidien", "Solo"],
-    colors: ["#7cc6e8", "#2fa36b"],
-    status: "dispo",
-  },
-  {
-    title: "Connexions",
-    emoji: "🔗",
-    desc: "16 mots, 4 groupes secrets : retrouve ce qui les relie sans faire plus de 4 erreurs. Attention aux pièges ! Une nouvelle grille chaque jour.",
-    url: "jeux/connexions/",
-    tags: ["Mots", "Quotidien", "Solo"],
-    colors: ["#f2d36b", "#bb8be0"],
-    status: "dispo",
-  },
-  {
-    title: "Blocs",
-    emoji: "🧱",
-    desc: "Le classique des blocs qui tombent : complète des lignes, enchaîne les combos et grimpe de niveau. Pièce en réserve, aperçu des suivantes et top 10 des scores.",
-    url: "jeux/blocs/",
-    tags: ["Arcade", "Solo"],
-    colors: ["#4fc3e8", "#b06bd8"],
-    status: "dispo",
-    badge: "Nouveau"
-  },
-  {
-    title: "Souris gourmande",
-    emoji: "🐭",
-    desc: "Mange toutes les miettes du labyrinthe en échappant aux chats. Un morceau de fromage et c'est toi qui les chasses ! Niveaux de plus en plus rapides et top 10.",
-    url: "jeux/labyrinthe/",
-    tags: ["Arcade", "Solo"],
-    colors: ["#f2d36b", "#2c2350"],
-    status: "dispo",
-    badge: "Nouveau"
-  },
-  {
-    title: "Démineur",
-    emoji: "💣",
-    desc: "Découvre toutes les cases sans faire exploser de mine. Trois difficultés, drapeaux au clic droit ou à l'appui long, et classement des meilleurs temps.",
-    url: "jeux/demineur/",
-    tags: ["Réflexion", "Solo"],
-    colors: ["#8fcf9f", "#e8607a"],
-    status: "dispo",
-    badge: "Nouveau"
-  },
-  {
-    title: "Quiz Culture G",
-    emoji: "🧠",
-    desc: "Plus de 750 questions dans 16 thèmes (histoire, sciences, animés, mythologie, Marseille…). Réponds vite pour marquer gros ! En solo, à plusieurs sur un écran ou en ligne, chacun sur son appareil.",
-    url: "jeux/quiz/",
-    tags: ["Quiz", "Multijoueur", "Party", "Solo"],
-    colors: ["#9b84f5", "#ff8a3d"],
-    status: "dispo",
-    badge: "Nouveau"
-  },
-  {
-    title: "Encore un autre",
-    emoji: "🕹️",
-    desc: "Une idée de jeu à venir. Patience !",
-    tags: ["Arcade"],
-    status: "bientot"
-  }
-];
-
+const GAMES = window.SALLE_CATALOGUE;
 const grid = document.getElementById("grid");
 const filters = document.getElementById("filters");
-let active = "Tous";
+let active = "Tous", regl = {};
+
+Compte.bouton(document.getElementById("compte"));
+
+/* Jeux tels qu'ils doivent apparaître (réglages admin appliqués) */
+function visibles(){
+  const admin = !!(Compte.session() && Compte.session().admin);
+  return GAMES.map(g => ({...g, ...Compte.etatDe(g, regl)}))
+    .filter(g => g.etat !== "cache" || admin);
+}
 
 function render(){
   grid.innerHTML = "";
-  const list = GAMES.filter(g => active === "Tous" || (g.tags || []).includes(active));
+  const list = visibles().filter(g => active === "Tous" || (g.tags || []).includes(active));
   if(!list.length){ grid.innerHTML = '<p class="empty">Aucun jeu dans cette catégorie pour l\'instant.</p>'; return; }
   for(const g of list){
-    const ready = g.status === "dispo";
+    const ready = g.etat !== "bientot" && !g.sansPage;
+    const cache = g.etat === "cache";
     const el = document.createElement(ready ? "a" : "div");
-    el.className = "card" + (ready ? "" : " soon");
-    if(ready) el.href = g.url;
+    el.className = "card" + (ready ? "" : " soon") + (cache ? " hidden-admin" : "");
+    if(ready) el.href = "jeux/" + g.slug + "/";
     const [c1, c2] = g.colors || ["#ddd", "#bbb"];
     el.style.setProperty("--c1", c1);
     el.style.setProperty("--c2", c2);
-    const badge = ready ? (g.badge || "") : "Bientôt";
+    const badge = cache ? "🙈 Caché (visible car admin)" : ready ? (g.badge || "") : "Bientôt";
     el.innerHTML = `
       ${badge ? `<span class="badge"></span>` : ""}
       <div class="cover"></div>
@@ -239,7 +108,8 @@ function render(){
 }
 
 function renderFilters(){
-  const tags = ["Tous", ...new Set(GAMES.flatMap(g => g.tags || []))];
+  const tags = ["Tous", ...new Set(visibles().flatMap(g => g.tags || []))];
+  if(!tags.includes(active)) active = "Tous";
   filters.innerHTML = "";
   for(const t of tags){
     const b = document.createElement("button");
@@ -250,10 +120,24 @@ function renderFilters(){
   }
 }
 
-const n = GAMES.filter(g => g.status === "dispo").length;
-document.getElementById("count").textContent = `${n} jeu${n > 1 ? "x" : ""} disponible${n > 1 ? "s" : ""} · d'autres arrivent bientôt`;
-renderFilters();
-render();
+function renderAnnonce(){
+  const a = regl.annonce, box = document.getElementById("annonce");
+  if(a && a.actif && a.texte){ box.textContent = a.texte; box.hidden = false; }
+  else box.hidden = true;
+}
+
+function tout(){
+  const n = visibles().filter(g => g.etat === "dispo" && !g.sansPage).length;
+  document.getElementById("count").textContent = `${n} jeu${n > 1 ? "x" : ""} disponible${n > 1 ? "s" : ""} · d'autres arrivent bientôt`;
+  renderAnnonce(); renderFilters(); render();
+}
+
+/* On attend les réglages (max ~3 s) pour ne pas montrer un jeu caché par erreur */
+grid.innerHTML = '<p class="empty">Chargement des jeux…</p>';
+Promise.race([Compte.reglages(), new Promise(r => setTimeout(() => r({}), 3000))])
+  .then(r => { regl = r || {}; tout(); });
+Compte.reglages().then(r => { if(JSON.stringify(r) !== JSON.stringify(regl)){ regl = r || {}; tout(); } });
+Compte.surChangement(() => tout());
 </script>
 </body>
 </html>

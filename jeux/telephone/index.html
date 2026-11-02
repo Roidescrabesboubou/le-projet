@@ -1034,5 +1034,6 @@ $("bClear").onclick=()=>{if(canDraw()&&strokes.length&&confirm("Tout effacer ?")
 document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="z"&&canDraw()){e.preventDefault();$("bUndo").onclick();}});
 updTools();clearCtx(ctx);
 </script>
+<script src="../commun/garde.js"></script>
 </body>
 </html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel admin – Salle de jeux</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbf6ef;--card:#fff;--text:#22192b;--muted:#776c80;--line:#ecdfd2;--accent:#e86a92;--ok:#2fa35a;--warn:#e0a526;--off:#9a8fa5}
+@media (prefers-color-scheme:dark){:root{--bg:#17131c;--card:#231d2b;--text:#f3ecf6;--muted:#a99bb3;--line:#352c40}}
+*{box-sizing:border-box}
+body{margin:0;font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header a{color:var(--muted);text-decoration:none;font-weight:700}
+h1{font-family:Fredoka,sans-serif;font-size:1.5rem;margin:0}
+h2{font-family:Fredoka,sans-serif;font-size:1.2rem;margin:0 0 4px}
+main{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:18px}
+.hint{color:var(--muted);font-size:.9rem;margin:0 0 12px}
+button,.btn{font:inherit;font-weight:700;cursor:pointer;border:0;border-radius:10px;padding:8px 14px;background:var(--accent);color:#fff;text-decoration:none;display:inline-block}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+button:disabled{opacity:.5;cursor:default}
+textarea,input[type=text]{width:100%;font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+textarea{min-height:70px;resize:vertical}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.jeux{display:flex;flex-direction:column;gap:8px}
+.jeu{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.jeu .em{font-size:1.7rem;text-align:center}
+.jeu b{display:block}
+.jeu small{color:var(--muted)}
+.jeu .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border-radius:0;background:var(--card);color:var(--text);padding:6px 10px;font-size:.85rem}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on.dispo{background:var(--ok);color:#fff}
+.seg button.on.bientot{background:var(--warn);color:#22192b}
+.seg button.on.cache{background:var(--off);color:#fff}
+.badge-in{width:110px!important;padding:6px 9px!important;font-size:.85rem}
+.mini{font-size:.8rem;padding:5px 9px}
+.def{color:var(--muted);font-size:.75rem}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:999px;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
+.toast.on{opacity:1}
+.toast.err{background:#d64545;color:#fff}
+.centre{text-align:center;padding:40px 18px}
+.centre .big{font-size:3rem}
+ol{padding-left:20px;line-height:1.7}
+code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.88em}
+@media (max-width:620px){.jeu{grid-template-columns:36px 1fr}.jeu .ctl{grid-column:1/-1;justify-content:flex-start}}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><a href="../">← Salle de jeux</a><h1>⭐ Panel admin</h1></div>
+  <div id="compte"></div>
+</header>
+<main id="main"><p class="hint">Chargement…</p></main>
+<div class="toast" id="toast"></div>
+
+<script src="../jeux/commun/catalogue.js"></script>
+<script src="../jeux/commun/compte.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const main = $("main");
+const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt) e.textContent = txt; if(cls) e.className = cls; return e; };
+let tt;
+function toast(t, err){ const x = $("toast"); x.textContent = t; x.className = "toast on" + (err ? " err" : ""); clearTimeout(tt); tt = setTimeout(() => x.className = "toast", 2200); }
+
+Compte.bouton($("compte"));
+
+function ecranCentre(icone, titre, texte, bouton){
+  main.innerHTML = "";
+  const p = el("div", "", "panel centre");
+  p.append(el("div", icone, "big"), el("h2", titre));
+  if(texte){ const t = el("p", texte, "hint"); p.appendChild(t); }
+  if(bouton) p.appendChild(bouton);
+  main.appendChild(p);
+  return p;
+}
+
+let rendu = 0;
+async function demarrer(){
+  const jeton = ++rendu;
+  if(!Compte.pret){
+    main.innerHTML = "";
+    const p = el("div", "", "panel");
+    p.innerHTML = `<h2>🔧 Les comptes ne sont pas encore activés</h2>
+      <ol>
+        <li>Console Firebase → <b>Authentication</b> → Commencer → <b>Sign-in method</b> → active <b>E-mail/Mot de passe</b>.</li>
+        <li>⚙️ Paramètres du projet → Général → copie la <b>Clé API Web</b> et colle-la dans <code>jeux/commun/compte.js</code> (ligne <code>apiKey</code>).</li>
+        <li>Realtime Database → <b>Règles</b> → colle le contenu de <code>firebase-regles.json</code> → Publier.</li>
+        <li>Reviens ici, crée ton compte, puis clique « Devenir administrateur ».</li>
+      </ol>`;
+    main.appendChild(p); return;
+  }
+  const s = Compte.session();
+  if(!s){
+    const b = el("button", "Se connecter"); b.onclick = () => Compte.ouvrir("connexion");
+    ecranCentre("🔒", "Connecte-toi pour accéder au panel", "Seuls les administrateurs peuvent modifier le site.", b);
+    return;
+  }
+  main.innerHTML = '<p class="hint">Vérification des droits…</p>';
+  await Compte.actualiser();
+  if(jeton !== rendu) return;
+  if(!Compte.session()) return demarrer();
+  if(!Compte.session().admin){
+    let aucun = false;
+    try{ aucun = !(await Compte.db("admins", {query: "shallow=true"})); }catch(e){}
+    if(jeton !== rendu) return;
+    if(aucun){
+      const b = el("button", "⭐ Devenir administrateur");
+      b.onclick = async () => {
+        b.disabled = true;
+        try{ await Compte.db("admins/" + Compte.session().uid, {method: "PUT", body: true}); await Compte.actualiser(); toast("Tu es maintenant admin !"); demarrer(); }
+        catch(e){ toast(e.message, true); b.disabled = false; }
+      };
+      ecranCentre("👑", "Aucun administrateur pour l'instant", "Le premier compte qui clique ici devient administrateur. Ensuite, seuls les admins pourront en nommer d'autres.", b);
+    }else{
+      ecranCentre("⛔", "Accès réservé", "Ce compte n'est pas administrateur. Demande à un admin de te donner les droits.");
+    }
+    return;
+  }
+  panel();
+}
+
+/* ---------------- Panel ---------------- */
+async function panel(){
+  main.innerHTML = "";
+  let regl = {};
+  try{ regl = (await Compte.db("reglages", {auth: false})) || {}; }catch(e){ toast("Réglages illisibles : " + e.message, true); }
+
+  /* Annonce */
+  const pa = el("div", "", "panel");
+  pa.appendChild(el("h2", "📢 Annonce sur l'accueil"));
+  pa.appendChild(el("p", "Un message affiché en haut de la page d'accueil (nouveau jeu, maintenance, soirée jeux…).", "hint"));
+  const ta = el("textarea"); ta.maxLength = 200; ta.value = (regl.annonce && regl.annonce.texte) || "";
+  ta.placeholder = "Ex. : 🎉 Nouveau jeu : Démineur ! Soirée quiz vendredi 21 h.";
+  const r = el("div", "", "row"); r.style.marginTop = "10px";
+  const lab = el("label"); const cb = el("input"); cb.type = "checkbox"; cb.checked = !!(regl.annonce && regl.annonce.actif);
+  lab.append(cb, " Afficher l'annonce"); lab.style.flex = "1";
+  const sv = el("button", "Enregistrer");
+  sv.onclick = async () => {
+    sv.disabled = true;
+    try{ await Compte.db("reglages/annonce", {method: "PUT", body: {texte: ta.value.trim(), actif: cb.checked}}); toast("Annonce enregistrée"); }
+    catch(e){ toast(e.message, true); }
+    sv.disabled = false;
+  };
+  r.append(lab, sv); pa.append(ta, r); main.appendChild(pa);
+
+  /* Jeux */
+  const pj = el("div", "", "panel");
+  pj.appendChild(el("h2", "🎮 Jeux"));
+  pj.appendChild(el("p", "Visible = sur l'accueil et jouable · Bientôt = grisé, sans lien · Caché = absent de l'accueil et bloqué par adresse directe (sauf pour les admins). Les changements sont enregistrés tout de suite.", "hint"));
+  const liste = el("div", "", "jeux"); pj.appendChild(liste); main.appendChild(pj);
+  const jeuxRegl = regl.jeux || {};
+  for(const g of SALLE_CATALOGUE){
+    const ligne = el("div", "", "jeu");
+    const em = el("div", g.emoji || "🎲", "em");
+    const info = el("div"); info.appendChild(el("b", g.title));
+    const def = el("small"); info.appendChild(def);
+    const ctl = el("div", "", "ctl");
+    const seg = el("div", "", "seg");
+    const badge = el("input", "", "badge-in"); badge.type = "text"; badge.maxLength = 20; badge.placeholder = "Badge";
+    const voir = el("a", "👁", "btn ghost mini"); voir.style.cssText = "background:transparent;color:var(--text);border:1px solid var(--line)";
+    voir.title = "Ouvrir le jeu"; voir.href = "../jeux/" + g.slug + "/"; voir.target = "_blank";
+    const raz = el("button", "↺", "ghost mini"); raz.title = "Revenir au réglage par défaut du code";
+
+    const maj = () => {
+      const st = Compte.etatDe(g, {jeux: jeuxRegl});
+      seg.querySelectorAll("button").forEach(b => b.className = b.dataset.e === st.etat ? "on " + st.etat : "");
+      if(document.activeElement !== badge) badge.value = st.badge;
+      const perso = !!jeuxRegl[g.slug];
+      def.textContent = perso ? "Réglé depuis le panel" : "Réglage par défaut du code";
+      raz.disabled = !perso;
+    };
+    const enregistrer = async (patch) => {
+      const avant = jeuxRegl[g.slug];
+      const st = Compte.etatDe(g, {jeux: jeuxRegl});
+      const nv = {etat: st.etat, badge: st.badge, ...patch};
+      jeuxRegl[g.slug] = nv; maj();
+      try{ await Compte.db("reglages/jeux/" + g.slug, {method: "PUT", body: nv}); toast(g.title + " : enregistré"); }
+      catch(e){ if(avant) jeuxRegl[g.slug] = avant; else delete jeuxRegl[g.slug]; maj(); toast(e.message, true); }
+    };
+    [["dispo", "Visible"], ["bientot", "Bientôt"], ["cache", "Caché"]].forEach(([k, t]) => {
+      const b = el("button", t); b.dataset.e = k;
+      b.onclick = () => enregistrer({etat: k});
+      seg.appendChild(b);
+    });
+    badge.onchange = () => enregistrer({badge: badge.value.trim()});
+    raz.onclick = async () => {
+      const avant = jeuxRegl[g.slug]; delete jeuxRegl[g.slug]; maj();
+      try{ await Compte.db("reglages/jeux/" + g.slug, {method: "DELETE"}); toast(g.title + " : réglage par défaut"); }
+      catch(e){ jeuxRegl[g.slug] = avant; maj(); toast(e.message, true); }
+    };
+    if(g.sansPage) voir.style.visibility = "hidden";
+    ctl.append(seg, badge, voir, raz);
+    ligne.append(em, info, ctl);
+    liste.appendChild(ligne);
+    maj();
+  }
+
+  /* Comptes */
+  const pc = el("div", "", "panel");
+  pc.appendChild(el("h2", "👥 Comptes"));
+  const zc = el("div"); zc.appendChild(el("p", "Chargement…", "hint"));
+  pc.appendChild(zc); main.appendChild(pc);
+  try{
+    const [comptes, admins] = await Promise.all([Compte.db("comptes"), Compte.db("admins")]);
+    const l = Object.entries(comptes || {}).map(([uid, c]) => ({uid, ...c})).sort((a, b) => (b.cree || 0) - (a.cree || 0));
+    zc.innerHTML = "";
+    zc.appendChild(el("p", `${l.length} compte${l.length > 1 ? "s" : ""} · ${Object.keys(admins || {}).length} admin${Object.keys(admins || {}).length > 1 ? "s" : ""}`, "hint"));
+    if(!l.length) return;
+    const t = el("table");
+    t.innerHTML = "<thead><tr><th>Pseudo</th><th>Inscrit le</th><th>Admin</th></tr></thead>";
+    const tb = el("tbody"); t.appendChild(tb);
+    const moi = Compte.session().uid;
+    for(const c of l){
+      const tr = el("tr");
+      const td1 = el("td", (c.pseudo || "?") + (c.uid === moi ? " (toi)" : ""));
+      const td2 = el("td", c.cree ? new Date(c.cree).toLocaleDateString("fr-FR", {day: "numeric", month: "short", year: "numeric"}) : "—");
+      const td3 = el("td");
+      const est = !!(admins && admins[c.uid]);
+      const b = el("button", est ? "⭐ Admin" : "Nommer admin", est ? "mini" : "ghost mini");
+      if(c.uid === moi){ b.disabled = true; b.title = "Tu ne peux pas te retirer toi-même"; }
+      b.onclick = async () => {
+        const devient = !(admins && admins[c.uid]);
+        if(!confirm(devient ? `Donner les droits admin à ${c.pseudo} ?` : `Retirer les droits admin de ${c.pseudo} ?`)) return;
+        b.disabled = true;
+        try{
+          await Compte.db("admins/" + c.uid, devient ? {method: "PUT", body: true} : {method: "DELETE"});
+          if(devient) admins[c.uid] = true; else delete admins[c.uid];
+          b.textContent = devient ? "⭐ Admin" : "Nommer admin"; b.className = devient ? "mini" : "ghost mini";
+          toast(devient ? c.pseudo + " est admin" : c.pseudo + " n'est plus admin");
+        }catch(e){ toast(e.message, true); }
+        b.disabled = false;
+      };
+      td3.appendChild(b);
+      tr.append(td1, td2, td3); tb.appendChild(tr);
+    }
+    zc.appendChild(t);
+  }catch(e){
+    zc.innerHTML = ""; zc.appendChild(el("p", "Impossible de lire les comptes : " + e.message, "hint"));
+  }
+}
+
+/* On ne relance que si l'utilisateur ou ses droits changent (sinon boucle) */
+const cleEtat = () => { const s = Compte.session(); return s ? s.uid + ":" + s.admin : ""; };
+let dernier = cleEtat();
+Compte.surChangement(() => { const k = cleEtat(); if(k !== dernier){ dernier = k; demarrer(); } });
+demarrer();
+</script>
+</body>
+</html>
