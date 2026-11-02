@@ -107,6 +107,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;justify-conten
     <button class="btn alt" id="bAgain">♾️ Partie libre</button>
   </div>
   <div class="next" id="nextBox" style="margin-top:14px">Prochain mot dans<b id="countdown">--:--:--</b></div>
+  <div id="srZone"></div>
 </div></div>
 
 <div class="modal hidden" id="mdHelp"><div class="box help">
@@ -131,6 +132,8 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;justify-conten
 </div></div>
 
 <script src="mots.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
 <script>
 /* ---------- Utilitaires ---------- */
 const $=id=>document.getElementById(id);
@@ -266,6 +269,7 @@ function recordStats(win){
   s.played++;if(win){s.wins++;s.dist[guesses.length-1]++;}
   s.best=Math.max(s.best,s.streak);
   store.set(key,s);
+  if(mode==="daily")Series.envoyer("wordle",s,parisDay());
 }
 
 /* ---------- Modes ---------- */
@@ -302,6 +306,8 @@ function distHTML(s,hi){
 }
 function showEnd(){
   const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
+  const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
+  if(mode==="daily")Series.panneau($("srZone"),"wordle",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
   const won=guesses.includes(answer),fin=over;
   $("endTitle").textContent=!fin?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?"🎉 Bravo !":"😢 Perdu…";
   $("endWord").textContent=fin?answer:"?????";

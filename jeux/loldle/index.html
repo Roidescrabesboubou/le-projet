@@ -137,6 +137,7 @@ tr.new td:nth-child(5){animation-delay:.6s}tr.new td:nth-child(6){animation-dela
     <button class="btn alt" id="bAgain">♾️ Partie libre</button>
   </div>
   <div class="next" id="nextBox">Prochain champion dans<b id="countdown">--:--:--</b></div>
+  <div id="srZone"></div>
 </div></div>
 
 <div class="modal hidden" id="mdHelp"><div class="box help">
@@ -154,6 +155,8 @@ tr.new td:nth-child(5){animation-delay:.6s}tr.new td:nth-child(6){animation-dela
 </div></div>
 
 <script src="champions.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem("loldle_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
@@ -270,6 +273,7 @@ function recordStats(){
   else s.streak++;
   s.played++;s.wins++;s.total+=guesses.length;s.best=Math.max(s.best,s.streak);
   store.set(key,s);
+  if(mode==="daily")Series.envoyer("loldle",s,parisDay());
 }
 
 /* ---------- Modes ---------- */
@@ -297,6 +301,8 @@ $("mFree").onclick=()=>{closeAll();startFree(false);};
 /* ---------- Fin / stats ---------- */
 function showEnd(){
   const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
+  const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
+  if(mode==="daily")Series.panneau($("srZone"),"loldle",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
   $("endTitle").textContent=over?`🎉 Trouvé en ${guesses.length} essai${guesses.length>1?"s":""} !`:(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)");
   $("found").innerHTML=over?avatar(answer.name)+`<b>${esc(answer.name)}</b>`:"";
   const avg=s.wins?(s.total/s.wins).toFixed(1):"–";

@@ -107,6 +107,7 @@ main{max-width:600px;margin:0 auto;padding:14px 12px 50px}
     <button class="btn alt" id="bAgain">♾️ Partie libre</button>
   </div>
   <div class="next" id="nextBox">Prochaine grille dans<b id="countdown">--:--:--</b></div>
+  <div id="srZone"></div>
 </div></div>
 
 <div class="modal hidden" id="mdHelp"><div class="box help">
@@ -121,6 +122,8 @@ main{max-width:600px;margin:0 auto;padding:14px 12px 50px}
 </div></div>
 
 <script src="grilles.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem("connexions_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
@@ -206,6 +209,7 @@ function recordStats(){
   else s.streak=won?s.streak+1:0;
   s.played++;if(won){s.wins++;if(!mistakes())s.perfect++;}
   s.best=Math.max(s.best,s.streak);store.set(key,s);
+  if(mode==="daily")Series.envoyer("connexions",s,parisDay());
 }
 function load(data){
   gi=data.gi;grid=GRILLES[gi];order=data.order;found=data.found||[];attempts=data.attempts||[];over=!!data.over;won=!!data.won;sel=[];
@@ -234,6 +238,8 @@ $("mFree").onclick=()=>{closeAll();startFree(false);};
 function recapText(){return attempts.map(a=>a.groups.map(g=>EM[grid[g].niv]).join("")).join("\n");}
 function showEnd(){
   const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
+  const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
+  if(mode==="daily")Series.panneau($("srZone"),"connexions",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
   $("endTitle").textContent=!over?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?(mistakes()?"🎉 Bravo !":"🌟 Parfait, sans erreur !"):"😢 Perdu…";
   $("recap").innerHTML=over?recapText().replace(/\n/g,"<br>"):"";
   const pct=s.played?Math.round(s.wins/s.played*100):0;
