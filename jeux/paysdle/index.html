@@ -56,6 +56,27 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
 .head{display:grid;grid-template-columns:1fr auto auto auto;gap:6px;font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin-bottom:2px}
 .head span:nth-child(2){min-width:88px;text-align:center}.head span:nth-child(3){min-width:52px;text-align:center}.head span:nth-child(4){min-width:62px;text-align:center}
 .shake{animation:shake .4s}@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+.fimg{width:28px;height:19px;object-fit:cover;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.12);vertical-align:middle;flex:none}
+.found .fimg{width:96px;height:64px;border-radius:6px}
+.hints .fimg{width:30px;height:20px;margin-left:4px}
+#bonus{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;text-align:center}
+#bonus[hidden]{display:none}
+#bonus h2{font-family:Fredoka,sans-serif;margin:0 0 2px;font-size:1.15rem}
+#bonus .bq{font-weight:800;margin:10px 0 12px}
+#bonus .stars{font-size:1.1rem;letter-spacing:2px}
+.choices{display:grid;gap:8px}
+.choices.c2{grid-template-columns:repeat(2,1fr)}.choices.c3{grid-template-columns:repeat(3,1fr)}
+.choices button{border:2px solid var(--line);background:var(--bg);border-radius:12px;padding:10px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px}
+.choices button:not(:disabled):hover{border-color:var(--accent)}
+.choices button:disabled{cursor:default}
+.choices button.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 18%,var(--bg))}
+.choices button.no{border-color:var(--no);background:color-mix(in srgb,var(--no) 18%,var(--bg))}
+.choices svg{width:100%;max-width:120px;aspect-ratio:1}
+.choices svg path{fill:var(--text);fill-rule:evenodd}
+.choices .fbig{width:100%;max-width:110px;aspect-ratio:3/2;object-fit:cover;border-radius:6px;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.bnext{margin-top:12px;border:0;border-radius:12px;padding:10px 18px;font-weight:800;background:var(--accent);color:#fff}
+.bres{font-weight:700;margin-top:10px;min-height:1.3em}
+.bsum{display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:.9rem;text-align:left;max-width:360px;margin-left:auto;margin-right:auto}
 #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;z-index:50;pointer-events:none}
 #toast div{background:var(--text);color:var(--bg);padding:9px 16px;border-radius:10px;font-weight:700;animation:fade 2.2s forwards}
 @keyframes fade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}
@@ -114,6 +135,7 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
     </div>
   </div>
 
+  <section id="bonus" hidden></section>
   <div class="head" id="head" hidden><span>Pays</span><span>Distance</span><span>Direction</span><span>Proximité</span></div>
   <div id="list"></div>
 </main>
@@ -127,6 +149,7 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
   <b>Répartition des essais</b>
   <div class="dist" id="endDist"></div>
   <div class="actions">
+    <button class="btn" id="bBonus" style="background:#e0a526">⭐ Questions bonus</button>
     <button class="btn" id="bShare">📋 Partager</button>
     <button class="btn alt" id="bAgain">♾️ Partie libre</button>
   </div>
@@ -146,10 +169,12 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
     <li>des indices : <b>continent</b>, <b>population</b> (⬆️ plus peuplé / ⬇️ moins peuplé) et <b>langue</b> principale.</li>
   </ul>
   <p>Après 3 et 6 essais, tu peux révéler un indice supplémentaire.</p>
+  <p>⭐ Une fois la partie finie, <b>4 questions bonus</b> t'attendent : la silhouette du pays, son drapeau, sa capitale et un pays voisin.</p>
   <p>📅 Le <b>pays du jour</b> change automatiquement à minuit. ♾️ La <b>partie libre</b> est illimitée.</p>
 </div></div>
 
 <script src="pays.js"></script>
+<script src="formes.js"></script>
 <script src="../commun/classement.js"></script>
 <script src="../commun/series.js"></script>
 <script>
@@ -159,7 +184,7 @@ const store={get(k,d){try{const v=localStorage.getItem("paysdle_"+k);return v===
 const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z]/g,"");
 function toast(t){const d=document.createElement("div");d.textContent=t;$("toast").appendChild(d);setTimeout(()=>d.remove(),2300);}
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const flag=iso=>[...iso].map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join("");
+const flag=(iso,w=40,cls="fimg")=>`<img class="${cls}" src="https://flagcdn.com/w${w}/${iso.toLowerCase()}.png" alt="" loading="lazy">`;
 const BY={};PAYS.forEach(p=>BY[p.nom]=p);
 const ANSWERS=PAYS.filter(p=>p.pop>=0.5).map(p=>p.nom); // les micro-États restent jouables comme essais
 const MAX=8;
@@ -211,6 +236,7 @@ function rowHTML(name,isNew){
     </div></div>`;
 }
 function draw(newest){
+  drawBonus();
   $("list").innerHTML=[...guesses].reverse().map((n,i)=>rowHTML(n,newest&&i===0)).join("");
   $("head").hidden=!guesses.length;
   $("tries").innerHTML=Array.from({length:MAX},(_,i)=>`<i class="${i<guesses.length?(won&&i===guesses.length-1?"win":"used"):""}"></i>`).join("");
@@ -219,11 +245,11 @@ function draw(newest){
   updateHints();
 }
 function updateHints(){
-  const h=[["h1",3,"🏛️ Capitale",()=>`🏛️ Capitale : ${answer.capitale}`],
+  const h=[["h1",3,"🏛️ Capitale",()=>`🏛️ Capitale : ${esc(answer.capitale)}`],
            ["h2",6,"🏳️ Drapeau",()=>`Drapeau : ${flag(answer.iso)}`]];
   for(const [id,n,label,reveal] of h){
     const b=$(id),left=n-guesses.length;
-    if(shown[id]||over){b.textContent=reveal();b.disabled=true;b.className="shown";}
+    if(shown[id]||over){b.innerHTML=reveal();b.disabled=true;b.className="shown";}
     else if(left>0){b.textContent=`${label} (dans ${left})`;b.disabled=true;b.className="";}
     else{b.textContent=label+" — voir";b.disabled=false;b.className="";}
   }
@@ -274,8 +300,8 @@ function guess(name){
 
 /* ---------- Sauvegarde & stats ---------- */
 function save(){
-  if(mode==="daily")store.set("daily",{day:parisDay(),guesses,shown});
-  else store.set("free",{answer:answer.nom,guesses,over,shown});
+  if(mode==="daily")store.set("daily",{day:parisDay(),guesses,shown,bonus});
+  else store.set("free",{answer:answer.nom,guesses,over,shown,bonus});
 }
 function recordStats(){
   const key=mode==="daily"?"statsDaily":"statsFree",s=store.get(key,defStats());
@@ -290,15 +316,15 @@ function recordStats(){
 function startDaily(){
   mode="daily";const d=parisDay();answer=BY[dailyName(d)];
   const sv=store.get("daily",null),ok=sv&&sv.day===d;
-  guesses=ok?sv.guesses.filter(n=>BY[n]):[];shown=ok&&sv.shown?sv.shown:{h1:false,h2:false};
+  guesses=ok?sv.guesses.filter(n=>BY[n]):[];shown=ok&&sv.shown?sv.shown:{h1:false,h2:false};bonus=ok&&sv.bonus?sv.bonus:[];
   won=guesses.includes(answer.nom);over=won||guesses.length>=MAX;
   $("sub").textContent=`Pays n°${d+1} · ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",timeZone:"Europe/Paris"})}`;
   setBtns();draw(false);
 }
 function startFree(fresh){
   mode="free";const sv=store.get("free",null);
-  if(!fresh&&sv&&BY[sv.answer]&&!sv.over){answer=BY[sv.answer];guesses=sv.guesses;shown=sv.shown||{h1:false,h2:false};}
-  else{let n;do{n=ANSWERS[Math.floor(Math.random()*ANSWERS.length)];}while(answer&&n===answer.nom);answer=BY[n];guesses=[];shown={h1:false,h2:false};}
+  if(!fresh&&sv&&BY[sv.answer]&&!sv.over){answer=BY[sv.answer];guesses=sv.guesses;shown=sv.shown||{h1:false,h2:false};bonus=sv.bonus||[];}
+  else{let n;do{n=ANSWERS[Math.floor(Math.random()*ANSWERS.length)];}while(answer&&n===answer.nom);answer=BY[n];guesses=[];shown={h1:false,h2:false};bonus=[];}
   won=false;over=false;save();
   $("sub").textContent="Partie libre · un pays au hasard à chaque partie";
   setBtns();draw(false);$("inp").focus();
@@ -307,6 +333,62 @@ function setBtns(){$("mDaily").className=mode==="daily"?"on":"";$("mFree").class
 $("mDaily").onclick=()=>{closeAll();startDaily();};
 $("mFree").onclick=()=>{closeAll();startFree(false);};
 
+/* ---------- Questions bonus (après la partie) ---------- */
+let bonus=[]; // réponses données : true/false pour chaque question
+function seedOf(str){let h=2166136261;for(const c of str){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+function pickN(arr,n,r){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a.slice(0,n);}
+function questions(){
+  const a=answer,r=rng(seedOf(a.nom+"|"+(mode==="daily"?parisDay():"libre")));
+  const pool=PAYS.filter(p=>p.nom!==a.nom&&p.pop>=0.5);
+  const same=pool.filter(p=>p.continent===a.continent);
+  const distract=(n,ok=()=>true)=>{const s1=same.filter(ok),s2=pool.filter(p=>ok(p)&&!s1.includes(p));return pickN(s1,Math.min(n,s1.length),r).concat(pickN(s2,Math.max(0,n-s1.length),r));};
+  const mix=(good,bad)=>pickN([good,...bad],bad.length+1,r);
+  const Q=[];
+  Q.push({t:"🗺️ Quelle est sa silhouette ?",k:"forme",cols:2,opts:mix(a,distract(3,p=>FORMES[p.iso])),good:a});
+  Q.push({t:"🏳️ Quel est son drapeau ?",k:"drapeau",cols:3,opts:mix(a,distract(5)),good:a});
+  Q.push({t:"🏛️ Quelle est sa capitale ?",k:"capitale",cols:2,opts:mix(a,distract(3,p=>p.capitale!==a.capitale)),good:a});
+  const vois=((FORMES[a.iso]||{}).v||[]).map(c=>PAYS.find(p=>p.iso===c)).filter(Boolean);
+  if(vois.length){
+    const g=pickN(vois,1,r)[0];
+    Q.push({t:"🤝 Lequel de ces pays est son voisin ?",k:"nom",cols:2,opts:mix(g,distract(3,p=>!vois.includes(p))),good:g});
+  }else{
+    const near=PAYS.filter(p=>p.nom!==a.nom).map(p=>[p,distance(a,p)]).sort((x,y)=>x[1]-y[1]);
+    const g=near[0][0],far=near.filter(([p,d])=>d>near[0][1]*1.5&&p.pop>=0.5).slice(0,10).map(x=>x[0]);
+    Q.push({t:"🧭 Pas de voisin terrestre : quel pays est le plus proche (entre capitales) ?",k:"nom",cols:2,opts:mix(g,pickN(far,3,r)),good:g});
+  }
+  return Q;
+}
+function optHTML(q,p){
+  if(q.k==="forme")return`<svg viewBox="0 0 100 100" aria-label="silhouette"><path d="${FORMES[p.iso].d}"/></svg>`;
+  if(q.k==="drapeau")return flag(p.iso,160,"fbig");
+  if(q.k==="capitale")return esc(p.capitale);
+  return flag(p.iso)+" "+esc(p.nom);
+}
+function drawBonus(){
+  const z=$("bonus");
+  if(!over||!answer){z.hidden=true;return;}
+  z.hidden=false;
+  const Q=questions(),i=bonus.length,stars=bonus.map(b=>b?"⭐":"✖️").join("")+"▫️".repeat(Q.length-bonus.length);
+  if(i>=Q.length){
+    z.innerHTML=`<h2>⭐ Questions bonus</h2><div class="stars">${stars}</div><div class="bres">${bonus.filter(Boolean).length} / ${Q.length} bonnes réponses</div>
+      <div class="bsum">${Q.map((q,j)=>`<div>${bonus[j]?"✅":"❌"} ${esc(q.t)} → <b>${q.k==="forme"||q.k==="drapeau"?esc(q.good.nom):q.k==="capitale"?esc(q.good.capitale):esc(q.good.nom)}</b></div>`).join("")}</div>`;
+    return;
+  }
+  const q=Q[i];
+  z.innerHTML=`<h2>⭐ Questions bonus</h2><div class="stars">${stars}</div><div class="bq">${esc(answer.nom)} · ${i+1}/${Q.length}<br>${esc(q.t)}</div>
+    <div class="choices c${q.cols}">${q.opts.map((p,j)=>`<button data-j="${j}">${optHTML(q,p)}</button>`).join("")}</div><div class="bres"></div>`;
+  z.querySelectorAll(".choices button").forEach(b=>b.onclick=()=>{
+    const p=q.opts[+b.dataset.j],ok=p===q.good;
+    z.querySelectorAll(".choices button").forEach(x=>{x.disabled=true;if(q.opts[+x.dataset.j]===q.good)x.classList.add("ok");});
+    if(!ok)b.classList.add("no");
+    z.querySelector(".bres").textContent=ok?"✅ Bonne réponse !":"❌ Raté !";
+    bonus.push(ok);save();
+    const nx=document.createElement("button");nx.className="bnext";nx.textContent=bonus.length<Q.length?"Question suivante →":"Voir le résultat";
+    nx.onclick=drawBonus;z.appendChild(nx);
+  });
+}
+$("bBonus").onclick=()=>{closeAll();drawBonus();$("bonus").scrollIntoView({behavior:"smooth",block:"center"});};
+
 /* ---------- Fin ---------- */
 function showEnd(){
   const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
@@ -314,12 +396,13 @@ function showEnd(){
   if(mode==="daily")Series.panneau($("srZone"),"paysdle",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
   if(mode==="daily")Series.aujourdhui($("ajZone"),"paysdle",jourAuj,{moi:over?{e:guesses.length,g:won}:null,unite:"coup",gagnantsSeulement:true,reussite:true});else $("ajZone").innerHTML="";
   $("endTitle").textContent=!over?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?`🎉 Trouvé en ${guesses.length} essai${guesses.length>1?"s":""} !`:"😢 Perdu…";
-  $("found").innerHTML=over?`<div class="fl">${flag(answer.iso)}</div><b>${esc(answer.nom)}</b><small>Capitale : ${esc(answer.capitale)} · ${fmtPop(answer.pop)} hab.</small>`:"";
+  $("found").innerHTML=over?`<div class="fl">${flag(answer.iso,160)}</div><b>${esc(answer.nom)}</b><small>Capitale : ${esc(answer.capitale)} · ${fmtPop(answer.pop)} hab.</small>`:"";
   const pct=s.played?Math.round(s.wins/s.played*100):0;
   $("endStats").innerHTML=[[s.played,"Parties"],[pct,"% victoires"],[s.streak,"Série"],[s.best,"Meilleure série"]].map(([v,l])=>`<div><b>${v}</b><small>${l}</small></div>`).join("");
   const m=Math.max(1,...s.dist),hi=won?guesses.length-1:-1;
   $("endDist").innerHTML=s.dist.map((n,i)=>`<div>${i+1}<i class="${over&&i===hi?"cur":""}" style="width:${Math.max(8,n/m*100)}%">${n}</i></div>`).join("");
   $("bShare").style.display=over?"":"none";
+  $("bBonus").style.display=over&&bonus.length<4?"":"none";
   $("bAgain").textContent=mode==="free"?"🔁 Nouveau pays":"♾️ Partie libre";
   $("nextBox").style.display=mode==="daily"?"":"none";
   $("mdEnd").classList.remove("hidden");
@@ -328,7 +411,8 @@ $("bAgain").onclick=()=>{closeAll();startFree(true);};
 $("bShare").onclick=async()=>{
   const head=mode==="daily"?`Paysdle n°${parisDay()+1}`:"Paysdle (partie libre)";
   const lines=guesses.map(n=>{const r=info(n),full=Math.round(r.prox/20);return"🟩".repeat(full)+"⬜".repeat(5-full)+" "+r.arr;});
-  const txt=`${head} ${won?guesses.length:"X"}/${MAX}\n${lines.join("\n")}\n\n${location.href.split("#")[0]}`;
+  const bl=bonus.length?`\nBonus : ${bonus.map(b=>b?"⭐":"✖️").join("")}${"▫️".repeat(4-bonus.length)}`:"";
+  const txt=`${head} ${won?guesses.length:"X"}/${MAX}\n${lines.join("\n")}${bl}\n\n${location.href.split("#")[0]}`;
   try{await navigator.clipboard.writeText(txt);toast("Résultat copié !");}
   catch(e){if(navigator.share)navigator.share({text:txt}).catch(()=>{});else toast("Copie impossible");}
 };
