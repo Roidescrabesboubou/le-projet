@@ -74,8 +74,15 @@ body{touch-action:manipulation}
 .carte.doree{background:linear-gradient(160deg,#fff7d6,#ffe08a)}
 .carte.surgele{background:linear-gradient(160deg,#eef8ff,#cfeaff)}
 .carte.L{--fc:var(--L)}.carte.V{--fc:var(--V)}.carte.P{--fc:var(--P)}.carte.F{--fc:var(--F)}
-.actions{display:grid;grid-template-columns:auto auto 1fr 1fr;gap:6px}
-.actions .btn{padding:12px 10px}
+.actions{display:grid;grid-template-columns:auto auto auto 1fr 1fr;gap:6px}
+.bonus h4{margin:12px 0 6px;font-family:Fredoka,sans-serif}
+.bonus .bl{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed var(--line);font-size:.88rem}
+.bonus .bl .e{font-size:1.3rem}
+.bonus .picks .carte{flex:0 0 52px}
+.pastille{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:#fff;font-size:.7rem;font-weight:800;margin-left:2px}
+.actions .btn{padding:12px 8px;white-space:nowrap}
+.actions .btn.ghost{padding:12px 10px}
+@media (max-width:420px){.actions{gap:4px}.actions .btn{padding:12px 6px;font-size:.92rem}.actions .btn.ghost{padding:12px 8px}}
 .actions .btn small{opacity:.85}
 #bJeter{background:#7a6f80}
 .flot{position:fixed;z-index:60;pointer-events:none;font-family:Fredoka,sans-serif;font-weight:700;font-size:1.05rem;padding:1px 7px;border-radius:8px;color:#fff;
@@ -166,8 +173,9 @@ table.recs td.b{white-space:nowrap;font-family:Fredoka,sans-serif}
       </div>
       <div class="main" id="main"></div>
       <div class="actions">
-        <button class="btn ghost" id="bTri">⇅ Saveur</button>
+        <button class="btn ghost" id="bTri">⇅ 13</button>
         <button class="btn ghost" id="bRecettes" title="Recettes">📖</button>
+        <button class="btn ghost" id="bBonus" title="Mes bonus">🎒</button>
         <button class="btn" id="bJeter">🗑️ Jeter <small id="jLeft"></small></button>
         <button class="btn" id="bServir">🍽️ Servir</button>
       </div>
@@ -180,6 +188,7 @@ table.recs td.b{white-space:nowrap;font-family:Fredoka,sans-serif}
       <div class="bas">
         <button class="btn ghost ico" id="bRelancer">🔄</button>
         <button class="btn ghost ico" id="bRecettes2" title="Recettes">📖</button>
+        <button class="btn ghost ico" id="bBonus2" title="Mes bonus">🎒 Mes bonus</button>
         <button class="btn" id="bSuivant">Service suivant ▶</button>
       </div>
       <p class="note">Astuce : fais glisser les membres de ta brigade pour changer leur ordre. Touche-en un pour le revendre.</p>
@@ -463,6 +472,7 @@ function rendre(){
   $("sJets").textContent = sv.jets;
   $("zoneService").classList.toggle("cache", !enService);
   $("boutique").classList.toggle("cache", R.phase !== "boutique");
+  majPastilles();
   if(enService){ rendreMain(); majApercu(); }
   else if(R.bq) rendreBoutique();
   rendreTuto();
@@ -476,7 +486,8 @@ function rendreMain(){
     d.onclick = () => basculer(id);
     z.appendChild(d);
   });
-  $("bTri").textContent = tri === "v" ? "⇅ Saveur" : "⇅ Famille";
+  $("bTri").textContent = tri === "v" ? "⇅ 13" : "⇅ 🥕";
+  $("bTri").title = tri === "v" ? "Trié par saveur (toucher pour trier par famille)" : "Trié par famille (toucher pour trier par saveur)";
   $("jLeft").textContent = "(" + R.sv.jets + ")";
   $("bJeter").disabled = busy || !selection.length || !R.sv.jets;
   $("bServir").disabled = busy || !selection.length;
@@ -811,7 +822,7 @@ function acheter(i){
     payer(a); Base.toast(`📕 ${REC[a.rec].nom} passe au niveau ${R.niv[a.rec]} !`);
   }else if(a.k === "ingr" || a.k === "couperet"){
     choisirCarte(a, c => {
-      if(a.k === "ingr"){ c.e = a.e; Base.toast(`${AMELIO[a.e].em} ${FAM[c.f].noms[c.v - 1]} est maintenant ${AMELIO[a.e].nom.toLowerCase()} !`); }
+      if(a.k === "ingr"){ c.e = a.e; Base.toast(`${AMELIO[a.e].em} ${FAM[c.f].noms[c.v - 1]} est maintenant ${AMELIO[a.e].nom.toLowerCase()} ! Retrouve-la dans 🎒 Mes bonus.`, 3500); }
       else { R.paquet = R.paquet.filter(x => x.id !== c.id); Base.toast(`🪓 ${FAM[c.f].noms[c.v - 1]} retiré du paquet (${R.paquet.length} cartes)`); }
       payer(a);
     });
@@ -873,6 +884,55 @@ function fenetreRecettes(){
   box.appendChild(t);
   if(R){ const n = el("p", `Paquet : ${R.paquet.length} cartes · améliorées : ${R.paquet.filter(c => c.e).length}`, "note"); box.appendChild(n); }
   Base.fenetre("📖 Recettes", box, {bouton:"Fermer"});
+}
+
+/* =================== MES BONUS (fenêtre) =================== */
+function nbBonus(){ return R ? R.paquet.filter(c => c.e).length + RECETTES.filter(r => niveau(r.id) > 1).length : 0; }
+function majPastilles(){
+  const n = nbBonus();
+  $("bBonus").innerHTML = "🎒" + (n ? `<span class="pastille">${n}</span>` : "");
+}
+function fenetreBonus(){
+  if(!R) return;
+  const box = el("div", null, "bonus");
+  box.appendChild(el("h4", `👨‍🍳 Brigade (${R.brigade.length}/${MAX_BRIGADE})`));
+  if(!R.brigade.length) box.appendChild(el("p", "Personne pour l'instant : recrute à la boutique.", "note"));
+  R.brigade.forEach((mb, i) => {
+    const M = MEMBRES[mb.id], l = el("div", null, "bl");
+    const t = el("div"); t.append(el("b", `${i + 1}. ${M.nom}`), el("br"), el("span", M.txt + (M.compteur ? ` (bonus actuel : +${mb.x || 0} ${M.compteur})` : ""), "muted"));
+    l.append(el("span", M.em, "e"), t); box.appendChild(l);
+  });
+  if(R.brigade.length > 1) box.appendChild(el("p", "Ils agissent dans cet ordre, de gauche à droite, après les cartes.", "note"));
+
+  const recs = RECETTES.filter(r => niveau(r.id) > 1);
+  box.appendChild(el("h4", "📕 Recettes améliorées"));
+  if(!recs.length) box.appendChild(el("p", "Aucune : achète des livres de recettes à la boutique.", "note"));
+  recs.forEach(r => {
+    const b = baseRec(r.id), l = el("div", null, "bl");
+    l.append(el("span", "📕", "e"), el("span", `${r.nom} — niveau ${niveau(r.id)} : ${fmt(b.p)} × ${b.m} (au lieu de ${r.p} × ${r.m})`));
+    box.appendChild(l);
+  });
+
+  const am = R.paquet.filter(c => c.e);
+  box.appendChild(el("h4", "🧺 Cartes améliorées"));
+  if(!am.length) box.appendChild(el("p", "Aucune : achète des ingrédients spéciaux à la boutique.", "note"));
+  else {
+    Object.keys(AMELIO).forEach(k => {
+      const cs = am.filter(c => c.e === k); if(!cs.length) return;
+      box.appendChild(el("p", `${AMELIO[k].em} ${AMELIO[k].nom} : ${AMELIO[k].txt}`, "note"));
+      const z = el("div", null, "picks"); cs.forEach(c => {
+        const v = vueCarte(c);
+        if(R.phase === "service"){
+          const ou = R.sv.main.includes(c.id) ? "en main" : R.sv.pioche.includes(c.id) ? "dans la pioche" : "déjà jouée";
+          v.title = ou; const m = el("span", ou === "en main" ? "✋" : ou === "dans la pioche" ? "🂠" : "↩", "bad"); m.style.left = "3px"; m.style.right = "auto"; m.style.top = "auto"; m.style.bottom = "14px"; v.appendChild(m);
+        }
+        z.appendChild(v);
+      }); box.appendChild(z);
+    });
+    if(R.phase === "service") box.appendChild(el("p", "✋ en main · 🂠 encore dans la pioche · ↩ déjà jouée ce service. Une carte améliorée n'agit que quand elle est servie (ou gardée en main pour la Dorée).", "note"));
+  }
+  box.appendChild(el("p", `Paquet : ${R.paquet.length} cartes`, "note"));
+  Base.fenetre("🎒 Mes bonus", box, {bouton:"Fermer"});
 }
 
 /* =================== TUTORIEL =================== */
@@ -1115,6 +1175,8 @@ $("bJeter").onclick = jeter;
 $("bTri").onclick = () => { tri = tri === "v" ? "f" : "v"; stock.ecrire("tri", tri); trier(); sauver(); rendreMain(); };
 $("bRecettes").onclick = fenetreRecettes;
 $("bRecettes2").onclick = fenetreRecettes;
+$("bBonus").onclick = fenetreBonus;
+$("bBonus2").onclick = fenetreBonus;
 $("bRelancer").onclick = relancer;
 $("bSuivant").onclick = () => { if(R && R.phase === "boutique") serviceSuivant(); };
 $("table").onclick = () => { if(busy) vitesse = 4; };
