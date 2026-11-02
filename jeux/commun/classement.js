@@ -7,7 +7,7 @@
    de l'appareil (comme avant).
    Les règles de sécurité à coller dans Firebase sont dans firebase-regles.json.
    ============================================================ */
-const CLASSEMENT_URL = "";
+const CLASSEMENT_URL = "https://salle-de-jeux-249d2-default-rtdb.europe-west1.firebasedatabase.app";
 
 (function(){
   const BASE = CLASSEMENT_URL.trim().replace(/\/+$/,"");
