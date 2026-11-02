@@ -62,6 +62,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 <header>
   <div style="display:flex;align-items:center;gap:10px"><a href="../../" class="home" title="Retour à l'accueil">🏠</a><h1>💞 Les Quintuplées – Jeu de séduction</h1></div>
   <div style="display:flex;gap:8px">
+    <select id="aiSel" class="hidden" title="IA utilisée (changeable à tout moment)" style="width:auto;padding:6px 8px;font-size:.85rem"></select>
     <button class="ghost" id="btnReset">🔄 Reset</button>
     <button class="ghost" id="btnSettings">⚙️ Clé API</button>
   </div>
@@ -69,14 +70,20 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 <main>
   <div class="panel hidden" id="settings">
     <b>Connexion à l'IA</b>
-    <label>Fournisseur</label>
+    <p class="hint">Configure une ou plusieurs IA. Par défaut : <b>Gemini</b> en principal et <b>Claude Haiku 5.5</b> en secours (relais automatique quand Gemini atteint sa limite).</p>
+    <label>Fournisseur à configurer</label>
     <select id="provider"></select>
     <label>Modèle (modifiable)</label>
     <input id="model">
     <label>Clé API</label>
     <input id="apikey" type="password" placeholder="Colle ta clé ici" autocomplete="off">
     <p class="hint" id="provHelp"></p>
-    <p class="hint">La clé est stockée uniquement dans ton navigateur (localStorage) et envoyée uniquement au fournisseur choisi.</p>
+    <p class="hint" id="provStatus"></p>
+    <label>IA utilisée en priorité</label>
+    <select id="aiMain"></select>
+    <label>IA de secours (relais automatique en cas de limite ou d'erreur)</label>
+    <select id="aiBackup"></select>
+    <p class="hint">À chaque changement d'IA (à la main avec le menu 🤖 en haut, ou automatiquement), un <b>résumé de la partie</b> est rédigé et transmis à la nouvelle IA pour qu'elle continue la même histoire. Les clés sont stockées uniquement dans ton navigateur et envoyées uniquement à leur fournisseur.</p>
     <button id="btnSave">Enregistrer</button>
     <button class="ghost" id="btnTest">🔍 Tester la clé / lister les modèles</button>
     <div id="testOut" class="hint" style="margin-top:10px"></div>
@@ -102,7 +109,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v11 (relais ntfy.sh)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -159,10 +166,11 @@ const SISTERS = {
 };
 
 const PROVIDERS = {
-  gemini:{label:"Google Gemini (gratuit via AI Studio)",model:"gemini-3.8-flash",help:"Clé gratuite : aistudio.google.com → « Get API key »."},
-  groq:{label:"Groq (gratuit, très rapide)",model:"llama-3.3-70b-versatile",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
-  mistral:{label:"Mistral (palier gratuit)",model:"mistral-small-latest",url:"https://api.mistral.ai/v1/chat/completions",help:"Clé : console.mistral.ai (palier gratuit « Experiment »)."},
-  openrouter:{label:"OpenRouter (modèles :free)",model:"meta-llama/llama-3.3-70b-instruct:free",url:"https://openrouter.ai/api/v1/chat/completions",help:"Clé : openrouter.ai/keys. Utilise un modèle se terminant par :free."}
+  gemini:{short:"Gemini",label:"Google Gemini (gratuit, limité)",model:"gemini-3.8-flash",help:"Clé gratuite : aistudio.google.com → « Get API key ». Le palier gratuit est limité en requêtes par jour."},
+  anthropic:{short:"Claude",label:"Anthropic Claude (payant)",model:"claude-haiku-5-5",url:"https://api.anthropic.com/v1/messages",help:"Clé : platform.claude.com → API keys. Crédits payants, séparés de l'abonnement Claude. Haiku 5.5 est le modèle le moins cher."},
+  groq:{short:"Groq",label:"Groq (gratuit, très rapide)",model:"llama-3.3-70b-versatile",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
+  mistral:{short:"Mistral",label:"Mistral (palier gratuit)",model:"mistral-small-latest",url:"https://api.mistral.ai/v1/chat/completions",help:"Clé : console.mistral.ai (palier gratuit « Experiment »)."},
+  openrouter:{short:"OpenRouter",label:"OpenRouter (modèles :free)",model:"meta-llama/llama-3.3-70b-instruct:free",url:"https://openrouter.ai/api/v1/chat/completions",help:"Clé : openrouter.ai/keys. Utilise un modèle se terminant par :free."}
 };
 
 const $ = id => document.getElementById(id);
@@ -170,24 +178,64 @@ const store = {
   get(k,d){try{const v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}},
   set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 };
-let cfg = {provider:store.get("provider","gemini"),model:store.get("model",""),key:store.get("key","")};
-if(cfg.model==="gemini-2.5-flash"){cfg.model="";store.set("model","");}
+function loadCfg(){
+  const c={keys:{},models:{},active:"gemini",primary:"gemini",fallback:"anthropic"};
+  let sv=null;try{sv=JSON.parse(store.get("cfg2","null"));}catch(e){}
+  if(sv&&typeof sv==="object"){
+    Object.assign(c.keys,sv.keys||{});Object.assign(c.models,sv.models||{});
+    for(const k of["active","primary"])if(PROVIDERS[sv[k]])c[k]=sv[k];
+    if(sv.fallback===""||PROVIDERS[sv.fallback])c.fallback=sv.fallback;
+  }else{
+    const op=store.get("provider",""),ok=store.get("key",""),om=store.get("model","");   // ancienne version : une seule IA
+    if(PROVIDERS[op]&&ok){c.keys[op]=ok;if(om&&om!=="gemini-2.5-flash")c.models[op]=om;c.primary=c.active=op;c.fallback=op==="anthropic"?"gemini":"anthropic";}
+  }
+  if(c.models.gemini==="gemini-2.5-flash")delete c.models.gemini;
+  return c;
+}
+let cfg=loadCfg(), isGuest=false;
+function saveCfg(){store.set("cfg2",JSON.stringify({keys:cfg.keys,models:cfg.models,active:cfg.active,primary:cfg.primary,fallback:cfg.fallback}));}
+const usable=p=>!!(p&&PROVIDERS[p]&&cfg.keys[p]);
+const provModel=p=>cfg.models[p]||PROVIDERS[p].model;
+const provName=p=>PROVIDERS[p].short+" ("+provModel(p)+")";
+function aiOrder(){const out=[];[cfg.active,cfg.primary,cfg.fallback].forEach(p=>{if(usable(p)&&!out.includes(p))out.push(p);});return out;}
 const state = {}; // par soeur : {aff, history, turns, over}
 let current = null, busy = false;
 
 /* ---------- Réglages ---------- */
 for (const [k,p] of Object.entries(PROVIDERS)) $("provider").add(new Option(p.label,k));
-function fillSettings(){
-  $("provider").value = cfg.provider;
-  $("model").value = cfg.model || PROVIDERS[cfg.provider].model;
-  $("apikey").value = cfg.key;
-  $("provHelp").textContent = PROVIDERS[cfg.provider].help;
+let formProv=cfg.primary;
+function loadForm(p){formProv=p;$("provider").value=p;$("model").value=cfg.models[p]||PROVIDERS[p].model;$("apikey").value=cfg.keys[p]||"";$("provHelp").textContent=PROVIDERS[p].help;}
+function stashForm(){
+  const p=formProv,k=$("apikey").value.trim(),m=$("model").value.trim();
+  if(k)cfg.keys[p]=k;else delete cfg.keys[p];
+  if(m&&m!==PROVIDERS[p].model)cfg.models[p]=m;else delete cfg.models[p];
 }
-$("provider").onchange = () => { cfg.provider=$("provider").value; $("model").value=PROVIDERS[cfg.provider].model; $("provHelp").textContent=PROVIDERS[cfg.provider].help; };
+function refreshSelects(){
+  const mk=(sel,none)=>{sel.innerHTML="";if(none)sel.add(new Option("— aucune —",""));Object.entries(PROVIDERS).forEach(([k,p])=>sel.add(new Option(p.short+(usable(k)?"":" (pas de clé)"),k)));};
+  mk($("aiMain"),false);mk($("aiBackup"),true);
+  $("aiMain").value=cfg.primary;$("aiBackup").value=cfg.fallback||"";
+  $("provStatus").textContent="Clés : "+Object.entries(PROVIDERS).map(([k,p])=>p.short+(usable(k)?" ✅":" —")).join(" · ");
+}
+function refreshAiSel(){
+  const sel=$("aiSel");sel.innerHTML="";
+  const ok=Object.keys(PROVIDERS).filter(usable);
+  ok.forEach(k=>sel.add(new Option("🤖 "+PROVIDERS[k].short+" · "+provModel(k),k)));
+  if(ok.includes(cfg.active))sel.value=cfg.active;
+  sel.classList.toggle("hidden",ok.length===0||isGuest);
+}
+$("provider").onchange=()=>{stashForm();loadForm($("provider").value);};
+$("aiSel").onchange=()=>{
+  const was=cfg.active;cfg.active=$("aiSel").value;saveCfg();
+  if(was!==cfg.active&&!$("game").classList.contains("hidden"))addMsg("sys","🔁 IA changée : "+provName(cfg.active)+". Un résumé de la partie lui sera transmis à son prochain message.");
+};
 $("btnSettings").onclick = () => $("settings").classList.toggle("hidden");
 $("btnSave").onclick = () => {
-  cfg = {provider:$("provider").value,model:$("model").value.trim(),key:$("apikey").value.trim()};
-  store.set("provider",cfg.provider);store.set("model",cfg.model);store.set("key",cfg.key);
+  stashForm();
+  const changed=$("aiMain").value!==cfg.primary;
+  cfg.primary=$("aiMain").value;cfg.fallback=$("aiBackup").value;
+  if(cfg.fallback===cfg.primary)cfg.fallback="";
+  if(changed||!usable(cfg.active))cfg.active=usable(cfg.primary)?cfg.primary:(aiOrder()[0]||cfg.primary);
+  saveCfg();refreshSelects();refreshAiSel();
   $("settings").classList.add("hidden");
 };
 $("btnTest").onclick = async () => {
@@ -200,12 +248,16 @@ $("btnTest").onclick = async () => {
       const r=await fetchT("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key="+encodeURIComponent(key));
       const j=await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
       ids=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")).map(m=>m.name.replace("models/",""));
+    }else if(prov==="anthropic"){
+      const r=await fetchT("https://api.anthropic.com/v1/models?limit=50",{headers:{"x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}});
+      const j=await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
+      ids=(j.data||[]).map(m=>m.id);
     }else{
       const r=await fetchT(PROVIDERS[prov].url.replace("/chat/completions","/models"),{headers:{Authorization:"Bearer "+key}});
       const j=await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
       ids=(j.data||[]).map(m=>m.id);
     }
-    ids.sort((a,b)=>(/flash|small|llama|free/.test(b)?1:0)-(/flash|small|llama|free/.test(a)?1:0));
+    ids.sort((a,b)=>(/flash|small|llama|free|haiku/.test(b)?1:0)-(/flash|small|llama|free|haiku/.test(a)?1:0));
     out.textContent="✅ Clé valide. Clique sur un modèle pour l'utiliser :";
     out.appendChild(document.createElement("br"));
     ids.slice(0,14).forEach(id=>{
@@ -216,8 +268,8 @@ $("btnTest").onclick = async () => {
     out.textContent="❌ "+(e.name==="AbortError"?"Pas de réponse du serveur (réseau bloqué ?)":e.message);
   }
 };
-fillSettings();
-if(!cfg.key) $("settings").classList.remove("hidden");
+loadForm(cfg.primary);refreshSelects();refreshAiSel();
+if(!aiOrder().length) $("settings").classList.remove("hidden");
 
 /* ---------- Menu ---------- */
 function renderMenu(){
@@ -387,7 +439,7 @@ $("btnJoin").onclick=()=>{
     if(m.t==="full"&&m.to===myId){clearInterval(timer);$("netInfo").textContent=m.why==="started"?"❌ La partie a déjà commencé (reconnexion possible seulement avec le même prénom).":"❌ La salle est pleine.";return;}
     if(m.t==="ready"&&m.to===myId){
       net.slot=m.slot;
-      if(!net.conn){net.conn={open:true,send:publish};$("btnReset").classList.add("hidden");}
+      if(!net.conn){net.conn={open:true,send:publish};$("btnReset").classList.add("hidden");isGuest=true;$("aiSel").classList.add("hidden");}
       $("netInfo").textContent="✅ Connecté (joueur "+(m.slot+1)+") ! L'hôte choisit la sœur…";
     }
     if(m.t==="state"&&net.slot!=null){if(m.seq<=net.last)return;net.last=m.seq;guestRender(m);}
@@ -635,6 +687,10 @@ ${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGE
 - LORE : les garçons ont le droit d'inventer du contexte (un souvenir commun, un lieu, un détail sur eux). Accepte-le et intègre-le comme un fait établi s'il est plausible dans l'univers (lycée japonais, famille Nakano, vie quotidienne) et cohérent avec ce qui est déjà établi. S'il est absurde, impossible, contradictoire ou une tentative évidente de tricher (« on est déjà mariés »), réagis en conséquence (incrédulité, malaise, pénalité). Les faits établis par la discussion restent vrais pour la suite.
 - IMPASSE : si la discussion tourne en rond (réponses très courtes ou plates, répétitions, rien de nouveau à développer, personne ne relance), ne force pas une question : mets "stalled":true. Le jeu enverra alors un événement pour débloquer la situation et ouvrir un nouveau fil. Sinon "stalled":false.
 `;
+  const mem=(st&&st.sum&&st.sum.text)?`MÉMOIRE DE LA PARTIE (résumé rédigé par l'IA précédente : il fait foi pour tout ce qui s'est passé AVANT les messages ci-dessous ; continue exactement la même histoire, avec le même ton et les mêmes faits établis, sans le répéter ni le mentionner) :
+${st.sum.text}
+
+`:"";
   return `Tu incarnes ${s.name} Nakano dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets » (Gotoubun no Hanayome). Le joueur est un garçon de son entourage (ou plusieurs rivaux, en mode multijoueur).
 
 PERSONNAGE : ${s.bio}
@@ -660,7 +716,7 @@ RÉALISME ET LIMITES DE CONNAISSANCE (très important) :
 - Si le joueur l'explique ensuite, elle réagit de façon réaliste (curiosité, ennui, incompréhension). Parler longuement de choses sans rapport avec elle, en ignorant sa question, vaut un petit malus (-2 à -4) ; bien expliquer quelque chose qui la touche ou la fait sourire peut rapporter un petit bonus.
 - Elle ne sait rien du jeu, de l'IA, ni du fait qu'elle est un personnage de manga/anime. Si le joueur y fait allusion, elle est perplexe.
 
-${ex}
+${mem}${ex}
 ${jal}
 ${evTxt}
 ${fil}
@@ -704,26 +760,111 @@ function fetchT(url,opts){
   const c=new AbortController();const t=setTimeout(()=>c.abort(),45000);
   return fetch(url,{...opts,signal:c.signal}).finally(()=>clearTimeout(t));
 }
-async function callAI(id, history){
-  const model = cfg.model || PROVIDERS[cfg.provider].model;
-  const sys = systemPrompt(id, state[id].sc, state[id].players, state[id]);
-  if(cfg.provider==="gemini"){
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(cfg.key)}`;
-    const r = await fetchT(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-      systemInstruction:{parts:[{text:sys}]},
-      contents:history.map(h=>({role:h.role==="user"?"user":"model",parts:[{text:h.content}]})),
-      generationConfig:{responseMimeType:"application/json",temperature:1}
-    })});
-    const j = await r.json();
-    if(!r.ok) throw new Error(j.error?.message || r.status);
-    return j.candidates?.[0]?.content?.parts?.map(p=>p.text).join("") || "";
+function apiErr(r,j){const e=new Error((j&&j.error&&(j.error.message||j.error.type))||("HTTP "+r.status));e.status=r.status;return e;}
+function normMsgs(msgs){
+  const out=[];
+  for(const m of msgs){
+    const role=m.role==="assistant"?"assistant":"user", c=String(m.content||"");
+    if(out.length&&out[out.length-1].role===role)out[out.length-1].content+="\n\n"+c;
+    else out.push({role,content:c});
   }
-  const body = {model,temperature:1,messages:[{role:"system",content:sys},...history.map(h=>({role:h.role,content:h.content}))]};
-  if(cfg.provider!=="openrouter") body.response_format={type:"json_object"};
-  const r = await fetchT(PROVIDERS[cfg.provider].url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.key},body:JSON.stringify(body)});
-  const j = await r.json();
-  if(!r.ok) throw new Error(j.error?.message || r.status);
-  return j.choices?.[0]?.message?.content || "";
+  while(out.length&&out[0].role!=="user")out.shift();
+  return out;
+}
+async function rawCall(prov,{system,messages,json=true,max=1400}){
+  const model=provModel(prov), key=cfg.keys[prov], msgs=normMsgs(messages);
+  if(prov==="gemini"){
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+    const gc={temperature:json?1:0.3};if(json)gc.responseMimeType="application/json";
+    const r=await fetchT(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      systemInstruction:{parts:[{text:system}]},
+      contents:msgs.map(h=>({role:h.role==="user"?"user":"model",parts:[{text:h.content}]})),
+      generationConfig:gc})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw apiErr(r,j);
+    return j.candidates?.[0]?.content?.parts?.map(p=>p.text).join("")||"";
+  }
+  if(prov==="anthropic"){
+    const r=await fetchT(PROVIDERS.anthropic.url,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model,max_tokens:max,system,messages:msgs})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw apiErr(r,j);
+    return(j.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+  }
+  const body={model,temperature:json?1:0.3,messages:[{role:"system",content:system},...msgs]};
+  if(json&&prov!=="openrouter")body.response_format={type:"json_object"};
+  const r=await fetchT(PROVIDERS[prov].url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw apiErr(r,j);
+  return j.choices?.[0]?.message?.content||"";
+}
+/* --- mémoire transmise d'une IA à l'autre --- */
+function transcript(msgs,sis){
+  return msgs.map(m=>{
+    if(m.role==="user")return"[Joueur] "+String(m.content).replace(/\s+/g," ").slice(0,500);
+    let o=null;try{const mm=String(m.content).match(/\{[\s\S]*\}/);o=JSON.parse(mm?mm[0]:m.content);}catch(e){}
+    if(!o)return"["+sis+"] "+String(m.content).replace(/\s+/g," ").slice(0,400);
+    return(o.narration?"[Narrateur] "+o.narration+"\n":"")+"["+sis+(o.mood?" — "+o.mood:"")+"] "+(o.reply||"")+(o.guest_line?"\n["+(SISTERS[o.guest]?SISTERS[o.guest].name:"Une autre sœur")+"] "+o.guest_line:"");
+  }).join("\n");
+}
+function localSummary(prev,part,sis){return(prev?prev+"\n\n":"")+"Derniers échanges (extrait brut, résumé automatique indisponible) :\n"+transcript(part,sis).slice(-2500);}
+async function summarizeWith(provs,id,prev,part){
+  const sis=SISTERS[id].name;
+  const system=`Tu es le greffier d'un jeu de séduction interactif (visual novel) où un ou plusieurs garçons courtisent ${sis} Nakano. Une AUTRE intelligence artificielle va reprendre le rôle de ${sis} à partir de ton résumé et des derniers messages : elle doit retrouver TOUT ce qui compte, sans rien inventer. Écris en français, à la troisième personne, de façon factuelle et dense (250 à 400 mots maximum), en rubriques courtes :
+1) Situation de départ et lieu/moment actuel.
+2) Pour chaque garçon (par son prénom) : l'état de la relation avec ${sis}, ce qu'il a dit ou fait de marquant (faits établis, promesses, mensonges, contradictions, rumeurs lancées) et la façon dont ${sis} l'a pris.
+3) Faits établis par la discussion (lore inventé par les joueurs : souvenirs, lieux, détails) et leur crédibilité.
+4) Événements et scènes déjà passés (étapes de relation réussies ou ratées, événements, interventions d'autres sœurs).
+5) Humeur actuelle de ${sis} et fil de discussion en cours (sujet, ce qui reste en suspens).
+Intègre le résumé précédent s'il existe. Ne recopie pas les messages, ne mentionne ni scores ni règles du jeu. Réponds uniquement par le résumé, en texte brut.`;
+  const content=(prev?"RÉSUMÉ PRÉCÉDENT :\n"+prev+"\n\n":"")+"NOUVEAUX ÉCHANGES À INTÉGRER :\n"+transcript(part,sis)+"\n\nRédige maintenant le résumé mis à jour.";
+  for(const p of provs){
+    try{const t=(await rawCall(p,{system,messages:[{role:"user",content}],json:false,max:1000})).trim();if(t.length>60)return t.slice(0,3500);}catch(e){}
+  }
+  return localSummary(prev,part,sis);
+}
+async function compact(st,id,provs,keep){
+  keep=keep||6;
+  const len=st.history.length, from=st.sum?st.sum.upto:0;
+  let cut=Math.max(0,len-keep);
+  while(cut<len&&st.history[cut].role!=="user")cut++;
+  if(cut>=len||cut-from<4)return false;
+  const text=await summarizeWith(provs,id,st.sum?st.sum.text:"",st.history.slice(from,cut));
+  st.sum={text,upto:cut};
+  return true;
+}
+const needsCompaction=st=>st.history.length-(st.sum?st.sum.upto:0)>60;
+const shortErr=e=>e&&e.name==="AbortError"?"délai dépassé":String((e&&e.message)||e).replace(/\s+/g," ").slice(0,90);
+async function callProvider(prov,id,st){
+  return rawCall(prov,{system:systemPrompt(id,st.sc,st.players,st),messages:st.history.slice(st.sum?st.sum.upto:0),json:true,max:1400});
+}
+async function callAI(id, history){
+  const st=state[id], order=aiOrder();
+  if(!order.length)throw new Error("Aucune clé API configurée (⚙️ Clé API).");
+  const errs=[];
+  for(let k=0;k<order.length;k++){
+    const prov=order[k];
+    try{
+      if(st.prov!==prov&&(st.prov||k>0)){
+        const did=await compact(st,id,(k===0&&st.prov?[st.prov,prov]:[prov]).filter(usable));
+        if(did)addMsg("sys","🔁 Résumé de la partie transmis à "+PROVIDERS[prov].short+".");
+      }else if(needsCompaction(st)){
+        await compact(st,id,[prov]);
+      }
+      const raw=await callProvider(prov,id,st);
+      if(prov!==cfg.active){
+        cfg.active=prov;saveCfg();refreshAiSel();
+        addMsg("sys","✅ Relais effectué : la partie continue avec "+provName(prov)+".");
+      }
+      st.prov=prov;
+      return raw;
+    }catch(e){
+      errs.push(PROVIDERS[prov].short+" : "+shortErr(e));
+      if(k<order.length-1){addMsg("sys","⚠️ "+PROVIDERS[prov].short+" indisponible ("+shortErr(e)+") → relais vers "+PROVIDERS[order[k+1]].short+"…");continue;}
+      if(errs.length>1)e.message=errs.join(" · ");
+      throw e;
+    }
+  }
 }
 
 /* ---------- Jeu ---------- */
@@ -949,7 +1090,7 @@ function updateBar(){
 function openSister(id){
   if(net.role==="guest"){alert("C'est l'hôte qui choisit la sœur.");return}
   if(mode===3&&!net.guests.length){alert("Crée d'abord une salle et attends qu'au moins un autre joueur s'y connecte.");return}
-  if(!cfg.key){$("settings").classList.remove("hidden");alert("Ajoute d'abord ta clé API.");return}
+  if(!aiOrder().length){$("settings").classList.remove("hidden");alert("Ajoute d'abord ta clé API.");return}
   current=id; const s=SISTERS[id];
   document.documentElement.style.setProperty("--c",s.c);
   if(!state[id]){ showScenarios(id); return; }
