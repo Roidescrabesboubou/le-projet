@@ -109,7 +109,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.2 (relais ntfy.sh)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.3 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -622,7 +622,6 @@ function pickForm(st){
 }
 function setChoices(st,o){
   let ch=o.choices||[];
-  if(ch.length<2&&st.event&&st.event.ch)ch=st.event.ch.slice(0,4);
   st.choices=ch;
 }
 function consumeTurn(st){
@@ -685,7 +684,9 @@ ${st.mystery&&!st.revealed?"- MODE MYSTÈRE : tu ne révèles JAMAIS ton prénom
 ${players.map(p=>`- ${p.name} : ${p.out?"éliminé":p.ms>=4?"tous les jalons validés, la déclaration est possible en fin de partie":`${p.ms}/4 jalons validés, prochain : « ${MS[p.ms].name} »`}`).join("\n")}
 - Les scènes de jalon sont lancées par le jeu via un message [JALON] : ne lance JAMAIS toi-même un rendez-vous, un date ou une scène de ce type, et ne te déclare pas. Tiens compte des jalons validés dans ton ton (ex : après « Amitié », vous êtes vraiment amis ; après « Premier rendez-vous », vous avez un souvenir commun).
 ${trials.length?`- ÉPREUVE DÉCISIVE EN COURS pour ${trials.map(p=>`${p.name} (« ${MS[p.ms].name} »)`).join(", ")} : sa prochaine réponse à la scène en cours décide de la validation de l'étape. Ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse de ton caractère et bien adaptée à la scène ; sinon "milestone":"fail" (sois exigeante : une réponse moyenne, calculée ou maladroite échoue). Réagis ensuite à l'issue (soulagement, déception…). Ne te déclare pas. ${st.sim?"En mode simultané, mets ce champ dans l'élément effects du joueur concerné.":""}\n`:""}`;
-  const evTxt=(st.event?`ÉVÉNEMENT ALÉATOIRE À INTÉGRER MAINTENANT : ${st.event.t}\n${st.evForced?"La discussion s'essoufflait : sers-toi de cet événement pour la débloquer et ouvrir un nouveau fil naturel (sans reprendre le sujet épuisé).\n":""}Décris-le dans "narration" (1 à 3 phrases, voix du narrateur) et réagis dans "reply" à la dernière réponse du joueur dans ce contexte. ${st.event.ch?`Puis laisse le joueur réagir par une ACTION : mets dans choices ces options (tu peux légèrement les reformuler) : ${JSON.stringify(st.event.ch)}.`:`Puis laisse le joueur réagir librement (ou propose 2 à 4 actions dans choices si c'est naturel).`} Ne dis jamais que l'événement est aléatoire.\n`:"")+(st.form&&st.form!=="event"&&FORMS[st.form]?`FORME DE CE TOUR (impératif) : ${FORMS[st.form]}\n`:"")+((st.inject||[]).length?st.inject.join("\n")+"\n":"");
+  const evTxt=(st.event?`ÉVÉNEMENT IMPRÉVU À INVENTER MAINTENANT (impératif). Graine d'inspiration, qui indique seulement le GENRE de surprise : « ${st.event.t} ». Ne la recopie pas : invente un événement qui cadre avec la situation actuelle — le lieu et le moment de la scène, ce qui vient d'être dit, les faits et le lore déjà établis, l'humeur de ${s.name} et le niveau de leur relation. Si la graine ne colle pas au contexte, transforme-la ou choisis une autre surprise plus naturelle (jamais d'élément absurde ou contradictoire avec ce qui a été établi).
+${st.evForced?"La discussion s'essoufflait : sers-toi de cet événement pour la débloquer et ouvrir un nouveau fil naturel (sans reprendre le sujet épuisé).\n":""}ÉCRIS l'événement dans "narration" (OBLIGATOIRE, non vide : 2 à 3 phrases, voix du narrateur, au présent, concret et précis), puis fais réagir ${s.name} dans "reply" à la fois à l'événement et à la dernière réponse du joueur. Mets dans choices 3 ou 4 ACTIONS (« Je … ») que le joueur peut faire face à CET événement précis. Ne dis jamais que l'événement est aléatoire.
+`:"")+(st.form&&st.form!=="event"&&FORMS[st.form]?`FORME DE CE TOUR (impératif) : ${FORMS[st.form]}\n`:"")+((st.inject||[]).length?st.inject.join("\n")+"\n":"");
   const prog = `ÉVOLUTION DE LA RELATION (très important) :
 ${players.map(p=>`- ${p.name} : étape ${stageOf(p)+1}/5 « ${STAGES[stageOf(p)].name} »${p.out?" (éliminé)":""}`).join("\n")}
 ${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
@@ -1007,7 +1008,7 @@ async function runRound(st){
     if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
-    if(st.event){sysLine(st,"🎲 Événement : "+st.event.n+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
+    if(st.event){sysLine(st,"🎲 Événement imprévu"+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
     consumeTurn(st);
     if(o.narr){const N={cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
     const L={cls:"her",text:o.reply,tag:tags.join(" · "),up:sum>=0,dv:best};st.lines.push(L);renderLine(L);fx(best);addGuest(st,o);
@@ -1179,7 +1180,7 @@ async function turn(userText,hidden){
     if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
-    if(st.event){sysLine(st,"🎲 Événement : "+st.event.n+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
+    if(st.event){sysLine(st,"🎲 Événement imprévu"+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
     consumeTurn(st);
     const [L0,m]=pushAI(st,o);
     if(eff&&eff.tags.length){
