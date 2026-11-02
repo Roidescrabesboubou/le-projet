@@ -40,6 +40,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 8
 .lb li{display:flex;justify-content:space-between;gap:8px;padding:4px 8px;border-radius:8px}
 .lb li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lb li.me{background:rgba(242,211,107,.3);font-weight:800}
+.zone{width:100%;max-width:280px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .help{color:var(--muted);font-size:.8rem;text-align:center;max-width:520px;margin:0}
 .pad{display:none;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,50px);gap:6px;user-select:none;-webkit-user-select:none}
 .pad button{border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:1.3rem;touch-action:none}
@@ -86,11 +87,12 @@ dialog .lb li.me{background:var(--soft)}
   <h2>🏆 Meilleurs scores</h2>
   <div id="dlgList"></div>
   <div class="drow">
-    <button class="btn ghost" id="bClear">Effacer</button>
+    <button class="btn ghost" id="bClear" title="Efface seulement les scores de cet appareil">Effacer (appareil)</button>
     <button class="btn" id="bClose">Fermer</button>
   </div>
 </dialog>
 
+<script src="../commun/classement.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}}
@@ -341,26 +343,15 @@ function togglePause(){
 }
 function gameOver(){
   state="over";
-  const ok=qualifies(score);
   showOv(o=>{
     o.innerHTML=`<h2>Partie terminée</h2><p>Score : <b></b> · niveau ${level}</p>`;
     o.querySelector("b").textContent=score.toLocaleString("fr-FR");
-    const lb=document.createElement("div");lb.style.cssText="width:100%;display:flex;justify-content:center";
-    if(ok){
-      const p=document.createElement("p");p.textContent="🎉 Nouveau meilleur score ! Ton prénom :";o.appendChild(p);
-      const row=document.createElement("div");row.className="namerow";
-      const inp=document.createElement("input");inp.maxLength=16;inp.value=lsGet(PSEUDO,"");inp.placeholder="Prénom";
-      const sv=document.createElement("button");sv.className="btn";sv.textContent="OK";
-      const save=()=>{const n=inp.value.trim()||"Anonyme";lsSet(PSEUDO,n);
-        const i=addScore({n,s:score,lv:level,d:Date.now()});row.remove();p.remove();renderList(lb,loadScores(),i);hud()};
-      sv.onclick=save;inp.onkeydown=e=>{e.stopPropagation();if(e.key==="Enter")save()};
-      row.append(inp,sv);o.appendChild(row);setTimeout(()=>inp.focus(),50);
-    }else renderList(lb,loadScores(),-1);
-    o.appendChild(lb);
+    const zone=document.createElement("div");zone.className="zone";o.appendChild(zone);
     const again=document.createElement("button");again.className="btn";again.textContent="↻ Rejouer";again.onclick=newGame;o.appendChild(again);
+    Classement.finDePartie({zone,cle:"labyrinthe",champ:"s",entree:{s:score,lv:level},
+      local:{qualifie:qualifies,ajouter:addScore,liste:loadScores},rendu:renderList,apres:hud});
   });
 }
-
 /* ---------- Contrôles ---------- */
 function steer(d){
   if(!player||!["play","ready"].includes(state))return;
@@ -384,9 +375,9 @@ $("wrap").addEventListener("pointermove",e=>{
 });
 window.addEventListener("pointerup",()=>sw=null);
 $("bPause").onclick=togglePause;
-$("bScores").onclick=()=>{if(["play","ready"].includes(state))togglePause();renderList($("dlgList"),loadScores(),-1);$("dlg").showModal()};
+$("bScores").onclick=()=>{if(["play","ready"].includes(state))togglePause();Classement.tableau($("dlgList"),{cle:"labyrinthe",champ:"s",liste:loadScores,rendu:renderList});$("dlg").showModal()};
 $("bClose").onclick=()=>$("dlg").close();
-$("bClear").onclick=()=>{if(confirm("Effacer tous les meilleurs scores de Souris gourmande ?")){lsSet(SKEY,[]);renderList($("dlgList"),[],-1);hud()}};
+$("bClear").onclick=()=>{if(confirm("Effacer les meilleurs scores de Souris gourmande enregistrés sur cet appareil ? (le classement de tous les joueurs ne change pas)")){lsSet(SKEY,[]);Classement.tableau($("dlgList"),{cle:"labyrinthe",champ:"s",liste:loadScores,rendu:renderList});hud()}};
 window.addEventListener("blur",()=>{if(["play","ready"].includes(state))togglePause()});
 window.addEventListener("resize",size);
 
@@ -402,7 +393,7 @@ loadGrid();placeActors();size();hud();
 showOv(o=>{
   o.innerHTML="<h2>🐭 Souris gourmande</h2><p>Mange toutes les miettes du labyrinthe sans te faire attraper par les chats. Un morceau de 🧀 te donne quelques secondes pour les chasser à ton tour !</p>";
   const b=document.createElement("button");b.className="btn";b.textContent="▶ Jouer";b.onclick=newGame;o.appendChild(b);
-  if(loadScores().length){const lb=document.createElement("div");lb.style.cssText="width:100%;display:flex;justify-content:center";renderList(lb,loadScores().slice(0,3),-1);o.appendChild(lb)}
+  if(loadScores().length||Classement.enLigne){const lb=document.createElement("div");lb.style.cssText="width:100%;display:flex;justify-content:center";o.appendChild(lb);Classement.tableau(lb,{cle:"labyrinthe",champ:"s",liste:loadScores,rendu:renderList,max:3,bascule:false})}
 });
 requestAnimationFrame(loop);
 window.addEventListener("load",size);setTimeout(size,200);

@@ -42,6 +42,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 8
 .lb li{display:flex;justify-content:space-between;gap:8px;padding:4px 8px;border-radius:8px}
 .lb li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lb li.me{background:rgba(242,211,107,.3);font-weight:800}
+.zone{width:100%;max-width:280px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .help{color:var(--muted);font-size:.8rem;text-align:center;max-width:520px}
 .pad{display:none;gap:6px;flex-wrap:nowrap;justify-content:center;flex-wrap:wrap;user-select:none;-webkit-user-select:none}
 .pad button{width:min(56px,calc((100vw - 64px)/7));height:52px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:1.3rem;font-weight:800;touch-action:none}
@@ -91,11 +92,12 @@ dialog .lb li.me{background:var(--soft)}
   <h2>🏆 Meilleurs scores</h2>
   <div id="dlgList"></div>
   <div class="drow">
-    <button class="btn ghost" id="bClear">Effacer</button>
+    <button class="btn ghost" id="bClear" title="Efface seulement les scores de cet appareil">Effacer (appareil)</button>
     <button class="btn" id="bClose">Fermer</button>
   </div>
 </dialog>
 
+<script src="../commun/classement.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}}
@@ -186,23 +188,13 @@ function reset(){
 }
 function gameOver(){
   over=true;started=false;
-  const ok=qualifies(score);
   showOv(o=>{
     o.innerHTML=`<h2>Partie terminée</h2><p>Score : <b></b> · ${lines} ligne${lines>1?"s":""} · niveau ${level}</p>`;
     o.querySelector("b").textContent=score.toLocaleString("fr-FR");
-    const lb=document.createElement("div");lb.style.width="100%";lb.style.display="flex";lb.style.justifyContent="center";
-    if(ok){
-      const p=document.createElement("p");p.textContent="🎉 Nouveau meilleur score ! Ton prénom :";o.appendChild(p);
-      const row=document.createElement("div");row.className="namerow";
-      const inp=document.createElement("input");inp.maxLength=16;inp.value=lsGet(PSEUDO,"");inp.placeholder="Prénom";
-      const sv=document.createElement("button");sv.className="btn";sv.textContent="OK";
-      const save=()=>{const n=inp.value.trim()||"Anonyme";lsSet(PSEUDO,n);
-        const i=addScore({n,s:score,lv:level,d:Date.now()});row.remove();p.remove();renderList(lb,loadScores(),i);hud()};
-      sv.onclick=save;inp.onkeydown=e=>{e.stopPropagation();if(e.key==="Enter")save()};
-      row.append(inp,sv);o.appendChild(row);setTimeout(()=>inp.focus(),50);
-    }else renderList(lb,loadScores(),-1);
-    o.appendChild(lb);
+    const zone=document.createElement("div");zone.className="zone";o.appendChild(zone);
     const again=document.createElement("button");again.className="btn";again.textContent="↻ Rejouer";again.onclick=reset;o.appendChild(again);
+    Classement.finDePartie({zone,cle:"blocs",champ:"s",entree:{s:score,lv:level},
+      local:{qualifie:qualifies,ajouter:addScore,liste:loadScores},rendu:renderList,apres:hud});
   });
 }
 function togglePause(){
@@ -319,9 +311,9 @@ $("pad").querySelectorAll("button").forEach(b=>{
 });
 $("board").addEventListener("pointerdown",()=>{if(started&&!paused&&!over)rotate(1)});
 $("bPause").onclick=togglePause;
-$("bScores").onclick=()=>{if(started&&!paused&&!over)togglePause();renderList($("dlgList"),loadScores(),-1);$("dlg").showModal()};
+$("bScores").onclick=()=>{if(started&&!paused&&!over)togglePause();Classement.tableau($("dlgList"),{cle:"blocs",champ:"s",liste:loadScores,rendu:renderList});$("dlg").showModal()};
 $("bClose").onclick=()=>$("dlg").close();
-$("bClear").onclick=()=>{if(confirm("Effacer tous les meilleurs scores de Blocs ?")){lsSet(SKEY,[]);renderList($("dlgList"),[],-1);hud()}};
+$("bClear").onclick=()=>{if(confirm("Effacer les meilleurs scores de Blocs enregistrés sur cet appareil ? (le classement de tous les joueurs ne change pas)")){lsSet(SKEY,[]);Classement.tableau($("dlgList"),{cle:"blocs",champ:"s",liste:loadScores,rendu:renderList});hud()}};
 window.addEventListener("blur",()=>{if(started&&!paused&&!over)togglePause()});
 window.addEventListener("resize",size);
 
@@ -333,7 +325,7 @@ showOv(o=>{
   o.innerHTML="<h2>🧱 Blocs</h2><p>Complète des lignes pour les faire disparaître. Plus tu en effaces d'un coup, plus tu marques !</p>";
   const b=document.createElement("button");b.className="btn";b.textContent="▶ Jouer";b.onclick=reset;o.appendChild(b);
   const lb=document.createElement("div");lb.style.cssText="width:100%;display:flex;justify-content:center";
-  if(loadScores().length){renderList(lb,loadScores().slice(0,3),-1);o.appendChild(lb)}
+  if(loadScores().length||Classement.enLigne){o.appendChild(lb);Classement.tableau(lb,{cle:"blocs",champ:"s",liste:loadScores,rendu:renderList,max:3,bascule:false})}
 });
 requestAnimationFrame(loop);
 window.addEventListener("load",size);setTimeout(size,200);

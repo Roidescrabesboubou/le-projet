@@ -58,6 +58,7 @@ dialog h2{font-family:Fredoka,sans-serif;margin:0 0 10px}
 .btn{border:0;border-radius:10px;padding:9px 18px;font-weight:800;background:var(--accent);color:#fff}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .drow{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
+.cl-titre{margin:6px 0 4px!important}
 .namerow{display:flex;gap:6px;margin:8px 0}
 .namerow input{flex:1;min-width:0;font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
 </style>
@@ -90,11 +91,12 @@ dialog h2{font-family:Fredoka,sans-serif;margin:0 0 10px}
   <div id="newRec"></div>
   <div id="dlgList"></div>
   <div class="drow">
-    <button class="btn ghost" id="bClear">Effacer</button>
+    <button class="btn ghost" id="bClear" title="Efface seulement les temps de cet appareil">Effacer (appareil)</button>
     <button class="btn" id="bClose">Fermer</button>
   </div>
 </dialog>
 
+<script src="../commun/classement.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}}
@@ -211,7 +213,7 @@ function win(){
   cells.forEach((c,i)=>{if(c.m&&!c.f){c.f=true;paint(i)}});flags=M;counter();
   $("msg").textContent="🎉 Gagné en "+fmt(t)+" !";
   stat(cur,true);showStats();
-  if(qualifies(cur,t))openScores(cur,t);
+  openWin(t);
 }
 
 /* ---------- Souris et tactile ---------- */
@@ -254,31 +256,29 @@ window.addEventListener("resize",()=>{
 
 /* ---------- Tableau des records ---------- */
 let tab=cur;
-function openScores(lv,newTime){
-  tab=lv;$("newRec").innerHTML="";
-  if(newTime!=null){
-    const p=document.createElement("p");p.style.margin="0";p.textContent=`🎉 Nouveau record en ${LEVELS[lv].name} : ${fmt(newTime)} ! Ton prénom :`;
-    const row=document.createElement("div");row.className="namerow";
-    const inp=document.createElement("input");inp.maxLength=16;inp.value=lsGet(PSEUDO,"");inp.placeholder="Prénom";
-    const sv=document.createElement("button");sv.className="btn";sv.textContent="OK";
-    const save=()=>{const n=inp.value.trim()||"Anonyme";lsSet(PSEUDO,n);const i=addScore(lv,{n,t:newTime,d:Date.now()});
-      $("newRec").innerHTML="";renderTabs(i);showStats()};
-    sv.onclick=save;inp.onkeydown=e=>{if(e.key==="Enter")save()};
-    row.append(inp,sv);$("newRec").append(p,row);
-    $("dlg").addEventListener("close",()=>{if($("newRec").firstChild)save()},{once:true});
-  }
-  renderTabs(-1);$("dlg").showModal();
-  if(newTime!=null)setTimeout(()=>$("newRec").querySelector("input")?.focus(),50);
+const opts=lv=>({cle:"demineur_"+lv,champ:"t",asc:true,liste:()=>loadScores(lv),rendu:renderList});
+function openWin(t){
+  const lv=cur;tab=lv;
+  $("tabs").style.display="none";$("dlgList").innerHTML="";$("newRec").innerHTML="";
+  const p=document.createElement("p");p.style.margin="0 0 8px";p.textContent=`🎉 Gagné en ${LEVELS[lv].name} en ${fmt(t)} !`;
+  const zone=document.createElement("div");$("newRec").append(p,zone);
+  Classement.finDePartie({zone,cle:"demineur_"+lv,champ:"t",asc:true,entree:{t},
+    local:{qualifie:v=>qualifies(lv,v),ajouter:e=>addScore(lv,e),liste:()=>loadScores(lv)},rendu:renderList,apres:showStats});
+  $("dlg").showModal();
 }
-function renderTabs(hi){
+function openScores(lv){
+  tab=lv;$("newRec").innerHTML="";$("tabs").style.display="";
+  renderTabs();$("dlg").showModal();
+}
+function renderTabs(){
   const t=$("tabs");t.innerHTML="";
   for(const[k,L]of Object.entries(LEVELS)){const b=document.createElement("button");b.textContent=L.name;if(k===tab)b.className="on";
-    b.onclick=()=>{tab=k;renderTabs(-1)};t.appendChild(b)}
-  renderList($("dlgList"),loadScores(tab),hi);
+    b.onclick=()=>{tab=k;renderTabs()};t.appendChild(b)}
+  Classement.tableau($("dlgList"),opts(tab));
 }
-$("bScores").onclick=()=>openScores(cur,null);
+$("bScores").onclick=()=>openScores(cur);
 $("bClose").onclick=()=>$("dlg").close();
-$("bClear").onclick=()=>{if(confirm(`Effacer les meilleurs temps en ${LEVELS[tab].name} ?`)){const a=loadAll();delete a[tab];lsSet(SKEY,a);renderTabs(-1);showStats()}};
+$("bClear").onclick=()=>{if(confirm(`Effacer les meilleurs temps en ${LEVELS[tab].name} enregistrés sur cet appareil ? (le classement de tous les joueurs ne change pas)`)){const a=loadAll();delete a[tab];lsSet(SKEY,a);openScores(tab);showStats()}};
 
 renderModes();newGame();
 </script>
