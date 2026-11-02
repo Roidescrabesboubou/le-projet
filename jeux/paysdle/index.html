@@ -225,7 +225,7 @@ function rowHTML(name,isNew){
   const g=BY[name],r=info(name),a=answer,win=name===a.nom;
   const pop=g.pop===a.pop||win?"ok":"mid",popArr=win?"":a.pop>g.pop?" ⬆️":" ⬇️";
   return`<div class="g${win?" win":""}${isNew?" new":""}">
-    <div class="n">${flag(g.iso)} ${esc(g.nom)}</div>
+    <div class="n">${esc(g.nom)}</div>
     <div class="d">${r.d.toLocaleString("fr-FR")} km</div>
     <div class="a">${r.arr}</div>
     <div class="p">${r.prox} %</div>
@@ -267,7 +267,7 @@ function renderSugg(){
   const list=matches($("inp").value),box=$("sugg");
   if(!list.length||over){box.hidden=true;return;}
   selIdx=Math.min(selIdx,list.length-1);
-  box.innerHTML=list.map((p,i)=>`<div data-n="${esc(p.nom)}" class="${i===selIdx?"sel":""}">${flag(p.iso)} ${esc(p.nom)}</div>`).join("");
+  box.innerHTML=list.map((p,i)=>`<div data-n="${esc(p.nom)}" class="${i===selIdx?"sel":""}">${esc(p.nom)}</div>`).join("");
   box.hidden=false;
   box.querySelectorAll("div").forEach(d=>d.onmousedown=e=>{e.preventDefault();guess(d.dataset.n);});
 }
@@ -397,7 +397,8 @@ function showEnd(){
   if(mode==="daily")Series.panneau($("srZone"),"paysdle",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
   if(mode==="daily")Series.aujourdhui($("ajZone"),"paysdle",jourAuj,{moi:over?{e:guesses.length,g:won}:null,unite:"coup",gagnantsSeulement:true,reussite:true});else $("ajZone").innerHTML="";
   $("endTitle").textContent=!over?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?`🎉 Trouvé en ${guesses.length} essai${guesses.length>1?"s":""} !`:"😢 Perdu…";
-  $("found").innerHTML=over?`<div class="fl">${flag(answer.iso,160)}</div><b>${esc(answer.nom)}</b><small>Capitale : ${esc(answer.capitale)} · ${fmtPop(answer.pop)} hab.</small>`:"";
+  const bonusFini=bonus.length>=questions().length;
+  $("found").innerHTML=over?(bonusFini?`<div class="fl">${flag(answer.iso,160)}</div>`:"")+`<b>${esc(answer.nom)}</b><small>${bonusFini?`Capitale : ${esc(answer.capitale)} · `:""}${fmtPop(answer.pop)} hab.</small>`:"";
   const pct=s.played?Math.round(s.wins/s.played*100):0;
   $("endStats").innerHTML=[[s.played,"Parties"],[pct,"% victoires"],[s.streak,"Série"],[s.best,"Meilleure série"]].map(([v,l])=>`<div><b>${v}</b><small>${l}</small></div>`).join("");
   const m=Math.max(1,...s.dist),hi=won?guesses.length-1:-1;
