@@ -1,5 +1,8 @@
 /* ============================================================
-   COMPTES JOUEURS (Firebase Authentication, sans bibliothèque)
+   COMPTES JOUEURS : pseudo + mot de passe
+   (Firebase Authentication, sans bibliothèque). Aucun e-mail
+   n'est demandé : le pseudo est converti en identifiant interne
+   « pseudo@joueurs… » qui ne reçoit jamais de mail.
 
    Pour activer les comptes :
    1. Console Firebase → Authentication → « Commencer » →
@@ -25,6 +28,7 @@ const FIREBASE = {
   const src = (document.currentScript && document.currentScript.src) || "";
   const RACINE = src.replace(/jeux\/commun\/compte\.js.*$/, "");
   const ecouteurs = [];
+  const DOMAINE = "joueurs.salle-de-jeux-249d2.firebaseapp.com";
 
   /* ---------- outils ---------- */
   function fetchT(url, opts){
@@ -40,19 +44,20 @@ const FIREBASE = {
     ecouteurs.forEach(f => { try{ f(session); }catch(e){} });
     document.querySelectorAll(".cp-zone").forEach(dessinerBouton);
   }
-  const cleDePseudo = p => p.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const cleDePseudo = p => String(p || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const emailDe = cle => cle + "@" + DOMAINE;
 
   const MESSAGES = {
-    EMAIL_EXISTS: "Un compte existe déjà avec cet e-mail.",
-    EMAIL_NOT_FOUND: "E-mail ou mot de passe incorrect.",
-    INVALID_PASSWORD: "E-mail ou mot de passe incorrect.",
-    INVALID_LOGIN_CREDENTIALS: "E-mail ou mot de passe incorrect.",
-    INVALID_EMAIL: "Cet e-mail n'est pas valide.",
+    EMAIL_EXISTS: "Ce pseudo est déjà pris.",
+    EMAIL_NOT_FOUND: "Pseudo ou mot de passe incorrect.",
+    INVALID_PASSWORD: "Pseudo ou mot de passe incorrect.",
+    INVALID_LOGIN_CREDENTIALS: "Pseudo ou mot de passe incorrect.",
+    INVALID_EMAIL: "Ce pseudo n'est pas valide.",
     MISSING_PASSWORD: "Entre un mot de passe.",
     WEAK_PASSWORD: "Mot de passe trop faible (6 caractères minimum).",
     USER_DISABLED: "Ce compte a été désactivé.",
     TOO_MANY_ATTEMPTS_TRY_LATER: "Trop de tentatives. Réessaie dans quelques minutes.",
-    OPERATION_NOT_ALLOWED: "La connexion par e-mail n'est pas activée dans Firebase (Authentication → Sign-in method).",
+    OPERATION_NOT_ALLOWED: "Les comptes ne sont pas activés dans Firebase (Authentication → E-mail/Mot de passe).",
     CONFIGURATION_NOT_FOUND: "Firebase Authentication n'est pas encore activé sur ce projet.",
     TOKEN_EXPIRED: "Session expirée, reconnecte-toi.",
     INVALID_REFRESH_TOKEN: "Session expirée, reconnecte-toi."
@@ -131,14 +136,14 @@ const FIREBASE = {
     return session;
   }
 
-  async function inscrire(email, mdp, pseudo){
+  async function inscrire(pseudo, mdp){
     pseudo = String(pseudo || "").trim().replace(/\s+/g, " ");
     const cle = cleDePseudo(pseudo);
     if(pseudo.length < 2 || pseudo.length > 16) throw new Error("Le pseudo doit faire entre 2 et 16 caractères.");
     if(cle.length < 2) throw new Error("Le pseudo doit contenir au moins 2 lettres ou chiffres.");
     const pris = await db(`pseudos/${cle}`, {auth: false}).catch(() => null);
     if(pris) throw new Error("Ce pseudo est déjà pris.");
-    const j = await auth("signUp", {email, password: mdp, returnSecureToken: true});
+    const j = await auth("signUp", {email: emailDe(cle), password: mdp, returnSecureToken: true});
     ouvrirSession(j, pseudo);
     try{
       await db("", {method: "PATCH", body: {
@@ -155,18 +160,17 @@ const FIREBASE = {
     return session;
   }
 
-  async function connecter(email, mdp){
-    const j = await auth("signInWithPassword", {email, password: mdp, returnSecureToken: true});
-    ouvrirSession(j, "");
+  async function connecter(pseudo, mdp){
+    const cle = cleDePseudo(pseudo);
+    if(cle.length < 2) throw new Error("Pseudo ou mot de passe incorrect.");
+    const j = await auth("signInWithPassword", {email: emailDe(cle), password: mdp, returnSecureToken: true});
+    ouvrirSession(j, String(pseudo).trim());
     await actualiser();
     return session;
   }
 
   function deconnecter(){ session = null; ecrire(null); notifier(); }
 
-  async function motDePasseOublie(email){
-    await auth("sendOobCode", {requestType: "PASSWORD_RESET", email});
-  }
 
   /* Réglages du site (jeux cachés, badges, annonce) : lecture publique */
   let cacheReglages = null;
@@ -231,7 +235,7 @@ const FIREBASE = {
     b.onclick = () => {
       if(menu){ menu.remove(); menu = null; return; }
       menu = el("div", "", "cp-menu");
-      menu.appendChild(el("small", session.email || ""));
+      menu.appendChild(el("small", "Connecté en tant que " + (session.pseudo || "?")));
       if(session.admin){ const a = el("a", "⭐ Panel admin"); a.href = RACINE + "admin/"; menu.appendChild(a); }
       const d = el("button", "🚪 Se déconnecter"); d.onclick = () => { deconnecter(); };
       menu.appendChild(d);
@@ -265,7 +269,7 @@ const FIREBASE = {
       boite.appendChild(x);
       const ong = el("div", "", "cp-onglets");
       [["connexion", "Connexion"], ["inscription", "Créer un compte"]].forEach(([k, t]) => {
-        const o = el("button", t); if(k === mode || (mode === "oubli" && k === "connexion")) o.className = "on";
+        const o = el("button", t); if(k === mode) o.className = "on";
         o.onclick = () => vue(k); ong.appendChild(o);
       });
       boite.appendChild(ong);
@@ -275,33 +279,30 @@ const FIREBASE = {
         const i = el("input"); i.type = type; i.autocomplete = ac; i.required = true;
         form.appendChild(i); return i;
       };
-      let pseudo = null;
-      if(mode === "inscription"){ pseudo = champ("Pseudo (affiché dans les classements)", "text", "nickname"); pseudo.maxLength = 16; }
-      const email = champ("E-mail", "email", "email");
-      const mdp = mode === "oubli" ? null : champ("Mot de passe", "password", mode === "inscription" ? "new-password" : "current-password");
-      if(mdp && mode === "inscription") mdp.minLength = 6;
-      const ok = el("button", mode === "connexion" ? "Se connecter" : mode === "inscription" ? "Créer mon compte" : "Recevoir un lien", "cp-ok");
+      const insc = mode === "inscription";
+      const pseudo = champ(insc ? "Pseudo (affiché dans les classements)" : "Pseudo", "text", "username");
+      pseudo.maxLength = 16;
+      const mdp = champ("Mot de passe", "password", insc ? "new-password" : "current-password");
+      const mdp2 = insc ? champ("Confirme le mot de passe", "password", "new-password") : null;
+      if(insc) mdp.minLength = 6;
+      const ok = el("button", insc ? "Créer mon compte" : "Se connecter", "cp-ok");
       ok.type = "submit"; form.appendChild(ok);
       const msg = el("p", "", "cp-msg"); form.appendChild(msg);
-      if(mode === "connexion"){
-        const l = el("button", "Mot de passe oublié ?", "cp-lien"); l.type = "button";
-        l.onclick = () => vue("oubli"); boite.appendChild(l);
-      }
-      if(mode === "oubli") msg.textContent = "Entre ton e-mail : tu recevras un lien pour choisir un nouveau mot de passe.";
+      if(insc) msg.textContent = "Retiens bien ton mot de passe : sans e-mail, il ne peut pas être récupéré.";
       form.onsubmit = async e => {
         e.preventDefault();
+        if(insc && mdp.value !== mdp2.value){ msg.className = "cp-msg err"; msg.textContent = "Les deux mots de passe ne sont pas identiques."; return; }
         ok.disabled = true; msg.className = "cp-msg"; msg.textContent = "Patiente…";
         try{
-          if(mode === "connexion") await connecter(email.value.trim(), mdp.value);
-          else if(mode === "inscription") await inscrire(email.value.trim(), mdp.value, pseudo.value);
-          else{ await motDePasseOublie(email.value.trim()); msg.className = "cp-msg ok"; msg.textContent = "✅ E-mail envoyé ! Regarde aussi dans les spams."; ok.disabled = false; return; }
+          if(insc) await inscrire(pseudo.value, mdp.value);
+          else await connecter(pseudo.value, mdp.value);
           msg.className = "cp-msg ok"; msg.textContent = "✅ Bienvenue " + (session.pseudo || "") + " !";
           setTimeout(fermer, 700);
         }catch(err){
           msg.className = "cp-msg err"; msg.textContent = err.message; ok.disabled = false;
         }
       };
-      setTimeout(() => (pseudo || email).focus(), 30);
+      setTimeout(() => pseudo.focus(), 30);
     }
     vue(onglet || "connexion");
   }
@@ -309,7 +310,7 @@ const FIREBASE = {
   window.Compte = {
     pret: !!KEY, DB, RACINE,
     session: () => session,
-    jeton, db, actualiser, inscrire, connecter, deconnecter, motDePasseOublie,
+    jeton, db, actualiser, inscrire, connecter, deconnecter,
     reglages, etatDe, cleDePseudo, bouton, ouvrir,
     surChangement: f => { ecouteurs.push(f); }
   };
