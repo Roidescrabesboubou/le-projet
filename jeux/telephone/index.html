@@ -75,6 +75,7 @@ label.l{display:block;font-size:.82rem;font-weight:800;color:var(--muted);margin
 .board{position:relative;background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3;box-shadow:0 8px 24px rgba(0,0,0,.06)}
 .board canvas{width:100%;height:100%;display:block}
 #cv{touch-action:none;cursor:crosshair}
+#drawBox .board,#drawBox .tools{max-width:max(320px,calc((100vh - 250px)*4/3));margin-left:auto;margin-right:auto}
 #cv.brush{cursor:none}
 #brush{position:absolute;left:0;top:0;border-radius:50%;pointer-events:none;border:1.5px solid #222;box-shadow:0 0 0 1px #fff;transform:translate(-50%,-50%);display:none}
 #brush.er{background:rgba(255,255,255,.55);border-style:dashed}
@@ -240,6 +241,10 @@ label.l{display:block;font-size:.82rem;font-weight:800;color:var(--muted);margin
           <button class="tb on" data-tool="pen" title="Pinceau">✏️</button>
           <button class="tb" data-tool="eraser" title="Gomme">🧽</button>
           <button class="tb" data-tool="fill" title="Pot de peinture">🪣</button>
+          <button class="tb" data-tool="line" title="Ligne droite (Maj : angles de 45°)">╱</button>
+          <button class="tb" data-tool="rect" title="Rectangle (Maj : carré)">▭</button>
+          <button class="tb" data-tool="ellipse" title="Ellipse (Maj : cercle)">◯</button>
+          <button class="tb" id="bShapeFill" title="Formes vides ou pleines">◻️</button>
           <button class="tb" id="bUndo" title="Annuler (Ctrl+Z)">↩️</button>
           <button class="tb" id="bClear" title="Tout effacer">🗑️</button>
         </div>
@@ -305,14 +310,33 @@ $("nameIn").oninput=()=>{myName=$("nameIn").value.trim();store.set("dd_name",myN
 const qsRoom=new URLSearchParams(location.search).get("salle");
 if(qsRoom)$("codeIn").value=qsRoom.toUpperCase();
 
+/* ----- Formes : ligne, rectangle, ellipse (Maj = 45°, carré, cercle) ----- */
+const SHAPES=["line","rect","ellipse"];
+let shapeFill=false,shp=null,snap=null;
+function drawShape(c,s){
+  c.strokeStyle=s.c;c.fillStyle=s.c;c.lineWidth=s.w;c.lineCap="round";c.lineJoin=s.k==="rect"?"miter":"round";
+  c.beginPath();
+  if(s.k==="line"){c.moveTo(s.x1,s.y1);c.lineTo(s.x2,s.y2);c.stroke();return;}
+  const x=Math.min(s.x1,s.x2),y=Math.min(s.y1,s.y2),w=Math.abs(s.x2-s.x1),h=Math.abs(s.y2-s.y1);
+  if(s.k==="rect")c.rect(x,y,w,h);else c.ellipse(x+w/2,y+h/2,Math.max(.5,w/2),Math.max(.5,h/2),0,0,Math.PI*2);
+  if(s.f)c.fill();else c.stroke();
+}
+function shapeEnd(s,x,y,shift){
+  if(!shift)return[x,y];
+  const dx=x-s.x1,dy=y-s.y1;
+  if(s.k==="line"){const a=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4),r=Math.hypot(dx,dy);return[Math.round(s.x1+r*Math.cos(a)),Math.round(s.y1+r*Math.sin(a))];}
+  const m=Math.max(Math.abs(dx),Math.abs(dy));return[s.x1+Math.sign(dx||1)*m,s.y1+Math.sign(dy||1)*m];
+}
 /* =================================================================
    DESSIN : encodage compact (deltas) et rendu
    Un trait = [0|1 (crayon|gomme), couleur, épaisseur, x0, y0, dx, dy, …]
    Un remplissage = [2, couleur, x, y]
+   Une forme = [3, couleur, épaisseur, 0|1|2 (ligne|rectangle|ellipse), plein, x1, y1, x2, y2]
    ================================================================= */
 function encode(list){
   return list.map(s=>{
     if(s.tool==="fill")return[2,s.c,s.x,s.y];
+    if(s.tool==="shape")return[3,s.c,s.w,SHAPES.indexOf(s.k),s.f?1:0,s.x1,s.y1,s.x2,s.y2];
     const o=[s.tool==="eraser"?1:0,s.c,s.w,s.p[0],s.p[1]];
     for(let i=2;i<s.p.length;i+=2)o.push(s.p[i]-s.p[i-2],s.p[i+1]-s.p[i-1]);
     return o;
@@ -321,6 +345,7 @@ function encode(list){
 function decode(d){
   return (d||[]).map(a=>{
     if(a[0]===2)return{tool:"fill",c:a[1],x:a[2],y:a[3]};
+    if(a[0]===3)return{tool:"shape",c:a[1],w:a[2],k:SHAPES[a[3]]||"line",f:!!a[4],x1:a[5],y1:a[6],x2:a[7],y2:a[8]};
     const p=[a[3],a[4]];
     for(let i=5;i+1<a.length;i+=2)p.push(p[p.length-2]+a[i],p[p.length-1]+a[i+1]);
     return{tool:a[0]===1?"eraser":"pen",c:a[1],w:a[2],p};
@@ -335,6 +360,7 @@ function cleanD(d){
     const c=/^#[0-9a-f]{6}$/i.test(a[1])?a[1]:"#000000";
     const n=v=>Math.max(-2000,Math.min(2000,Math.round(+v)||0));
     if(a[0]===2){out.push([2,c,n(a[2]),n(a[3])]);continue;}
+    if(a[0]===3){out.push([3,c,Math.max(1,Math.min(60,Math.round(+a[2])||7)),[0,1,2].includes(a[3])?a[3]:0,a[4]?1:0,n(a[5]),n(a[6]),n(a[7]),n(a[8])]);continue;}
     let p=a.slice(3,3+60000).map(n);if(p.length%2)p.pop();if(p.length<2)continue;
     tot+=p.length;if(tot>120000)break;
     out.push([a[0]===1?1:0,c,Math.max(1,Math.min(60,Math.round(+a[2])||7)),...p]);
@@ -374,17 +400,18 @@ function floodFill(ctx,x,y,hex){
     if((xx>0&&seen[i-1])||(xx<W-1&&seen[i+1])||(i>=W&&seen[i-W])||(i<W*H-W&&seen[i+W])){const j=i*4;if(Math.abs(d[j]-tr)<=110&&Math.abs(d[j+1]-tg)<=110&&Math.abs(d[j+2]-tb)<=110){d[j]=r;d[j+1]=g;d[j+2]=b;}}}
   ctx.putImageData(img,0,0);
 }
-function paint(ctx,list){clearCtx(ctx);for(const s of list){if(s.tool==="fill")floodFill(ctx,s.x,s.y,s.c);else drawSeg(ctx,s,0);}}
+function paint(ctx,list){clearCtx(ctx);for(const s of list){if(s.tool==="fill")floodFill(ctx,s.x,s.y,s.c);else if(s.tool==="shape")drawShape(ctx,s);else drawSeg(ctx,s,0);}}
 /* Rejoue un dessin trait par trait (pour la révélation des albums) */
 function replay(ctx,list,ms){
   clearCtx(ctx);
-  const total=list.reduce((a,s)=>a+(s.tool==="fill"?20:s.p.length/2),0)||1;
+  const total=list.reduce((a,s)=>a+(s.tool==="fill"||s.tool==="shape"?20:s.p.length/2),0)||1;
   let si=0,pi=0,done=0;const t0=performance.now();let part=null;
   (function frame(now){
     const goal=Math.min(total,total*(now-t0)/ms);
     while(si<list.length&&done<goal){
       const s=list[si];
       if(s.tool==="fill"){floodFill(ctx,s.x,s.y,s.c);done+=20;si++;continue;}
+      if(s.tool==="shape"){drawShape(ctx,s);done+=20;si++;continue;}
       if(!part)part={...s,p:[]};
       const from=part.p.length;
       while(pi<s.p.length&&done<goal){part.p.push(s.p[pi],s.p[pi+1]);pi+=2;done++;}
@@ -806,7 +833,7 @@ function setupWork(){
   $("drawBox").classList.toggle("hidden",k!=="d");
   $("btnIdea").classList.toggle("hidden",!!prev);
   $("textIn").value="";$("textIn").placeholder=prev?"Ta description du dessin…":"Ta phrase…";updCount();
-  strokes=[];cur=null;clearCtx(ctx);
+  strokes=[];cur=null;shp=null;snap=null;clearCtx(ctx);
   $("btnSubmit").disabled=false;
   if(k==="t")setTimeout(()=>$("textIn").focus(),50);
 }
@@ -957,21 +984,28 @@ cv.addEventListener("pointerdown",ev=>{
   if(!canDraw())return;
   ev.preventDefault();cv.setPointerCapture(ev.pointerId);
   const[x,y]=pos(ev);
+  if(SHAPES.includes(tool)){shp={tool:"shape",k:tool,c:color,w:size,f:shapeFill&&tool!=="line",x1:x,y1:y,x2:x,y2:y};snap=ctx.getImageData(0,0,W,H);return;}
   if(tool==="fill"){const s={tool:"fill",x,y,c:color};strokes.push(s);floodFill(ctx,x,y,color);return;}
   cur={tool,c:color,w:size,p:[x,y]};strokes.push(cur);drawSeg(ctx,cur,0);
 });
 cv.addEventListener("pointermove",ev=>{
   moveBrush(ev);
+  if(shp){const[x,y]=pos(ev);[shp.x2,shp.y2]=shapeEnd(shp,x,y,ev.shiftKey);ctx.putImageData(snap,0,0);drawShape(ctx,shp);return;}
   if(!cur)return;
   const evs=ev.getCoalescedEvents?ev.getCoalescedEvents():[ev];
   const from=cur.p.length;
   for(const e of evs){const[x,y]=pos(e),n=cur.p.length;if(Math.hypot(x-cur.p[n-2],y-cur.p[n-1])>=2)cur.p.push(x,y);}
   if(cur.p.length>from)drawSeg(ctx,cur,from);
 });
-const endStroke=()=>{cur=null;};
+function commitShape(){
+  const sh=shp;shp=null;ctx.putImageData(snap,0,0);snap=null;
+  if(Math.hypot(sh.x2-sh.x1,sh.y2-sh.y1)<3)return;
+  strokes.push(sh);drawShape(ctx,sh);
+}
+const endStroke=()=>{if(shp)return commitShape();cur=null;};
 cv.addEventListener("pointerup",endStroke);cv.addEventListener("pointercancel",endStroke);
 function moveBrush(ev){
-  const b=$("brush"),on=canDraw()&&tool!=="fill"&&ev.pointerType!=="touch";
+  const b=$("brush"),on=canDraw()&&tool!=="fill"&&!SHAPES.includes(tool)&&ev.pointerType!=="touch";
   cv.classList.toggle("brush",on);
   if(!on){b.style.display="none";return;}
   const r=cv.getBoundingClientRect(),d=Math.max(4,size*r.width/W);
@@ -989,10 +1023,12 @@ function updTools(){
   $("sizes").querySelectorAll("button").forEach(b=>b.classList.toggle("on",+b.dataset.s===size));
   document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("on",b.dataset.tool===tool));
   $("cur").style.background=tool==="eraser"?"#fff":color;
+  $("bShapeFill").textContent=shapeFill?"◼️":"◻️";$("bShapeFill").classList.toggle("on",shapeFill);
 }
 $("pal").onclick=e=>{const c=e.target.dataset.c;if(c){color=c;if(tool==="eraser")tool="pen";updTools();}};
 $("sizes").onclick=e=>{const b=e.target.closest("button");if(b){size=+b.dataset.s;updTools();}};
 document.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>{tool=b.dataset.tool;updTools();});
+$("bShapeFill").onclick=()=>{shapeFill=!shapeFill;if(!SHAPES.includes(tool)||tool==="line")tool="rect";updTools();};
 $("bUndo").onclick=()=>{if(canDraw()&&strokes.length){strokes.pop();paint(ctx,strokes);}};
 $("bClear").onclick=()=>{if(canDraw()&&strokes.length&&confirm("Tout effacer ?")){strokes=[];clearCtx(ctx);}};
 document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="z"&&canDraw()){e.preventDefault();$("bUndo").onclick();}});

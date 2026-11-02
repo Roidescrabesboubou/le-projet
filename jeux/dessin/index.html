@@ -230,6 +230,10 @@ label.l{display:block;font-size:.82rem;font-weight:800;color:var(--muted);margin
           <button class="tb on" data-tool="pen" title="Pinceau">✏️</button>
           <button class="tb" data-tool="eraser" title="Gomme">🧽</button>
           <button class="tb" data-tool="fill" title="Pot de peinture">🪣</button>
+          <button class="tb" data-tool="line" title="Ligne droite (Maj : angles de 45°)">╱</button>
+          <button class="tb" data-tool="rect" title="Rectangle (Maj : carré)">▭</button>
+          <button class="tb" data-tool="ellipse" title="Ellipse (Maj : cercle)">◯</button>
+          <button class="tb" id="bShapeFill" title="Formes vides ou pleines">◻️</button>
           <button class="tb" id="bUndo" title="Annuler (Ctrl+Z)">↩️</button>
           <button class="tb" id="bClear" title="Tout effacer">🗑️</button>
         </div>
@@ -342,7 +346,7 @@ function pub(m){
   try{client.publish(topic,JSON.stringify(m));}catch(e){}
 }
 function banner(t){$("banner").textContent=t;$("banner").classList.toggle("hidden",!t);}
-const DRAW_T=["pt","fill","undo","clear"];
+const DRAW_T=["pt","fill","shape","undo","clear"];
 function onNet(m){
   if(!m||m.from===myId)return;
   if(isHost){
@@ -868,7 +872,7 @@ function floodFill(x,y,hex){
     if((xx>0&&seen[i-1])||(xx<W-1&&seen[i+1])||(i>=W&&seen[i-W])||(i<W*H-W&&seen[i+W])){const j=i*4;if(Math.abs(d[j]-tr)<=110&&Math.abs(d[j+1]-tg)<=110&&Math.abs(d[j+2]-tb)<=110){d[j]=r;d[j+1]=g;d[j+2]=b;}}}
   ctx.putImageData(img,0,0);
 }
-function redraw(){clearCanvas();for(const s of strokes){if(s.tool==="fill")floodFill(s.x,s.y,s.c);else drawSeg(s,0);}}
+function redraw(){clearCanvas();for(const s of strokes){if(s.tool==="fill")floodFill(s.x,s.y,s.c);else if(s.tool==="shape")drawShape(ctx,s);else drawSeg(s,0);}}
 function applyEv(e){
   if(e.t==="pt"){
     let s=null;for(let i=strokes.length-1;i>=0&&i>=strokes.length-5;i--)if(strokes[i].id===e.id){s=strokes[i];break;}
@@ -878,6 +882,12 @@ function applyEv(e){
     drawSeg(s,from);
   }else if(e.t==="fill"){strokes.push({id:e.id,tool:"fill",x:+e.x,y:+e.y,c:String(e.c).slice(0,7)});floodFill(+e.x,+e.y,String(e.c));}
   else if(e.t==="undo"){strokes.pop();redraw();}
+  else if(e.t==="shape"){
+    const n=v=>Math.max(-2000,Math.min(2000,Math.round(+v)||0));
+    if(!SHAPES.includes(e.k))return;
+    const sh={id:e.id,tool:"shape",k:e.k,c:/^#[0-9a-f]{6}$/i.test(e.c)?e.c:"#000000",w:Math.max(1,Math.min(60,+e.w||7)),f:!!e.f,x1:n(e.x1),y1:n(e.y1),x2:n(e.x2),y2:n(e.y2)};
+    strokes.push(sh);drawShape(ctx,sh);
+  }
   else if(e.t==="clear"){strokes=[];clearCanvas();}
 }
 function emit(e){applyEv(e);if(mode==="online")pub({...e});}
@@ -886,19 +896,21 @@ cv.addEventListener("pointerdown",ev=>{
   if(!amDrawer())return;
   ev.preventDefault();cv.setPointerCapture(ev.pointerId);
   const[x,y]=pos(ev);
+  if(SHAPES.includes(tool)){shp={tool:"shape",k:tool,c:color,w:size,f:shapeFill&&tool!=="line",x1:x,y1:y,x2:x,y2:y};snap=ctx.getImageData(0,0,W,H);return;}
   if(tool==="fill"){emit({t:"fill",id:uid(),x,y,c:color});return;}
   cur={id:uid(),tool,c:color,w:size,lx:x,ly:y};
   addPt(x,y);
 });
 cv.addEventListener("pointermove",ev=>{
   moveBrush(ev);
+  if(shp){const[x,y]=pos(ev);[shp.x2,shp.y2]=shapeEnd(shp,x,y,ev.shiftKey);ctx.putImageData(snap,0,0);drawShape(ctx,shp);return;}
   if(!cur)return;
   const evs=ev.getCoalescedEvents?ev.getCoalescedEvents():[ev];
   for(const e of evs){const[x,y]=pos(e);if(Math.hypot(x-cur.lx,y-cur.ly)>=2){cur.lx=x;cur.ly=y;addPt(x,y);}}
 });
 /* Curseur rond qui montre la taille du pinceau / de la gomme */
 function moveBrush(ev){
-  const b=$("brush"),on=amDrawer()&&tool!=="fill"&&ev.pointerType!=="touch";
+  const b=$("brush"),on=amDrawer()&&tool!=="fill"&&!SHAPES.includes(tool)&&ev.pointerType!=="touch";
   cv.classList.toggle("brush",on);
   if(!on){b.style.display="none";return;}
   const r=cv.getBoundingClientRect(),d=Math.max(4,size*r.width/W);
@@ -909,7 +921,12 @@ function moveBrush(ev){
 }
 cv.addEventListener("pointerleave",()=>{$("brush").style.display="none";});
 cv.addEventListener("pointerenter",moveBrush);
-const endStroke=()=>{if(!cur)return;flush();cur=null;};
+function commitShape(){
+  const sh=shp;shp=null;ctx.putImageData(snap,0,0);snap=null;
+  if(Math.hypot(sh.x2-sh.x1,sh.y2-sh.y1)<3)return;
+  emit({t:"shape",id:uid(),k:sh.k,c:sh.c,w:sh.w,f:sh.f?1:0,x1:sh.x1,y1:sh.y1,x2:sh.x2,y2:sh.y2});
+}
+const endStroke=()=>{if(shp)return commitShape();if(!cur)return;flush();cur=null;};
 cv.addEventListener("pointerup",endStroke);cv.addEventListener("pointercancel",endStroke);
 function addPt(x,y){
   applyEv({t:"pt",id:cur.id,tool:cur.tool,c:cur.c,w:cur.w,p:[x,y]});
@@ -921,6 +938,23 @@ function flush(){
   pend=[];
 }
 setInterval(flush,60);
+/* ----- Formes : ligne, rectangle, ellipse (Maj = 45°, carré, cercle) ----- */
+const SHAPES=["line","rect","ellipse"];
+let shapeFill=false,shp=null,snap=null;
+function drawShape(c,s){
+  c.strokeStyle=s.c;c.fillStyle=s.c;c.lineWidth=s.w;c.lineCap="round";c.lineJoin=s.k==="rect"?"miter":"round";
+  c.beginPath();
+  if(s.k==="line"){c.moveTo(s.x1,s.y1);c.lineTo(s.x2,s.y2);c.stroke();return;}
+  const x=Math.min(s.x1,s.x2),y=Math.min(s.y1,s.y2),w=Math.abs(s.x2-s.x1),h=Math.abs(s.y2-s.y1);
+  if(s.k==="rect")c.rect(x,y,w,h);else c.ellipse(x+w/2,y+h/2,Math.max(.5,w/2),Math.max(.5,h/2),0,0,Math.PI*2);
+  if(s.f)c.fill();else c.stroke();
+}
+function shapeEnd(s,x,y,shift){
+  if(!shift)return[x,y];
+  const dx=x-s.x1,dy=y-s.y1;
+  if(s.k==="line"){const a=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4),r=Math.hypot(dx,dy);return[Math.round(s.x1+r*Math.cos(a)),Math.round(s.y1+r*Math.sin(a))];}
+  const m=Math.max(Math.abs(dx),Math.abs(dy));return[s.x1+Math.sign(dx||1)*m,s.y1+Math.sign(dy||1)*m];
+}
 /* Barre d'outils */
 $("pal").innerHTML=COLORS.map(c=>`<button style="background:${c}" data-c="${c}" title="${c}"></button>`).join("");
 $("sizes").innerHTML=SIZES.map(s=>`<button data-s="${s}"><i style="width:${Math.max(4,s/2)}px;height:${Math.max(4,s/2)}px"></i></button>`).join("");
@@ -929,10 +963,12 @@ function updTools(){
   $("sizes").querySelectorAll("button").forEach(b=>b.classList.toggle("on",+b.dataset.s===size));
   document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("on",b.dataset.tool===tool));
   $("cur").style.background=tool==="eraser"?"#fff":color;
+  $("bShapeFill").textContent=shapeFill?"◼️":"◻️";$("bShapeFill").classList.toggle("on",shapeFill);
 }
 $("pal").onclick=e=>{const c=e.target.dataset.c;if(c){color=c;if(tool==="eraser")tool="pen";updTools();}};
 $("sizes").onclick=e=>{const b=e.target.closest("button");if(b){size=+b.dataset.s;updTools();}};
 document.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>{tool=b.dataset.tool;updTools();});
+$("bShapeFill").onclick=()=>{shapeFill=!shapeFill;if(!SHAPES.includes(tool)||tool==="line")tool="rect";updTools();};
 $("bUndo").onclick=()=>{if(amDrawer()&&strokes.length)emit({t:"undo"});};
 $("bClear").onclick=()=>{if(amDrawer()&&strokes.length)emit({t:"clear"});};
 document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="z"&&amDrawer()){e.preventDefault();$("bUndo").onclick();}});
