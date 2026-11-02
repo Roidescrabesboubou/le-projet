@@ -109,7 +109,7 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12 (relais ntfy.sh)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.2 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -224,7 +224,18 @@ function refreshAiSel(){
   if(ok.includes(cfg.active))sel.value=cfg.active;
   sel.classList.toggle("hidden",ok.length===0||isGuest);
 }
-$("provider").onchange=()=>{stashForm();loadForm($("provider").value);};
+function autoSave(){
+  stashForm();
+  cfg.primary=$("aiMain").value||cfg.primary;cfg.fallback=$("aiBackup").value;
+  if(cfg.fallback===cfg.primary)cfg.fallback="";
+  if(!usable(cfg.active))cfg.active=usable(cfg.primary)?cfg.primary:(aiOrder()[0]||cfg.active);
+  saveCfg();
+  const k=formProv;refreshSelects();refreshAiSel();
+}
+$("provider").onchange=()=>{autoSave();loadForm($("provider").value);};
+$("apikey").oninput=$("apikey").onchange=autoSave;
+$("model").onchange=autoSave;
+$("aiMain").onchange=$("aiBackup").onchange=autoSave;
 $("aiSel").onchange=()=>{
   const was=cfg.active;cfg.active=$("aiSel").value;saveCfg();
   if(was!==cfg.active&&!$("game").classList.contains("hidden"))addMsg("sys","🔁 IA changée : "+provName(cfg.active)+". Un résumé de la partie lui sera transmis à son prochain message.");
