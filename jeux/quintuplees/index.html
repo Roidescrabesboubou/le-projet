@@ -37,6 +37,8 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 .her{background:var(--bg);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
 .me{background:var(--c);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .me2{background:#5b6bd0;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.me3{background:#2f9e8a;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.me4{background:#c9822b;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .sys{align-self:center;color:var(--muted);font-size:.85rem}
 .delta{font-weight:700;margin-left:6px}
 .send{display:flex;gap:8px;margin-top:10px}
@@ -83,10 +85,14 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
     <p>Choisis la sœur que tu veux séduire. Choisis ta situation de départ, puis réponds à ses questions. Attention : ici, draguer trop vite ou flatter à tort et à travers se paie cher. À 100 %, elle t'avoue ses sentiments ; à 0 %, c'est fini…</p>
     <div class="panel">
       <b>Mode de jeu</b>
-      <div class="mode"><button id="m1">👤 Solo</button><button id="m2" class="off">👥 Duel local</button><button id="m3" class="off">🌐 Duel en ligne</button></div>
+      <div class="mode"><button id="m1">👤 Solo</button><button id="m2" class="off">👥 Local (2-4)</button><button id="m3" class="off">🌐 En ligne (2-4)</button></div>
+      <div id="nplRow" class="hidden" style="margin:6px 0"><label style="display:inline;margin:0">Nombre de joueurs : </label>
+        <select id="nPl" style="width:auto;display:inline-block"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
       <div id="names" class="hidden">
         <input id="p1" placeholder="Prénom du joueur 1" maxlength="20">
         <input id="p2" placeholder="Prénom du joueur 2" maxlength="20">
+        <input id="p3" placeholder="Prénom du joueur 3" maxlength="20" class="hidden">
+        <input id="p4" placeholder="Prénom du joueur 4" maxlength="20" class="hidden">
       </div>
       <div id="online" class="hidden" style="margin-top:8px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -94,8 +100,8 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
           <input id="roomCode" placeholder="Code de la salle" maxlength="6" style="flex:1;min-width:120px;text-transform:uppercase">
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
-        <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (les deux répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v9 (relais ntfy.sh)</small></div>
+        <label style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v10 (relais ntfy.sh)</small></div>
         <p class="hint" id="netInfo"></p>
       </div>
       <p class="hint" id="modeHelp">Tu joues seul(e) contre la jauge d'affection.</p>
@@ -230,7 +236,9 @@ function renderMenu(){
 }
 renderMenu();
 let mode=1, remoteBusy=false, mys=false;
-const net={role:null,peer:null,conn:null,guestName:""};
+const net={role:null,peer:null,conn:null,guestName:"",guests:[],slot:null};
+const PCOL=[null,"#5b6bd0","#2f9e8a","#c9822b"], pcls=i=>i===0?"me":"me"+(i+1);
+const namesOf=pl=>pl.map(p=>p.name).join(" 🆚 ");
 Object.assign(net,{topic:"",seq:0,last:0,es:null});
 const NTFY="https://ntfy.sh/", myId=Math.random().toString(36).slice(2,10), seen=new Set();
 function publish(m){
@@ -251,18 +259,24 @@ function subscribe(onMsg,onOpen){
   };
   net.es=es;
 }
+function refreshSetup(){
+  const n=+$("nPl").value;
+  $("nplRow").classList.toggle("hidden",mode===1);
+  $("names").classList.toggle("hidden",mode===1);
+  for(let k=2;k<=4;k++)$("p"+k).classList.toggle("hidden",!(mode===2&&k<=n));
+  $("p1").placeholder=mode===3?"Ton prénom":"Prénom du joueur 1";
+  $("modeHelp").textContent=[
+    "Tu joues seul(e) contre la jauge d'affection.",
+    "Même écran, chacun son tour ("+n+" joueurs) : le premier qui atteint 100 % remporte son cœur. Un joueur qui tombe à 0 % est éliminé.",
+    "Chacun sur son appareil (jusqu'à "+n+" joueurs). L'hôte (qui a la clé API) crée la salle et donne le code ; les invités n'ont pas besoin de clé. L'hôte choisit la sœur quand tout le monde est connecté."][mode-1];
+}
 function setMode(m){
   mode=m;
   ["m1","m2","m3"].forEach((id,i)=>$(id).className=(i+1===m)?"":"off");
-  $("names").classList.toggle("hidden",m===1);
-  $("p2").classList.toggle("hidden",m===3);
   $("online").classList.toggle("hidden",m!==3);
-  $("p1").placeholder=m===3?"Ton prénom":"Prénom du joueur 1";
-  $("modeHelp").textContent=[
-    "Tu joues seul(e) contre la jauge d'affection.",
-    "Même écran, chacun son tour : le premier qui atteint 100 % remporte son cœur. Si un joueur tombe à 0 %, il est éliminé.",
-    "Chacun sur son appareil. L'hôte (qui a la clé API) crée la salle et donne le code ; l'invité n'a pas besoin de clé. L'hôte choisit ensuite la sœur."][m-1];
+  refreshSetup();
 }
+$("nPl").onchange=refreshSetup;
 $("m1").onclick=()=>setMode(1);$("m2").onclick=()=>setMode(2);$("m3").onclick=()=>setMode(3);
 
 function broadcast(b){
@@ -270,7 +284,7 @@ function broadcast(b){
   if(!st||!net.conn||!net.conn.open)return;
   let lines=st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players,cur:st.cur,over:st.over,mood:st.mood,lines,sc:st.sc,winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns})),cur:st.cur,over:st.over,mood:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<3000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -289,7 +303,7 @@ function guestRender(m){
   $("menu").classList.add("hidden");$("scen").classList.add("hidden");$("game").classList.remove("hidden");
   $("btnBack").classList.add("hidden");
   $("gAv").textContent=sis.ini;$("endBox").innerHTML="";$("log").innerHTML="";
-  addMsg("sys",`${st.sc.ico} ${st.sc.name} — ${st.sc.diff} · ${st.players[0].name} 🆚 ${st.players[1].name}`);
+  addMsg("sys",`${st.sc.ico} ${st.sc.name} — ${st.sc.diff} · ${namesOf(st.players)}`);
   st.lines.forEach(renderLine);
   const last=st.lines[st.lines.length-1];if(last&&last.dv&&last.text!==net.lt)fx(last.dv);net.lt=last&&last.text;
   if(remoteBusy)addMsg("sys","…");
@@ -314,27 +328,47 @@ $("btnNetTest").onclick=async()=>{
   }catch(e){log.push("❌ "+e.message+" — ce réseau/navigateur bloque ntfy.sh");}
   if(es)es.close();show();
 };
+function roomList(){
+  const max=+$("nPl").value;
+  return "👥 Connectés : "+($("p1").value.trim()||"Hôte")+" (toi)"+net.guests.map(g=>", "+g.name).join("")+" — "+(net.guests.length+1)+"/"+max+(net.guests.length?" · choisis une sœur ci-dessous quand tout le monde est là.":" · en attente de joueurs…");
+}
 $("btnHost").onclick=()=>{
   const code=Math.random().toString(36).slice(2,8).toUpperCase();
-  net.role="host";net.topic="nakano-"+code;net.conn=null;
+  net.role="host";net.topic="nakano-"+code;net.conn=null;net.guests=[];
   $("netInfo").textContent="Création de la salle…";
   subscribe(m=>{
     if(m.t==="hello"){
-      net.guestName=String(m.name||"Invité").slice(0,20);
+      const max=+$("nPl").value-1;
+      let i=net.guests.findIndex(g=>g.id===m.from);
+      let nm=String(m.name||"Invité").slice(0,20);
+      if(i<0){
+        if(state[current]){
+          const k=net.guests.findIndex(g=>g.name.toLowerCase()===nm.toLowerCase());
+          if(k<0){publish({t:"full",to:m.from,why:"started"});return;}
+          net.guests[k].id=m.from;i=k;
+        }else if(net.guests.length>=max){publish({t:"full",to:m.from,why:"full"});return;}
+        else{
+          const taken=x=>x.toLowerCase()===($("p1").value.trim()||"Hôte").toLowerCase()||net.guests.some(g=>g.name.toLowerCase()===x.toLowerCase());
+          const base=nm;let k=2;while(taken(nm))nm=base+" ("+(k++)+")";
+          net.guests.push({id:m.from,name:nm});i=net.guests.length-1;
+        }
+      }
       net.conn={open:true,send:publish};
-      publish({t:"ready"});
-      $("netInfo").textContent="✅ "+net.guestName+" est connecté ! Choisis une sœur ci-dessous.";
+      publish({t:"ready",to:m.from,slot:i+1});
+      $("netInfo").textContent=roomList();
       if(state[current])broadcast(busy);
     }
-    if(m.t==="guess"&&state[current])applyGuess(1,m.sid);
-    if(m.t==="answer"){const st=state[current],tx=String(m.text).slice(0,500);
-      if(st&&st.sim){if(!st.answered[1]&&!busy&&!st.over)submitSim(1,tx);}
-      else if(st&&st.cur===1&&!busy&&!st.over)turn(tx,false);}
-  },()=>{$("netInfo").textContent="🏠 Code de la salle : "+code+" — donne-le à ton adversaire et garde cette page ouverte.";});
+    const gi=net.guests.findIndex(g=>g.id===m.from), st=state[current];
+    if(gi<0||!st)return;
+    if(m.t==="guess")applyGuess(gi+1,m.sid);
+    if(m.t==="answer"){const tx=String(m.text).slice(0,500);
+      if(st.sim){if(!st.answered[gi+1]&&!busy&&!st.over)submitSim(gi+1,tx);}
+      else if(st.cur===gi+1&&!busy&&!st.over)turn(tx,false);}
+  },()=>{$("netInfo").textContent="🏠 Code de la salle : "+code+" — donne-le aux autres joueurs et garde cette page ouverte."+" (max "+$("nPl").value+" joueurs)";});
 };
 $("btnJoin").onclick=()=>{
   const code=$("roomCode").value.trim().toUpperCase(); if(!code)return;
-  net.role="guest";net.topic="nakano-"+code;net.conn=null;
+  net.role="guest";net.topic="nakano-"+code;net.conn=null;net.slot=null;net.last=0;
   $("netInfo").textContent="Étape 1/2 : connexion au serveur…";
   let tries=0, timer=null;
   const hello=()=>{
@@ -343,10 +377,13 @@ $("btnJoin").onclick=()=>{
     publish({t:"hello",name:$("p1").value.trim()||"Invité"});
   };
   subscribe(m=>{
-    if(m.t==="ready"||m.t==="state"){
-      if(!net.conn){net.conn={open:true,send:publish};$("netInfo").textContent="✅ Connecté ! L'hôte choisit la sœur…";$("btnReset").classList.add("hidden");}
+    if(m.t==="full"&&m.to===myId){clearInterval(timer);$("netInfo").textContent=m.why==="started"?"❌ La partie a déjà commencé (reconnexion possible seulement avec le même prénom).":"❌ La salle est pleine.";return;}
+    if(m.t==="ready"&&m.to===myId){
+      net.slot=m.slot;
+      if(!net.conn){net.conn={open:true,send:publish};$("btnReset").classList.add("hidden");}
+      $("netInfo").textContent="✅ Connecté (joueur "+(m.slot+1)+") ! L'hôte choisit la sœur…";
     }
-    if(m.t==="state"){if(m.seq<=net.last)return;net.last=m.seq;guestRender(m);}
+    if(m.t==="state"&&net.slot!=null){if(m.seq<=net.last)return;net.last=m.seq;guestRender(m);}
   },()=>{
     $("netInfo").textContent="Étape 2/2 : contact de l'hôte…";
     hello();timer=setInterval(hello,3000);
@@ -520,7 +557,7 @@ function consumeTurn(st){
 }
 function canAct(st){
   if(st.over)return false;
-  if(net.role==="guest")return(st.sim?!st.answered[1]:st.cur===1)&&!remoteBusy;
+  if(net.role==="guest")return(st.sim?!st.answered[net.slot]:st.cur===net.slot)&&!remoteBusy;
   if(busy)return false;
   if(net.role==="host")return st.sim?!st.answered[0]:st.cur===0;
   return true;
@@ -550,14 +587,14 @@ const SCENARIOS = [
 
 function systemPrompt(id, sc, players, st){
   const s = SISTERS[id];
-  const duel = players.length>1 ? `MODE DUEL : deux garçons rivaux, ${players[0].name} et ${players[1].name}, se disputent ton cœur et répondent à tour de rôle sur le même écran. Chaque message est préfixé [Nom répond]. Tu n'évalues QUE la réponse de celui qui parle. Retiens séparément ce que chacun t'a dit (cohérence, répétitions, flatteries) et ne confonds jamais leurs propos. Tu peux comparer subtilement, être amusée, touchée ou agacée par leur rivalité, mais sans jamais révéler de scores. Chaque question que tu poses doit commencer par le prénom du joueur indiqué dans « Prochain joueur à qui poser ta question ». Si l'un dénigre l'autre, c'est un gros point négatif (-8 à -12).
+  const duel = players.length>1 ? `MODE MULTIJOUEUR : ${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) se disputent ton cœur et répondent chacun leur tour. Tu ne dis jamais que ce sont des « joueurs ». Chaque message est préfixé [Nom répond]. Tu n'évalues QUE la réponse de celui qui parle. Retiens séparément ce que chacun t'a dit (cohérence, répétitions, flatteries) et ne confonds jamais leurs propos. Tu peux comparer subtilement, être amusée, touchée ou agacée par leur rivalité, mais sans jamais révéler de scores. Chaque question que tu poses doit commencer par le prénom du joueur indiqué dans « Prochain joueur à qui poser ta question ». Si l'un dénigre un autre garçon, c'est un gros point négatif (-8 à -12).
 
 ` : "";
   const ex=`FONCTIONNALITÉS SPÉCIALES :
 - INTERVENTIONS : environ 1 tour sur 4, une de ses sœurs (autre que ${s.name}) peut intervenir brièvement selon sa propre personnalité (conseiller, taquiner, jalouser, critiquer). Ajoute alors "guest":"ichika|nino|miku|yotsuba|itsuki" et "guest_line":"sa réplique (1 phrase)". Cela peut influencer le delta.
 - SOUVENIRS : dès l'étape 3, environ 1 tour sur 4, rappelle précisément une réponse antérieure du joueur et relie-la à ta réaction ou à ta question.
 - CHRONO : environ 1 question sur 5 (dès l'étape 2) est à répondre vite : ajoute "timed":true,"seconds":<15 à 30>. Si le joueur répond « ⏰ », il n'a pas répondu à temps : delta -5 à -8 et réagis.
-${st.mystery&&!st.revealed?"- MODE MYSTÈRE : tu ne révèles JAMAIS ton prénom ni celui de tes sœurs et ne te désignes pas ; le joueur doit deviner qui tu es à ta personnalité.\n":""}${st.sim?`- MODE SIMULTANÉ : les deux joueurs répondent en même temps à TA question (adressée aux deux). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun séparément et ajoute "results":[{"affection_delta":n,"too_fast":b,"milestone":null}, …] dans l'ordre des joueurs (mets le affection_delta global à 0).`:""}
+${st.mystery&&!st.revealed?"- MODE MYSTÈRE : tu ne révèles JAMAIS ton prénom ni celui de tes sœurs et ne te désignes pas ; le joueur doit deviner qui tu es à ta personnalité.\n":""}${st.sim?`- MODE SIMULTANÉ : tous les joueurs encore en jeu (${players.filter(p=>!p.out).map(p=>p.name).join(", ")}) répondent en même temps à TA question (adressée à tous). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun séparément et ajoute "results":[{"affection_delta":n,"too_fast":b,"milestone":null}, …] UNIQUEMENT pour les joueurs encore en jeu, dans l'ordre exact de cette liste : ${players.filter(p=>!p.out).map(p=>p.name).join(", ")} (mets le affection_delta global à 0).`:""}
 `;
   const trials=players.filter(p=>p.trial===2&&!p.out);
   const jal=`PROGRESSION PAR JALONS (la relation se construit dans le temps) :
@@ -574,7 +611,7 @@ ${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGE
 - Tu ne dis JAMAIS « je t'aime » ni ne te déclares avant le message final [FIN]. Le changement de sentiments est progressif : montre-le par de petits signes (ton, rougeurs, confidences), pas par un brusque revirement.
 - Un joueur trop rapide par rapport à l'étape (compliments intimes, déclarations) est rejeté, selon ton caractère.
 `;
-  return `Tu incarnes ${s.name} Nakano dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets » (Gotoubun no Hanayome). Le joueur est un garçon de son entourage (ou deux, en mode duel).
+  return `Tu incarnes ${s.name} Nakano dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets » (Gotoubun no Hanayome). Le joueur est un garçon de son entourage (ou plusieurs rivaux, en mode multijoueur).
 
 PERSONNAGE : ${s.bio}
 Elle aime : ${s.likes}.
@@ -698,7 +735,7 @@ function addGuest(st,o){
 }
 let tm=null,tmKey=-1;
 function syncTimer(st){
-  const el=$("timer"), me=net.role==="guest"?1:net.role==="host"?0:st.cur;
+  const el=$("timer"), me=net.role==="guest"?net.slot:net.role==="host"?0:st.cur;
   const mine=net.role?(st.sim?!st.answered[me]:st.cur===me):true;
   if(!st.timed||st.over||!mine||(net.role==="guest"?remoteBusy:busy)){clearInterval(tm);tmKey=-1;el.textContent="";return;}
   if(tmKey===st.qid)return;
@@ -734,7 +771,7 @@ function submitSim(i,text){
 }
 async function runRound(st){
   busy=true;$("btnSend").disabled=true;const id=current;
-  st.players.forEach((p,i)=>{if(!p.out){const c=i===0?"me":"me2",t=p.name+" : "+st.pending[i];addMsg(c,t);st.lines.push({cls:c,text:t});}});
+  st.players.forEach((p,i)=>{if(!p.out){const c=pcls(i),t=p.name+" : "+st.pending[i];addMsg(c,t);st.lines.push({cls:c,text:t});}});
   st.history.push({role:"user",content:"[Réponses simultanées] "+st.players.map((p,i)=>p.out?"":p.name+" : "+st.pending[i]).filter(Boolean).join(" | ")});
   rollEvent(st);pickForm(st);
   broadcast(true);
@@ -744,7 +781,7 @@ async function runRound(st){
     if(!raw||!raw.trim())throw new Error("Réponse vide de l'IA");
     const o=parseAI(raw);st.history.push({role:"assistant",content:raw});wait.remove();
     const tags=[],verd=[];let sum=0,best=0;
-    st.players.forEach((p,i)=>{if(p.out)return;const r=(o.res&&o.res[i])||{delta:0,tooFast:false,ms:""},x=score(st,p,r.delta,r.tooFast);verd.push([p,r.ms,x.d]);
+    st.players.filter(p=>!p.out).forEach((p,i)=>{const r=(o.res&&o.res[i])||{delta:0,tooFast:false,ms:""},x=score(st,p,r.delta,r.tooFast);verd.push([p,r.ms,x.d]);
       tags.push(`${p.name} ${x.d>0?"+":""}${x.d} ❤${x.note}`);sum+=x.d;best=Math.max(best,x.d);if(p.aff<=0)p.out=true;});
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
@@ -752,14 +789,14 @@ async function runRound(st){
     consumeTurn(st);
     const L={cls:"her",text:o.reply,tag:tags.join(" · "),up:sum>=0,dv:best};st.lines.push(L);renderLine(L);fx(best);addGuest(st,o);
     verd.forEach(([p,v,dd])=>resolveTrial(st,p,v,dd));
-    st.pending=[null,null];st.answered=[false,false];
+    st.pending=st.players.map(()=>null);st.answered=st.players.map(()=>false);
     const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
     if(win){updateBar();await finish(st,id,"win",win);}
     else if(st.players.every(p=>p.out)){updateBar();await finish(st,id,"lose",st.players[0]);}
     else await launchTrials(st,id);
   }catch(e){
     wait.textContent="Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();
-    st.pending=[null,null];st.answered=[false,false];
+    st.pending=st.players.map(()=>null);st.answered=st.players.map(()=>false);
   }
   busy=false;$("btnSend").disabled=st.over;updateBar();syncTimer(st);
   if(net.role==="host")broadcast(false);
@@ -818,7 +855,7 @@ function updateBar(){
   const multi=st.players.length>1;
   st.players.forEach((pl,i)=>{
     const row=document.createElement("div");row.className="prow";
-    row.style.setProperty("--pc",i===0?SISTERS[current].c:"#5b6bd0");
+    row.style.setProperty("--pc",i===0?SISTERS[current].c:PCOL[i]);
     const lab=document.createElement("div");
     lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"% · "+STAGES[stageOf(pl)].name+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
     const big=document.createElement("div");big.className="big";
@@ -828,7 +865,7 @@ function updateBar(){
     row.append(lab,big,trk);el.appendChild(row);
   });
   $("input").placeholder=(multi&&!st.over?st.players[st.cur].name+", ":"")+"ta réponse…";
-  if(net.role==="guest"){const ok=(st.sim?!st.answered[1]:st.cur===1)&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
+  if(net.role==="guest"){const ok=(st.sim?!st.answered[net.slot]:st.cur===net.slot)&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
   const hide=st.mystery&&!st.revealed;
   document.documentElement.style.setProperty("--c",hide?"#9a8fa5":SISTERS[current].c);
   $("gAv").innerHTML=avatarSVG(current,st.mood,hide);
@@ -841,7 +878,7 @@ function updateBar(){
 }
 function openSister(id){
   if(net.role==="guest"){alert("C'est l'hôte qui choisit la sœur.");return}
-  if(mode===3&&!(net.conn&&net.conn.open)){alert("Crée d'abord une salle et attends que ton adversaire se connecte.");return}
+  if(mode===3&&!net.guests.length){alert("Crée d'abord une salle et attends qu'au moins un autre joueur s'y connecte.");return}
   if(!cfg.key){$("settings").classList.remove("hidden");alert("Ajoute d'abord ta clé API.");return}
   current=id; const s=SISTERS[id];
   document.documentElement.style.setProperty("--c",s.c);
@@ -860,11 +897,11 @@ function showScenarios(id){
     d.onclick=()=>{
       const chosen=sc.id==="random"?SCENARIOS[Math.floor(Math.random()*SCENARIOS.length)]:sc;
       let names=["Toi"];
-      if(mode>=2){
-        names=mode===3?[$("p1").value.trim()||"Hôte",net.guestName||"Invité"]:[$("p1").value.trim()||"Joueur 1",$("p2").value.trim()||"Joueur 2"];
-        if(names[0].toLowerCase()===names[1].toLowerCase()) names[1]+=" (2)";
-      }
-      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys,revealed:false,wrong:[],sim:mode===3&&$("simChk").checked,answered:[false,false],pending:[null,null],qid:0,timed:0};
+      if(mode===2){names=[];for(let k=1;k<=+$("nPl").value;k++)names.push($("p"+k).value.trim()||"Joueur "+k);}
+      else if(mode===3){names=[$("p1").value.trim()||"Hôte"].concat(net.guests.map(g=>g.name));}
+      const used=new Set();
+      names=names.map(n=>{let x=n,k=2;while(used.has(x.toLowerCase()))x=n+" ("+(k++)+")";used.add(x.toLowerCase());return x;});
+      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys,revealed:false,wrong:[],sim:mode===3&&$("simChk").checked,answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0};
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -876,13 +913,13 @@ function enterGame(id){
   $("gAv").textContent=s.ini;$("endBox").innerHTML="";$("log").innerHTML="";
   $("input").disabled=false;$("btnSend").disabled=false;
   const multi=st.players.length>1;
-  addMsg("sys",`${st.sc.ico} ${st.sc.name} — ${st.sc.diff}`+(multi?` · ${st.players[0].name} 🆚 ${st.players[1].name}`:""));
+  addMsg("sys",`${st.sc.ico} ${st.sc.name} — ${st.sc.diff}`+(multi?` · ${namesOf(st.players)}`:""));
   st.lines.forEach(renderLine);
   updateBar();
   if(st.over) showEnd(st);
   else if(st.history.length===0){
     turn(multi
-      ? `[DÉBUT] Deux garçons, ${st.players[0].name} et ${st.players[1].name}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis pose ta première question ${st.sim?'aux deux, qui répondront en même temps':'à '+st.players[0].name}. affection_delta doit être 0 et too_fast false.`
+      ? `[DÉBUT] ${st.players.length} garçons, ${st.players.map(p=>p.name).join(", ")}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis pose ta première question ${st.sim?'à tous, qui répondront en même temps':'à '+st.players[0].name}. affection_delta doit être 0 et too_fast false.`
       : "[DÉBUT] Le joueur vient de te rejoindre dans la situation décrite. Réagis selon la situation et ton caractère, puis pose ta première question. affection_delta doit être 0 et too_fast false.",true);
   }
 }
@@ -893,7 +930,7 @@ async function turn(userText,hidden){
   let sent=userText;
   if(!hidden){
     const label=multi?`${pl.name} : ${userText}`:userText;
-    const cls=st.cur===0?"me":"me2";
+    const cls=pcls(st.cur);
     addMsg(cls,label);st.lines.push({cls,text:label});
     sent=multi?`[${pl.name} répond] ${userText}\n(Prochain joueur à qui poser ta question : ${st.players[nextAlive(st)].name})`:userText;
   }
@@ -960,11 +997,11 @@ async function finish(st,id,kind,pl){
   if(kind==="win"){
     st.winner=pl.name;
     msg = multi
-      ? `[FIN] ${pl.name} a atteint 100%. Dans ce dernier message, avoue tes sentiments à ${pl.name} de façon touchante et fidèle à ton caractère, en le choisissant lui plutôt que l'autre. Ne pose plus de question. affection_delta = 0.`
+      ? `[FIN] ${pl.name} a atteint 100%. Dans ce dernier message, avoue tes sentiments à ${pl.name} de façon touchante et fidèle à ton caractère, en le choisissant lui plutôt que les autres. Ne pose plus de question. affection_delta = 0.`
       : "[FIN] Ton affection a atteint 100%. Dans ce dernier message, avoue tes sentiments au joueur de façon touchante et fidèle à ton caractère. Ne pose plus de question. affection_delta = 0.";
   }else{
     msg = multi
-      ? "[FIN] Aucun des deux garçons ne t'a convaincue (tous deux tombés à 0%). Dans ce dernier message, éconduis-les et pars, de façon fidèle à ton caractère. Ne pose plus de question. affection_delta = 0."
+      ? "[FIN] Aucun des garçons ne t'a convaincue (tous sont tombés à 0%). Dans ce dernier message, éconduis-les et pars, de façon fidèle à ton caractère. Ne pose plus de question. affection_delta = 0."
       : "[FIN] Ton affection est tombée à 0%. Dans ce dernier message, mets fin à la relation et pars, de façon fidèle à ton caractère. Ne pose plus de question. affection_delta = 0.";
   }
   st.history.push({role:"user",content:msg});
@@ -979,7 +1016,7 @@ function showEnd(st){
   const multi=st.players.length>1, sis=SISTERS[current].name;
   let t;
   if(st.winner) t = multi ? `🏆 ${st.winner} remporte le cœur de ${sis} !` : "💖 Fin heureuse : elle t'a avoué ses sentiments !";
-  else t = multi ? "💔 Les deux rivaux ont été éconduits… personne ne gagne." : "💔 Fin triste : elle a tourné les talons…";
+  else t = multi ? "💔 Tous les rivaux ont été éconduits… personne ne gagne." : "💔 Fin triste : elle a tourné les talons…";
   const box=$("endBox");box.innerHTML="";
   const div=document.createElement("div");div.className="end";div.textContent=t;
   div.appendChild(document.createElement("br"));div.appendChild(document.createElement("br"));
@@ -994,14 +1031,14 @@ function doSend(v){
   clearInterval(tm);tmKey=-1;$("timer").textContent="";
   if(net.role==="guest"){
     const g=state[current];
-    if((g.sim?g.answered[1]:g.cur!==1)||remoteBusy||!net.conn||!net.conn.open)return;
+    if((g.sim?g.answered[net.slot]:g.cur!==net.slot)||remoteBusy||!net.conn||!net.conn.open)return;
     net.conn.send({t:"answer",text:v});$("input").value="";return;
   }
   if(state[current].sim&&net.role==="host"){
     if(state[current].answered[0]||busy){addMsg("sys","⏳ Tu as déjà répondu, patiente…");return;}
     $("input").value="";submitSim(0,v);return;
   }
-  if(net.role==="host"&&state[current].cur!==0){addMsg("sys","C'est au tour de l'autre joueur…");return;}
+  if(net.role==="host"&&state[current].cur!==0){addMsg("sys","C'est au tour de "+state[current].players[state[current].cur].name+"…");return;}
   if(busy){addMsg("sys","Patiente, elle réfléchit encore…");return;}
   $("input").value=""; turn(v,false);
 }
