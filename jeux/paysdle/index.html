@@ -245,8 +245,9 @@ function draw(newest){
   updateHints();
 }
 function updateHints(){
-  const h=[["h1",3,"🏛️ Capitale",()=>`🏛️ Capitale : ${esc(answer.capitale)}`],
-           ["h2",6,"🏳️ Drapeau",()=>`Drapeau : ${flag(answer.iso)}`]];
+  const nbL=()=>norm(answer.nom).length;
+  const h=[["h1",3,"🌐 Hémisphères",()=>`🌐 Hémisphère ${answer.lat>=0?"nord":"sud"}, ${answer.lon>=0?"à l'est":"à l'ouest"} de Greenwich`],
+           ["h2",6,"🔤 Première lettre",()=>`🔤 Commence par « ${esc(answer.nom[0])} » (${nbL()} lettres)`]];
   for(const [id,n,label,reveal] of h){
     const b=$(id),left=n-guesses.length;
     if(shown[id]||over){b.innerHTML=reveal();b.disabled=true;b.className="shown";}
