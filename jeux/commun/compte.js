@@ -12,9 +12,8 @@
       (Cette clé est faite pour être publique, pas de souci à la
       mettre sur GitHub : ce sont les règles qui protègent la base.)
    3. Realtime Database → Règles : colle firebase-regles.json.
-   4. Crée ton compte sur le site puis va sur /admin/ et clique
-      « Devenir administrateur » (possible seulement tant qu'il
-      n'y a encore aucun admin).
+   4. Les admins se nomment entre eux depuis /admin/. Personne ne
+      peut se déclarer admin tout seul (règle « admins »).
    ============================================================ */
 const FIREBASE = {
   apiKey: "AIzaSyCa87MssuYmrRZNA6sIc3GSTgrA-MpK1UE",

@@ -93,7 +93,7 @@ async function demarrer(){
         <li>Console Firebase → <b>Authentication</b> → Commencer → <b>Sign-in method</b> → active <b>E-mail/Mot de passe</b>.</li>
         <li>⚙️ Paramètres du projet → Général → copie la <b>Clé API Web</b> et colle-la dans <code>jeux/commun/compte.js</code> (ligne <code>apiKey</code>).</li>
         <li>Realtime Database → <b>Règles</b> → colle le contenu de <code>firebase-regles.json</code> → Publier.</li>
-        <li>Reviens ici, crée ton compte, puis clique « Devenir administrateur ».</li>
+        <li>Pour le tout premier admin : Realtime Database → Données → ajoute <code>admins/&lt;ton uid&gt;: true</code>.</li>
       </ol>`;
     main.appendChild(p); return;
   }
@@ -108,20 +108,7 @@ async function demarrer(){
   if(jeton !== rendu) return;
   if(!Compte.session()) return demarrer();
   if(!Compte.session().admin){
-    let aucun = false;
-    try{ aucun = !(await Compte.db("admins", {query: "shallow=true"})); }catch(e){}
-    if(jeton !== rendu) return;
-    if(aucun){
-      const b = el("button", "⭐ Devenir administrateur");
-      b.onclick = async () => {
-        b.disabled = true;
-        try{ await Compte.db("admins/" + Compte.session().uid, {method: "PUT", body: true}); await Compte.actualiser(); toast("Tu es maintenant admin !"); demarrer(); }
-        catch(e){ toast(e.message, true); b.disabled = false; }
-      };
-      ecranCentre("👑", "Aucun administrateur pour l'instant", "Le premier compte qui clique ici devient administrateur. Ensuite, seuls les admins pourront en nommer d'autres.", b);
-    }else{
-      ecranCentre("⛔", "Accès réservé", "Ce compte n'est pas administrateur. Demande à un admin de te donner les droits.");
-    }
+    ecranCentre("⛔", "Accès réservé", "Ce compte n'est pas administrateur. Seul un admin existant peut te donner les droits, depuis ce panel.");
     return;
   }
   panel();
