@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>GéoGamer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbf6ef;--card:#fff;--text:#22192b;--muted:#776c80;--line:#ecdfd2;--soft:#f1e8dd;--accent:#2f8fd6;--ok:#2fa36b;--bad:#e8607a}
+@media (prefers-color-scheme:dark){:root{--bg:#17131c;--card:#231d2b;--text:#f3ecf6;--muted:#a99bb3;--line:#352c40;--soft:#2b2433}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+  background-image:radial-gradient(circle at 12% 8%,rgba(47,143,214,.13),transparent 40%),radial-gradient(circle at 88% 25%,rgba(47,163,107,.11),transparent 40%)}
+button{font:inherit;cursor:pointer;color:inherit}
+input,select{font:inherit;color:var(--text)}
+.hidden{display:none!important}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-weight:700;white-space:nowrap}
+header h1{font-family:Fredoka,sans-serif;font-size:1.35rem;margin:0;text-align:center;flex:1}
+.icons{display:flex;gap:4px}
+.icons button{background:transparent;border:0;font-size:1.25rem;padding:6px;border-radius:10px}
+.icons button:hover{background:var(--soft)}
+.wrap{max-width:980px;margin:0 auto;padding:18px 16px 40px}
+h2{font-family:Fredoka,sans-serif;margin:22px 0 8px;font-size:1.3rem}
+.lead{color:var(--muted);margin:0 0 14px}
+.btn{border:0;border-radius:12px;padding:10px 18px;font-weight:800;background:var(--accent);color:#fff}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:var(--card);border:1px solid var(--line);color:var(--text)}
+.btn.big{font-size:1.1rem;padding:13px 28px}
+.btn.small{padding:6px 11px;font-size:.85rem;border-radius:9px}
+.btn.danger{background:transparent;border:1px solid var(--bad);color:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* ---- Sélection des packs ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.pk{position:relative;background:var(--card);border:2px solid var(--line);border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s;text-align:left;padding:0;display:flex;flex-direction:column}
+.pk:hover{transform:translateY(-3px)}
+.pk.on{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,143,214,.2)}
+.pk .cv{height:100px;display:flex;align-items:center;justify-content:center;font-size:2.6rem;background:linear-gradient(135deg,var(--c1),var(--c2));background-size:cover;background-position:center}
+.pk .bd{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
+.pk b{font-family:Fredoka,sans-serif;font-size:1.05rem}
+.pk small{color:var(--muted)}
+.pk .ck{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#fff;color:#22192b;display:flex;align-items:center;justify-content:center;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.pk.on .ck{background:var(--accent);color:#fff}
+.pk .tag{position:absolute;top:8px;left:8px;font-size:.7rem;font-weight:800;padding:3px 8px;border-radius:999px;background:#fff;color:#22192b}
+.pk .acts{display:flex;gap:6px;margin-top:6px}
+.opts{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0}
+.opt{display:flex;flex-direction:column;gap:6px}
+.opt>span{font-size:.85rem;color:var(--muted);font-weight:700}
+.seg{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:6px 12px;font-weight:700;font-size:.9rem}
+.seg button.on{background:var(--text);color:var(--bg)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+.note{font-size:.85rem;color:var(--muted)}
+
+/* ---- Vue carte / image zoomable ---- */
+.mv{position:relative;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;background:#0d1014;cursor:grab}
+.mv.pick{cursor:crosshair}
+.mv-in{position:absolute;left:0;top:0;transform-origin:0 0}
+.mv-in img{display:block;width:100%;height:100%;pointer-events:none}
+.mv-ln{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.mv-pins{position:absolute;inset:0;pointer-events:none}
+.pin{position:absolute;width:26px;height:26px;margin:-26px 0 0 -13px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.45)}
+.pin.g{background:var(--bad)}.pin.a{background:var(--ok)}
+.pin i{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg);font-style:normal;font-size:.8rem}
+.mv-ctl{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;z-index:2}
+.mv-ctl button{width:32px;height:32px;border:0;border-radius:9px;background:rgba(255,255,255,.92);color:#22192b;font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+/* ---- Partie ---- */
+#ecranJeu{position:fixed;inset:0;display:flex;flex-direction:column;background:#0d1014;z-index:10}
+.hud{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--line);color:var(--text)}
+.hud .grow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+.hud .chip{font-family:Fredoka,sans-serif;background:var(--soft);border-radius:10px;padding:4px 10px;white-space:nowrap}
+.hud .chip.alerte{background:var(--bad);color:#fff}
+.stage{position:relative;flex:1;overflow:hidden}
+#scene{position:absolute;inset:0}
+#panneau{position:absolute;right:14px;bottom:14px;width:min(380px,40vw);height:min(300px,40vh);display:flex;flex-direction:column;gap:6px;z-index:5;transition:width .18s,height .18s}
+#panneau:hover,#panneau.grand{width:min(760px,64vw);height:min(580px,72vh)}
+#panneau.full{right:0;bottom:0;width:100%;height:100%;transition:none;padding:0}
+#panneau .tabs{display:flex;gap:4px;flex-wrap:wrap}
+#panneau .tabs button{border:0;border-radius:9px;padding:5px 11px;font-weight:800;font-size:.85rem;background:rgba(255,255,255,.85);color:#22192b}
+#panneau .tabs button.on{background:var(--accent);color:#fff}
+#panneau.full .tabs{position:absolute;top:8px;right:8px;z-index:3}
+#carte{flex:1;border-radius:14px;border:2px solid rgba(255,255,255,.7);box-shadow:0 8px 28px rgba(0,0,0,.5)}
+#panneau.full #carte{border-radius:0;border:0}
+.pbar{display:flex;gap:6px}
+.pbar .btn{flex:1}
+#bEpingle{flex:0 0 auto}
+#panneau.full .pbar{display:none}
+#bOuvrirCarte,#bFermerCarte{display:none}
+#resultat{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(520px,calc(100% - 24px));z-index:8;background:var(--card);color:var(--text);border-radius:18px;padding:16px 18px;box-shadow:0 10px 32px rgba(0,0,0,.45);text-align:center}
+#resultat .pts{font-family:Fredoka,sans-serif;font-size:2rem;margin:0}
+#resultat .meter{height:10px;background:var(--soft);border-radius:10px;overflow:hidden;margin:8px 0}
+#resultat .meter i{display:block;height:100%;background:linear-gradient(90deg,#f2c14e,var(--ok));width:0;transition:width .8s}
+#resultat p{margin:4px 0}
+@media (max-width:700px){
+  #panneau{display:none;right:0;bottom:0;width:100%!important;height:100%!important;padding:8px;background:#0d1014}
+  #panneau.ouvert,#panneau.full{display:flex}
+  #bOuvrirCarte{display:block;position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:4;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+  #bFermerCarte{display:block}
+  #bEpingle{display:none}
+}
+
+/* ---- Fin ---- */
+.recap{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.recap .r{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px}
+.recap img{width:96px;height:54px;object-fit:cover;border-radius:8px;background:#000}
+.recap .r div{flex:1;min-width:0}
+.recap .r small{color:var(--muted)}
+.recap .r b{font-family:Fredoka,sans-serif;font-size:1.1rem;white-space:nowrap}
+.total{text-align:center;padding:18px;border-radius:18px;background:var(--card);border:1px solid var(--line)}
+.total .big{font-family:Fredoka,sans-serif;font-size:2.6rem;margin:4px 0}
+
+/* ---- Créateur ---- */
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:.85rem;color:var(--muted);font-weight:700}
+.field input,.inp{padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
+.clist{display:flex;flex-direction:column;gap:8px}
+.crow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px}
+.crow img{width:70px;height:48px;object-fit:cover;border-radius:8px;background:#000}
+.crow .inp{flex:1;min-width:120px}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.th{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:0;background:#000;aspect-ratio:16/10}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th.on{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,143,214,.25)}
+.th span{position:absolute;right:4px;bottom:4px;font-size:.75rem;background:#fff;color:#22192b;border-radius:999px;padding:1px 6px;font-weight:800}
+.edit{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.edit .mv{height:360px;border-radius:12px}
+.edit .tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.edit .tabs button{border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:4px 10px;font-weight:700;font-size:.85rem}
+.edit .tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+@media (max-width:760px){.edit{grid-template-columns:1fr}.edit .mv{height:280px}}
+.sticky{position:sticky;bottom:0;background:var(--bg);padding:12px 0;border-top:1px solid var(--line);margin-top:16px}
+
+dialog{border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--text);padding:20px;width:min(400px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{margin:0 0 10px}
+.lb{list-style:none;margin:0;padding:0;font-size:.92rem}
+.lb li{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:8px}
+.lb li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb li.me{background:var(--soft);font-weight:800}
+.drow{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
+.namerow{display:flex;gap:6px;margin:8px 0}
+.namerow input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
+.muted{color:var(--muted)}
+#toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:12px;font-weight:700;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+</style>
+</head>
+<body>
+
+<!-- ===================== ACCUEIL ===================== -->
+<div id="ecranAccueil">
+<header>
+  <a href="../../">← Jeux</a>
+  <h1>🗺️ GéoGamer</h1>
+  <div class="icons"><button id="bScores" title="Meilleurs scores">🏆</button></div>
+</header>
+<div class="wrap">
+  <p class="lead">Une capture d'écran d'un jeu vidéo s'affiche : place ton repère à l'endroit exact sur la carte du jeu. Plus tu es proche, plus tu marques de points (5 000 max par manche).</p>
+  <h2>1. Choisis tes jeux</h2>
+  <div class="row" style="margin-bottom:10px"><button class="btn ghost small" id="bTous">Tout sélectionner</button><span class="note" id="selInfo"></span></div>
+  <div class="grid" id="packs"></div>
+
+  <h2>2. Règles</h2>
+  <div class="opts">
+    <div class="opt"><span>Manches</span><div class="seg" id="optManches"></div></div>
+    <div class="opt"><span>Chrono par manche</span><div class="seg" id="optChrono"></div></div>
+  </div>
+  <button class="btn big" id="bJouer">▶ Jouer</button>
+
+  <h2>Ajouter tes propres jeux</h2>
+  <div class="panel">
+    <p style="margin-top:0">Crée un pack avec la carte de ton jeu préféré et tes captures d'écran : tu cliques sur la carte pour indiquer où chaque capture a été prise, et c'est jouable tout de suite sur cet appareil. Exporte-le en .zip pour l'ajouter au site pour tout le monde.</p>
+    <div class="row">
+      <button class="btn" id="bCreer">🛠️ Créer un pack</button>
+      <button class="btn ghost" id="bImporter">📥 Importer un pack (.zip)</button>
+      <input type="file" id="fImport" accept=".zip,application/zip" class="hidden">
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ===================== PARTIE ===================== -->
+<div id="ecranJeu" class="hidden">
+  <div class="hud">
+    <button class="btn ghost small" id="bQuitter">✖</button>
+    <span class="grow" id="hJeu"></span>
+    <span class="chip" id="hManche"></span>
+    <span class="chip" id="hScore"></span>
+    <span class="chip hidden" id="hChrono"></span>
+  </div>
+  <div class="stage">
+    <div id="scene"></div>
+    <button class="btn big" id="bOuvrirCarte">🗺️ Ouvrir la carte</button>
+    <div id="panneau">
+      <div class="tabs" id="tabsCartes"></div>
+      <div id="carte"></div>
+      <div class="pbar">
+        <button class="btn ghost" id="bFermerCarte">🖼️ Image</button>
+        <button class="btn ghost" id="bEpingle" title="Garder la carte en grand">📌</button>
+        <button class="btn" id="bValider" disabled>Place ton repère</button>
+      </div>
+    </div>
+    <div id="resultat" class="hidden"></div>
+  </div>
+</div>
+
+<!-- ===================== FIN ===================== -->
+<div id="ecranFin" class="hidden">
+<header>
+  <a href="../../">← Jeux</a>
+  <h1>🗺️ GéoGamer</h1>
+  <div class="icons"></div>
+</header>
+<div class="wrap" style="max-width:640px">
+  <div class="total">
+    <div class="muted">Score final</div>
+    <div class="big" id="fScore"></div>
+    <div class="muted" id="fSous"></div>
+    <div id="fZone" style="margin-top:12px"></div>
+  </div>
+  <div class="recap" id="fRecap"></div>
+  <div class="row" style="justify-content:center">
+    <button class="btn big" id="bRejouer">↻ Rejouer</button>
+    <button class="btn ghost big" id="bMenu">Changer de jeux</button>
+  </div>
+</div>
+</div>
+
+<!-- ===================== CRÉATEUR ===================== -->
+<div id="ecranCreateur" class="hidden">
+<header>
+  <a href="#" id="bCreaRetour">← Retour</a>
+  <h1>🛠️ Créateur de pack</h1>
+  <div class="icons"></div>
+</header>
+<div class="wrap">
+  <div class="panel">
+    <div class="row" style="align-items:flex-end">
+      <div class="field" style="flex:1;min-width:200px"><label>Nom du jeu</label><input id="cNom" maxlength="40" placeholder="Ex. : Mon jeu préféré"></div>
+      <div class="field" style="width:90px"><label>Emoji</label><input id="cEmoji" maxlength="4" placeholder="🎮"></div>
+    </div>
+  </div>
+
+  <h2>Cartes du jeu</h2>
+  <p class="lead">Ajoute l'image de la carte (ou plusieurs : régions, étages, villes…). « Largeur réelle » est facultative : en mètres, elle sert à afficher la distance de l'erreur.</p>
+  <div class="clist" id="cCartes"></div>
+  <div class="row" style="margin-top:8px"><button class="btn ghost" id="bAjCarte">➕ Ajouter une carte</button><input type="file" id="fCarte" accept="image/*" class="hidden"></div>
+
+  <h2>Captures d'écran</h2>
+  <p class="lead">Ajoute tes captures, puis pour chacune clique sur la carte à l'endroit où elle a été prise.</p>
+  <div class="row" style="margin-bottom:10px"><button class="btn ghost" id="bAjLieux">➕ Ajouter des captures</button><input type="file" id="fLieux" accept="image/*" multiple class="hidden"><span class="note" id="cInfo"></span></div>
+  <div class="thumbs" id="cThumbs"></div>
+  <div id="cEdit" class="hidden">
+    <div class="edit">
+      <div><div class="note" style="margin-bottom:6px">Capture (zoom avec la molette ou deux doigts)</div><div id="cShot" class="mv"></div></div>
+      <div><div class="tabs" id="cTabs"></div><div id="cMap" class="mv pick"></div></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input class="inp" id="cIndice" maxlength="120" placeholder="Légende affichée après la réponse (facultatif)" style="flex:1;min-width:200px">
+      <button class="btn ghost small" id="bPrec">◀</button>
+      <button class="btn ghost small" id="bSuiv">▶</button>
+      <button class="btn danger small" id="bSupLieu">🗑️ Retirer</button>
+    </div>
+  </div>
+
+  <div class="sticky row">
+    <button class="btn" id="bSauver">💾 Enregistrer</button>
+    <button class="btn ghost" id="bExporter">📦 Exporter (.zip)</button>
+    <span class="note" id="cEtat"></span>
+  </div>
+</div>
+</div>
+
+<dialog id="dlg">
+  <h2>🏆 Meilleurs scores</h2>
+  <div id="dlgList"></div>
+  <div class="drow">
+    <button class="btn ghost small" id="bClear">Effacer (appareil)</button>
+    <button class="btn" id="bClose">Fermer</button>
+  </div>
+</dialog>
+<div id="toast" class="hidden"></div>
+
+<script src="../commun/classement.js"></script>
+<script src="packs/liste.js"></script>
+<script>
+/* ============================================================
+   OUTILS
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt != null) e.textContent = txt; if(cls) e.className = cls; return e; };
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; };
+const rid = () => Math.random().toString(36).slice(2,10);
+const fmt = n => n.toLocaleString("fr-FR");
+let toastT;
+function toast(t){ const e=$("toast"); e.textContent=t; e.classList.remove("hidden"); clearTimeout(toastT); toastT=setTimeout(()=>e.classList.add("hidden"),2600); }
+function ecran(id){ ["ecranAccueil","ecranJeu","ecranFin","ecranCreateur"].forEach(x=>$(x).classList.toggle("hidden",x!==id)); window.scrollTo(0,0); }
+
+/* ============================================================
+   VUE ZOOMABLE (carte ou capture) : glisser, molette, pincer
+   ============================================================ */
+class Vue{
+  constructor(host, o={}){
+    this.host=host; this.onPick=o.onPick||null;
+    host.classList.add("mv"); if(this.onPick) host.classList.add("pick");
+    host.innerHTML='<div class="mv-in"><img alt="" draggable="false"></div><svg class="mv-ln"></svg><div class="mv-pins"></div><div class="mv-ctl"><button data-z="1" title="Zoomer">+</button><button data-z="-1" title="Dézoomer">−</button><button data-z="0" title="Tout voir">⟲</button></div>';
+    this.inner=host.querySelector(".mv-in"); this.img=host.querySelector("img");
+    this.svg=host.querySelector(".mv-ln"); this.pins=host.querySelector(".mv-pins");
+    this.w=1;this.h=1;this.k=1;this.fitK=1;this.tx=0;this.ty=0;this.marques=[];this.ligne=null;this.pret=false;
+    host.querySelectorAll(".mv-ctl button").forEach(b=>{
+      b.addEventListener("pointerdown",e=>e.stopPropagation());
+      b.onclick=e=>{e.stopPropagation();const z=+b.dataset.z;if(!z)this.ajuster();else this.zoomA(z>0?1.6:1/1.6,host.clientWidth/2,host.clientHeight/2);};
+    });
+    const P=new Map(); let bouge=false, pince=null;
+    const loc=e=>{const r=host.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+    host.addEventListener("pointerdown",e=>{
+      host.setPointerCapture(e.pointerId); P.set(e.pointerId,loc(e));
+      if(P.size===1){bouge=false;this.dep=loc(e);}
+      if(P.size===2){const [a,b]=[...P.values()];pince={d:Math.hypot(a[0]-b[0],a[1]-b[1]),m:[(a[0]+b[0])/2,(a[1]+b[1])/2]};bouge=true;}
+    });
+    host.addEventListener("pointermove",e=>{
+      if(!P.has(e.pointerId))return;
+      const avant=P.get(e.pointerId), p=loc(e); P.set(e.pointerId,p);
+      if(P.size===1){
+        if(!bouge&&Math.hypot(p[0]-this.dep[0],p[1]-this.dep[1])>6)bouge=true;
+        if(bouge){this.tx+=p[0]-avant[0];this.ty+=p[1]-avant[1];this.appliquer();}
+      }else if(P.size===2&&pince){
+        const [a,b]=[...P.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]), m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+        this.tx+=m[0]-pince.m[0];this.ty+=m[1]-pince.m[1];
+        this.zoomA(d/(pince.d||d),m[0],m[1]); pince={d,m};
+      }
+    });
+    const fin=e=>{
+      if(!P.has(e.pointerId))return;
+      const p=P.get(e.pointerId); P.delete(e.pointerId);
+      if(P.size<2)pince=null;
+      if(P.size===0&&!bouge&&e.type==="pointerup"&&this.onPick&&this.pret){
+        const x=(p[0]-this.tx)/(this.w*this.k), y=(p[1]-this.ty)/(this.h*this.k);
+        if(x>=0&&x<=1&&y>=0&&y<=1)this.onPick(x,y);
+      }
+    };
+    host.addEventListener("pointerup",fin);host.addEventListener("pointercancel",fin);
+    host.addEventListener("wheel",e=>{e.preventDefault();const [x,y]=loc(e);this.zoomA(Math.exp(-e.deltaY*0.0016),x,y);},{passive:false});
+    new ResizeObserver(()=>this.redim()).observe(host);
+  }
+  charger(src){
+    return new Promise(res=>{
+      this.pret=false; this.marques=[]; this.ligne=null; this.dessiner();
+      this.img.onload=()=>{
+        this.w=this.img.naturalWidth||1000; this.h=this.img.naturalHeight||700;
+        this.inner.style.width=this.w+"px"; this.inner.style.height=this.h+"px";
+        this.pret=true; this.ajuster(); res();
+      };
+      this.img.onerror=()=>{this.pret=false;res();};
+      this.img.src=src;
+    });
+  }
+  ajuster(){
+    const W=this.host.clientWidth,H=this.host.clientHeight; if(!W||!H)return;
+    this.fitK=Math.min(W/this.w,H/this.h); this.k=this.fitK;
+    this.tx=(W-this.w*this.k)/2; this.ty=(H-this.h*this.k)/2; this.dW=W; this.dH=H; this.appliquer();
+  }
+  redim(){
+    const W=this.host.clientWidth,H=this.host.clientHeight; if(!W||!H||!this.pret)return;
+    if(!this.dW){this.ajuster();return;}
+    const cx=(this.dW/2-this.tx)/this.k, cy=(this.dH/2-this.ty)/this.k, rel=this.k/this.fitK;
+    this.fitK=Math.min(W/this.w,H/this.h); this.k=this.fitK*rel;
+    this.tx=W/2-cx*this.k; this.ty=H/2-cy*this.k; this.dW=W; this.dH=H; this.appliquer();
+  }
+  zoomA(f,px,py){
+    const nk=Math.max(this.fitK,Math.min(this.fitK*14,this.k*f)); if(!isFinite(nk))return;
+    const ix=(px-this.tx)/this.k, iy=(py-this.ty)/this.k;
+    this.k=nk; this.tx=px-ix*nk; this.ty=py-iy*nk; this.appliquer();
+  }
+  borner(){
+    const W=this.host.clientWidth,H=this.host.clientHeight,iw=this.w*this.k,ih=this.h*this.k;
+    this.tx=iw<=W?(W-iw)/2:Math.min(0,Math.max(W-iw,this.tx));
+    this.ty=ih<=H?(H-ih)/2:Math.min(0,Math.max(H-ih,this.ty));
+  }
+  appliquer(){ this.borner(); this.inner.style.transform=`translate(${this.tx}px,${this.ty}px) scale(${this.k})`; this.dessiner(); }
+  ecran(x,y){ return [this.tx+x*this.w*this.k, this.ty+y*this.h*this.k]; }
+  marquer(marques, ligne){ this.marques=marques||[]; this.ligne=ligne||null; this.dessiner(); }
+  dessiner(){
+    this.pins.innerHTML=""; this.svg.innerHTML="";
+    if(this.ligne){
+      const [a,b]=this.ligne.map(p=>this.ecran(p.x,p.y));
+      this.svg.innerHTML=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#fff" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round"/>`;
+    }
+    for(const m of this.marques){
+      const [x,y]=this.ecran(m.x,m.y), p=el("div","","pin "+(m.c||"g"));
+      p.style.left=x+"px"; p.style.top=y+"px";
+      if(m.t){const i=el("i",m.t);p.appendChild(i);}
+      this.pins.appendChild(p);
+    }
+  }
+  cadrer(points){
+    const W=this.host.clientWidth,H=this.host.clientHeight; if(!W||!H||!this.pret||!points.length)return;
+    const xs=points.map(p=>p.x*this.w), ys=points.map(p=>p.y*this.h);
+    const bw=Math.max(Math.max(...xs)-Math.min(...xs),this.w*0.3), bh=Math.max(Math.max(...ys)-Math.min(...ys),this.h*0.3);
+    this.fitK=Math.min(W/this.w,H/this.h);
+    const bas=Math.min(240,H*0.4); /* place laissée à la carte de résultat */
+    this.k=Math.max(this.fitK,Math.min(this.fitK*3,(W-160)/Math.max(bw,1),(H-bas-120)/Math.max(bh,1)));
+    const cx=(Math.max(...xs)+Math.min(...xs))/2, cy=(Math.max(...ys)+Math.min(...ys))/2;
+    this.tx=W/2-cx*this.k; this.ty=(H-bas)/2-cy*this.k; this.dW=W; this.dH=H; this.appliquer();
+  }
+}
+
+/* ============================================================
+   PACKS : ceux du site (packs/<id>/pack.js) + ceux de l'appareil (IndexedDB)
+   ============================================================ */
+window.GEO_PACKS = [];
+function chargerScript(src){ return new Promise(res=>{ const s=document.createElement("script"); s.src=src; s.onload=()=>res(true); s.onerror=()=>res(false); document.head.appendChild(s); }); }
+async function chargerPacksSite(){
+  const out=[];
+  for(const id of (typeof GEO_LISTE!=="undefined"?GEO_LISTE:[])){
+    const n=GEO_PACKS.length;
+    const ok=await chargerScript(`packs/${encodeURIComponent(id)}/pack.js`);
+    if(!ok||GEO_PACKS.length===n){console.warn("Pack introuvable :",id);continue;}
+    const p=GEO_PACKS[GEO_PACKS.length-1], base=`packs/${id}/`;
+    out.push({id:"site:"+id, perso:false, nom:p.nom||id, emoji:p.emoji||"🎮", couleurs:p.couleurs,
+      cartes:(p.cartes||[]).map(c=>({id:c.id,nom:c.nom||c.id,src:base+c.img,taille:+c.taille||0})),
+      lieux:(p.lieux||[]).filter(l=>l.x!=null).map(l=>({src:base+l.img,carte:l.carte,x:+l.x,y:+l.y,indice:l.indice||""}))});
+  }
+  return out;
+}
+
+const DB = (()=>{
+  let p;
+  const ouvrir=()=>p||(p=new Promise((res,rej)=>{
+    if(!window.indexedDB){rej(new Error("IndexedDB indisponible"));return;}
+    const r=indexedDB.open("geogamer",1);
+    r.onupgradeneeded=()=>r.result.createObjectStore("packs",{keyPath:"id"});
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  }));
+  const tx=async(mode,f)=>{const db=await ouvrir();return new Promise((res,rej)=>{const t=db.transaction("packs",mode),s=t.objectStore("packs"),r=f(s);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error);});};
+  return { tous:()=>tx("readonly",s=>s.getAll()).catch(()=>[]), mettre:v=>tx("readwrite",s=>s.put(v)), suppr:id=>tx("readwrite",s=>s.delete(id)) };
+})();
+
+let URLS=[];
+function versJouable(r){
+  const u=b=>{const x=URL.createObjectURL(b);URLS.push(x);return x;};
+  return {id:r.id, perso:true, brut:r, nom:r.nom, emoji:r.emoji||"🎮", couleurs:r.couleurs||["#c9b6e8","#7cc6e8"],
+    cartes:r.cartes.map(c=>({id:c.id,nom:c.nom,src:u(c.blob),taille:+c.taille||0})),
+    lieux:r.lieux.filter(l=>l.x!=null&&l.carte&&r.cartes.some(c=>c.id===l.carte)).map(l=>({src:u(l.blob),carte:l.carte,x:l.x,y:l.y,indice:l.indice||""}))};
+}
+
+let PACKS_SITE=[], PACKS=[];
+let SEL=new Set(lsGet("geogamer_sel",["site:demo"]));
+const OPT=Object.assign({manches:5,chrono:0},lsGet("geogamer_opt",{}));
+
+async function rafraichirPacks(){
+  URLS.forEach(u=>URL.revokeObjectURL(u)); URLS=[];
+  const perso=(await DB.tous()).sort((a,b)=>(b.maj||0)-(a.maj||0)).map(versJouable);
+  PACKS=[...PACKS_SITE,...perso];
+  for(const id of [...SEL]) if(!PACKS.some(p=>p.id===id)) SEL.delete(id);
+  afficherPacks();
+}
+
+function afficherPacks(){
+  const g=$("packs"); g.innerHTML="";
+  if(!PACKS.length){g.appendChild(el("p","Aucun pack pour l'instant : crée le tien juste en dessous !","note"));}
+  for(const p of PACKS){
+    const b=el("div","","pk"+(SEL.has(p.id)?" on":"")); b.tabIndex=0;
+    const [c1,c2]=p.couleurs||["#c9b6e8","#7cc6e8"];
+    b.style.setProperty("--c1",c1);b.style.setProperty("--c2",c2);
+    const cv=el("div",p.emoji,"cv"); b.appendChild(cv);
+    if(p.lieux[0]){cv.style.backgroundImage=`linear-gradient(rgba(0,0,0,.15),rgba(0,0,0,.15)),url("${p.lieux[0].src}")`;cv.textContent="";}
+    b.appendChild(el("span",SEL.has(p.id)?"✓":"","ck"));
+    if(p.perso)b.appendChild(el("span","Perso","tag"));
+    const bd=el("div","","bd");
+    bd.appendChild(el("b",(p.lieux[0]?p.emoji+" ":"")+p.nom));
+    bd.appendChild(el("small",`${p.lieux.length} capture${p.lieux.length>1?"s":""} · ${p.cartes.length} carte${p.cartes.length>1?"s":""}`));
+    if(p.perso){
+      const a=el("div","","acts");
+      const mk=(t,ti,f)=>{const x=el("button",t,"btn ghost small");x.title=ti;x.onclick=e=>{e.stopPropagation();f();};a.appendChild(x);};
+      mk("✏️","Modifier",()=>ouvrirCreateur(p.brut));
+      mk("📦","Exporter en .zip",()=>exporter(p.brut));
+      mk("🗑️","Supprimer",async()=>{if(confirm(`Supprimer le pack « ${p.nom} » de cet appareil ?`)){await DB.suppr(p.id);SEL.delete(p.id);await rafraichirPacks();}});
+      bd.appendChild(a);
+    }
+    b.appendChild(bd);
+    const basc=()=>{ if(!p.lieux.length){toast("Ce pack n'a encore aucune capture placée.");return;} SEL.has(p.id)?SEL.delete(p.id):SEL.add(p.id); lsSet("geogamer_sel",[...SEL]); afficherPacks(); };
+    b.onclick=basc; b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();basc();}};
+    g.appendChild(b);
+  }
+  const n=PACKS.filter(p=>SEL.has(p.id)).reduce((s,p)=>s+p.lieux.length,0);
+  $("selInfo").textContent=SEL.size?`${SEL.size} jeu${SEL.size>1?"x":""} sélectionné${SEL.size>1?"s":""} · ${n} capture${n>1?"s":""} possibles`:"Aucun jeu sélectionné";
+  $("bJouer").disabled=!n;
+  const tous=PACKS.filter(p=>p.lieux.length).every(p=>SEL.has(p.id));
+  $("bTous").textContent=tous?"Tout désélectionner":"Tout sélectionner";
+}
+$("bTous").onclick=()=>{
+  const dispo=PACKS.filter(p=>p.lieux.length), tous=dispo.every(p=>SEL.has(p.id));
+  SEL=new Set(tous?[]:dispo.map(p=>p.id)); lsSet("geogamer_sel",[...SEL]); afficherPacks();
+};
+
+function seg(id,vals,cle){
+  const s=$(id); s.innerHTML="";
+  vals.forEach(([v,t])=>{const b=el("button",t);if(OPT[cle]===v)b.className="on";b.onclick=()=>{OPT[cle]=v;lsSet("geogamer_opt",OPT);seg(id,vals,cle);};s.appendChild(b);});
+}
+seg("optManches",[[5,"5"],[10,"10"]],"manches");
+seg("optChrono",[[0,"Sans"],[30,"30 s"],[60,"1 min"],[120,"2 min"]],"chrono");
+
+/* ============================================================
+   PARTIE
+   ============================================================ */
+const G={};
+const vueScene=new Vue($("scene"));
+const vueCarte=new Vue($("carte"),{onPick:(x,y)=>poser(x,y)});
+
+function tirerLieux(packs,n){
+  const restants=packs.map(p=>({p,l:shuffle(p.lieux.slice())})).filter(o=>o.l.length), out=[];
+  while(out.length<n&&restants.length){
+    const i=Math.floor(Math.random()*restants.length), o=restants[i];
+    out.push({pack:o.p,lieu:o.l.pop()});
+    if(!o.l.length)restants.splice(i,1);
+  }
+  return out;
+}
+
+function demarrer(){
+  const packs=PACKS.filter(p=>SEL.has(p.id)&&p.lieux.length);
+  if(!packs.length)return;
+  G.manches=tirerLieux(packs,OPT.manches); G.i=-1; G.res=[]; G.total=0; G.chrono=OPT.chrono; G.packs=packs;
+  G.derniere={};
+  ecran("ecranJeu"); mancheSuivante();
+}
+$("bJouer").onclick=demarrer;
+
+async function mancheSuivante(){
+  G.i++;
+  if(G.i>=G.manches.length){terminer();return;}
+  const {pack,lieu}=G.manches[G.i];
+  G.pose=null; G.fini=false;
+  $("resultat").classList.add("hidden");
+  $("panneau").classList.remove("full","ouvert");
+  $("bOuvrirCarte").classList.remove("hidden");
+  $("hJeu").textContent=pack.emoji+" "+pack.nom;
+  $("hManche").textContent=`Manche ${G.i+1}/${G.manches.length}`;
+  $("hScore").textContent=fmt(G.total)+" pts";
+  majValider();
+  const carteId=G.derniere[pack.id]&&pack.cartes.some(c=>c.id===G.derniere[pack.id])?G.derniere[pack.id]:pack.cartes[0].id;
+  onglets(pack,carteId);
+  await Promise.all([vueScene.charger(lieu.src),choisirCarte(pack,carteId)]);
+  lancerChrono();
+}
+
+function onglets(pack,actif){
+  const t=$("tabsCartes"); t.innerHTML="";
+  if(pack.cartes.length<2)return;
+  pack.cartes.forEach(c=>{
+    const b=el("button",c.nom); if(c.id===actif)b.className="on";
+    b.onclick=()=>{ if(G.fini)return; choisirCarte(pack,c.id); onglets(pack,c.id); };
+    t.appendChild(b);
+  });
+}
+async function choisirCarte(pack,id){
+  G.carte=id; G.derniere[pack.id]=id;
+  await vueCarte.charger(pack.cartes.find(c=>c.id===id).src);
+  if(G.pose&&G.pose.carte===id)vueCarte.marquer([{x:G.pose.x,y:G.pose.y,c:"g"}]);
+}
+function poser(x,y){
+  if(G.fini||$("ecranJeu").classList.contains("hidden"))return;
+  G.pose={carte:G.carte,x,y};
+  vueCarte.marquer([{x,y,c:"g"}]); majValider();
+}
+function majValider(){
+  const b=$("bValider"); b.disabled=!G.pose; b.textContent=G.pose?"✔ Valider":"Place ton repère";
+}
+function lancerChrono(){
+  clearInterval(G.tm); const h=$("hChrono");
+  if(!G.chrono){h.classList.add("hidden");return;}
+  let t=G.chrono; h.classList.remove("hidden","alerte"); h.textContent="⏱️ "+t+" s";
+  G.tm=setInterval(()=>{ t--; h.textContent="⏱️ "+Math.max(0,t)+" s"; h.classList.toggle("alerte",t<=10); if(t<=0){clearInterval(G.tm);valider(true);} },1000);
+}
+
+function calcul(pack,lieu,pose){
+  if(!pose)return {pts:0,txt:"Pas de repère posé ⏰"};
+  if(pose.carte!==lieu.carte){const c=pack.cartes.find(c=>c.id===lieu.carte);return {pts:0,txt:`Mauvaise carte ! C'était sur « ${c?c.nom:"?"} »`};}
+  const v=vueCarte, w=v.w, h=v.h, dx=(pose.x-lieu.x)*w, dy=(pose.y-lieu.y)*h, px=Math.hypot(dx,dy), d=px/Math.hypot(w,h);
+  const pts=d<0.008?5000:Math.round(5000*Math.exp(-10*d));
+  const taille=(pack.cartes.find(c=>c.id===lieu.carte)||{}).taille;
+  let txt;
+  if(taille){const m=px/w*taille;txt=m<1000?`À ${Math.round(m)} m du bon endroit`:`À ${(m/1000).toLocaleString("fr-FR",{maximumFractionDigits:1})} km du bon endroit`;}
+  else txt=`Écart : ${(d*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} % de la carte`;
+  return {pts,txt};
+}
+
+async function valider(auto){
+  if(G.fini)return;
+  G.fini=true; clearInterval(G.tm);
+  const {pack,lieu}=G.manches[G.i];
+  onglets(pack,lieu.carte);
+  if(G.carte!==lieu.carte)await choisirCarte(pack,lieu.carte);
+  const r=calcul(pack,lieu,G.pose);
+  G.total+=r.pts; G.res.push({pack,lieu,pts:r.pts,txt:r.txt});
+  $("hScore").textContent=fmt(G.total)+" pts";
+  $("panneau").classList.add("full"); $("bOuvrirCarte").classList.add("hidden");
+  const marques=[{x:lieu.x,y:lieu.y,c:"a",t:"★"}];
+  const meme=G.pose&&G.pose.carte===lieu.carte;
+  if(meme)marques.push({x:G.pose.x,y:G.pose.y,c:"g"});
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  vueCarte.redim(); vueCarte.marquer(marques,meme?[G.pose,lieu]:null); vueCarte.cadrer(marques);
+  const z=$("resultat"); z.innerHTML=""; z.classList.remove("hidden");
+  z.appendChild(el("p",(r.pts===5000?"🎯 ":"")+fmt(r.pts)+" points","pts"));
+  const m=el("div","","meter"),i=el("i");m.appendChild(i);z.appendChild(m);setTimeout(()=>i.style.width=(r.pts/50)+"%",30);
+  z.appendChild(el("p",r.txt));
+  if(lieu.indice)z.appendChild(el("p",lieu.indice,"muted"));
+  const der=G.i===G.manches.length-1;
+  const b=el("button",der?"🏁 Voir le résultat":"Manche suivante ▶","btn big"); b.style.marginTop="10px";
+  b.onclick=mancheSuivante; z.appendChild(b); setTimeout(()=>b.focus(),50);
+}
+$("bValider").onclick=()=>valider(false);
+$("bEpingle").onclick=()=>{ $("panneau").classList.toggle("grand"); $("bEpingle").classList.toggle("on"); };
+$("bOuvrirCarte").onclick=()=>$("panneau").classList.add("ouvert");
+$("bFermerCarte").onclick=()=>$("panneau").classList.remove("ouvert");
+$("bQuitter").onclick=()=>{ if(confirm("Quitter la partie en cours ?")){clearInterval(G.tm);ecran("ecranAccueil");} };
+document.addEventListener("keydown",e=>{
+  if($("ecranJeu").classList.contains("hidden")||e.target.tagName==="INPUT")return;
+  if(e.key==="Enter"||e.key===" "){
+    if(!G.fini&&G.pose){e.preventDefault();valider(false);}
+    else if(G.fini&&document.activeElement.tagName!=="BUTTON"){e.preventDefault();mancheSuivante();}
+  }
+});
+
+/* ---------- Fin de partie + classement ---------- */
+const SKEY="geogamer_scores";
+const loadScores=()=>lsGet(SKEY,[]);
+const qualifie=s=>{const l=loadScores();return l.length<10||s>l[l.length-1].s;};
+function addScore(e){const l=loadScores();l.push(e);l.sort((a,b)=>b.s-a.s);l.splice(10);lsSet(SKEY,l);return l.indexOf(e);}
+function renderList(box,list,hi){
+  box.innerHTML="";
+  if(!list.length){box.appendChild(el("p","Aucun score pour l'instant.","muted"));return;}
+  const ol=el("ol","","lb");
+  list.forEach((e,i)=>{const li=el("li");if(i===hi)li.className="me";
+    li.append(el("span",`${i+1}. ${e.n||"Anonyme"}`),el("span",`${fmt(e.s)} pts · ${e.lv} manches`));ol.appendChild(li);});
+  box.appendChild(ol);
+}
+function terminer(){
+  clearInterval(G.tm);
+  ecran("ecranFin");
+  const max=G.manches.length*5000;
+  $("fScore").textContent=fmt(G.total)+" pts";
+  $("fSous").textContent=`sur ${fmt(max)} possibles · ${G.manches.length} manche${G.manches.length>1?"s":""}`;
+  const rc=$("fRecap"); rc.innerHTML="";
+  G.res.forEach((r,i)=>{
+    const d=el("div","","r"); const im=el("img"); im.src=r.lieu.src; im.alt="";
+    const t=el("div"); t.append(el("div",`${i+1}. ${r.pack.emoji} ${r.pack.nom}`),el("small",r.txt));
+    d.append(im,t,el("b",fmt(r.pts))); rc.appendChild(d);
+  });
+  const zone=$("fZone"); zone.innerHTML="";
+  if(G.total>0)Classement.finDePartie({zone,cle:"geoguessr",champ:"s",entree:{s:G.total,lv:G.manches.length},
+    local:{qualifie,ajouter:addScore,liste:loadScores},rendu:renderList});
+}
+$("bRejouer").onclick=demarrer;
+$("bMenu").onclick=()=>ecran("ecranAccueil");
+$("bScores").onclick=()=>{Classement.tableau($("dlgList"),{cle:"geoguessr",champ:"s",liste:loadScores,rendu:renderList});$("dlg").showModal();};
+$("bClose").onclick=()=>$("dlg").close();
+$("bClear").onclick=()=>{if(confirm("Effacer les scores enregistrés sur cet appareil ?")){lsSet(SKEY,[]);Classement.tableau($("dlgList"),{cle:"geoguessr",champ:"s",liste:loadScores,rendu:renderList});}};
+
+/* ============================================================
+   CRÉATEUR DE PACK
+   ============================================================ */
+let E=null, eSel=-1, eCarte=null, eModif=false;
+const eURL=new Map();
+const urlDe=b=>{if(!eURL.has(b))eURL.set(b,URL.createObjectURL(b));return eURL.get(b);};
+const vueShot=new Vue($("cShot"));
+const vueEd=new Vue($("cMap"),{onPick:(x,y)=>{const l=E.lieux[eSel];if(!l)return;l.carte=eCarte;l.x=x;l.y=y;eModif=true;vueEd.marquer([{x,y,c:"a",t:"★"}]);afficherThumbs();}});
+
+async function preparerImage(file,max){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=new Image(); await new Promise((r,j)=>{img.onload=r;img.onerror=()=>j(new Error("image illisible"));img.src=url;});
+    let w=img.naturalWidth,h=img.naturalHeight;
+    if(file.type==="image/svg+xml")return {blob:file,w:w||1000,h:h||700};
+    const s=Math.min(1,max/Math.max(w,h));
+    if(s===1&&file.size<3e6&&/jpeg|png|webp/.test(file.type))return {blob:file,w,h};
+    const c=document.createElement("canvas"); c.width=Math.round(w*s); c.height=Math.round(h*s);
+    const g=c.getContext("2d"); g.fillStyle="#000"; g.fillRect(0,0,c.width,c.height); g.drawImage(img,0,0,c.width,c.height);
+    const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.88));
+    return {blob,w:c.width,h:c.height};
+  }finally{URL.revokeObjectURL(url);}
+}
+
+function ouvrirCreateur(rec){
+  eURL.forEach(u=>URL.revokeObjectURL(u)); eURL.clear();
+  E=rec?{...rec,cartes:rec.cartes.map(c=>({...c})),lieux:rec.lieux.map(l=>({...l}))}
+       :{id:"perso-"+rid(),nom:"",emoji:"",cartes:[],lieux:[],couleurs:[["#c9b6e8","#7cc6e8"],["#f6a6c1","#ffcf7a"],["#8fd6b4","#5b9bd5"],["#ffb37a","#e86a92"]][Math.floor(Math.random()*4)]};
+  eSel=-1; eModif=false;
+  $("cNom").value=E.nom; $("cEmoji").value=E.emoji;
+  ecran("ecranCreateur"); afficherCartes(); afficherThumbs();
+  const premier=E.lieux.findIndex(l=>l.x==null); selLieu(premier>=0?premier:(E.lieux.length?0:-1));
+}
+$("bCreer").onclick=()=>ouvrirCreateur(null);
+$("cNom").oninput=()=>{E.nom=$("cNom").value;eModif=true;};
+$("cEmoji").oninput=()=>{E.emoji=$("cEmoji").value;eModif=true;};
+
+function afficherCartes(){
+  const z=$("cCartes"); z.innerHTML="";
+  if(!E.cartes.length)z.appendChild(el("p","Aucune carte pour l'instant.","note"));
+  E.cartes.forEach((c,i)=>{
+    const r=el("div","","crow"); const im=el("img");im.src=urlDe(c.blob);im.alt="";
+    const n=el("input");n.className="inp";n.value=c.nom;n.maxLength=30;n.placeholder="Nom de la carte";n.oninput=()=>{c.nom=n.value;eModif=true;ongletsEd();};
+    const t=el("input");t.className="inp";t.type="number";t.min=0;t.style.maxWidth="170px";t.placeholder="Largeur réelle (m)";t.value=c.taille||"";t.oninput=()=>{c.taille=+t.value||0;eModif=true;};
+    const d=el("button","🗑️","btn danger small");d.title="Retirer cette carte";
+    d.onclick=()=>{ const n2=E.lieux.filter(l=>l.carte===c.id).length;
+      if(n2&&!confirm(`${n2} capture(s) sont placées sur cette carte : elles devront être replacées. Retirer la carte ?`))return;
+      E.cartes.splice(i,1); E.lieux.forEach(l=>{if(l.carte===c.id){l.carte=null;l.x=null;l.y=null;}}); eModif=true;
+      afficherCartes(); afficherThumbs(); selLieu(eSel); };
+    r.append(im,n,t,d); z.appendChild(r);
+  });
+}
+$("bAjCarte").onclick=()=>$("fCarte").click();
+$("fCarte").onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f)return;
+  try{ const p=await preparerImage(f,4096);
+    E.cartes.push({id:"c"+rid(),nom:f.name.replace(/\.[^.]+$/,"").slice(0,30)||"Carte",taille:0,blob:p.blob,w:p.w,h:p.h});
+    eModif=true; afficherCartes(); selLieu(eSel<0&&E.lieux.length?0:eSel);
+  }catch(err){toast("Impossible de lire cette image.");}
+};
+$("bAjLieux").onclick=()=>{ if(!E.cartes.length){toast("Ajoute d'abord au moins une carte.");return;} $("fLieux").click(); };
+$("fLieux").onchange=async e=>{
+  const fs=[...e.target.files]; e.target.value=""; if(!fs.length)return;
+  const avant=E.lieux.length; $("cInfo").textContent="Import…";
+  for(const f of fs){ try{const p=await preparerImage(f,1920);E.lieux.push({id:"l"+rid(),blob:p.blob,carte:null,x:null,y:null,indice:""});}catch(err){} }
+  eModif=true; afficherThumbs(); selLieu(avant<E.lieux.length?avant:eSel);
+};
+
+function afficherThumbs(){
+  const z=$("cThumbs"); z.innerHTML="";
+  E.lieux.forEach((l,i)=>{
+    const b=el("button","","th"+(i===eSel?" on":"")); const im=el("img");im.src=urlDe(l.blob);im.alt="";
+    b.append(im,el("span",l.x!=null?"✅":"📍 à placer")); b.onclick=()=>selLieu(i); z.appendChild(b);
+  });
+  const ok=E.lieux.filter(l=>l.x!=null).length;
+  $("cInfo").textContent=E.lieux.length?`${ok}/${E.lieux.length} placée${ok>1?"s":""}`:"";
+  $("cEtat").textContent=eModif?"Modifications non enregistrées":"";
+}
+function ongletsEd(){
+  const t=$("cTabs"); t.innerHTML="";
+  E.cartes.forEach(c=>{const b=el("button",c.nom||"Carte");if(c.id===eCarte)b.className="on";b.onclick=()=>{eCarte=c.id;ongletsEd();chargerCarteEd();};t.appendChild(b);});
+}
+async function chargerCarteEd(){
+  const c=E.cartes.find(c=>c.id===eCarte); if(!c)return;
+  await vueEd.charger(urlDe(c.blob));
+  const l=E.lieux[eSel]; if(l&&l.carte===eCarte&&l.x!=null)vueEd.marquer([{x:l.x,y:l.y,c:"a",t:"★"}]);
+}
+async function selLieu(i){
+  eSel=(i>=0&&i<E.lieux.length)?i:-1;
+  $("cEdit").classList.toggle("hidden",eSel<0||!E.cartes.length);
+  afficherThumbs();
+  if(eSel<0||!E.cartes.length)return;
+  const l=E.lieux[eSel];
+  $("cIndice").value=l.indice||"";
+  eCarte=l.carte&&E.cartes.some(c=>c.id===l.carte)?l.carte:(E.cartes.some(c=>c.id===eCarte)?eCarte:E.cartes[0].id);
+  ongletsEd();
+  await Promise.all([vueShot.charger(urlDe(l.blob)),chargerCarteEd()]);
+}
+$("cIndice").oninput=()=>{const l=E.lieux[eSel];if(l){l.indice=$("cIndice").value;eModif=true;}};
+$("bPrec").onclick=()=>{if(E.lieux.length)selLieu((eSel-1+E.lieux.length)%E.lieux.length);};
+$("bSuiv").onclick=()=>{if(!E.lieux.length)return;const n=E.lieux.findIndex((l,k)=>k>eSel&&l.x==null);selLieu(n>=0?n:(eSel+1)%E.lieux.length);};
+$("bSupLieu").onclick=()=>{if(eSel<0)return;E.lieux.splice(eSel,1);eModif=true;selLieu(Math.min(eSel,E.lieux.length-1));};
+
+function verifier(){
+  if(!E.nom.trim()){toast("Donne un nom à ton pack.");$("cNom").focus();return false;}
+  if(!E.cartes.length){toast("Ajoute au moins une carte.");return false;}
+  if(!E.lieux.some(l=>l.x!=null)){toast("Place au moins une capture sur la carte.");return false;}
+  return true;
+}
+async function sauver(){
+  if(!verifier())return false;
+  E.nom=E.nom.trim().slice(0,40); E.emoji=(E.emoji||"").trim()||"🎮"; E.maj=Date.now();
+  try{ await DB.mettre(E); }catch(err){ toast("Enregistrement impossible sur cet appareil (navigation privée ?)."); return false; }
+  eModif=false; afficherThumbs(); toast("✅ Pack enregistré sur cet appareil");
+  SEL.add(E.id); lsSet("geogamer_sel",[...SEL]);
+  return true;
+}
+$("bSauver").onclick=sauver;
+$("bExporter").onclick=async()=>{ if(await sauver())exporter(E); };
+$("bCreaRetour").onclick=async e=>{
+  e.preventDefault();
+  if(eModif&&!confirm("Quitter sans enregistrer les modifications ?"))return;
+  await rafraichirPacks(); ecran("ecranAccueil");
+};
+
+/* ============================================================
+   EXPORT / IMPORT .zip
+   ============================================================ */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function zipper(fichiers){
+  const enc=new TextEncoder(), parts=[], central=[]; let off=0;
+  for(const f of fichiers){
+    const nom=enc.encode(f.nom), d=f.data, crc=crc32(d);
+    const h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);
+    h.setUint16(10,0,true);h.setUint16(12,0x21,true);h.setUint32(14,crc,true);h.setUint32(18,d.length,true);h.setUint32(22,d.length,true);
+    h.setUint16(26,nom.length,true);h.setUint16(28,0,true);
+    parts.push(new Uint8Array(h.buffer),nom,d);
+    const c=new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(10,0,true);
+    c.setUint16(12,0,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,d.length,true);c.setUint32(24,d.length,true);
+    c.setUint16(28,nom.length,true);c.setUint32(42,off,true);
+    central.push(new Uint8Array(c.buffer),nom);
+    off+=30+nom.length+d.length;
+  }
+  const taille=central.reduce((s,p)=>s+p.length,0), e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true);e.setUint16(8,fichiers.length,true);e.setUint16(10,fichiers.length,true);
+  e.setUint32(12,taille,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...central,new Uint8Array(e.buffer)],{type:"application/zip"});
+}
+async function dezipper(buf){
+  const u=new Uint8Array(buf), v=new DataView(buf); let e=-1;
+  for(let i=u.length-22;i>=Math.max(0,u.length-70000);i--)if(v.getUint32(i,true)===0x06054b50){e=i;break;}
+  if(e<0)throw new Error("Ce fichier n'est pas un .zip valide.");
+  const n=v.getUint16(e+10,true); let p=v.getUint32(e+16,true); const dec=new TextDecoder(), out={};
+  for(let k=0;k<n;k++){
+    if(v.getUint32(p,true)!==0x02014b50)break;
+    const meth=v.getUint16(p+10,true), cs=v.getUint32(p+20,true), nl=v.getUint16(p+28,true), xl=v.getUint16(p+30,true), cl=v.getUint16(p+32,true), lo=v.getUint32(p+42,true);
+    const nom=dec.decode(u.subarray(p+46,p+46+nl)); p+=46+nl+xl+cl;
+    if(nom.endsWith("/"))continue;
+    const deb=lo+30+v.getUint16(lo+26,true)+v.getUint16(lo+28,true), brut=u.slice(deb,deb+cs);
+    if(meth===0)out[nom]=brut;
+    else if(meth===8&&window.DecompressionStream)out[nom]=new Uint8Array(await new Response(new Blob([brut]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+  }
+  return out;
+}
+const EXT={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif","image/svg+xml":"svg"};
+const MIME={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",gif:"image/gif",svg:"image/svg+xml"};
+function slug(s){return (s||"pack").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,30)||"pack";}
+async function exporter(rec){
+  const id=slug(rec.nom), fichiers=[], data=async b=>new Uint8Array(await b.arrayBuffer());
+  const pack={id,nom:rec.nom,emoji:rec.emoji||"🎮",couleurs:rec.couleurs,cartes:[],lieux:[]};
+  for(const [i,c] of rec.cartes.entries()){
+    const f=`carte-${i+1}.${EXT[c.blob.type]||"jpg"}`; fichiers.push({nom:`${id}/${f}`,data:await data(c.blob)});
+    pack.cartes.push({id:c.id,nom:c.nom,img:f,taille:c.taille||0});
+  }
+  let j=0;
+  for(const l of rec.lieux){
+    if(l.x==null||!l.carte)continue; j++;
+    const f=`lieu-${j}.${EXT[l.blob.type]||"jpg"}`; fichiers.push({nom:`${id}/${f}`,data:await data(l.blob)});
+    pack.lieux.push({img:f,carte:l.carte,x:+l.x.toFixed(4),y:+l.y.toFixed(4),indice:l.indice||""});
+  }
+  const enc=new TextEncoder();
+  fichiers.unshift({nom:`${id}/pack.js`,data:enc.encode(`/* Pack GéoGamer — format : GEO_PACKS.push(<JSON>); */\nGEO_PACKS.push(${JSON.stringify(pack,null,1)});\n`)});
+  fichiers.push({nom:`${id}/LISEZMOI.txt`,data:enc.encode(
+`Pack GéoGamer « ${rec.nom} »
+
+Pour y jouer sur un autre appareil : ouvre GéoGamer et clique sur « Importer un pack (.zip) ».
+
+Pour l'ajouter au site pour tout le monde :
+1. Copie le dossier « ${id} » dans jeux/geoguessr/packs/
+2. Ajoute "${id}" dans la liste de jeux/geoguessr/packs/liste.js
+3. Pousse les changements sur GitHub.
+`)});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(zipper(fichiers)); a.download=`geogamer-${id}.zip`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+$("bImporter").onclick=()=>$("fImport").click();
+$("fImport").onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f)return;
+  try{
+    const z=await dezipper(await f.arrayBuffer());
+    const cle=Object.keys(z).find(k=>/(^|\/)pack\.js$/.test(k)); if(!cle)throw new Error("pack.js introuvable dans le .zip.");
+    const dir=cle.slice(0,cle.length-"pack.js".length), txt=new TextDecoder().decode(z[cle]);
+    const p=JSON.parse(txt.slice(txt.indexOf("{"),txt.lastIndexOf("}")+1));
+    const blob=nom=>{const d=z[dir+nom];if(!d)throw new Error("Image manquante : "+nom);return new Blob([d],{type:MIME[(nom.split(".").pop()||"").toLowerCase()]||"image/jpeg"});};
+    const rec={id:"perso-"+rid(),nom:String(p.nom||"Pack importé").slice(0,40),emoji:p.emoji||"🎮",couleurs:p.couleurs,maj:Date.now(),
+      cartes:(p.cartes||[]).map(c=>({id:String(c.id),nom:String(c.nom||c.id),taille:+c.taille||0,blob:blob(c.img)})),
+      lieux:(p.lieux||[]).map(l=>({id:"l"+rid(),blob:blob(l.img),carte:String(l.carte),x:+l.x,y:+l.y,indice:String(l.indice||"")}))};
+    if(!rec.cartes.length||!rec.lieux.length)throw new Error("Le pack ne contient aucune carte ou capture.");
+    await DB.mettre(rec); SEL.add(rec.id); lsSet("geogamer_sel",[...SEL]);
+    await rafraichirPacks(); toast(`✅ « ${rec.nom} » importé (${rec.lieux.length} captures)`);
+  }catch(err){ toast("❌ "+err.message); }
+};
+
+/* ============================================================
+   DÉMARRAGE
+   ============================================================ */
+(async()=>{ PACKS_SITE=await chargerPacksSite(); await rafraichirPacks(); })();
+</script>
+</body>
+</html>
