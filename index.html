@@ -36,14 +36,17 @@ a.card:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.12)}
 .card.soon .play{background:transparent;color:var(--muted);border:1px dashed var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:30px}
 
-.topbar{position:absolute;top:14px;right:16px;z-index:10}
+.topbar{position:absolute;top:14px;right:16px;z-index:10;display:flex;align-items:center;gap:8px}
+.reglages{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);text-decoration:none;font-size:1.15rem}
+.reglages:hover{transform:rotate(30deg)}
+.record{font-size:.82rem;font-weight:700;color:var(--text);background:var(--bg);border-radius:10px;padding:5px 9px;align-self:flex-start}
 .annonce{margin:0 auto 24px;max-width:720px;padding:12px 18px;border-radius:14px;background:var(--card);border:2px dashed var(--accent);text-align:center;font-weight:700;white-space:pre-wrap}
 .card.hidden-admin{opacity:.6;outline:2px dashed var(--muted)}
 footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
 </style>
 </head>
 <body>
-<div class="topbar" id="compte"></div>
+<div class="topbar"><a class="reglages" href="reglages/" title="Réglages : pseudo, avatar, clés IA, sauvegarde">⚙️</a><div id="compte"></div></div>
 <main>
   <div class="annonce" id="annonce" hidden></div>
   <section class="hero">
@@ -60,6 +63,7 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
 
 <script src="jeux/commun/catalogue.js"></script>
 <script src="jeux/commun/compte.js"></script>
+<script src="jeux/commun/base.js"></script>
 <script>
 const GAMES = window.SALLE_CATALOGUE;
 const grid = document.getElementById("grid");
@@ -95,16 +99,48 @@ function render(){
       <div class="body">
         <h2></h2><p></p>
         <div class="tags"></div>
+        ${ready && recordDe(g.slug) ? `<span class="record"></span>` : ""}
         <span class="play">${ready ? "▶ Jouer" : "En préparation"}</span>
       </div>`;
     if(badge) el.querySelector(".badge").textContent = badge;
     el.querySelector(".cover").textContent = g.emoji || "🎲";
     el.querySelector("h2").textContent = g.title;
     el.querySelector("p").textContent = g.desc || "";
+    const rec = el.querySelector(".record");
+    if(rec) rec.textContent = recordDe(g.slug);
     const t = el.querySelector(".tags");
     (g.tags || []).forEach(x => { const s = document.createElement("span"); s.textContent = x; t.appendChild(s); });
     grid.appendChild(el);
   }
+}
+
+/* Record du joueur sur cet appareil, affiché sur la carte du jeu.
+   Les nouveaux jeux passent par Base.record() ; les anciens sont lus ici. */
+function lireLS(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } }
+const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions"];
+function recordDe(slug){
+  try{
+    const r = Base.records()[slug];
+    if(r && r.texte) return "🏆 " + r.texte;
+    if(DLE.includes(slug)){
+      const s = lireLS(slug + "_statsDaily", null);
+      if(s && (s.best || s.streak)) return `🔥 Série ${s.streak || 0} · record ${s.best || 0}`;
+    }
+    if(slug === "blocs" || slug === "labyrinthe"){
+      const l = lireLS(slug + "_scores", []);
+      if(l.length) return "🏆 " + Math.max(...l.map(e => e.s || 0)).toLocaleString("fr-FR") + " pts";
+    }
+    if(slug === "demineur"){
+      const a = lireLS("demineur_scores", {});
+      for(const [k, n] of [["expert", "Expert"], ["moyen", "Moyen"], ["facile", "Facile"]])
+        if(a[k] && a[k][0]) return `🏆 ${n} : ${(a[k][0].t / 1000).toLocaleString("fr-FR", {maximumFractionDigits: 1})} s`;
+    }
+    if(slug === "quiz"){
+      const l = lireLS("qz_best", []);
+      if(l[0]) return "🏆 " + l[0].sc.toLocaleString("fr-FR") + " pts";
+    }
+  }catch(e){}
+  return "";
 }
 
 function renderFilters(){

@@ -1,0 +1,73 @@
+/* ============================================================
+   STYLE COMMUN DE LA SALLE DE JEUX
+   À inclure dans chaque nouveau jeu :
+     <link rel="stylesheet" href="../commun/base.css">
+   Pour changer l'ambiance d'un jeu, redéfinis seulement --accent
+   (et éventuellement --fond1 / --fond2 pour les halos du fond) :
+     :root{--accent:#3aa76d;--fond1:rgba(58,167,109,.14)}
+   ============================================================ */
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700;800&display=swap");
+
+:root{
+  --bg:#fbf6ef;--card:#fff;--text:#22192b;--muted:#776c80;--line:#ecdfd2;--soft:#f1e8dd;
+  --accent:#e86a92;--ok:#3aa76d;--ko:#e8607a;
+  --fond1:rgba(232,106,146,.12);--fond2:rgba(91,107,208,.12);
+  --rayon:16px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#17131c;--card:#231d2b;--text:#f3ecf6;--muted:#a99bb3;--line:#352c40;--soft:#2b2433;
+}}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;
+  background-image:radial-gradient(circle at 12% 8%,var(--fond1),transparent 40%),radial-gradient(circle at 88% 25%,var(--fond2),transparent 40%)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3,.titre{font-family:Fredoka,sans-serif}
+.muted{color:var(--muted)}
+.cache{display:none!important}
+
+/* ---------- En-tête commun (créé par Base.entete) ---------- */
+.b-entete{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.b-entete h1{font-size:1.3rem;margin:0;flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b-entete .b-ico{display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:40px;padding:0 8px;border-radius:12px;
+  background:transparent;border:0;font-size:1.2rem;text-decoration:none;color:var(--text)}
+.b-entete .b-ico:hover{background:var(--soft)}
+.b-entete .b-gauche,.b-entete .b-droite{display:flex;gap:2px;min-width:84px}
+.b-entete .b-droite{justify-content:flex-end}
+@media (max-width:420px){.b-entete h1{font-size:1.1rem}.b-entete .b-gauche,.b-entete .b-droite{min-width:0}}
+
+/* ---------- Mise en page ---------- */
+.b-page{flex:1;width:100%;max-width:960px;margin:0 auto;padding:16px 16px 32px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.b-carte{background:var(--card);border:1px solid var(--line);border-radius:var(--rayon);padding:18px;width:100%}
+
+/* ---------- Boutons ---------- */
+.btn{border:0;border-radius:12px;padding:10px 18px;font-weight:800;background:var(--accent);color:#fff;transition:transform .1s,filter .15s}
+.btn:hover{filter:brightness(1.06)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn.petit{padding:6px 12px;font-size:.88rem}
+.pilules{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.pilules button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-weight:700;font-size:.9rem}
+.pilules button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+
+/* ---------- Champs ---------- */
+.champ{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 12px}
+.champ:focus{outline:2px solid var(--accent);outline-offset:1px}
+label.etiquette{display:block;font-weight:800;font-size:.9rem;margin:10px 0 4px}
+
+/* ---------- Fenêtres (Base.fenetre) ---------- */
+dialog.b-fen{border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--text);padding:20px;width:min(440px,92vw);max-height:88vh;overflow:auto}
+dialog.b-fen::backdrop{background:rgba(0,0,0,.45)}
+dialog.b-fen h2{margin:0 0 10px;padding-right:30px}
+dialog.b-fen .b-x{position:absolute;top:10px;right:12px;border:0;background:transparent;font-size:1.4rem;color:var(--muted)}
+dialog.b-fen ul{padding-left:20px}
+dialog.b-fen li{margin:4px 0}
+
+/* ---------- Petit message flottant (Base.toast) ---------- */
+.b-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:12px;font-weight:800;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90vw;text-align:center}
+
+/* ---------- Bandeau réseau (Reseau) ---------- */
+.b-bandeau{background:#f2c14e;color:#22192b;text-align:center;font-weight:800;padding:6px 10px;font-size:.9rem}

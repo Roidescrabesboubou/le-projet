@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Nouveau jeu</title>
+<!-- ================================================================
+     MODÈLE DE JEU — à copier pour créer un nouveau jeu
+     1. Copie ce dossier : jeux/_modele/  →  jeux/<slug>/  (ex. jeux/morpion/)
+     2. Change le <title>, l'appel Base.entete() et la couleur --accent.
+     3. Écris le jeu dans <main> et dans le <script> du bas.
+     4. Ajoute le jeu dans jeux/commun/catalogue.js (même slug).
+     Règles de la maison :
+       - jouable au doigt sur téléphone (pas seulement au clavier) ;
+       - règles courtes dans « aide » (affichées à la 1re visite) ;
+       - record avec Base.record() → il apparaît sur l'accueil ;
+       - jeu IA ? ajoute ia: true dans le catalogue + ../commun/ia.js ;
+       - jeu en ligne ? ../commun/reseau.js (voir puissance4 pour un exemple).
+     ================================================================ -->
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#5b6bd0;--fond1:rgba(91,107,208,.14);--fond2:rgba(232,106,146,.1)}
+/* styles propres au jeu ici */
+.score{font-family:Fredoka,sans-serif;font-size:2.4rem;margin:0}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section class="b-carte" style="text-align:center">
+    <p class="muted">Remplace ce contenu par ton jeu.</p>
+    <p class="score" id="score">0</p>
+    <button class="btn" id="clic">+1</button>
+    <button class="btn ghost" id="fin">Terminer la partie</button>
+  </section>
+</main>
+
+<!-- Ordre des scripts : garde (jeux cachés / IA) → base → modules utiles → le jeu -->
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<!-- <script src="../commun/classement.js"></script>  classement en ligne (top 10) -->
+<!-- <script src="../commun/reseau.js"></script>      jeu en ligne -->
+<!-- <script src="../commun/ia.js"></script>          jeu avec IA -->
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("modele_");      // ← préfixe unique pour ce jeu
+
+Base.entete({
+  titre: "Nouveau jeu",
+  emoji: "🎲",
+  aide: `<p>Explique ici le but du jeu en une phrase.</p>
+         <ul><li>Règle 1</li><li>Règle 2</li></ul>`
+});
+
+let score = 0;
+$("clic").onclick = () => { score++; $("score").textContent = score; };
+$("fin").onclick = () => {
+  if(Base.record("_modele", score, {mieux: "haut", texte: score + " points"})) Base.toast("🏆 Nouveau record !");
+  else Base.toast("Partie terminée : " + score + " points");
+  stock.ecrire("parties", stock.lire("parties", 0) + 1);
+  score = 0; $("score").textContent = score;
+};
+</script>
+</body>
+</html>

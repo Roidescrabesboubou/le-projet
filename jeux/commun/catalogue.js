@@ -2,9 +2,15 @@
    CATALOGUE DES JEUX (partagé par l'accueil, le panel admin
    et la protection des jeux cachés)
 
-   Pour ajouter un jeu : crée un dossier jeux/<slug>/index.html,
-   ajoute une entrée ci-dessous, et mets dans la page du jeu :
-     <script src="../commun/garde.js"></script>
+   Pour ajouter un jeu :
+     1. copie le dossier jeux/_modele/ en jeux/<slug>/ (il est déjà
+        branché sur la base commune : garde.js, base.css, base.js) ;
+     2. ajoute une entrée ci-dessous avec le même slug.
+   Modules communs (dans jeux/commun/) :
+     base.css / base.js → style, en-tête 🏠❓⚙️, pseudo, records
+     reseau.js          → jeu en ligne (salles avec code)
+     ia.js              → appels IA avec les clés des ⚙️ Réglages
+     classement.js      → top 10 en ligne · series.js → séries -dle
 
    etat par défaut :
      "dispo"   → visible et jouable
@@ -148,6 +154,16 @@ window.SALLE_CATALOGUE = [
     desc: "Plus de 750 questions dans 16 thèmes (histoire, sciences, animés, mythologie, Marseille…). Réponds vite pour marquer gros ! En solo, à plusieurs sur un écran ou en ligne, chacun sur son appareil.",
     tags: ["Quiz", "Multijoueur", "Party", "Solo"],
     colors: ["#9b84f5", "#ff8a3d"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "puissance4",
+    title: "Puissance 4",
+    emoji: "🔴",
+    desc: "Aligne 4 jetons avant ton adversaire ! Contre l'ordi (3 niveaux), à deux sur le même écran ou en ligne contre un ami avec un code de salle.",
+    tags: ["Réflexion", "Multijoueur", "Solo"],
+    colors: ["#ff6b6b", "#f7c948"],
     etat: "dispo",
     badge: "Nouveau"
   },

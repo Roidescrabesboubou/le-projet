@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Puissance 4</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#e94f4f;--fond1:rgba(255,107,107,.14);--fond2:rgba(247,201,72,.14);
+  --rouge:#ff5c5c;--rouge2:#c93636;--jaune:#f7c948;--jaune2:#c99a14;--plateau:#3b5bdb;--plateau2:#2f49b3;--trou:var(--bg)}
+.b-page{max-width:620px}
+
+/* ---------- Menu ---------- */
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;width:100%}
+.mode{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 12px;transition:transform .15s,box-shadow .15s}
+.mode:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.1)}
+.mode .ic{font-size:2.2rem}
+.mode b{font-family:Fredoka,sans-serif;font-size:1.15rem}
+.mode small{color:var(--muted)}
+.panneau h2{margin:0 0 8px;font-size:1.2rem}
+.ligne{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ligne .champ{flex:1;min-width:140px}
+.code{font-family:Fredoka,sans-serif;font-size:2.4rem;letter-spacing:6px;text-align:center;margin:6px 0}
+.msg{min-height:1.3em;font-weight:700;font-size:.9rem;margin:8px 0 0}
+.sep{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem;margin:14px 0}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ---------- Partie ---------- */
+.joueurs{display:flex;gap:10px;width:100%}
+.jr{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:8px 10px;min-width:0;transition:border-color .2s,transform .2s}
+.jr.actif{border-color:var(--c);transform:scale(1.03)}
+.jr .dsq{width:22px;height:22px;border-radius:50%;background:var(--c);box-shadow:inset 0 -3px 0 rgba(0,0,0,.2);flex:none}
+.jr .nom{flex:1;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr .pts{font-family:Fredoka,sans-serif;font-size:1.4rem}
+.statut{font-weight:800;text-align:center;min-height:1.4em;font-size:1.05rem}
+
+.zone{width:min(100%,520px);user-select:none;-webkit-user-select:none}
+.apercu{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--g);padding:0 var(--g);margin-bottom:4px}
+.apercu div{aspect-ratio:1;border-radius:50%;opacity:0;transition:opacity .1s}
+.apercu div.on{opacity:.45}
+.plateau{--g:clamp(4px,1.6vw,9px);display:grid;grid-template-columns:repeat(7,1fr);gap:var(--g);padding:var(--g);background:linear-gradient(var(--plateau),var(--plateau2));border-radius:18px;box-shadow:0 10px 26px rgba(0,0,0,.2);touch-action:manipulation;position:relative}
+.zone{--g:clamp(4px,1.6vw,9px)}
+.case{aspect-ratio:1;border-radius:50%;background:var(--trou);box-shadow:inset 0 3px 6px rgba(0,0,0,.35);position:relative;cursor:pointer;overflow:visible}
+.plateau.bloque .case{cursor:default}
+.jeton{position:absolute;inset:0;border-radius:50%}
+.j1{background:radial-gradient(circle at 35% 30%,#ff8a8a,var(--rouge) 55%,var(--rouge2));box-shadow:inset 0 -4px 0 rgba(0,0,0,.18)}
+.j2{background:radial-gradient(circle at 35% 30%,#ffe08a,var(--jaune) 55%,var(--jaune2));box-shadow:inset 0 -4px 0 rgba(0,0,0,.18)}
+.tombe{animation:tombe var(--d,.4s) cubic-bezier(.45,0,.9,.6)}
+@keyframes tombe{from{transform:translateY(var(--de))}to{transform:none}}
+.gagne .jeton{animation:brille .8s ease-in-out infinite alternate}
+.gagne::after{content:"";position:absolute;inset:22%;border-radius:50%;border:3px solid rgba(255,255,255,.9)}
+@keyframes brille{to{filter:brightness(1.3)}}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.aide-clavier{font-size:.8rem;color:var(--muted);text-align:center;margin:0}
+@media (hover:none){.aide-clavier,.apercu{display:none}}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <!-- MENU -->
+  <section id="menu" class="modes">
+    <button class="mode" data-mode="ordi"><span class="ic">🤖</span><b>Contre l'ordi</b><small>3 niveaux de difficulté</small></button>
+    <button class="mode" data-mode="local"><span class="ic">👥</span><b>À deux</b><small>Sur le même écran</small></button>
+    <button class="mode" data-mode="ligne"><span class="ic">🌐</span><b>En ligne</b><small>Contre un ami, chacun chez soi</small></button>
+  </section>
+
+  <!-- NIVEAU ORDI -->
+  <section id="pNiveau" class="b-carte panneau cache">
+    <h2>🤖 Choisis le niveau</h2>
+    <div class="pilules" id="niveaux"></div>
+    <p class="msg muted" id="statsOrdi"></p>
+    <div class="actions" style="margin-top:12px"><button class="btn" id="goOrdi">Jouer</button><button class="btn ghost retour">Retour</button></div>
+  </section>
+
+  <!-- EN LIGNE -->
+  <section id="pLigne" class="b-carte panneau cache">
+    <h2>🌐 Jouer en ligne</h2>
+    <label class="etiquette" for="pseudo">Ton pseudo</label>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton pseudo">
+    <div class="actions" style="margin-top:12px;justify-content:flex-start"><button class="btn" id="creer">Créer une salle</button></div>
+    <div class="sep">ou rejoindre un ami</div>
+    <div class="ligne"><input class="champ" id="codeIn" maxlength="5" placeholder="Code (ex. KXRT1)" style="text-transform:uppercase"><button class="btn" id="rejoindre">Rejoindre</button></div>
+    <p class="msg" id="msgLigne"></p>
+    <div class="actions" style="margin-top:8px;justify-content:flex-start"><button class="btn ghost petit retour">Retour</button><button class="btn ghost petit" id="tester">🩺 Tester ma connexion</button></div>
+  </section>
+
+  <!-- ATTENTE (hôte) -->
+  <section id="pAttente" class="b-carte panneau cache" style="text-align:center">
+    <h2>⏳ En attente d'un adversaire…</h2>
+    <p class="muted">Donne ce code à ton ami :</p>
+    <p class="code" id="code"></p>
+    <div class="actions"><button class="btn" id="copier">🔗 Copier le lien d'invitation</button><button class="btn ghost" id="annuler">Annuler</button></div>
+  </section>
+
+  <!-- PARTIE -->
+  <section id="jeu" class="cache" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div class="joueurs">
+      <div class="jr" id="jr1" style="--c:var(--rouge)"><span class="dsq"></span><span class="nom"></span><span class="pts">0</span></div>
+      <div class="jr" id="jr2" style="--c:var(--jaune)"><span class="dsq"></span><span class="nom"></span><span class="pts">0</span></div>
+    </div>
+    <div class="statut" id="statut"></div>
+    <div class="zone">
+      <div class="apercu" id="apercu"></div>
+      <div class="plateau" id="plateau"></div>
+    </div>
+    <p class="aide-clavier">Astuce : touches 1 à 7 pour jouer au clavier.</p>
+    <div class="actions">
+      <button class="btn cache" id="rejouer">🔁 Revanche</button>
+      <button class="btn ghost" id="quitter">🏠 Menu</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("puissance4_");
+const L = 6, C = 7, ORDRE = [3, 2, 4, 1, 5, 0, 6];
+
+Base.entete({
+  titre: "Puissance 4", emoji: "🔴",
+  aide: `<p>Fais tomber tes jetons dans les colonnes. Le premier qui en <b>aligne 4</b> gagne : à l'horizontale, à la verticale ou en diagonale.</p>
+  <ul>
+    <li>Touche (ou clique) une colonne pour y lâcher un jeton.</li>
+    <li>Si le plateau est plein sans alignement : match nul.</li>
+    <li>À chaque revanche, c'est l'autre joueur qui commence.</li>
+    <li><b>En ligne</b> : crée une salle et envoie le code (ou le lien) à ton ami.</li>
+  </ul>`
+});
+
+/* =================================================================
+   RÈGLES
+   ================================================================= */
+const vide = () => new Array(L * C).fill(0);
+const jouable = (g, c) => g[c] === 0;
+function poser(g, c, p){ for(let r = L - 1; r >= 0; r--) if(!g[r * C + c]){ g[r * C + c] = p; return r; } return -1; }
+function retirer(g, c){ for(let r = 0; r < L; r++) if(g[r * C + c]){ g[r * C + c] = 0; return; } }
+const plein = g => ORDRE.every(c => !jouable(g, c));
+function ligneGagnante(g, r, c){
+  const p = g[r * C + c]; if(!p) return null;
+  for(const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]){
+    const l = [r * C + c];
+    for(const s of [1, -1]){
+      let rr = r + dr * s, cc = c + dc * s;
+      while(rr >= 0 && rr < L && cc >= 0 && cc < C && g[rr * C + cc] === p){ l.push(rr * C + cc); rr += dr * s; cc += dc * s; }
+    }
+    if(l.length >= 4) return l;
+  }
+  return null;
+}
+
+/* =================================================================
+   ORDI (negamax + élagage alpha-bêta)
+   ================================================================= */
+const FENETRES = [];
+for(let r = 0; r < L; r++) for(let c = 0; c < C; c++)
+  for(const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]){
+    const er = r + dr * 3, ec = c + dc * 3;
+    if(er >= 0 && er < L && ec >= 0 && ec < C) FENETRES.push([0, 1, 2, 3].map(i => (r + dr * i) * C + c + dc * i));
+  }
+function evaluer(g, p){
+  const o = 3 - p; let s = 0;
+  for(let r = 0; r < L; r++){ const v = g[r * C + 3]; if(v === p) s += 3; else if(v === o) s -= 3; }
+  for(const f of FENETRES){
+    let m = 0, a = 0;
+    for(const i of f){ if(g[i] === p) m++; else if(g[i] === o) a++; }
+    if(m && a) continue;
+    if(m === 3) s += 6; else if(m === 2) s += 2;
+    if(a === 3) s -= 8; else if(a === 2) s -= 2;
+  }
+  return s;
+}
+function negamax(g, prof, alpha, beta, p){
+  let possible = false;
+  for(const c of ORDRE){
+    if(!jouable(g, c)) continue;
+    possible = true;
+    const r = poser(g, c, p);
+    let v;
+    if(ligneGagnante(g, r, c)) v = 100000 + prof;
+    else if(prof === 0) v = evaluer(g, p);
+    else v = -negamax(g, prof - 1, -beta, -alpha, 3 - p);
+    retirer(g, c);
+    if(v > alpha) alpha = v;
+    if(alpha >= beta) break;
+  }
+  return possible ? alpha : 0;
+}
+function coupOrdi(g, p, niveau){
+  const libres = ORDRE.filter(c => jouable(g, c));
+  // toujours gagner / bloquer un coup gagnant immédiat (sauf parfois en facile)
+  for(const q of [p, 3 - p]){
+    if(niveau === "facile" && Math.random() < .35) break;
+    for(const c of libres){ const r = poser(g, c, q), w = ligneGagnante(g, r, c); retirer(g, c); if(w) return c; }
+  }
+  if(niveau === "facile" && Math.random() < .55) return libres[Math.floor(Math.random() * libres.length)];
+  const prof = {facile: 1, moyen: 4, difficile: 7}[niveau];
+  let best = -Infinity, choix = [];
+  for(const c of libres){
+    const r = poser(g, c, p);
+    const v = ligneGagnante(g, r, c) ? 1e6 : -negamax(g, prof - 1, -Infinity, Infinity, 3 - p);
+    retirer(g, c);
+    if(v > best){ best = v; choix = [c]; } else if(v === best) choix.push(c);
+  }
+  if(niveau === "moyen" && Math.random() < .15) return libres[Math.floor(Math.random() * libres.length)];
+  return choix[Math.floor(Math.random() * choix.length)];
+}
+
+/* =================================================================
+   ÉTAT DE LA PARTIE
+   G est tout ce qu'il faut pour dessiner (envoyé tel quel en ligne)
+   ================================================================= */
+let G = null, mode = null, niveau = stock.lire("niveau", "moyen"), salle = null, moi = 1, ordiPense = false, attenteCoup = false, dernierVu = -1;
+
+function nouvellePartie(noms){
+  G = {g: vide(), tour: 1, premier: 1, fin: null, scores: [0, 0, 0], noms: ["", ...noms], dernier: -1, n: 0};
+}
+function nouvelleManche(){
+  G.premier = 3 - G.premier;
+  G.g = vide(); G.tour = G.premier; G.fin = null; G.dernier = -1; G.n++;
+}
+function jouer(c){
+  if(!G || G.fin || !jouable(G.g, c)) return false;
+  const p = G.tour, r = poser(G.g, c, p);
+  G.dernier = r * C + c;
+  const w = ligneGagnante(G.g, r, c);
+  if(w){ G.fin = {gagnant: p, ligne: w}; G.scores[p]++; }
+  else if(plein(G.g)) G.fin = {gagnant: 0, ligne: []};
+  else G.tour = 3 - p;
+  return true;
+}
+
+/* =================================================================
+   AFFICHAGE
+   ================================================================= */
+const plateau = $("plateau"), apercu = $("apercu");
+for(let i = 0; i < L * C; i++){
+  const d = document.createElement("div"); d.className = "case"; d.dataset.c = i % C;
+  plateau.appendChild(d);
+}
+for(let c = 0; c < C; c++){ const d = document.createElement("div"); apercu.appendChild(d); }
+
+function monTour(){
+  if(!G || G.fin) return false;
+  if(mode === "local") return true;
+  if(mode === "ordi") return G.tour === 1 && !ordiPense;
+  if(mode === "ligne") return G.tour === moi && !attenteCoup;
+  return false;
+}
+
+function dessiner(){
+  if(!G) return;
+  const cases = plateau.children;
+  const anime = G.dernier !== dernierVu && G.dernier >= 0;
+  for(let i = 0; i < L * C; i++){
+    const v = G.g[i], k = cases[i];
+    const deja = k.firstChild;
+    if(!v){ if(deja) k.innerHTML = ""; }
+    else if(!deja || !deja.classList.contains("j" + v)){
+      k.innerHTML = `<div class="jeton j${v}"></div>`;
+      if(anime && i === G.dernier){
+        const r = Math.floor(i / C), j = k.firstChild;
+        j.style.setProperty("--de", `calc(${-(r + 1) * 100}% - ${r + 1} * var(--g) - 10px)`);
+        j.style.setProperty("--d", (0.18 + r * 0.06) + "s");
+        j.classList.add("tombe");
+      }
+    }
+    k.classList.toggle("gagne", !!(G.fin && G.fin.ligne.includes(i)));
+  }
+  dernierVu = G.dernier;
+  plateau.classList.toggle("bloque", !monTour());
+
+  for(const p of [1, 2]){
+    const b = $("jr" + p);
+    b.querySelector(".nom").textContent = G.noms[p];
+    b.querySelector(".pts").textContent = G.scores[p];
+    b.classList.toggle("actif", !G.fin && G.tour === p);
+  }
+  const nom = p => G.noms[p];
+  let s;
+  if(G.fin){
+    if(!G.fin.gagnant) s = "🤝 Match nul !";
+    else if(mode === "ordi") s = G.fin.gagnant === 1 ? "🎉 Tu as gagné !" : "🤖 L'ordi a gagné…";
+    else if(mode === "ligne") s = G.fin.gagnant === moi ? "🎉 Tu as gagné !" : `😵 ${nom(G.fin.gagnant)} a gagné…`;
+    else s = `🎉 ${nom(G.fin.gagnant)} a gagné !`;
+  }else if(mode === "ordi") s = G.tour === 1 ? "À toi de jouer !" : "🤖 L'ordi réfléchit…";
+  else if(mode === "ligne") s = G.tour === moi ? "À toi de jouer !" : `Au tour de ${nom(G.tour)}…`;
+  else s = `Au tour de ${nom(G.tour)}`;
+  $("statut").textContent = s;
+  $("rejouer").classList.toggle("cache", !G.fin);
+  majApercu(-1);
+}
+
+let survol = -1;
+function majApercu(c){
+  if(c !== -2) survol = c;
+  [...apercu.children].forEach((d, i) => {
+    const on = i === survol && monTour() && jouable(G.g, i);
+    d.className = on ? "on jeton j" + G.tour : "";
+    d.style.position = "relative";
+  });
+}
+plateau.addEventListener("mousemove", e => { const k = e.target.closest(".case"); majApercu(k ? +k.dataset.c : -1); });
+plateau.addEventListener("mouseleave", () => majApercu(-1));
+plateau.addEventListener("click", e => { const k = e.target.closest(".case"); if(k) clicColonne(+k.dataset.c); });
+document.addEventListener("keydown", e => {
+  if($("jeu").classList.contains("cache") || e.target.matches("input")) return;
+  const n = parseInt(e.key); if(n >= 1 && n <= 7) clicColonne(n - 1);
+});
+
+function clicColonne(c){
+  if(!monTour() || !jouable(G.g, c)) return;
+  if(mode === "ligne"){
+    if(salle.hote){ jouer(c); diffuser(); dessiner(); finDeManche(); }
+    else { attenteCoup = true; salle.envoyer({t: "coup", col: c}); plateau.classList.add("bloque"); setTimeout(() => { if(attenteCoup){ attenteCoup = false; dessiner(); } }, 4000); }
+    return;
+  }
+  jouer(c); dessiner(); finDeManche();
+  if(mode === "ordi" && !G.fin) tourOrdi();
+}
+
+function tourOrdi(){
+  ordiPense = true; dessiner();
+  setTimeout(() => {
+    const c = coupOrdi(G.g.slice(), 2, niveau);
+    ordiPense = false; jouer(c); dessiner(); finDeManche();
+  }, 450);
+}
+
+function finDeManche(){
+  if(!G.fin || mode !== "ordi" || G.fin.gagnant !== 1) return;
+  const v = stock.lire("victoires", {facile: 0, moyen: 0, difficile: 0});
+  v[niveau] = (v[niveau] || 0) + 1; stock.ecrire("victoires", v);
+  const total = v.facile + v.moyen + v.difficile;
+  Base.record("puissance4", total, {texte: `${total} victoire${total > 1 ? "s" : ""} contre l'ordi` + (v.difficile ? ` (dont ${v.difficile} en Difficile)` : "")});
+}
+
+/* =================================================================
+   ÉCRANS
+   ================================================================= */
+function ecran(id){
+  ["menu", "pNiveau", "pLigne", "pAttente", "jeu"].forEach(x => $(x).classList.toggle("cache", x !== id));
+}
+document.querySelectorAll(".retour").forEach(b => b.onclick = () => ecran("menu"));
+document.querySelectorAll(".mode").forEach(b => b.onclick = () => {
+  const m = b.dataset.mode;
+  if(m === "ordi"){ afficherNiveaux(); ecran("pNiveau"); }
+  if(m === "local"){ mode = "local"; nouvellePartie(["Rouge", "Jaune"]); G.premier = 2; nouvelleManche(); G.scores = [0, 0, 0]; lancer(); }
+  if(m === "ligne"){ $("pseudo").value = Base.joueur.pseudo(); $("msgLigne").textContent = ""; ecran("pLigne"); }
+});
+
+const NIVEAUX = {facile: "😊 Facile", moyen: "🤔 Moyen", difficile: "😈 Difficile"};
+function afficherNiveaux(){
+  const z = $("niveaux"); z.innerHTML = "";
+  for(const [k, t] of Object.entries(NIVEAUX)){
+    const b = document.createElement("button"); b.textContent = t; if(k === niveau) b.className = "on";
+    b.onclick = () => { niveau = k; stock.ecrire("niveau", k); afficherNiveaux(); };
+    z.appendChild(b);
+  }
+  const v = stock.lire("victoires", {}), n = v[niveau] || 0;
+  $("statsOrdi").textContent = n ? `Tu as battu l'ordi ${n} fois dans ce niveau.` : "Tu n'as pas encore battu l'ordi dans ce niveau.";
+}
+$("goOrdi").onclick = () => {
+  mode = "ordi";
+  nouvellePartie([Base.joueur.pseudo() || "Toi", "Ordi (" + NIVEAUX[niveau].split(" ")[1] + ")"]);
+  G.premier = 2; nouvelleManche();   // le joueur commence la 1re manche
+  lancer();
+};
+function lancer(){ dernierVu = -1; [...plateau.children].forEach(k => k.innerHTML = ""); ecran("jeu"); dessiner(); if(mode === "ordi" && G.tour === 2) tourOrdi(); }
+
+$("rejouer").onclick = () => {
+  if(mode === "ligne"){
+    if(salle.hote){ nouvelleManche(); diffuser(); dessiner(); }
+    else { salle.envoyer({t: "rejouer"}); $("statut").textContent = "Revanche demandée…"; }
+    return;
+  }
+  nouvelleManche(); dessiner();
+  if(mode === "ordi" && G.tour === 2) tourOrdi();
+};
+$("quitter").onclick = () => {
+  if(salle){ salle.quitter(); salle = null; }
+  G = null; mode = null; ecran("menu");
+};
+
+/* =================================================================
+   EN LIGNE : l'hôte (rouge) arbitre, l'invité (jaune) envoie ses coups
+   ================================================================= */
+function diffuser(){ if(salle && salle.hote) salle.envoyer({t: "etat", G}); }
+function pseudoOK(){
+  const p = $("pseudo").value.trim();
+  if(!p){ $("pseudo").focus(); $("msgLigne").textContent = "Choisis d'abord un pseudo 🙂"; return false; }
+  Base.joueur.changerPseudo(p); return true;
+}
+$("creer").onclick = async () => {
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Création de la salle…";
+  try{
+    salle = await Reseau.creer("puissance4", {
+      max: 2,
+      surEssai: t => $("msgLigne").textContent = t,
+      surArrivee(j){
+        mode = "ligne"; moi = 1;
+        nouvellePartie([Base.joueur.pseudo() || "Hôte", j.pseudo]);
+        G.premier = 2; nouvelleManche();
+        lancer(); diffuser();
+        Base.toast(j.avatar + " " + j.pseudo + " a rejoint la partie !");
+      },
+      surDepart(j){
+        Base.toast(j.pseudo + " a quitté la partie.");
+        G = null; $("code").textContent = salle.code; ecran("pAttente");
+      },
+      surMessage(m){
+        if(m.t === "etat?") diffuser();
+        if(m.t === "coup" && G && G.tour === 2 && !G.fin){ if(jouer(m.col)){ dessiner(); } diffuser(); }
+        if(m.t === "rejouer" && G && G.fin){ nouvelleManche(); dessiner(); diffuser(); }
+      }
+    });
+    $("code").textContent = salle.code; $("msgLigne").textContent = "";
+    ecran("pAttente");
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+};
+$("rejoindre").onclick = () => rejoindre($("codeIn").value);
+$("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("rejoindre").click(); });
+async function rejoindre(code){
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Connexion à la salle…";
+  try{
+    salle = await Reseau.rejoindre("puissance4", code, {
+      surMessage(m){
+        if(m.t !== "etat") return;
+        const nouveau = !G;
+        G = m.G; attenteCoup = false;
+        if(nouveau){ mode = "ligne"; moi = 2; lancer(); } else dessiner();
+      },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; G = null; ecran("menu"); }
+    });
+    $("msgLigne").textContent = "Connecté ! En attente du plateau…";
+    salle.envoyer({t: "etat?"});
+  }catch(e){ salle = null; $("msgLigne").textContent = "❌ " + e.message; }
+}
+$("annuler").onclick = () => { if(salle){ salle.quitter(); salle = null; } ecran("pLigne"); };
+$("copier").onclick = async () => {
+  try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à ton ami 📨"); }
+  catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
+};
+$("tester").onclick = async () => { $("msgLigne").textContent = "Test des relais…"; $("msgLigne").textContent = await Reseau.tester(); };
+
+/* Arrivée par un lien d'invitation (?salle=CODE) */
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){
+  $("codeIn").value = codeLien; $("pseudo").value = Base.joueur.pseudo(); ecran("pLigne");
+  if(Base.joueur.pseudo()) rejoindre(codeLien);
+  else $("msgLigne").textContent = "Choisis ton pseudo puis clique sur « Rejoindre ».";
+}
+</script>
+</body>
+</html>

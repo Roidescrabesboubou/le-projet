@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Réglages</title>
+<link rel="stylesheet" href="../jeux/commun/base.css">
+<style>
+.b-page{max-width:640px}
+section.b-carte h2{margin:0 0 4px;font-size:1.2rem}
+section.b-carte > p.muted{margin:0 0 10px;font-size:.9rem}
+.ligne{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ligne .champ{flex:1;min-width:160px}
+.avatars{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;margin-top:6px}
+.avatars button{font-size:1.5rem;height:44px;border:1px solid var(--line);background:var(--bg);border-radius:12px}
+.avatars button.on{outline:3px solid var(--accent);border-color:transparent}
+.four{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+.four summary{cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:8px;list-style:none}
+.four summary::-webkit-details-marker{display:none}
+.four .etat{font-weight:700;font-size:.85rem;color:var(--muted)}
+.four .etat.ok{color:var(--ok)}
+.four small{display:block;color:var(--muted);margin:6px 0}
+.res{font-size:.88rem;font-weight:700;min-height:1.2em;margin:6px 0 0}
+.records{list-style:none;padding:0;margin:6px 0 0;display:flex;flex-direction:column;gap:4px}
+.records li{display:flex;justify-content:space-between;gap:8px;background:var(--soft);border-radius:10px;padding:6px 10px;font-weight:700;font-size:.9rem}
+.note{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:.88rem;margin-top:8px}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <section class="b-carte">
+    <h2>👤 Mon profil</h2>
+    <p class="muted">Le même pseudo et le même avatar dans tous les jeux (en ligne et dans les classements).</p>
+    <label class="etiquette" for="pseudo">Pseudo</label>
+    <div class="ligne"><input class="champ" id="pseudo" maxlength="16" placeholder="Ton pseudo"><button class="btn" id="okPseudo">Enregistrer</button></div>
+    <p class="note cache" id="notePseudo"></p>
+    <label class="etiquette">Avatar</label>
+    <div class="avatars" id="avatars"></div>
+  </section>
+
+  <section class="b-carte">
+    <h2>🤖 Clés IA</h2>
+    <p class="muted">Pour les jeux avec IA. Saisies une seule fois ici, elles servent à tous ces jeux. Elles restent dans ce navigateur et ne sont jamais publiées.</p>
+    <div id="fournisseurs"></div>
+    <div class="ligne" style="margin-top:12px">
+      <label class="etiquette" style="margin:0">IA principale</label><select class="champ" id="principale"></select>
+    </div>
+    <div class="ligne" style="margin-top:8px">
+      <label class="etiquette" style="margin:0">IA de secours</label><select class="champ" id="secours"></select>
+    </div>
+    <p class="note">Si l'IA principale ne répond pas, les jeux essaient la secours, puis toutes les autres IA qui ont une clé.</p>
+  </section>
+
+  <section class="b-carte">
+    <h2>🌐 Jeu en ligne</h2>
+    <p class="muted">Vérifie que ton réseau (école, travail, wifi public…) laisse passer les parties en ligne.</p>
+    <button class="btn ghost" id="testReseau">🩺 Tester la connexion</button>
+    <p class="res" id="resReseau"></p>
+  </section>
+
+  <section class="b-carte">
+    <h2>🏆 Mes records</h2>
+    <p class="muted">Enregistrés sur cet appareil, et affichés sur les cartes de l'accueil.</p>
+    <ul class="records" id="records"></ul>
+  </section>
+
+  <section class="b-carte">
+    <h2>💾 Sauvegarde</h2>
+    <p class="muted">Pour changer d'appareil ou de navigateur : exporte tes données (records, séries, réglages, clés IA) puis importe le fichier sur l'autre appareil.</p>
+    <div class="ligne">
+      <button class="btn ghost" id="exporter">⬇️ Exporter</button>
+      <label class="btn ghost" style="display:inline-block">⬆️ Importer<input type="file" id="importer" accept=".json,application/json" hidden></label>
+    </div>
+    <p class="res" id="resSauve"></p>
+  </section>
+
+</main>
+
+<script src="../jeux/commun/catalogue.js"></script>
+<script src="../jeux/commun/compte.js"></script>
+<script src="../jeux/commun/base.js"></script>
+<script src="../jeux/commun/ia.js"></script>
+<script src="../jeux/commun/reseau.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const zoneCompte = document.createElement("div");
+Base.entete({titre: "Réglages", emoji: "⚙️", boutons: [zoneCompte]});
+document.querySelector('.b-entete a[href$="reglages/"]').remove();
+Compte.bouton(zoneCompte);
+
+/* ---------- Profil ---------- */
+function afficherProfil(){
+  const s = Compte.session && Compte.session();
+  const local = Base.stock("").lire("salle_pseudo", "");
+  $("pseudo").value = local || (s && s.pseudo) || "";
+  const n = $("notePseudo");
+  if(s && s.pseudo){ n.textContent = `Tu es connecté en tant que « ${s.pseudo} » : c'est ce pseudo qui s'affiche dans les jeux tant que tu es connecté.`; n.classList.remove("cache"); }
+  else n.classList.add("cache");
+}
+$("okPseudo").onclick = () => {
+  const v = $("pseudo").value.trim();
+  if(!v){ $("pseudo").focus(); return; }
+  Base.joueur.changerPseudo(v);
+  Base.toast("Pseudo enregistré ✅");
+};
+$("pseudo").addEventListener("keydown", e => { if(e.key === "Enter") $("okPseudo").click(); });
+
+function afficherAvatars(){
+  const z = $("avatars"), cur = Base.joueur.avatar();
+  z.innerHTML = "";
+  Base.joueur.AVATARS.forEach(a => {
+    const b = document.createElement("button");
+    b.textContent = a; if(a === cur) b.className = "on";
+    b.onclick = () => { Base.joueur.changerAvatar(a); afficherAvatars(); };
+    z.appendChild(b);
+  });
+}
+
+/* ---------- Clés IA ---------- */
+let cfg = IA.config();
+function afficherIA(){
+  const z = $("fournisseurs"); z.innerHTML = "";
+  for(const [k, p] of Object.entries(IA.FOURNISSEURS)){
+    const d = document.createElement("details"); d.className = "four";
+    d.innerHTML = `<summary><span></span><span class="etat"></span></summary>
+      <small></small>
+      <label class="etiquette">Clé API</label>
+      <input class="champ cle" type="password" autocomplete="off" placeholder="Colle ta clé ici">
+      <label class="etiquette">Modèle <span class="muted">(laisser vide = par défaut)</span></label>
+      <input class="champ mod" autocomplete="off">
+      <div class="ligne" style="margin-top:8px"><button class="btn petit tst">Tester</button><button class="btn ghost petit sup">Supprimer la clé</button></div>
+      <p class="res"></p>`;
+    d.querySelector("summary span").textContent = p.label;
+    const etat = d.querySelector(".etat");
+    const maj = () => { const ok = !!cfg.keys[k]; etat.textContent = ok ? "✅ clé enregistrée" : "pas de clé"; etat.classList.toggle("ok", ok); };
+    maj();
+    d.querySelector("small").textContent = p.help;
+    const cle = d.querySelector(".cle"), mod = d.querySelector(".mod"), res = d.querySelector(".res");
+    cle.value = cfg.keys[k] || ""; mod.value = cfg.models[k] || ""; mod.placeholder = p.model;
+    const sauver = () => {
+      const v = cle.value.trim(), m = mod.value.trim();
+      if(v) cfg.keys[k] = v; else delete cfg.keys[k];
+      if(m && m !== p.model) cfg.models[k] = m; else delete cfg.models[k];
+      IA.enregistrer(cfg); maj(); afficherChoix();
+    };
+    cle.oninput = sauver; mod.onchange = sauver;
+    d.querySelector(".sup").onclick = () => { cle.value = ""; sauver(); res.textContent = "Clé supprimée."; };
+    d.querySelector(".tst").onclick = async () => {
+      sauver();
+      if(!cfg.keys[k]){ res.textContent = "Colle d'abord une clé."; return; }
+      res.textContent = "Test en cours…";
+      try{ await IA.tester(k, cfg); res.textContent = "✅ Ça marche avec " + IA.modele(k) + " !"; }
+      catch(e){ res.textContent = "❌ " + (e.name === "AbortError" ? "délai dépassé" : String(e.message || e).slice(0, 160)); }
+    };
+    if(!Object.keys(cfg.keys).length && k === "gemini") d.open = true;
+    z.appendChild(d);
+  }
+  afficherChoix();
+}
+function afficherChoix(){
+  const remplir = (sel, aucun, val) => {
+    sel.innerHTML = "";
+    if(aucun) sel.add(new Option("— aucune —", ""));
+    for(const [k, p] of Object.entries(IA.FOURNISSEURS)) sel.add(new Option(p.short + (cfg.keys[k] ? "" : " (pas de clé)"), k));
+    sel.value = val;
+  };
+  remplir($("principale"), false, cfg.primary);
+  remplir($("secours"), true, cfg.fallback);
+}
+$("principale").onchange = () => { cfg.primary = cfg.active = $("principale").value; IA.enregistrer(cfg); };
+$("secours").onchange = () => { cfg.fallback = $("secours").value; IA.enregistrer(cfg); };
+
+/* ---------- Réseau ---------- */
+$("testReseau").onclick = async () => {
+  $("testReseau").disabled = true; $("resReseau").textContent = "Test des relais…";
+  $("resReseau").textContent = await Reseau.tester();
+  $("testReseau").disabled = false;
+};
+
+/* ---------- Records ---------- */
+function afficherRecords(){
+  const r = Base.records(), ul = $("records"); ul.innerHTML = "";
+  const titres = Object.fromEntries((window.SALLE_CATALOGUE || []).map(g => [g.slug, (g.emoji || "") + " " + g.title]));
+  const l = Object.entries(r);
+  if(!l.length){ ul.innerHTML = '<li class="muted">Pas encore de record avec les nouveaux jeux. À toi de jouer !</li>'; return; }
+  l.forEach(([slug, e]) => {
+    const li = document.createElement("li");
+    const a = document.createElement("span"); a.textContent = titres[slug] || slug;
+    const b = document.createElement("span"); b.textContent = e.texte;
+    li.append(a, b); ul.appendChild(li);
+  });
+}
+
+/* ---------- Sauvegarde ---------- */
+const PRIVE = ["salle_compte"];   // la connexion au compte ne se transfère pas
+$("exporter").onclick = () => {
+  const data = {};
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(!PRIVE.includes(k)) data[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify({salleDeJeux: 1, date: new Date().toISOString(), data}, null, 1)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "salle-de-jeux-sauvegarde.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  $("resSauve").textContent = "✅ Fichier téléchargé. Attention : il contient tes clés IA, ne le partage pas.";
+};
+$("importer").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const j = JSON.parse(await f.text());
+    if(!j || !j.salleDeJeux || typeof j.data !== "object") throw new Error("ce n'est pas une sauvegarde de la Salle de jeux");
+    if(!confirm("Importer cette sauvegarde ? Les données du même nom sur cet appareil seront remplacées.")) return;
+    let n = 0;
+    for(const [k, v] of Object.entries(j.data)) if(!PRIVE.includes(k) && typeof v === "string"){ localStorage.setItem(k, v); n++; }
+    $("resSauve").textContent = `✅ ${n} éléments importés.`;
+    cfg = IA.config(); afficherProfil(); afficherAvatars(); afficherIA(); afficherRecords();
+  }catch(err){ $("resSauve").textContent = "❌ Import impossible : " + err.message; }
+  e.target.value = "";
+};
+
+afficherProfil(); afficherAvatars(); afficherIA(); afficherRecords();
+Compte.surChangement(afficherProfil);
+</script>
+</body>
+</html>
