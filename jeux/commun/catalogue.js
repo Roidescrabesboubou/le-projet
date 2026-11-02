@@ -72,6 +72,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "imposteur",
+    title: "L'Imposteur",
+    emoji: "🕵️",
+    desc: "Tout le monde a le même mot secret… sauf l'imposteur, qui a un mot proche ou rien du tout. Donnez chacun un indice, puis votez pour le démasquer ! Sur un seul téléphone ou en ligne, de 3 à 12 joueurs.",
+    tags: ["Mots", "Multijoueur", "Party"],
+    colors: ["#8b6cf0", "#e8607a"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "wordle",
     title: "Mot du jour",
     emoji: "🟩",

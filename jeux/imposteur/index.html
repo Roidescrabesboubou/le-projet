@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>L'Imposteur</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#6a4bd8;--fond1:rgba(106,75,216,.15);--fond2:rgba(232,96,122,.12);--imp:#e8607a}
+.panneau{max-width:620px}
+.hero{text-align:center}
+.hero .logo{font-size:3.4rem;line-height:1}
+.hero h2{font-size:2rem;margin:6px 0 4px}
+.choix{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+@media (max-width:480px){.choix{grid-template-columns:1fr}}
+.choix button{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:16px;text-align:left}
+.choix button:hover{border-color:var(--accent)}
+.choix b{display:block;font-family:Fredoka,sans-serif;font-size:1.2rem;margin:4px 0}
+.choix span{font-size:2rem}
+.choix small{color:var(--muted)}
+.etapes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;font-size:.85rem;font-weight:700}
+.etapes span{background:var(--soft);border-radius:999px;padding:4px 10px}
+.ligne{display:flex;gap:8px;align-items:center}
+.ligne .champ{flex:1}
+.liste{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.liste li{display:flex;align-items:center;gap:10px;background:var(--soft);border-radius:12px;padding:6px 10px}
+.liste .av{font-size:1.4rem}
+.liste .n{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.liste .x{border:0;background:transparent;color:var(--muted);font-size:1.1rem;padding:2px 8px}
+.reg{margin-top:6px}
+.reg .bloc{margin-top:12px}
+.reg .bloc>b{display:block;font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.reg .pilules{justify-content:flex-start}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;font-size:.86rem;font-weight:700}
+.chips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.code{font-family:Fredoka,sans-serif;font-size:2.2rem;letter-spacing:8px;text-align:center;background:var(--soft);border-radius:14px;padding:6px;margin:8px 0}
+#codeIn{text-transform:uppercase;letter-spacing:3px;font-weight:800}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.note{font-size:.88rem;color:var(--muted);min-height:1.2em;margin-top:8px}
+
+/* ---- Partie ---- */
+#jeu{width:100%;max-width:680px;display:flex;flex-direction:column;gap:12px}
+.barre{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-weight:800}
+.barre .esp{flex:1}
+.barre .muted{font-weight:700}
+.joueurs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.jo{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px 4px 6px;font-weight:700;font-size:.9rem}
+.jo .av{font-size:1.2rem}
+.jo.mort{opacity:.55}
+.jo.mort .n{text-decoration:line-through}
+.jo.actif{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.jo .ok{color:var(--ok)}
+.scene{text-align:center}
+.scene h3{font-size:1.35rem;margin:0 0 6px}
+.scene .gros{font-size:3rem;line-height:1.1;margin:6px 0}
+.carteMot{margin:14px auto;max-width:360px;border-radius:18px;padding:26px 16px;background:linear-gradient(135deg,var(--accent),#3d2a8f);color:#fff;font-family:Fredoka,sans-serif;font-size:2.1rem;cursor:pointer;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere}
+.carteMot small{display:block;font-family:Nunito,sans-serif;font-size:.9rem;opacity:.85;margin-bottom:6px}
+.carteMot.ferme{background:repeating-linear-gradient(45deg,var(--soft),var(--soft) 12px,var(--line) 12px,var(--line) 24px);color:var(--text);font-size:1.15rem}
+.carteMot.blanc{background:linear-gradient(135deg,#3a3348,#15111c)}
+.carteMot.imp{background:linear-gradient(135deg,var(--imp),#9b2747)}
+.indices{display:flex;flex-direction:column;gap:5px}
+.indices .r{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--line)}
+.indices .r:last-child{border:0}
+.indices .qui{font-weight:800;min-width:90px;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.indices .mots{display:flex;flex-wrap:wrap;gap:4px}
+.indices .mots span{background:var(--soft);border-radius:8px;padding:2px 8px;font-size:.9rem}
+.indices .mots span.vide{color:var(--muted);font-style:italic}
+.cibles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px}
+.cibles button{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:10px;font-weight:800;display:flex;align-items:center;gap:8px;justify-content:center}
+.cibles button .av{font-size:1.4rem}
+.cibles button.on{border-color:var(--imp);box-shadow:0 0 0 2px var(--imp) inset}
+.verdict{border-radius:16px;padding:16px;text-align:center;background:var(--soft)}
+.verdict.bon{background:rgba(58,167,109,.16)}
+.verdict.mauvais{background:rgba(232,96,122,.16)}
+.verdict b{font-family:Fredoka,sans-serif;font-size:1.3rem}
+.bandeauFin{font-family:Fredoka,sans-serif;font-size:1.7rem;text-align:center;padding:14px;border-radius:16px;color:#fff;background:linear-gradient(135deg,var(--ok),#23734a)}
+.bandeauFin.imp{background:linear-gradient(135deg,var(--imp),#9b2747)}
+.bandeauFin.blanc{background:linear-gradient(135deg,#4a4060,#15111c)}
+.mots2{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;margin-top:10px}
+.mots2 div{background:var(--soft);border-radius:12px;padding:10px}
+.mots2 b{display:block;font-family:Fredoka,sans-serif;font-size:1.3rem}
+.tab{width:100%;border-collapse:collapse;margin-top:8px;font-size:.95rem}
+.tab td{padding:6px 4px;border-bottom:1px solid var(--line)}
+.tab td:last-child{text-align:right;font-weight:800}
+.tab .plus{color:var(--ok);font-weight:800}
+.chrono{font-family:Fredoka,sans-serif;font-size:1.2rem}
+.chrono.bas{color:var(--ko)}
+#monMot{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:4px 12px;font-weight:800}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <!-- Menu -->
+  <section id="eMenu" class="b-carte panneau">
+    <div class="hero">
+      <div class="logo">🕵️</div>
+      <h2>L'Imposteur</h2>
+      <p class="muted">Tout le monde a le même mot secret… sauf l'imposteur, qui a un mot proche, ou rien du tout. Donnez chacun un indice, puis votez pour le démasquer !</p>
+      <div class="etapes"><span>1 · Mot secret</span><span>2 · Indices</span><span>3 · Vote</span><span>4 · Révélation</span></div>
+    </div>
+    <div class="choix">
+      <button id="vLocal"><span>📱</span><b>Un seul appareil</b><small>On se passe le téléphone pour découvrir son mot. De 3 à 20 joueurs.</small></button>
+      <button id="vLigne"><span>🌐</span><b>En ligne</b><small>Chacun sur son appareil avec un code de salle. De 3 à 12 joueurs.</small></button>
+    </div>
+  </section>
+
+  <!-- Préparation un seul appareil -->
+  <section id="eLocal" class="b-carte panneau cache">
+    <button class="btn ghost petit retour">← Retour</button>
+    <h2 style="margin:12px 0 4px">📱 Les joueurs</h2>
+    <div class="ligne">
+      <input class="champ" id="nomIn" placeholder="Prénom du joueur" maxlength="16" autocomplete="off">
+      <button class="btn" id="ajout">Ajouter</button>
+    </div>
+    <ul class="liste" id="listeLocale"></ul>
+    <p class="note" id="noteLocale"></p>
+    <h2 style="margin:16px 0 0">⚙️ Réglages</h2>
+    <div class="reg" id="regLocal"></div>
+    <div class="actions"><button class="btn" id="goLocal" style="font-size:1.1rem;padding:12px 28px">Lancer la partie 🕵️</button></div>
+  </section>
+
+  <!-- En ligne : créer / rejoindre -->
+  <section id="eLigne" class="b-carte panneau cache">
+    <button class="btn ghost petit retour">← Retour</button>
+    <h2 style="margin:12px 0 4px">🌐 Jouer en ligne</h2>
+    <label class="etiquette" for="pseudo">Ton pseudo</label>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton prénom ou pseudo" autocomplete="off">
+    <div class="actions"><button class="btn" id="creer">🏠 Créer une salle</button></div>
+    <label class="etiquette" for="codeIn">… ou rejoindre une salle</label>
+    <div class="ligne">
+      <input class="champ" id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off">
+      <button class="btn ghost" id="rejoindre">Rejoindre</button>
+    </div>
+    <p class="note" id="msgLigne"></p>
+    <div class="actions"><button class="btn ghost petit" id="tester">🩺 Tester la connexion</button></div>
+  </section>
+
+  <!-- Salon en ligne -->
+  <section id="eSalon" class="b-carte panneau cache">
+    <div style="text-align:center">
+      <p class="muted" style="margin:0">Code de la salle</p>
+      <div class="code" id="code">····</div>
+      <button class="btn ghost petit" id="copier">🔗 Copier le lien d'invitation</button>
+    </div>
+    <h3 style="margin:16px 0 0">Joueurs <span class="muted" id="nbSalon"></span></h3>
+    <ul class="liste" id="listeSalon"></ul>
+    <h3 style="margin:16px 0 0">⚙️ Réglages</h3>
+    <div class="reg" id="regLigne"></div>
+    <p class="note" id="noteSalon"></p>
+    <div class="actions">
+      <button class="btn" id="goLigne" style="font-size:1.1rem;padding:12px 28px">Lancer la partie 🕵️</button>
+      <button class="btn ghost" id="quitterSalon">Quitter</button>
+    </div>
+  </section>
+
+  <!-- Partie -->
+  <section id="eJeu" class="cache" style="width:100%;display:flex;justify-content:center">
+    <div id="jeu"></div>
+  </section>
+</main>
+
+<div id="fx" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50"></div>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="mots.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("imposteur_");
+const MOTS = window.IMPOSTEUR_MOTS;
+const PERSO = "✏️ Mes mots";
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const hasard = n => Math.floor(Math.random() * n);
+const melanger = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = hasard(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const norm = s => String(s || "").toLowerCase().replace(/œ/g, "oe").replace(/æ/g, "ae").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "").replace(/[sx]$/, "");
+const ROLES = {
+  civil: {ico: "🧑", nom: "Civil"},
+  under: {ico: "🕵️", nom: "Imposteur"},
+  white: {ico: "👻", nom: "Mr. White"}
+};
+const POINTS = {civil: 2, under: 10, white: 6};
+
+Base.entete({
+  titre: "L'Imposteur", emoji: "🕵️",
+  aide: `<p>Tout le monde reçoit le <b>même mot secret</b>… sauf le ou les <b>imposteurs</b>, qui ont un mot proche (« Pizza » contre « Tarte flambée »), ou <b>aucun mot</b> (on les appelle Mr. White).</p>
+  <ul>
+    <li><b>Indices</b> : chacun son tour, donne un indice (un mot ou une courte phrase) sur ton mot. Pas trop précis, sinon l'imposteur devine ; pas trop vague, sinon on te soupçonne !</li>
+    <li><b>Vote</b> : discutez, puis votez pour éliminer le joueur le plus suspect. Son rôle est révélé.</li>
+    <li>Attention : l'imposteur avec un mot proche <b>ne sait pas</b> qu'il est l'imposteur (sauf si vous l'activez dans les réglages).</li>
+    <li>Les <b>civils</b> gagnent quand tous les imposteurs sont éliminés. Les <b>imposteurs</b> gagnent s'il ne reste plus qu'un civil.</li>
+    <li>Un <b>Mr. White</b> éliminé a une dernière chance : s'il devine le mot des civils, il gagne seul !</li>
+    <li>Points : civil gagnant +2 · imposteur gagnant +10 · Mr. White gagnant +6.</li>
+  </ul>`
+});
+
+/* =================================================================
+   RÉGLAGES
+   ================================================================= */
+const DEF_R = {nb: "auto", type: "proche", themes: Object.keys(MOTS), prevenir: false, chrono: 0, voteSecret: false};
+let R = Object.assign({}, DEF_R, stock.lire("reglages", {}));
+function persos(){
+  return String(stock.lire("persos", "")).split("\n").map(l => l.split(/\s*[\/;|]\s*/).map(x => x.trim()).filter(Boolean)).filter(p => p.length >= 2).map(p => [p[0].slice(0, 30), p[1].slice(0, 30)]);
+}
+function themesDispo(){ return Object.keys(MOTS).concat(persos().length ? [PERSO] : []); }
+function nettoyerR(){
+  R.themes = (R.themes || []).filter(t => themesDispo().includes(t));
+  if(!R.themes.length) R.themes = Object.keys(MOTS);
+}
+nettoyerR();
+const sauverR = () => stock.ecrire("reglages", R);
+
+function pilules(titre, options, val, change){
+  const b = Base.el("div", null, "bloc");
+  b.appendChild(Base.el("b", titre));
+  const p = Base.el("div", null, "pilules");
+  options.forEach(([v, t]) => {
+    const x = Base.el("button", t); if(v === val) x.className = "on";
+    x.onclick = () => change(v);
+    p.appendChild(x);
+  });
+  b.appendChild(p);
+  return b;
+}
+function resumeR(r){
+  const nb = r.nb === "auto" ? "nombre auto" : r.nb + " imposteur" + (r.nb > 1 ? "s" : "");
+  const ty = {proche: "mot proche", sans: "sans mot (Mr. White)", hasard: "mot proche ou sans mot, au hasard"}[r.type];
+  const th = r.themes.length >= Object.keys(MOTS).length ? "tous les thèmes" : r.themes.join(", ");
+  return `🕵️ ${nb} · ${ty}${r.prevenir && r.type !== "sans" ? " · l'imposteur est prévenu" : ""}${r.chrono ? " · ⏱️ " + r.chrono + " s par indice" : ""}<br>📚 ${esc(th)}`;
+}
+function reglagesUI(box, local, lecture){
+  box.innerHTML = "";
+  if(lecture){ const p = Base.el("p"); p.className = "muted"; p.innerHTML = resumeR(R); box.appendChild(p); return; }
+  const re = () => { sauverR(); reglagesUI(box, local, false); if(!local) diffuserSalon(); };
+  box.appendChild(pilules("Nombre d'imposteurs", [["auto", "Auto"], [1, "1"], [2, "2"], [3, "3"]], R.nb, v => { R.nb = v; re(); }));
+  box.appendChild(pilules("L'imposteur a…", [["proche", "🔀 Un mot proche"], ["sans", "👻 Aucun mot"], ["hasard", "🎲 Au hasard"]], R.type, v => { R.type = v; re(); }));
+  if(R.type !== "sans") box.appendChild(pilules("L'imposteur sait qu'il est l'imposteur ?", [[false, "Non (classique)"], [true, "Oui"]], R.prevenir, v => { R.prevenir = v; re(); }));
+  if(local) box.appendChild(pilules("Vote", [[false, "🗣️ À voix haute"], [true, "🤫 Secret (on se passe l'appareil)"]], R.voteSecret, v => { R.voteSecret = v; re(); }));
+  else box.appendChild(pilules("Temps pour donner son indice", [[0, "Illimité"], [30, "30 s"], [60, "60 s"]], R.chrono, v => { R.chrono = v; re(); }));
+  const b = Base.el("div", null, "bloc");
+  b.appendChild(Base.el("b", "Thèmes des mots"));
+  const ch = Base.el("div", null, "chips");
+  const tous = themesDispo();
+  const tout = Base.el("button", R.themes.length === tous.length ? "✓ Tous" : "Tous");
+  if(R.themes.length === tous.length) tout.className = "on";
+  tout.onclick = () => { R.themes = tous.slice(); re(); };
+  ch.appendChild(tout);
+  tous.forEach(t => {
+    const n = t === PERSO ? persos().length : MOTS[t].length;
+    const x = Base.el("button", t + " · " + n);
+    if(R.themes.includes(t)) x.className = "on";
+    x.onclick = () => {
+      if(R.themes.length === tous.length) R.themes = [t];
+      else if(R.themes.includes(t)){ if(R.themes.length > 1) R.themes = R.themes.filter(y => y !== t); }
+      else R.themes.push(t);
+      re();
+    };
+    ch.appendChild(x);
+  });
+  const m = Base.el("button", "＋ Mes mots");
+  m.onclick = () => editerPersos(re);
+  ch.appendChild(m);
+  b.appendChild(ch);
+  box.appendChild(b);
+}
+function editerPersos(apres){
+  const d = Base.el("div");
+  d.appendChild(Base.el("p", "Une paire par ligne, séparée par « / ». Exemple : Pizza / Tarte flambée", "muted"));
+  const t = Base.el("textarea", null, "champ"); t.rows = 8; t.value = stock.lire("persos", "");
+  t.placeholder = "Pizza / Tarte flambée\nMarseille / Lyon";
+  d.appendChild(t);
+  Base.fenetre("✏️ Mes paires de mots", d, {bouton: "Enregistrer", fermeture(){
+    stock.ecrire("persos", t.value.slice(0, 8000));
+    const n = persos().length;
+    if(n && !R.themes.includes(PERSO)) R.themes.push(PERSO);
+    nettoyerR(); apres();
+    Base.toast(n + " paire" + (n > 1 ? "s" : "") + " perso enregistrée" + (n > 1 ? "s" : ""));
+  }});
+}
+
+/* =================================================================
+   MOTEUR DE PARTIE (même code en local et chez l'hôte en ligne)
+   ================================================================= */
+function tirerPaire(themes){
+  const L = [];
+  themes.forEach(t => (t === PERSO ? persos() : (MOTS[t] || [])).forEach(p => L.push({t, p})));
+  if(!L.length) L.push({t: "🍕 Nourriture", p: ["Pizza", "Tarte flambée"]});
+  const cle = x => x.p.join("|");
+  let vus = stock.lire("vus", []);
+  let dispo = L.filter(x => !vus.includes(cle(x)));
+  if(!dispo.length){ const ici = new Set(L.map(cle)); vus = vus.filter(v => !ici.has(v)); dispo = L; }
+  const c = dispo[hasard(dispo.length)];
+  vus.push(cle(c)); stock.ecrire("vus", vus.slice(-800));
+  return c;
+}
+function nbImposteurs(n, nb){
+  let k = nb === "auto" ? (n <= 5 ? 1 : n <= 9 ? 2 : 3) : +nb;
+  return Math.max(1, Math.min(k, Math.floor((n - 1) / 2)));
+}
+function nouvelleManche(joueurs, r){
+  const n = joueurs.length, k = nbImposteurs(n, r.nb);
+  const tir = tirerPaire(r.themes);
+  const inv = Math.random() < .5;
+  const civil = inv ? tir.p[1] : tir.p[0], imp = inv ? tir.p[0] : tir.p[1];
+  const imps = melanger(joueurs.map((_, i) => i)).slice(0, k);
+  const J = joueurs.map((j, i) => {
+    let role = "civil";
+    if(imps.includes(i)) role = r.type === "sans" ? "white" : r.type === "proche" ? "under" : (Math.random() < .5 ? "white" : "under");
+    return {id: j.id, nom: j.nom, avatar: j.avatar, role, mot: role === "civil" ? civil : role === "under" ? imp : "", vivant: true, parti: false};
+  });
+  const ordre = melanger(J.map(j => j.id));
+  const G = {mid: Math.random().toString(36).slice(2, 8), J, civil, imp, theme: tir.t, prevenir: !!r.prevenir && r.type !== "sans",
+    tour: 1, ordre, debut: 0, parle: 0, phase: "distrib", indices: [], votes: {}, egalite: null,
+    elimine: null, decompte: null, devine: null, gagnant: null, message: "", prets: [], di: 0, vu: false, vi: 0, vvu: false, gains: {}};
+  G.debut = premierOrateur(G, 0);
+  return G;
+}
+const jDe = (G, id) => G.J.find(j => j.id === id);
+const vivants = G => G.J.filter(j => j.vivant);
+// premier joueur à parler : vivant, et si possible pas un Mr. White (il n'a pas de mot)
+function premierOrateur(G, depuis){
+  const n = G.ordre.length;
+  let secours = -1;
+  for(let k = 0; k < n; k++){
+    const i = (depuis + k) % n, j = jDe(G, G.ordre[i]);
+    if(!j.vivant) continue;
+    if(secours < 0) secours = i;
+    if(j.role !== "white") return i;
+  }
+  return secours < 0 ? 0 : secours;
+}
+function orateurs(G){
+  const n = G.ordre.length, l = [];
+  for(let k = 0; k < n; k++){ const id = G.ordre[(G.debut + k) % n]; if(jDe(G, id).vivant) l.push(id); }
+  return l;
+}
+const orateur = G => orateurs(G)[G.parle];
+function commencerIndices(G){ G.phase = "indices"; G.parle = 0; G.limite = R.chrono ? Date.now() + R.chrono * 1000 : 0; }
+function ajouterIndice(G, id, txt){
+  if(G.phase !== "indices" || orateur(G) !== id) return;
+  G.indices.push({tour: G.tour, id, txt: String(txt || "").trim().slice(0, 60)});
+  G.parle++;
+  if(G.parle >= orateurs(G).length){ G.phase = "vote"; G.votes = {}; G.egalite = null; G.vi = 0; G.vvu = false; G.limite = 0; }
+  else G.limite = R.chrono ? Date.now() + R.chrono * 1000 : 0;
+}
+function peutVoter(G, de, cible){
+  const a = jDe(G, de), c = jDe(G, cible);
+  return a && c && a.vivant && c.vivant && de !== cible && (!G.egalite || G.egalite.includes(cible));
+}
+function voter(G, de, cible){
+  if(G.phase !== "vote" || !peutVoter(G, de, cible)) return;
+  G.votes[de] = cible;
+  if(vivants(G).every(j => G.votes[j.id] != null)) depouiller(G);
+}
+function depouiller(G){
+  const c = {};
+  Object.values(G.votes).forEach(id => c[id] = (c[id] || 0) + 1);
+  G.decompte = c;
+  const max = Math.max(...Object.values(c));
+  const tete = Object.keys(c).filter(id => c[id] === max);
+  if(tete.length === 1) return eliminer(G, tete[0]);
+  if(!G.egalite){
+    G.egalite = tete; G.votes = {}; G.vi = 0; G.vvu = false;
+    G.message = "⚖️ Égalité entre " + tete.map(id => jDe(G, id).nom).join(" et ") + " ! Nouveau vote entre eux.";
+    return;
+  }
+  G.elimine = null; G.egalite = null; G.message = "⚖️ Encore une égalité : personne n'est éliminé ce tour-ci.";
+  G.phase = "revel";
+}
+function eliminer(G, id){
+  const j = jDe(G, id);
+  j.vivant = false; G.elimine = id; G.egalite = null; G.devine = null; G.message = "";
+  if(j.role === "white" && !j.parti){ G.phase = "white"; return; }
+  verifier(G);
+}
+function deviner(G, id, txt){
+  if(G.phase !== "white" || G.elimine !== id) return;
+  G.devine = String(txt || "").trim().slice(0, 40);
+  if(G.devine && norm(G.devine) === norm(G.civil)) return finir(G, "white");
+  verifier(G);
+}
+function verifier(G){
+  const v = vivants(G);
+  const imp = v.filter(j => j.role !== "civil").length, civ = v.length - imp;
+  if(!imp) return finir(G, "civils");
+  if(civ <= 1) return finir(G, "imposteurs");
+  G.phase = "revel";
+}
+function tourSuivant(G){
+  G.tour++; G.debut = premierOrateur(G, (G.debut + 1) % G.ordre.length);
+  G.votes = {}; G.egalite = null; G.elimine = null; G.decompte = null; G.devine = null; G.message = "";
+  commencerIndices(G);
+}
+function finir(G, qui){
+  G.phase = "fin"; G.gagnant = qui; G.gains = {};
+  G.J.forEach(j => {
+    let g = 0;
+    if(qui === "civils" && j.role === "civil") g = POINTS.civil;
+    if(qui === "imposteurs" && j.role !== "civil") g = POINTS[j.role];
+    if(qui === "white" && j.id === G.elimine) g = POINTS.white;
+    G.gains[j.id] = g;
+  });
+  apresFin(G);
+}
+function partir(G, id){
+  const j = jDe(G, id); if(!j || !j.vivant) return;
+  j.vivant = false; j.parti = true;
+  delete G.votes[id];
+  if(G.phase === "distrib"){ G.prets = G.prets.filter(x => x !== id); }
+  if(G.phase === "white" && G.elimine === id) return verifier(G);
+  const v = vivants(G), imp = v.filter(x => x.role !== "civil").length;
+  if(!imp) return finir(G, "civils");
+  if(v.length - imp <= 1) return finir(G, "imposteurs");
+  if(G.phase === "indices"){
+    const l = orateurs(G);
+    // l'ordre ne contient plus le joueur parti : on recale l'index sur les indices déjà donnés ce tour
+    G.parle = l.filter(x => G.indices.some(i => i.tour === G.tour && i.id === x)).length;
+    if(G.parle >= l.length){ G.phase = "vote"; G.votes = {}; G.egalite = null; }
+  }
+  if(G.phase === "vote"){
+    if(G.egalite) G.egalite = G.egalite.filter(x => x !== id);
+    if(G.egalite && G.egalite.length < 2) G.egalite = null;
+    Object.keys(G.votes).forEach(de => { if(G.votes[de] === id) delete G.votes[de]; });
+    if(v.every(x => G.votes[x.id] != null)) depouiller(G);
+  }
+}
+
+/* Vue publique : ce que tout le monde a le droit de voir */
+function publier(G){
+  const fin = G.phase === "fin";
+  return {
+    mid: G.mid, phase: G.phase, tour: G.tour, ordre: orateurs(G), parle: G.parle, indices: G.indices,
+    J: G.J.map(j => ({id: j.id, nom: j.nom, avatar: j.avatar, vivant: j.vivant, parti: j.parti,
+      role: (!j.vivant && !j.parti) || fin ? j.role : null, mot: fin ? j.mot : null})),
+    prets: G.prets, aVote: Object.keys(G.votes), egalite: G.egalite, elimine: G.elimine, decompte: G.decompte,
+    devine: G.devine, gagnant: G.gagnant, message: G.message, gains: fin ? G.gains : null,
+    civil: fin ? G.civil : null, imp: fin ? G.imp : null, theme: fin ? G.theme : null,
+    reste: G.limite ? Math.max(0, G.limite - Date.now()) : 0
+  };
+}
+
+/* =================================================================
+   ÉCRANS
+   ================================================================= */
+let mode = null, G = null, V = null, salle = null, monSecret = null, scores = {}, demande = 0;
+function ecran(id){
+  const deja = !$(id).classList.contains("cache");
+  ["eMenu", "eLocal", "eLigne", "eSalon", "eJeu"].forEach(e => $(e).classList.toggle("cache", e !== id));
+  if(!deja) window.scrollTo(0, 0);
+}
+document.querySelectorAll(".retour").forEach(b => b.onclick = () => ecran("eMenu"));
+$("vLocal").onclick = () => { mode = "local"; afficherLocale(); reglagesUI($("regLocal"), true, false); ecran("eLocal"); };
+$("vLigne").onclick = () => { $("pseudo").value = Base.joueur.pseudo(); $("msgLigne").textContent = ""; ecran("eLigne"); };
+
+/* ---------- Joueurs (un seul appareil) ---------- */
+let noms = stock.lire("noms", []);
+if(!noms.length && Base.joueur.pseudo()) noms = [Base.joueur.pseudo()];
+function afficherLocale(){
+  const ul = $("listeLocale"); ul.innerHTML = "";
+  const AV = Base.joueur.AVATARS;
+  noms.forEach((n, i) => {
+    const li = Base.el("li");
+    li.append(Base.el("span", AV[i % AV.length], "av"), Base.el("span", n, "n"));
+    const x = Base.el("button", "✕", "x"); x.title = "Retirer";
+    x.onclick = () => { noms.splice(i, 1); stock.ecrire("noms", noms); afficherLocale(); };
+    li.appendChild(x); ul.appendChild(li);
+  });
+  const n = noms.length;
+  $("noteLocale").textContent = n < 3 ? `Ajoute au moins ${3 - n} joueur${3 - n > 1 ? "s" : ""} (3 minimum, idéal de 4 à 10).`
+    : `${n} joueurs · ${nbImposteurs(n, R.nb)} imposteur${nbImposteurs(n, R.nb) > 1 ? "s" : ""} dans cette partie.`;
+  $("goLocal").disabled = n < 3;
+}
+function ajouterNom(){
+  const v = $("nomIn").value.trim().slice(0, 16);
+  if(!v) return;
+  if(noms.some(n => n.toLowerCase() === v.toLowerCase())){ Base.toast("Ce prénom est déjà dans la liste"); return; }
+  if(noms.length >= 20){ Base.toast("20 joueurs maximum"); return; }
+  noms.push(v); stock.ecrire("noms", noms); $("nomIn").value = ""; $("nomIn").focus(); afficherLocale();
+}
+$("ajout").onclick = ajouterNom;
+$("nomIn").addEventListener("keydown", e => { if(e.key === "Enter") ajouterNom(); });
+$("goLocal").onclick = () => {
+  if(noms.length < 3) return;
+  mode = "local";
+  const AV = Base.joueur.AVATARS;
+  G = nouvelleManche(noms.map((n, i) => ({id: "p" + i, nom: n, avatar: AV[i % AV.length]})), R);
+  ecran("eJeu"); rendre();
+};
+
+/* =================================================================
+   RENDU DE LA PARTIE
+   ================================================================= */
+let vueMot = false, choixVote = null, deadline = 0, attenteVote = null;
+const moiId = () => mode === "ligne" && salle ? salle.moi : null;
+
+function rendre(){
+  const box = $("jeu");
+  const garde = box.querySelector("#saisie"), txt = garde ? garde.value : "", focus = garde && document.activeElement === garde;
+  if(mode === "local") V = publier(G);
+  else if(salle && salle.hote && G){ V = publier(G); deadline = G.limite || 0; }
+  if(!V){ box.innerHTML = `<div class="b-carte scene"><h3>⏳ Connexion à la partie…</h3></div>`; return; }
+  const moi = moiId(), dansPartie = !moi || V.J.some(j => j.id === moi);
+  const vj = id => V.J.find(j => j.id === id) || {nom: "?", avatar: "❔"};
+  let h = "";
+
+  /* barre du haut */
+  const nv = V.J.filter(j => j.vivant).length;
+  h += `<div class="barre"><span>🔄 Tour ${V.tour}</span><span class="muted">${nv}/${V.J.length} en jeu</span><span class="esp"></span>`;
+  if(moi && dansPartie && monSecret && monSecret.mid === V.mid && V.phase !== "fin") h += `<button id="monMot">${vueMot ? "🙈 " + (monSecret.white ? "Aucun mot" : esc(monSecret.mot)) : "👁️ Mon mot"}</button>`;
+  h += `<span class="chrono" id="chrono"></span></div>`;
+
+  /* joueurs */
+  const actif = V.phase === "indices" ? V.ordre[V.parle] : null;
+  h += `<div class="joueurs">` + V.J.map(j => {
+    let cls = "jo" + (j.vivant ? "" : " mort") + (j.id === actif ? " actif" : "");
+    let fin = "";
+    if(!j.vivant) fin = j.parti ? " 🚪" : (j.role ? " " + ROLES[j.role].ico : "");
+    else if(V.phase === "vote" && V.aVote.includes(j.id) && mode === "ligne") fin = ` <span class="ok">✓</span>`;
+    else if(V.phase === "distrib" && mode === "ligne" && V.prets.includes(j.id)) fin = ` <span class="ok">✓</span>`;
+    return `<span class="${cls}"><span class="av">${esc(j.avatar)}</span><span class="n">${esc(j.nom)}${j.id === moi ? " (toi)" : ""}</span>${fin}</span>`;
+  }).join("") + `</div>`;
+
+  /* panneau de la phase */
+  h += `<div class="b-carte scene">` + (mode === "local" ? panneauLocal(vj) : panneauLigne(vj, moi, dansPartie)) + `</div>`;
+
+  /* indices */
+  if(V.indices.length && V.phase !== "distrib"){
+    const ids = [...new Set(V.J.map(j => j.id))].filter(id => V.indices.some(i => i.id === id));
+    h += `<div class="b-carte"><b>📝 Indices</b><div class="indices" style="margin-top:6px">` + ids.map(id => {
+      const j = vj(id);
+      return `<div class="r"><span class="qui">${esc(j.avatar)} ${esc(j.nom)}</span><span class="mots">` +
+        V.indices.filter(i => i.id === id).map(i => i.txt ? `<span title="Tour ${i.tour}">${esc(i.txt)}</span>` : `<span class="vide" title="Tour ${i.tour}">—</span>`).join("") + `</span></div>`;
+    }).join("") + `</div></div>`;
+  }
+  if(V.phase === "fin") h += tableauScores(vj);
+  box.innerHTML = h;
+  brancher();
+  const s = box.querySelector("#saisie");
+  if(s){ if(txt) s.value = txt; if(focus || (mode === "ligne" && V.phase === "indices")) s.focus(); }
+  majChrono();
+}
+
+/* ---------- panneaux UN SEUL APPAREIL ---------- */
+function panneauLocal(vj){
+  const ph = G.phase;
+  if(ph === "distrib"){
+    const j = G.J[G.di];
+    if(!G.vu) return `<p class="muted">Distribution des mots secrets · ${G.di + 1}/${G.J.length}</p>
+      <div class="gros">📱</div><h3>Passe l'appareil à <b>${esc(j.nom)}</b></h3>
+      <p class="muted">Les autres, ne regardez pas l'écran !</p>
+      <button class="btn" data-a="voir">Je suis ${esc(j.nom)}, voir mon mot 👀</button>`;
+    return `<p class="muted">${esc(j.avatar)} ${esc(j.nom)}, ton mot secret :</p>` + carteMot(j, true) +
+      `<p class="muted">Mémorise-le bien, puis cache-le avant de passer l'appareil.</p>
+      <button class="btn" data-a="cacher">✅ C'est retenu, cacher</button>`;
+  }
+  if(ph === "indices"){
+    const id = orateur(G), j = jDe(G, id), l = orateurs(G);
+    return `<p class="muted">Tour ${G.tour} · indice ${G.parle + 1}/${l.length}</p>
+      <div class="gros">${esc(j.avatar)}</div><h3>À <b>${esc(j.nom)}</b> de donner un indice</h3>
+      <p class="muted">Dis ton indice à voix haute (un mot ou une courte phrase).</p>
+      <div class="ligne" style="max-width:420px;margin:10px auto 0"><input class="champ" id="saisie" maxlength="60" placeholder="Noter l'indice (facultatif)" autocomplete="off"><button class="btn" data-a="indice">Suivant ➜</button></div>
+      <p class="muted" style="margin-top:10px">Ensuite : ${l.slice(G.parle + 1).map(x => esc(jDe(G, x).nom)).join(" → ") || "le vote !"}</p>`;
+  }
+  if(ph === "vote"){
+    const cibles = vivants(G).filter(j => !G.egalite || G.egalite.includes(j.id));
+    let h = G.message ? `<p><b>${esc(G.message)}</b></p>` : "";
+    if(!R.voteSecret){
+      h += `<h3>🗳️ Qui est l'imposteur ?</h3><p class="muted">Discutez tous ensemble, puis désignez le joueur à éliminer.</p>
+        <div class="cibles">` + cibles.map(j => `<button data-c="${esc(j.id)}" class="${choixVote === j.id ? "on" : ""}"><span class="av">${esc(j.avatar)}</span>${esc(j.nom)}</button>`).join("") + `</div>
+        <div class="actions"><button class="btn" data-a="eliminer" ${choixVote ? "" : "disabled"} style="background:var(--imp)">Éliminer ${choixVote ? esc(jDe(G, choixVote).nom) : "…"}</button>
+        <button class="btn ghost" data-a="debat">⏱️ Débat 1 min</button></div>`;
+      return h;
+    }
+    const votants = vivants(G), v = votants[G.vi];
+    if(!G.vvu) return h + `<p class="muted">Vote secret · ${G.vi + 1}/${votants.length}</p><div class="gros">🤫</div>
+      <h3>Passe l'appareil à <b>${esc(v.nom)}</b></h3><button class="btn" data-a="voirVote">Je suis ${esc(v.nom)}, voter</button>`;
+    return h + `<h3>${esc(v.nom)}, qui veux-tu éliminer ?</h3><div class="cibles">` +
+      cibles.filter(j => j.id !== v.id).map(j => `<button data-sv="${esc(j.id)}"><span class="av">${esc(j.avatar)}</span>${esc(j.nom)}</button>`).join("") + `</div>`;
+  }
+  if(ph === "white"){
+    const j = jDe(G, G.elimine);
+    return `<div class="verdict mauvais">${esc(j.nom)} était <b>👻 Mr. White</b> !</div>
+      <h3 style="margin-top:14px">Dernière chance, ${esc(j.nom)} !</h3><p class="muted">Passe-lui l'appareil : s'il devine le mot des civils, il gagne seul.</p>
+      <div class="ligne" style="max-width:420px;margin:10px auto 0"><input class="champ" id="saisie" maxlength="40" placeholder="Le mot des civils est…" autocomplete="off"><button class="btn" data-a="deviner">Valider</button></div>`;
+  }
+  if(ph === "revel") return verdict(vj) + `<div class="actions"><button class="btn" data-a="suivant">Tour suivant ➜</button></div>`;
+  if(ph === "fin") return finale(vj) + `<div class="actions"><button class="btn" data-a="rejouer">🔁 Nouvelle manche</button><button class="btn ghost" data-a="joueurs">👥 Changer les joueurs</button></div>`;
+  return "";
+}
+
+/* ---------- panneaux EN LIGNE ---------- */
+function panneauLigne(vj, moi, dansPartie){
+  const ph = V.phase, hote = salle && salle.hote, moiJ = V.J.find(j => j.id === moi);
+  if(!dansPartie) return `<div class="gros">👀</div><h3>Partie en cours</h3><p class="muted">Tu joueras à la prochaine manche. En attendant, regarde les indices !</p>` + (ph === "revel" || ph === "fin" ? verdictOuFin(vj) : "");
+  if(ph === "distrib"){
+    const pret = V.prets.includes(moi), att = V.J.filter(j => j.vivant && !V.prets.includes(j.id));
+    let h = `<p class="muted">Ton mot secret (touche la carte pour le voir) :</p>` + carteMot(null, vueMot);
+    h += pret ? `<p class="muted">✅ Prêt ! En attente de : ${att.map(j => esc(j.nom)).join(", ") || "personne"}</p>`
+              : `<button class="btn" data-a="pret">J'ai vu mon mot ✅</button>`;
+    if(hote) h += `<div class="actions"><button class="btn ghost petit" data-a="forcer">Commencer sans attendre</button></div>`;
+    return h;
+  }
+  if(ph === "indices"){
+    const id = V.ordre[V.parle], j = vj(id);
+    if(id === moi) return `<p class="muted">Tour ${V.tour} · indice ${V.parle + 1}/${V.ordre.length}</p><h3>🎤 À toi de donner un indice !</h3>
+      <p class="muted">${monSecret && monSecret.white ? "Tu n'as pas de mot : bluffe à partir des indices des autres 😏" : "Un mot ou une courte phrase sur ton mot secret."}</p>
+      <div class="ligne" style="max-width:440px;margin:10px auto 0"><input class="champ" id="saisie" maxlength="60" placeholder="Ton indice" autocomplete="off"><button class="btn" data-a="indice">Envoyer</button></div>`;
+    return `<p class="muted">Tour ${V.tour} · indice ${V.parle + 1}/${V.ordre.length}</p><div class="gros">${esc(j.avatar)}</div><h3>${esc(j.nom)} cherche son indice…</h3>
+      <p class="muted">Ensuite : ${V.ordre.slice(V.parle + 1).map(x => esc(vj(x).nom)).join(" → ") || "le vote !"}</p>`;
+  }
+  if(ph === "vote"){
+    let h = V.message ? `<p><b>${esc(V.message)}</b></p>` : "";
+    const att = V.J.filter(j => j.vivant && !V.aVote.includes(j.id)).map(j => esc(j.nom)).join(", ");
+    if(!moiJ.vivant) return h + `<h3>🗳️ Vote en cours</h3><p class="muted">Tu es éliminé·e : regarde les autres voter. En attente de : ${att}</p>`;
+    if(V.aVote.includes(moi) || attenteVote) return h + `<h3>✅ Vote envoyé</h3><p class="muted">En attente de : ${att || "…"}</p>`;
+    const cibles = V.J.filter(j => j.vivant && j.id !== moi && (!V.egalite || V.egalite.includes(j.id)));
+    return h + `<h3>🗳️ Qui est l'imposteur ?</h3><p class="muted">Vote en secret pour le joueur à éliminer.</p><div class="cibles">` +
+      cibles.map(j => `<button data-v="${esc(j.id)}"><span class="av">${esc(j.avatar)}</span>${esc(j.nom)}</button>`).join("") + `</div>`;
+  }
+  if(ph === "white"){
+    const j = vj(V.elimine);
+    let h = `<div class="verdict mauvais">${esc(j.nom)} était <b>👻 Mr. White</b> !</div>`;
+    if(V.elimine === moi) return h + `<h3 style="margin-top:14px">Dernière chance !</h3><p class="muted">Devine le mot des civils pour gagner seul.</p>
+      <div class="ligne" style="max-width:420px;margin:10px auto 0"><input class="champ" id="saisie" maxlength="40" placeholder="Le mot des civils est…" autocomplete="off"><button class="btn" data-a="deviner">Valider</button></div>`;
+    return h + `<p class="muted" style="margin-top:12px">⏳ ${esc(j.nom)} tente de deviner le mot des civils…</p>`;
+  }
+  if(ph === "revel") return verdict(vj) + (hote ? `<div class="actions"><button class="btn" data-a="suivant">Tour suivant ➜</button></div>` : `<p class="muted">L'hôte lance le tour suivant…</p>`);
+  if(ph === "fin") return finale(vj) + (hote ? `<div class="actions"><button class="btn" data-a="rejouer">🔁 Nouvelle manche</button><button class="btn ghost" data-a="salon">Retour au salon</button></div>` : `<p class="muted">L'hôte peut relancer une manche…</p>`);
+  return "";
+}
+const verdictOuFin = vj => V.phase === "fin" ? finale(vj) : verdict(vj);
+
+function carteMot(j, ouvert){
+  // j : joueur (local) ou null (en ligne → monSecret)
+  const s = j ? {mot: j.mot, white: j.role === "white", imp: G.prevenir && j.role === "under"} : (monSecret && monSecret.mid === V.mid ? monSecret : null);
+  if(!s) return `<div class="carteMot ferme">⏳ Réception du mot…</div>`;
+  if(!ouvert) return `<div class="carteMot ferme" data-a="retourner">👆 Touche pour voir ton mot</div>`;
+  if(s.white) return `<div class="carteMot blanc" data-a="retourner"><small>Tu es</small>👻 Mr. White<small style="margin:8px 0 0">Tu n'as pas de mot ! Écoute les indices et bluffe.</small></div>`;
+  if(s.imp) return `<div class="carteMot imp" data-a="retourner"><small>🕵️ Tu es l'imposteur ! Ton mot :</small>${esc(s.mot)}</div>`;
+  return `<div class="carteMot" data-a="retourner"><small>Ton mot secret</small>${esc(s.mot)}</div>`;
+}
+function verdict(vj){
+  let h = "";
+  if(V.decompte){
+    const c = V.decompte;
+    h += `<p class="muted">Votes : ` + Object.keys(c).sort((a, b) => c[b] - c[a]).map(id => `${esc(vj(id).nom)} ${c[id]}`).join(" · ") + `</p>`;
+  }
+  if(!V.elimine) return h + `<div class="verdict"><b>${esc(V.message || "Personne n'est éliminé.")}</b></div>`;
+  const j = vj(V.elimine), r = ROLES[j.role] || ROLES.civil, bon = j.role !== "civil";
+  h += `<div class="verdict ${bon ? "bon" : "mauvais"}"><div class="gros">${r.ico}</div>${esc(j.nom)} était… <b>${r.nom}</b>${bon ? " ! Bien joué 🎯" : " 😬"}`;
+  if(j.role === "white" && V.devine != null) h += `<br><span class="muted">Il a proposé « ${esc(V.devine) || "…"} » : raté !</span>`;
+  h += `</div>`;
+  const reste = V.J.filter(x => x.vivant).length;
+  h += `<p class="muted" style="margin-top:10px">Il reste ${reste} joueurs… et au moins un imposteur court toujours !</p>`;
+  return h;
+}
+function finale(vj){
+  const g = V.gagnant;
+  const titre = g === "civils" ? "🎉 Les civils ont gagné !" : g === "white" ? "👻 Mr. White a deviné le mot et gagne !" : "🕵️ Les imposteurs ont gagné !";
+  let h = `<div class="bandeauFin ${g === "civils" ? "" : g === "white" ? "blanc" : "imp"}">${titre}</div>`;
+  if(g === "white") h += `<p class="muted">Il a proposé « ${esc(V.devine)} ».</p>`;
+  h += `<div class="mots2"><div><span class="muted">Mot des civils</span><b>${esc(V.civil)}</b></div><div><span class="muted">Mot de l'imposteur</span><b>${V.J.some(j => j.role === "under") ? esc(V.imp) : "—"}</b></div></div>`;
+  h += `<p class="muted" style="margin:8px 0 0">Thème : ${esc(V.theme)}</p>`;
+  h += `<table class="tab">` + V.J.map(j => {
+    const r = ROLES[j.role] || ROLES.civil, gain = V.gains && V.gains[j.id];
+    return `<tr><td>${esc(j.avatar)} ${esc(j.nom)}${j.parti ? " 🚪" : ""}</td><td>${r.ico} ${r.nom}${j.role === "under" ? " · " + esc(j.mot) : ""}</td><td>${gain ? `<span class="plus">+${gain}</span>` : "0"}</td></tr>`;
+  }).join("") + `</table>`;
+  return h;
+}
+function tableauScores(vj){
+  const cle = j => mode === "local" ? j.nom : j.id;
+  const lignes = V.J.map(j => ({j, s: scores[cle(j)] || 0})).sort((a, b) => b.s - a.s);
+  if(!lignes.some(l => l.s)) return "";
+  return `<div class="b-carte"><b>🏆 Scores cumulés</b><table class="tab">` + lignes.map((l, i) =>
+    `<tr><td>${["🥇", "🥈", "🥉"][i] || ""} ${esc(l.j.avatar)} ${esc(l.j.nom)}</td><td></td><td>${l.s} pts</td></tr>`).join("") + `</table></div>`;
+}
+function apresFin(G){
+  G.J.forEach(j => { const k = mode === "local" ? j.nom : j.id; scores[k] = (scores[k] || 0) + (G.gains[j.id] || 0); });
+  compterFin(G.gagnant, mode === "local" ? 0 : G.gains[moiId()]);
+}
+function compterFin(gagnant, gainMoi){
+  const n = stock.lire("manches", 0) + 1; stock.ecrire("manches", n);
+  if(gainMoi) stock.ecrire("victoires", stock.lire("victoires", 0) + 1);
+  const v = stock.lire("victoires", 0);
+  Base.record("imposteur", n, {texte: n + " manche" + (n > 1 ? "s" : "") + " jouée" + (n > 1 ? "s" : "") + (v ? " · " + v + " victoire" + (v > 1 ? "s" : "") + " en ligne" : "")});
+  pluie(gagnant === "civils" ? "🎉" : gagnant === "white" ? "👻" : "🕵️");
+}
+function pluie(e){
+  const L = $("fx");
+  for(let i = 0; i < 18; i++){
+    const x = Base.el("span", e); x.style.cssText = `position:absolute;bottom:-20px;left:${5 + Math.random() * 90}%;font-size:1.8rem;transition:transform 2.2s ease-out,opacity 2.2s;`;
+    L.appendChild(x);
+    setTimeout(() => { x.style.transform = `translateY(-${60 + Math.random() * 30}vh) rotate(${Math.random() * 60 - 30}deg)`; x.style.opacity = "0"; }, 30 + Math.random() * 400);
+    setTimeout(() => x.remove(), 2800);
+  }
+}
+
+/* ---------- actions ---------- */
+function brancher(){
+  const box = $("jeu");
+  box.querySelectorAll("[data-a]").forEach(b => b.onclick = () => action(b.dataset.a));
+  box.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { choixVote = b.dataset.c; rendre(); });
+  box.querySelectorAll("[data-sv]").forEach(b => b.onclick = () => {
+    const v = vivants(G)[G.vi]; G.votes[v.id] = b.dataset.sv; G.vi++; G.vvu = false;
+    if(G.vi >= vivants(G).length) depouiller(G);
+    rendre();
+  });
+  box.querySelectorAll("[data-v]").forEach(b => b.onclick = () => envoyerAction({t: "vote", cible: b.dataset.v}));
+  const mm = $("monMot"); if(mm) mm.onclick = () => { vueMot = !vueMot; rendre(); };
+  const s = box.querySelector("#saisie");
+  if(s) s.addEventListener("keydown", e => { if(e.key === "Enter"){ const b = box.querySelector('[data-a="indice"],[data-a="deviner"]'); if(b) b.click(); } });
+}
+function action(a){
+  const s = $("jeu").querySelector("#saisie"), txt = s ? s.value.trim() : "";
+  if(a === "retourner"){ vueMot = !vueMot; rendre(); return; }
+  if(mode === "local"){
+    if(a === "voir"){ G.vu = true; }
+    else if(a === "cacher"){ G.vu = false; G.di++; if(G.di >= G.J.length) commencerIndices(G); }
+    else if(a === "indice"){ ajouterIndice(G, orateur(G), txt); choixVote = null; }
+    else if(a === "eliminer"){ if(!choixVote) return; const c = choixVote; choixVote = null; G.decompte = null; eliminer(G, c); }
+    else if(a === "debat"){ debat(); return; }
+    else if(a === "voirVote"){ G.vvu = true; }
+    else if(a === "deviner"){ if(!txt){ Base.toast("Écris ta proposition"); return; } deviner(G, G.elimine, txt); }
+    else if(a === "suivant"){ tourSuivant(G); }
+    else if(a === "rejouer"){ const AV = Base.joueur.AVATARS; G = nouvelleManche(noms.map((n, i) => ({id: "p" + i, nom: n, avatar: AV[i % AV.length]})), R); }
+    else if(a === "joueurs"){ G = null; afficherLocale(); reglagesUI($("regLocal"), true, false); ecran("eLocal"); return; }
+    rendre();
+    return;
+  }
+  /* en ligne */
+  if(a === "pret") envoyerAction({t: "pret"});
+  else if(a === "indice"){ if(!txt){ Base.toast("Écris ton indice"); return; } envoyerAction({t: "indice", txt}); }
+  else if(a === "deviner"){ if(!txt){ Base.toast("Écris ta proposition"); return; } envoyerAction({t: "devine", txt}); }
+  else if(salle && salle.hote){
+    if(a === "forcer"){ if(G.phase === "distrib"){ commencerIndices(G); maj(); } }
+    else if(a === "suivant"){ tourSuivant(G); maj(); }
+    else if(a === "rejouer") demarrerLigne();
+    else if(a === "salon"){ G = null; V = null; afficherSalon(); ecran("eSalon"); diffuserSalon(); }
+  }
+}
+let debatT = null;
+function debat(){
+  clearInterval(debatT);
+  let t = 60;
+  const d = Base.fenetre("⏱️ Débat", Base.el("p", "", "chrono"), {bouton: "Passer au vote", fermeture(){ clearInterval(debatT); }});
+  const p = d.querySelector(".chrono"); p.style.cssText = "font-size:3rem;text-align:center;margin:10px 0";
+  const tic = () => { p.textContent = t + " s"; p.classList.toggle("bas", t <= 10); if(t-- <= 0){ clearInterval(debatT); p.textContent = "⏰ Votez !"; } };
+  tic(); debatT = setInterval(tic, 1000);
+}
+
+/* ---------- chrono (en ligne) ---------- */
+function majChrono(){
+  const el = $("chrono"); if(!el) return;
+  if(mode !== "ligne" || !V || V.phase !== "indices" || !deadline){ el.textContent = ""; return; }
+  const s = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+  el.textContent = "⏱️ " + s + " s"; el.classList.toggle("bas", s <= 10);
+}
+setInterval(() => {
+  majChrono();
+  if(mode === "ligne" && salle && salle.hote && G && G.phase === "indices" && G.limite && Date.now() > G.limite){
+    ajouterIndice(G, orateur(G), ""); maj();
+  }
+}, 500);
+
+/* =================================================================
+   EN LIGNE
+   ================================================================= */
+const cod = (s, k) => btoa(unescape(encodeURIComponent([...s].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ k.charCodeAt(i % k.length))).join(""))));
+const decod = (s, k) => { const t = decodeURIComponent(escape(atob(s))); return [...t].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ k.charCodeAt(i % k.length))).join(""); };
+
+function pseudoOk(){
+  const p = $("pseudo").value.trim();
+  if(!p){ $("msgLigne").textContent = "Choisis d'abord un pseudo."; $("pseudo").focus(); return false; }
+  Base.joueur.changerPseudo(p); return true;
+}
+function envoyerAction(m){
+  if(!salle) return;
+  if(salle.hote) recuHote(m, {id: salle.moi});
+  else{
+    salle.envoyer(m);
+    if(m.t === "vote"){ attenteVote = {mid: V.mid, tour: V.tour, m, t: Date.now()}; rendre(); }
+  }
+}
+function maj(){ diffuser(); rendre(); }
+function diffuser(){
+  if(!salle || !salle.hote) return;
+  if(G) salle.envoyer({t: "etat", V: publier(G), scores});
+}
+function diffuserSecrets(){
+  if(!salle || !salle.hote || !G) return;
+  const l = {};
+  G.J.forEach(j => { l[j.id] = cod(JSON.stringify({mot: j.mot, white: j.role === "white", imp: G.prevenir && j.role === "under"}), j.id); });
+  salle.envoyer({t: "mots", mid: G.mid, l});
+}
+function diffuserSalon(){ if(salle && salle.hote) salle.envoyer({t: "salon", R, scores}); }
+
+function recuHote(m, j){
+  if(!G){ if(m.t === "etat?") diffuserSalon(); return; }
+  if(m.t === "etat?"){ diffuser(); return; }
+  if(m.t === "mot?"){ diffuserSecrets(); return; }
+  if(m.t === "pret" && G.phase === "distrib"){
+    if(!G.prets.includes(j.id) && jDe(G, j.id)) G.prets.push(j.id);
+    if(vivants(G).every(x => G.prets.includes(x.id))) commencerIndices(G);
+  }
+  else if(m.t === "indice") ajouterIndice(G, j.id, m.txt);
+  else if(m.t === "vote") voter(G, j.id, String(m.cible));
+  else if(m.t === "devine") deviner(G, j.id, m.txt);
+  else return;
+  maj();
+}
+function recuInvite(m){
+  if(m.t === "salon"){ R = Object.assign({}, DEF_R, m.R); scores = m.scores || {}; G = null; V = null; afficherSalon(); ecran("eSalon"); return; }
+  if(m.t === "etat"){
+    const nouv = !V || V.mid !== m.V.mid, ancienne = V ? V.phase : null;
+    if(nouv){ vueMot = false; attenteVote = null; }
+    if(V && (V.phase !== m.V.phase || V.tour !== m.V.tour)) attenteVote = null;
+    if(attenteVote && m.V.aVote.includes(salle.moi)) attenteVote = null;
+    V = m.V; scores = m.scores || {};
+    deadline = V.reste ? Date.now() + V.reste : 0;
+    if(m.V.phase === "fin" && (nouv || ancienne !== "fin")) compterFin(V.gagnant, V.gains && V.gains[salle.moi]);
+    ecran("eJeu"); rendre();
+    if(V.J.some(j => j.id === salle.moi) && (!monSecret || monSecret.mid !== V.mid) && Date.now() - demande > 3000){ demande = Date.now(); salle.envoyer({t: "mot?"}); }
+    // vote perdu en route ? on le renvoie
+    if(attenteVote && Date.now() - attenteVote.t > 4000){ attenteVote.t = Date.now(); salle.envoyer(attenteVote.m); }
+    return;
+  }
+  if(m.t === "mots"){
+    const x = m.l && m.l[salle.moi];
+    if(x){ try{ monSecret = Object.assign({mid: m.mid}, JSON.parse(decod(x, salle.moi))); }catch(e){} if(V) rendre(); }
+  }
+}
+
+function afficherSalon(){
+  const hote = salle && salle.hote;
+  $("code").textContent = salle ? salle.code : "····";
+  const ul = $("listeSalon"); ul.innerHTML = "";
+  const l = salle ? salle.joueurs : [];
+  l.forEach((j, i) => {
+    const li = Base.el("li");
+    li.append(Base.el("span", j.avatar, "av"), Base.el("span", j.pseudo + (i === 0 ? " 👑" : "") + (j.id === salle.moi ? " (toi)" : ""), "n"));
+    const s = scores[j.id]; if(s) li.appendChild(Base.el("span", s + " pts", "muted"));
+    ul.appendChild(li);
+  });
+  $("nbSalon").textContent = `(${l.length}/12)`;
+  reglagesUI($("regLigne"), false, !hote);
+  $("goLigne").classList.toggle("cache", !hote);
+  $("noteSalon").textContent = hote ? (l.length < 3 ? "Il faut au moins 3 joueurs : envoie le code à tes amis !" : `${l.length} joueurs · ${nbImposteurs(l.length, R.nb)} imposteur(s).`) : "⏳ L'hôte va lancer la partie…";
+  $("goLigne").disabled = l.length < 3;
+}
+function demarrerLigne(){
+  if(!salle || !salle.hote) return;
+  if(salle.joueurs.length < 3){ Base.toast("Il faut au moins 3 joueurs"); return; }
+  G = nouvelleManche(salle.joueurs.map(j => ({id: j.id, nom: j.pseudo, avatar: j.avatar})), R);
+  monSecret = Object.assign({mid: G.mid}, {mot: jDe(G, salle.moi).mot, white: jDe(G, salle.moi).role === "white", imp: G.prevenir && jDe(G, salle.moi).role === "under"});
+  vueMot = false;
+  diffuserSecrets(); setTimeout(diffuserSecrets, 1500);
+  ecran("eJeu"); maj();
+}
+$("goLigne").onclick = demarrerLigne;
+
+$("creer").onclick = async () => {
+  if(!pseudoOk()) return;
+  mode = "ligne"; $("msgLigne").textContent = "Création de la salle…";
+  try{
+    salle = await Reseau.creer("imposteur", {
+      max: 12,
+      surEssai(t){ $("msgLigne").textContent = t; },
+      surArrivee(j){ Base.toast(j.avatar + " " + j.pseudo + " a rejoint la salle"); if(!G) { afficherSalon(); diffuserSalon(); } else maj(); },
+      surDepart(j){ Base.toast(j.pseudo + " est parti·e"); if(G){ partir(G, j.id); maj(); } else afficherSalon(); },
+      surMessage(m, j){ recuHote(m, j); }
+    });
+    G = null; scores = {}; afficherSalon(); ecran("eSalon");
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+};
+async function rejoindre(code){
+  if(!pseudoOk()) return;
+  mode = "ligne"; $("msgLigne").textContent = "Connexion à la salle " + code + "…";
+  try{
+    salle = await Reseau.rejoindre("imposteur", code, {
+      surMessage: recuInvite,
+      surListe(){ if(!V) afficherSalon(); },
+      surHotePerdu(){ Base.toast("L'hôte ne répond plus…"); },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; V = null; ecran("eMenu"); }
+    });
+    V = null; afficherSalon(); ecran("eSalon");
+    salle.envoyer({t: "etat?"});
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+}
+$("rejoindre").onclick = () => { const c = $("codeIn").value.trim().toUpperCase(); if(c) rejoindre(c); };
+$("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("rejoindre").click(); });
+$("tester").onclick = async () => { $("msgLigne").textContent = "Test des relais…"; $("msgLigne").textContent = await Reseau.tester(); };
+$("copier").onclick = async () => {
+  if(!salle) return;
+  try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à tes amis 📨"); }
+  catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
+};
+$("quitterSalon").onclick = () => { if(salle){ salle.quitter(); salle = null; } G = null; V = null; ecran("eMenu"); };
+
+/* l'hôte renvoie l'état régulièrement (au cas où un message se perde) */
+setInterval(() => { if(salle && salle.hote){ if(G) diffuser(); else diffuserSalon(); } }, 6000);
+
+/* arrivée par un lien d'invitation */
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){
+  $("codeIn").value = codeLien; $("pseudo").value = Base.joueur.pseudo(); ecran("eLigne");
+  if(Base.joueur.pseudo()) rejoindre(codeLien);
+}
+</script>
+</body>
+</html>
