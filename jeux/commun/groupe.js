@@ -241,21 +241,39 @@
       await db(`groupes/${gid}/jeu`, {method: "PUT", body: {slug, code: String(code).toUpperCase(), par: moi.uid, pseudo: pseudo().slice(0, 16), d: SV}});
       toast(`📣 Le groupe est invité dans ta salle (${membres().length - 1} ami${membres().length > 2 ? "s" : ""}) !`);
       return true;
-    }catch(e){ return false; }
+    }catch(e){
+      console.error("[Groupe] salle non annoncée :", e);
+      toast("⚠️ Le groupe n'a pas pu être prévenu : " + e.message);
+      return false;
+    }
+  }
+  /* Bouton « Jouer ensemble » : tout le groupe part sur ce jeu, la salle se crée toute seule */
+  async function lancerPourGroupe(slug){
+    if(gid && moi){
+      try{
+        await db(`groupes/${gid}/jeu`, {method: "PUT", body: {slug, code: "", par: moi.uid, pseudo: pseudo().slice(0, 16), d: SV}});
+      }catch(e){ console.error("[Groupe] départ non annoncé :", e); }
+    }
+    location.href = `${RACINE}jeux/${encodeURIComponent(slug)}/?groupe=hote`;
   }
   const urlSalle = j => `${RACINE}jeux/${encodeURIComponent(j.slug)}/?salle=${encodeURIComponent(j.code)}&groupe=1`;
+  const cleLancement = j => j.code || `go-${j.slug}-${j.d}`;
+  const salleIci = () => (params.get("salle") || "").toUpperCase();
   function verifierLancement(){
     const j = G && G.jeu;
-    if(!j || !j.code || j.par === moi.uid) return;
-    if(L("salle_groupe_vu", "") === j.code) return;
+    if(!j || !j.slug || j.par === moi.uid) return;
+    const cle = cleLancement(j);
+    if(L("salle_groupe_vu", "") === cle) return;
     if(Math.abs(Date.now() - (j.d || 0)) > LANCEMENT_VALIDE) return;
-    if(slugPage === j.slug && (params.get("salle") || "").toUpperCase() === j.code){ E("salle_groupe_vu", j.code); return; }
+    if(slugPage === j.slug && (!j.code || salleIci() === j.code)){ E("salle_groupe_vu", cle); return; }
+    const refus = L("salle_groupe_refus", null);
+    if(refus && refus.slug === j.slug && Date.now() - refus.t < 3 * 60000){ E("salle_groupe_vu", cle); return; }
     proposerLancement(j);
   }
   function allerA(j){
-    E("salle_groupe_vu", j.code);
+    E("salle_groupe_vu", cleLancement(j));
     if(moi && moi.pseudo && !L("salle_pseudo", "")) E("salle_pseudo", moi.pseudo);
-    location.href = urlSalle(j);
+    location.href = j.code ? urlSalle(j) : `${RACINE}jeux/${encodeURIComponent(j.slug)}/?groupe=1`;
   }
 
   /* ---------- Arrivée par une salle du groupe (?salle=CODE&groupe=1) ---------- */
@@ -394,12 +412,17 @@
     }
   }
   function proposerLancement(j){
-    const cle = "j-" + j.code;
+    const cle = "j-" + cleLancement(j);
     if(notifs.querySelector(`[data-cle="${CSS.escape(cle)}"]`)) return;
-    notifs.querySelectorAll('[data-cle^="j-"]').forEach(n => n.remove());
-    let n = 8;
-    const c = carte(`${emojiDe(j.slug)} ${j.pseudo || "Un membre"} lance ${titreDe(j.slug)} pour le groupe !`,
-      [["Rejoindre", () => allerA(j)], ["Pas cette fois", () => { E("salle_groupe_vu", j.code); clearInterval(t); }, true]], cle);
+    const enCours = notifs.querySelectorAll('[data-cle^="j-"]');
+    enCours.forEach(n => n.remove());
+    const memeJeu = slugPage === j.slug;
+    let n = memeJeu || enCours.length ? 2 : 8;
+    const titre = j.code
+      ? (memeJeu ? `${emojiDe(j.slug)} ${j.pseudo || "Un membre"} a créé la salle : connexion…` : `${emojiDe(j.slug)} ${j.pseudo || "Un membre"} lance ${titreDe(j.slug)} pour le groupe !`)
+      : `${emojiDe(j.slug)} ${j.pseudo || "Un membre"} emmène le groupe sur ${titreDe(j.slug)} !`;
+    const c = carte(titre,
+      [["Rejoindre", () => allerA(j)], ["Pas cette fois", () => { E("salle_groupe_vu", cleLancement(j)); E("salle_groupe_refus", {slug: j.slug, t: Date.now()}); clearInterval(t); }, true]], cle);
     if(!c) return;
     const info = el("small", null, "gr-note"); c.insertBefore(info, c.lastChild);
     const t = setInterval(() => {
@@ -502,10 +525,11 @@
     }
 
     P.appendChild(el("h3", "🎮 Jouer ensemble"));
-    P.appendChild(el("p", "Va dans un jeu et crée une salle en ligne : tout le groupe y sera invité automatiquement.", "gr-note"));
+    P.appendChild(el("p", "Choisis un jeu : tout le groupe y est emmené et la salle se crée toute seule. (Créer une salle en ligne dans un jeu marche aussi.)", "gr-note"));
     const grille = el("div", null, "gr-jeux");
     jeuxMulti().forEach(g => {
       const a = el("a"); a.href = `${RACINE}jeux/${g.slug}/?groupe=hote`;
+      a.onclick = e => { e.preventDefault(); lancerPourGroupe(g.slug); };
       a.append(el("span", g.emoji || "🎮"), document.createTextNode(g.title));
       grille.appendChild(a);
     });
@@ -565,8 +589,34 @@
     });
     await relancer();
     autoRejoindre();
-    if(params.get("groupe") === "hote" && gid)
-      carte("📣 Crée une salle en ligne dans ce jeu : tout ton groupe y sera invité automatiquement.", [["OK", () => {}]], "hote");
+    if(params.get("groupe") === "hote") autoCreer();
+    else if(params.get("groupe") === "1" && !params.get("salle") && G && G.jeu && G.jeu.slug === slugPage && !G.jeu.code)
+      carte(`⏳ ${G.jeu.pseudo || "Le chef"} prépare la salle, tu vas y être connecté automatiquement…`, [["OK", () => {}]], "attente");
+  }
+
+  /* ?groupe=hote : on crée la salle en ligne tout seul (le groupe sera prévenu par salleCreee) */
+  function autoCreer(){
+    try{ history.replaceState(null, "", location.pathname); }catch(e){}
+    if(!gid) return;
+    const $ = id => document.getElementById(id);
+    const ps = (moi && moi.pseudo) || L("salle_pseudo", "");
+    const remplir = id => { const i = $(id); if(i && !i.value.trim() && ps){ i.value = ps; i.dispatchEvent(new Event("input", {bubbles: true})); } };
+    const indice = () => carte("📣 Crée une salle en ligne dans ce jeu : tout ton groupe y sera invité automatiquement.", [["OK", () => {}]], "hote");
+    const go = () => {
+      try{
+        if($("roomCode") && $("p1")) return indice();                                  // Les Quintuplées : réglages à choisir
+        if($("mNet") && $("netBox") && $("netBox").classList.contains("hidden")) $("mNet").click();
+        const ligne = document.querySelector('[data-mode="ligne"]'); if(ligne) ligne.click();
+        ["pseudo", "nameIn", "netName"].forEach(remplir);
+        if(typeof window.creerSalle === "function" && typeof window.panneauVersus === "function"){   // Blocs
+          window.panneauVersus(); remplir("vPseudo"); window.creerSalle(); return;
+        }
+        const b = $("creer") || $("btnCreate");
+        if(b){ b.click(); toast("🛠️ Création de la salle pour le groupe…"); }
+        else indice();
+      }catch(e){ console.error("[Groupe] création auto :", e); indice(); }
+    };
+    if(document.readyState === "complete") setTimeout(go, 500); else window.addEventListener("load", () => setTimeout(go, 500));
   }
 
   window.Groupe = {
