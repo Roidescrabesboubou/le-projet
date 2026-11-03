@@ -286,6 +286,7 @@ label.l:first-child{margin-top:0}
 
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script src="../commun/classement.js"></script>
+<script src="animes.js"></script>
 <script>
 /* ============================================================
    CATÉGORIES
@@ -521,58 +522,49 @@ async function loadDeezer(cat){
   return tracks.filter(t=>t&&t.preview&&t.readable!==false&&!seenIds.has(t.id)&&seenIds.add(t.id)).map(t=>deezerItem(t,cat));
 }
 
-/* Animé : liste des animés populaires (AniList), puis leurs génériques (AnimeThemes). */
-let anilistCache=null;
-async function anilistPopular(pages){
-  if(anilistCache&&anilistCache.pages>=pages)return anilistCache.list;
-  const q=`query($p:Int){Page(page:$p,perPage:50){media(type:ANIME,sort:POPULARITY_DESC,isAdult:false,format_in:[TV,TV_SHORT,MOVIE,ONA]){id title{romaji english} synonyms coverImage{large}}}}`;
-  const list=[];
-  for(let p=1;p<=pages;p++){
-    const r=await fetchT("https://graphql.anilist.co",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({query:q,variables:{p}})});
-    if(!r.ok)throw new Error("AniList "+r.status);
-    list.push(...((await r.json()).data.Page.media||[]));
+/* Animé : liste intégrée au site (animes.js, fichiers audio d'AnimeThemes.moe),
+   noms et pochettes récupérés auprès d'AniList. L'API d'AnimeThemes n'est plus utilisée :
+   elle est souvent hors service. */
+const ANIMES=(window.ANIMES_DATA||"").trim().split("\n").map((l,rank)=>{
+  const [id,pre,th]=l.split(",");
+  return {id:+id,pre,rank,th:th.split(" ").map(s=>{
+    const m=s.match(/^(OP|ED)(\d+)/);
+    return {type:m[1],seq:+m[2],slug:m[1]+m[2],src:"https://a.animethemes.moe/"+pre+"-"+s.replace(/\*$/,"-NCBD1080")+".ogg"};
+  })};
+});
+const DIFF_TOP={f:100,m:350,d:Infinity};
+const alCache=new Map();
+/* Noms, synonymes et pochettes AniList (50 animés par requête) */
+async function anilistInfo(ids){
+  const miss=ids.filter(id=>!alCache.has(id));
+  for(let i=0;i<miss.length;i+=50){
+    const part=miss.slice(i,i+50);
+    try{
+      const r=await fetchT("https://graphql.anilist.co",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
+        body:JSON.stringify({query:`query($ids:[Int]){Page(perPage:50){media(id_in:$ids,type:ANIME){id title{romaji english} synonyms coverImage{large}}}}`,variables:{ids:part}})},10000);
+      if(!r.ok)throw new Error("AniList "+r.status);
+      for(const m of ((await r.json()).data.Page.media||[]))alCache.set(m.id,m);
+    }catch(e){console.warn("AniList indisponible, noms de secours utilisés",e)}
   }
-  anilistCache={pages,list}; return list;
 }
-function themeAudio(t){
-  for(const e of (t.animethemeentries||[])){
-    if(e.nsfw||e.spoiler)continue;
-    for(const v of (e.videos||[]))if(v.audio&&v.audio.link)return v.audio.link;
-  }
-  return null;
-}
-function animeItem(cat,theme,anime,al){
-  const link=themeAudio(theme); if(!link)return null;
-  const names=[anime.name,...(anime.animesynonyms||[]).map(s=>s.text)];
+const spaced = p => p.replace(/([a-z])([A-Z0-9])/g,"$1 $2").replace(/([0-9])([A-Z])/g,"$1 $2");   // « ShingekiNoKyojinS2 » → « Shingeki No Kyojin S2 »
+function animeItem(cat,a,t){
+  const al=alCache.get(a.id), fallback=spaced(a.pre);
+  const names=[fallback];
   if(al)names.push(al.title.romaji,al.title.english,...(al.synonyms||[]).filter(s=>/^[\x00-ɏ\s]+$/.test(s)));
-  const song=theme.song||{}, artists=(song.artists||[]).map(a=>a.name);
-  const cover=(al&&al.coverImage&&al.coverImage.large)||((anime.images||[]).find(i=>/Large|Cover/.test(i.facet))||{}).link||"";
-  return {key:"at"+link,cat,src:link,start:set.diff==="d"?-1:0,cover,
-    line:(theme.slug||cat.anime)+(song.title?" — « "+song.title+" »":"")+(artists.length?" par "+artists.join(", "):""),
-    fields:[{label:"Animé",pts:200,answers:variants(names,true),show:(al&&(al.title.english||al.title.romaji))&&norm(al.title.english||al.title.romaji)!==norm(anime.name)?anime.name+" ("+(al.title.english||al.title.romaji)+")":anime.name}]};
+  const main=al?(al.title.romaji||fallback):fallback, en=al&&al.title.english;
+  return {key:"at"+t.src,cat,src:t.src,start:set.diff==="d"?-1:0,cover:al&&al.coverImage&&al.coverImage.large||"",
+    line:t.slug+" de "+main,
+    fields:[{label:"Animé",pts:200,answers:variants(names,true),show:en&&norm(en)!==norm(main)?main+" ("+en+")":main}]};
 }
 async function loadAnime(cat,need){
-  const items=[];
-  const inc="include=animesynonyms,images,resources,animethemes.song.artists,animethemes.animethemeentries.videos.audio";
-  if(set.diff==="d"){
-    const r=await fetchT(`https://api.animethemes.moe/animetheme?filter[type]=${cat.anime}&sort=random&page[size]=${Math.min(50,need*2+6)}&include=anime.animesynonyms,anime.images,song.artists,animethemeentries.videos.audio`);
-    const j=await r.json();
-    for(const t of (j.animethemes||[])){const it=t.anime&&animeItem(cat,t,t.anime,null);if(it)items.push(it)}
-    return items;
-  }
-  const pop=await anilistPopular(set.diff==="f"?2:8);
-  const chosen=shuffle(pop).slice(0,Math.min(40,need*2+8));
-  const byId=new Map(chosen.map(a=>[String(a.id),a]));
-  const r=await fetchT(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=AniList&filter[external_id]=${chosen.map(a=>a.id).join(",")}&${inc}&page[size]=50`,null,20000);
-  const j=await r.json();
-  for(const a of (j.anime||[])){
-    const res=(a.resources||[]).find(x=>x.site==="AniList"), al=res&&byId.get(String(res.external_id));
-    let themes=(a.animethemes||[]).filter(t=>t.type===cat.anime);
-    if(set.diff==="f"){const first=themes.filter(t=>(t.sequence||1)<=2);if(first.length)themes=first}
-    const t=themes.length&&pick(themes), it=t&&animeItem(cat,t,a,al);
-    if(it)items.push(it);
-  }
-  return items;
+  if(!ANIMES.length)throw new Error("liste des animés absente");
+  const pool=ANIMES.slice(0,Math.min(ANIMES.length,DIFF_TOP[set.diff]||100))
+    .map(a=>{let th=a.th.filter(t=>t.type===cat.anime);if(set.diff==="f"){const first=th.filter(t=>t.seq<=2);if(first.length)th=first}return th.length?{a,th}:null})
+    .filter(Boolean);
+  const chosen=shuffle(pool).slice(0,Math.min(pool.length,need*2+8));
+  await anilistInfo(chosen.map(x=>x.a.id));
+  return chosen.map(({a,th})=>animeItem(cat,a,pick(th)));
 }
 
 /* ---------- Construction de la playlist de la partie ---------- */
