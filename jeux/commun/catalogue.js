@@ -151,8 +151,8 @@ window.SALLE_CATALOGUE = [
     slug: "blocs",
     title: "Blocs",
     emoji: "🧱",
-    desc: "Le classique des blocs qui tombent : complète des lignes, enchaîne les combos et grimpe de niveau. Pièce en réserve, aperçu des suivantes et top 10 des scores.",
-    tags: ["Arcade", "Solo"],
+    desc: "Le classique des blocs qui tombent : complète des lignes, enchaîne les combos et grimpe de niveau. Pièce en réserve, aperçu des suivantes et top 10 des scores. Nouveau : Versus en ligne de 2 à 8 joueurs, envoie des lignes à tes adversaires et sois le dernier en vie !",
+    tags: ["Arcade", "Solo", "Multijoueur"],
     colors: ["#4fc3e8", "#b06bd8"],
     etat: "dispo",
     badge: "Nouveau"
