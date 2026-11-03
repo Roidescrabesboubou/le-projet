@@ -165,13 +165,18 @@
     if(uid === moi.uid) return "C'est toi ! 😄";
     if(amis[uid]) return "Vous êtes déjà amis.";
     if(demandes[uid]){ await accepter(uid); return "✅ Vous êtes maintenant amis !"; }
-    try{ await db(`demandes/${uid}/${moi.uid}`, {method: "PUT", body: {pseudo: pseudo().slice(0, 16), d: SV}}); return "✅ Demande envoyée !"; }
+    try{
+      await db(`demandes/${uid}/${moi.uid}`, {method: "PUT", body: {pseudo: pseudo().slice(0, 16), d: SV}});
+      popup("👋", "Demande envoyée !", `${p} recevra ta demande d'ami dès qu'il sera sur le site.`);
+      return "✅ Demande envoyée !";
+    }
     catch(e){ return "❌ " + e.message; }
   }
   async function accepter(u){
+    const qui = (demandes[u] && demandes[u].pseudo) || (profils[u] && profils[u].pseudo) || "ton ami";
     await maj({[`amis/${moi.uid}/${u}`]: true, [`amis/${u}/${moi.uid}`]: true, [`demandes/${moi.uid}/${u}`]: null});
     delete demandes[u];
-    toast("🤝 Vous êtes maintenant amis !");
+    popup("🤝", "Vous êtes maintenant amis !", `Tu peux inviter ${qui} dans ton groupe.`);
     chargerAmis();
   }
   async function refuser(u){ await db(`demandes/${moi.uid}/${u}`, {method: "DELETE"}); delete demandes[u]; dessiner(); }
@@ -223,7 +228,7 @@
     if(!gid) await creer();
     if(membres().length >= MAX) return toast(`Le groupe est complet (${MAX} max).`);
     await db(`invitations/${u}/${gid}`, {method: "PUT", body: {de: moi.uid, pseudo: pseudo().slice(0, 16), d: SV}});
-    toast(`📨 Invitation envoyée à ${(profils[u] && profils[u].pseudo) || "ton ami"} !`);
+    popup("📨", "Invitation envoyée !", `${(profils[u] && profils[u].pseudo) || "Ton ami"} va recevoir ton invitation à rejoindre le groupe.`);
   }
   async function refuserInvit(g){ await db(`invitations/${moi.uid}/${g}`, {method: "DELETE"}).catch(() => {}); delete invits[g]; dessiner(); }
 
@@ -317,6 +322,15 @@
 .gr-notif b{display:block;margin-bottom:8px}
 .gr-notif .gr-ligne{margin:0}
 @keyframes grEntre{from{transform:translateY(-12px);opacity:0}}
+.gr-pop{position:fixed;inset:0;z-index:9004;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25);animation:grFondu .2s ease-out}
+.gr-pop.sort{opacity:0;transition:opacity .2s}
+.gr-pop-boite{background:var(--card,#fff);color:var(--text,#22192b);border-radius:20px;padding:22px 24px 18px;width:min(320px,86vw);text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3);font:400 .95rem Nunito,system-ui,sans-serif;animation:grPop .35s cubic-bezier(.2,1.4,.4,1)}
+.gr-pop-ic{font-size:2.6rem;line-height:1;margin-bottom:6px}
+.gr-pop-boite b{display:block;font:700 1.2rem Fredoka,Nunito,sans-serif}
+.gr-pop-boite p{margin:6px 0 14px;color:var(--muted,#776c80)}
+.gr-pop-boite .gr-b{padding:8px 26px}
+@keyframes grPop{from{transform:scale(.6);opacity:0}}
+@keyframes grFondu{from{opacity:0}}
 .gr-toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:9003;background:#22192b;color:#fff;padding:9px 16px;border-radius:12px;font:700 .9rem Nunito,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90vw;text-align:center}
 @media print{.gr-btn,.gr-panneau,.gr-notifs{display:none}}`;
   document.head.appendChild(css);
@@ -329,7 +343,7 @@
     notifs = el("div", null, "gr-notifs");
     document.body.append(bouton, panneau, notifs);
     document.addEventListener("keydown", e => { if(e.key === "Escape" && ouvert) fermer(); });
-    document.addEventListener("mousedown", e => { if(ouvert && !panneau.contains(e.target) && !bouton.contains(e.target) && !notifs.contains(e.target)) fermer(); });
+    document.addEventListener("mousedown", e => { if(ouvert && !panneau.contains(e.target) && !bouton.contains(e.target) && !notifs.contains(e.target) && !e.target.closest(".gr-pop")) fermer(); });
   }
   function ouvrir(o){
     if(o) onglet = o;
@@ -338,6 +352,20 @@
     clearInterval(minuterie); minuterie = setInterval(() => { if(ouvert && moi) chargerAmis(); }, 30000);
   }
   function fermer(){ ouvert = false; if(panneau) panneau.hidden = true; clearInterval(minuterie); }
+
+  /* Petit pop-up de confirmation au centre de l'écran (se ferme tout seul) */
+  function popup(icone, titre, texte){
+    document.querySelectorAll(".gr-pop").forEach(n => n.remove());
+    const fond = el("div", null, "gr-pop");
+    const b = el("div", null, "gr-pop-boite");
+    b.append(el("div", icone, "gr-pop-ic"), el("b", titre), el("p", texte || ""));
+    const ok = el("button", "OK", "gr-b"); b.appendChild(ok);
+    fond.appendChild(b); document.body.appendChild(fond);
+    const fermerPop = () => { fond.classList.add("sort"); setTimeout(() => fond.remove(), 200); };
+    ok.onclick = fermerPop;
+    fond.addEventListener("mousedown", e => { if(e.target === fond) fermerPop(); });
+    setTimeout(() => { if(fond.isConnected) fermerPop(); }, 3500);
+  }
 
   function toast(t){
     document.querySelectorAll(".gr-toast").forEach(n => n.remove());
