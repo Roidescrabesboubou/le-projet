@@ -1,19 +1,25 @@
 /* ============================================================
    PERSONNAGES – La Grande Enchère
    Format : "Nom|Puissance"
-   - Puissance de 1 à 100, à l'échelle de SON univers : c'est elle qui
+   - Puissance à l'échelle de SON univers (environ 1 à 100) : c'est elle qui
      décide de l'équipe la plus forte à la fin d'une manche.
      Deux univers ne se comparent pas entre eux (on ne les mélange pas).
    - Ces notes sont un avis assumé : à corriger librement ici.
+   - One Piece : notes calculées d'après les primes (échelle logarithmique,
+     Arlong 20 M = 25, Kaido 4,611 Md = 99). Exceptions à la main :
+     Roger 110 et Shanks 105 (ils dépassent 100), les faux dangers à la grosse
+     prime (Baggy, Nami, Usopp, Robin, Chopper) et ceux sans prime connue
+     (Marine, Dragon, Rayleigh, Yamato…). Ajustés à la main car la prime ne
+     reflète pas leur force : Luffy, Zoro, Sanji, Sabo, Ace, Doflamingo, Crocodile.
    - Il faut au moins 16 personnages par univers (le maximum du réglage).
    ============================================================ */
 window.ENCHERES_UNIVERS = [
   {id: "onepiece", nom: "One Piece", emoji: "🏴‍☠️", persos: [
-    "Monkey D. Luffy|95","Roronoa Zoro|90","Sanji|87","Nami|30","Usopp|42","Tony Tony Chopper|50","Nico Robin|58","Franky|62","Brook|60","Jinbe|78",
-    "Portgas D. Ace|80","Sabo|84","Shanks|97","Barbe Blanche|98","Barbe Noire|94","Kaido|99","Big Mom|96","Trafalgar Law|83","Eustass Kid|82","Dragon|93",
-    "Gol D. Roger|100","Rayleigh|92","Mihawk|95","Crocodile|72","Doflamingo|80","Boa Hancock|76","Akainu|93","Aokiji|91","Kizaru|91","Garp|92",
-    "Smoker|55","Tashigi|28","Vivi|12","Baggy|35","Arlong|25","Rob Lucci|75","Katakuri|86","Yamato|85","Kuma|74",
-    "Coby|45","Perona|40","Enel|70","Marco|88","Ivankov|65"
+    "Monkey D. Luffy|98","Roronoa Zoro|90","Sanji|88","Nami|30","Usopp|42","Tony Tony Chopper|50","Nico Robin|58","Franky|66","Brook|65","Jinbe|80",
+    "Portgas D. Ace|82","Sabo|84","Shanks|105","Barbe Blanche|100","Barbe Noire|97","Kaido|99","Big Mom|98","Trafalgar Law|93","Eustass Kid|93","Dragon|96",
+    "Gol D. Roger|110","Rayleigh|95","Mihawk|96","Crocodile|68","Doflamingo|78","Boa Hancock|85","Akainu|95","Aokiji|93","Kizaru|93","Garp|96",
+    "Smoker|55","Tashigi|28","Vivi|12","Baggy|35","Arlong|25","Rob Lucci|75","Katakuri|79","Yamato|82","Kuma|62",
+    "Coby|45","Perona|40","Enel|70","Marco|83","Ivankov|65"
   ]},
   {id: "naruto", nom: "Naruto", emoji: "🍥", persos: [
     "Naruto Uzumaki|96","Sasuke Uchiha|95","Sakura Haruno|62","Kakashi Hatake|80","Itachi Uchiha|85","Madara Uchiha|99","Obito Uchiha|90","Hashirama Senju|98","Tobirama Senju|84","Minato Namikaze|88",

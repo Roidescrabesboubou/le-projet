@@ -148,7 +148,7 @@
         <div class="mise">
           <button id="m10" aria-label="Retirer 10">−10</button>
           <button id="m1" aria-label="Retirer 1">−1</button>
-          <input id="mise" type="number" inputmode="numeric" min="0" aria-label="Montant de l'enchère">
+          <input id="mise" type="number" inputmode="numeric" min="1" aria-label="Montant de l'enchère">
           <button id="p1" aria-label="Ajouter 1">+1</button>
           <button id="p10" aria-label="Ajouter 10">+10</button>
           <button id="tapis">Tapis</button>
@@ -194,7 +194,7 @@ Base.entete({
   <ul>
     <li>Chacun a le même argent au départ et chaque équipe a la même taille (la moitié des personnages).</li>
     <li>Tu découvres chaque personnage au moment de sa vente : impossible de savoir qui arrive ensuite !</li>
-    <li>À chaque vente, un joueur ouvre (0 est permis), puis on surenchérit à tour de rôle. L'ouverture change à chaque personnage.</li>
+    <li>À chaque vente, un joueur ouvre (1 au minimum), puis on surenchérit à tour de rôle. L'ouverture change à chaque personnage.</li>
     <li><b>🏳️ Laisser</b> : l'adversaire remporte le personnage au prix de sa dernière enchère. Si personne n'a encore misé, il l'a gratuitement.</li>
     <li>Plus d'argent ? Tu enchéris automatiquement 0 quand tu ouvres, et tu laisses quand tu ne peux pas suivre.</li>
     <li>Une équipe est complète ? Tous les personnages restants vont gratuitement à l'autre joueur.</li>
@@ -263,7 +263,7 @@ function nouvelleManche(){
 
 const taille = () => G.cfg.persos / 2;
 const ouvreur = () => G.i % 2 === 0 ? G.premier : 3 - G.premier;
-const miseMin = () => G.enchere ? G.enchere.montant + 1 : 0;
+const miseMin = () => G.enchere ? G.enchere.montant + 1 : 1;
 
 function ouvrirVente(){
   G.phase = "vente"; G.enchere = null; G.adj = null; G.note = "";
