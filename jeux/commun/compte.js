@@ -246,6 +246,7 @@ const FIREBASE = {
       if(menu){ menu.remove(); menu = null; return; }
       menu = el("div", "", "cp-menu");
       menu.appendChild(el("small", "Connecté en tant que " + (session.pseudo || "?")));
+      if(window.Groupe){ const g = el("button", "👥 Amis et groupe"); g.onclick = () => { menu.remove(); menu = null; Groupe.ouvrir(); }; menu.appendChild(g); }
       if(session.admin){ const a = el("a", "⭐ Panel admin"); a.href = RACINE + "admin/"; menu.appendChild(a); }
       const d = el("button", "🚪 Se déconnecter"); d.onclick = () => { deconnecter(); };
       menu.appendChild(d);

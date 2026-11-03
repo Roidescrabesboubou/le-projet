@@ -888,6 +888,7 @@ function connectBroker(i){
   });
 }
 function openRoom(c,code){
+  if(NET.host&&window.Groupe)Groupe.salleCreee(code);   /* invite le groupe 👥 */
   NET.client=c;NET.code=code;NET.topic=TOPIC+code;
   c.subscribe(NET.topic);
   c.on("message",(tp,buf)=>{if(tp!==NET.topic)return;let m;try{m=JSON.parse(buf.toString())}catch(e){return}onNet(m)});

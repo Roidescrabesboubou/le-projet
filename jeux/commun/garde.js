@@ -22,6 +22,7 @@
     return new Promise(ok => {
       if(nom === "catalogue.js" && window.SALLE_CATALOGUE) return ok();
       if(nom === "compte.js" && window.Compte) return ok();
+      if(nom === "groupe.js" && window.Groupe) return ok();
       const s = document.createElement("script");
       s.src = base + nom; s.onload = ok; s.onerror = ok;
       document.head.appendChild(s);
@@ -69,6 +70,7 @@
     await charger("catalogue.js");
     await charger("compte.js");
     if(!window.Compte) return;
+    charger("groupe.js");   /* amis + groupe (bouton 👥) */
     const jeu = (window.SALLE_CATALOGUE || []).find(j => j.slug === slug) || {slug, etat: "dispo"};
     const {etat} = Compte.etatDe(jeu, await Compte.reglages());
 

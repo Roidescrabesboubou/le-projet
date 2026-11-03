@@ -9,6 +9,8 @@
    Modules communs (dans jeux/commun/) :
      base.css / base.js → style, en-tête 🏠❓⚙️, pseudo, records
      reseau.js          → jeu en ligne (salles avec code)
+     groupe.js          → amis + groupe 👥 (chargé par garde.js) ; un jeu
+                          en ligne sans reseau.js appelle Groupe.salleCreee(code)
      ia.js              → appels IA avec les clés des ⚙️ Réglages
      classement.js      → top 10 en ligne · series.js → séries -dle
 

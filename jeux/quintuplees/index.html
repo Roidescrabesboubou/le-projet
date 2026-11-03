@@ -498,6 +498,7 @@ function roomList(){
 $("btnHost").onclick=()=>{
   const code=Math.random().toString(36).slice(2,8).toUpperCase();
   net.role="host";net.topic="nakano-"+code;net.conn=null;net.guests=[];
+  if(window.Groupe)Groupe.salleCreee(code);   /* invite le groupe 👥 */
   $("netInfo").textContent="Création de la salle…";
   subscribe(m=>{
     if(m.t==="hello"){
