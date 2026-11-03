@@ -1035,13 +1035,19 @@ async function envoyer(res, n, zone){
   const p = el("p", "Envoi aux classements…", "note"); zone.appendChild(p);
   const msgs = [];
   try{
-    const l = await Classement.top("coupdefeu", "k", false);
-    if(l.length < 10 || res.k > l[l.length - 1].k){ await Classement.ajouter("coupdefeu", {n, lv:res.lv, s:Math.min(res.s, 1e15), k:res.k}); msgs.push("🌍 Tu entres dans le top 10 « journée la plus lointaine » !"); }
+    const [a, b] = await Promise.allSettled([Classement.top("coupdefeu", "k", false), Classement.topSemaine("coupdefeu", "k", false)]);
+    if(a.status !== "fulfilled" && b.status !== "fulfilled") throw new Error("hors ligne");
+    const okT = a.status === "fulfilled" && Classement.qualifie(a.value, "k", false, res.k);
+    const okS = b.status === "fulfilled" && Classement.qualifie(b.value, "k", false, res.k);
+    if(okT || okS){
+      await Classement.ajouter("coupdefeu", {n, lv:res.lv, s:Math.min(res.s, 1e15), k:res.k});
+      msgs.push(okT ? "🌍 Tu entres dans le top 10 « journée la plus lointaine » !" : "🗓️ Tu entres dans le top 10 de la semaine !");
+    }
   }catch(e){ msgs.push("Classement mondial indisponible pour le moment."); }
   if(res.plat > 0){
     try{
-      const l = await Classement.top("coupdefeu_plat", "s", false);
-      if(l.length < 10 || res.plat > l[l.length - 1].s){ await Classement.ajouter("coupdefeu_plat", {n, s:Math.min(res.plat, 1e15), lv:res.lv, r:(res.rec || "?").slice(0, 20)}); msgs.push("🍽️ Ton plat entre dans le top 10 des plus gros plats !"); }
+      const [a, b] = await Promise.allSettled([Classement.top("coupdefeu_plat", "s", false), Classement.topSemaine("coupdefeu_plat", "s", false)]);
+      if((a.status === "fulfilled" && Classement.qualifie(a.value, "s", false, res.plat)) || (b.status === "fulfilled" && Classement.qualifie(b.value, "s", false, res.plat))){ await Classement.ajouter("coupdefeu_plat", {n, s:Math.min(res.plat, 1e15), lv:res.lv, r:(res.rec || "?").slice(0, 20)}); msgs.push("🍽️ Ton plat entre dans un top 10 des plus gros plats !"); }
     }catch(e){}
   }
   if(res.mode === "jour" && res.j != null){
@@ -1084,17 +1090,24 @@ function fenetreClassements(onglet){
   const zone = el("div");
   const j = jourParis(), id = idJoueur();
   const T = [
-    ["premier", "📅 1er essai"], ["meilleur", "📅 Meilleur essai"], ["web", "🌍 Journée"], ["plat", "🍽️ Gros plat"]
+    ["premier", "📅 1er essai"], ["meilleur", "📅 Meilleur essai"], ["semaine", "🗓️ Semaine"], ["web", "🌍 Journée"], ["plat", "🍽️ Gros plat"]
   ];
   const ouvrir = async k => {
     [...tabs.children].forEach((b, i) => b.classList.toggle("on", T[i][0] === k));
     zone.innerHTML = ""; zone.appendChild(el("p", "Chargement…", "note"));
     const titre = {premier:`Partie du jour n°${j + 1} — seul le premier essai compte`, meilleur:`Partie du jour n°${j + 1} — meilleur de tous tes essais`,
+                   semaine:"Journée la plus lointaine cette semaine (remis à zéro lundi)",
                    web:"Journée la plus lointaine (le score total départage)", plat:"Plus gros plat jamais servi"}[k];
     const corps = el("div");
     try{
       if(!Classement.enLigne) throw new Error("hors ligne");
       if(k === "premier" || k === "meilleur") liste(corps, await lireJour(j, k), valJour, e => e.id === id);
+      else if(k === "semaine"){
+        const l = await Classement.topSemaine("coupdefeu", "k", false);
+        liste(corps, l, valJour);
+        const pl = await Classement.topSemaine("coupdefeu_plat", "s", false).catch(() => []);
+        if(pl.length) corps.appendChild(el("p", `🍽️ Plus gros plat de la semaine : ${fmt(pl[0].s)}${pl[0].r ? " · " + pl[0].r : ""} par ${pl[0].n}`, "note"));
+      }
       else if(k === "web") liste(corps, await Classement.top("coupdefeu", "k", false), valJour);
       else liste(corps, await Classement.top("coupdefeu_plat", "s", false), e => fmt(e.s) + (e.r ? " · " + e.r : ""));
     }catch(err){

@@ -6,7 +6,8 @@
         ".indexOn": [
           "s",
           "t",
-          "k"
+          "k",
+          "d"
         ],
         "$id": {
           ".write": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat)$/) && !data.exists() && newData.exists()",
