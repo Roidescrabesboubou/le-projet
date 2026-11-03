@@ -41,13 +41,13 @@
     },
     "series": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle)$/)",
+        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/)",
         ".indexOn": [
           "s",
           "b"
         ],
         "$id": {
-          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists()",
+          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists()",
           ".validate": "newData.hasChildren(['n', 's', 'b', 'j', 'd']) && newData.child('s').val() <= newData.child('j').val() + 1 && newData.child('b').val() >= newData.child('s').val() && newData.child('b').val() <= newData.child('j').val() + 1 && (!data.exists() || (newData.child('j').val() == data.child('j').val() && newData.child('s').val() <= data.child('s').val() && newData.child('b').val() <= data.child('b').val()) || (newData.child('j').val() == data.child('j').val() + 1 && newData.child('s').val() <= data.child('s').val() + 1 && (newData.child('b').val() <= data.child('b').val() || newData.child('b').val() == newData.child('s').val())) || (newData.child('j').val() > data.child('j').val() + 1 && newData.child('s').val() <= 1 && (newData.child('b').val() <= data.child('b').val() || newData.child('b').val() == newData.child('s').val())))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
@@ -72,12 +72,12 @@
     },
     "resultats": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle)$/)",
+        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/)",
         ".indexOn": [
           "j"
         ],
         "$id": {
-          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && (!data.exists() || newData.child('j').val() > data.child('j').val())",
+          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && (!data.exists() || newData.child('j').val() > data.child('j').val())",
           ".validate": "newData.hasChildren(['j', 'e', 'g', 'd'])",
           "j": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + newData.val() * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() + 1) * 86400000"
@@ -204,6 +204,138 @@
       },
       "$autre": {
         ".validate": false
+      }
+    },
+    "profils": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['pseudo', 'vu'])",
+        "pseudo": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "avatar": {
+          ".validate": "newData.isString() && newData.val().length <= 16"
+        },
+        "vu": {
+          ".validate": "newData.val() == now"
+        },
+        "ou": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "groupe": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9]{20}$/)"
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
+    },
+    "amis": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$ami": {
+          ".write": "auth != null && ((!newData.exists() && (auth.uid === $uid || auth.uid === $ami)) || (newData.exists() && ((auth.uid === $uid && root.child('demandes').child($uid).child($ami).exists()) || (auth.uid === $ami && root.child('demandes').child($ami).child($uid).exists()))))",
+          ".validate": "newData.val() === true"
+        }
+      }
+    },
+    "demandes": {
+      "$dest": {
+        ".read": "auth != null && auth.uid === $dest",
+        "$src": {
+          ".write": "auth != null && ((newData.exists() && auth.uid === $src && $src !== $dest && !root.child('amis').child($src).child($dest).exists()) || (!newData.exists() && (auth.uid === $dest || auth.uid === $src)))",
+          ".validate": "newData.hasChildren(['pseudo', 'd'])",
+          "pseudo": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "d": {
+            ".validate": "newData.val() == now"
+          },
+          "$autre": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "groupes": {
+      "$gid": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && $gid.matches(/^[a-z0-9]{20}$/) && newData.child('chef').val() === auth.uid && newData.child('membres').child(auth.uid).exists()) || (data.exists() && !newData.exists() && data.child('chef').val() === auth.uid))",
+        "chef": {
+          ".write": "auth != null && data.exists() && (data.val() === auth.uid || !data.parent().child('membres').child(data.val()).exists()) && root.child('groupes').child($gid).child('membres').child(auth.uid).exists()",
+          ".validate": "newData.isString() && newData.parent().child('membres').child(newData.val()).exists()"
+        },
+        "cree": {
+          ".validate": "newData.isNumber()"
+        },
+        "membres": {
+          "$uid": {
+            ".write": "auth != null && ((auth.uid === $uid && (data.exists() || !newData.exists() || root.child('invitations').child($uid).child($gid).exists())) || (!newData.exists() && root.child('groupes').child($gid).child('chef').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['pseudo'])",
+            "pseudo": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+            },
+            "avatar": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "vu": {
+              ".validate": "newData.val() == now"
+            },
+            "ou": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "$autre": {
+              ".validate": false
+            }
+          }
+        },
+        "jeu": {
+          ".write": "auth != null && root.child('groupes').child($gid).child('membres').child(auth.uid).exists()",
+          ".validate": "newData.hasChildren(['slug', 'code', 'par', 'pseudo', 'd'])",
+          "slug": {
+            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_-]{1,40}$/)"
+          },
+          "code": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9]{3,8}$/)"
+          },
+          "par": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "pseudo": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "d": {
+            ".validate": "newData.val() == now"
+          },
+          "$autre": {
+            ".validate": false
+          }
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
+    },
+    "invitations": {
+      "$dest": {
+        ".read": "auth != null && auth.uid === $dest",
+        "$gid": {
+          ".write": "auth != null && ((newData.exists() && root.child('groupes').child($gid).child('membres').child(auth.uid).exists() && root.child('amis').child(auth.uid).child($dest).exists()) || (!newData.exists() && (auth.uid === $dest || root.child('groupes').child($gid).child('membres').child(auth.uid).exists())))",
+          ".validate": "newData.hasChildren(['de', 'pseudo', 'd'])",
+          "de": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "pseudo": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "d": {
+            ".validate": "newData.val() == now"
+          },
+          "$autre": {
+            ".validate": false
+          }
+        }
       }
     }
   }

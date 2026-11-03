@@ -159,7 +159,9 @@
       try{
         const c = await connecter(i);
         const code = Array.from({length: 4}, () => LETTRES[Math.floor(Math.random() * LETTRES.length)]).join("") + (i + 1);
-        return fabriquer(c, jeu, code, true, o);
+        const salle = fabriquer(c, jeu, code, true, o);
+        try{ if(window.Groupe) Groupe.salleCreee(code); }catch(e){}
+        return salle;
       }catch(e){ o.surEssai && o.surEssai(`Serveur ${BROKERS[i].n} indisponible, essai suivant…`); }
     }
     throw new Error("Impossible de joindre un relais en ligne depuis ce réseau. Essaie un autre réseau (ou le partage de connexion du téléphone).");

@@ -9,6 +9,8 @@
    Modules communs (dans jeux/commun/) :
      base.css / base.js → style, en-tête 🏠❓⚙️, pseudo, records
      reseau.js          → jeu en ligne (salles avec code)
+     groupe.js          → amis + groupe 👥 (chargé par garde.js) ; un jeu
+                          en ligne sans reseau.js appelle Groupe.salleCreee(code)
      ia.js              → appels IA avec les clés des ⚙️ Réglages
      classement.js      → top 10 en ligne · series.js → séries -dle
 
@@ -120,6 +122,16 @@ window.SALLE_CATALOGUE = [
     etat: "dispo",
   },
   {
+    slug: "anidle",
+    title: "Anidle",
+    emoji: "🎌",
+    desc: "Devine le personnage d'anime : genre, espèce, cheveux, pouvoirs, rôle, œuvre, format, année… Près de 300 personnages de 69 œuvres, un nouveau chaque jour, plus une partie libre.",
+    tags: ["Quotidien", "Solo", "Animé"],
+    colors: ["#d6417d", "#5b6bd0"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "onepiecedle",
     title: "One Piece-dle",
     emoji: "🏴‍☠️",
@@ -161,8 +173,8 @@ window.SALLE_CATALOGUE = [
     slug: "blocs",
     title: "Blocs",
     emoji: "🧱",
-    desc: "Le classique des blocs qui tombent : complète des lignes, enchaîne les combos et grimpe de niveau. Pièce en réserve, aperçu des suivantes et top 10 des scores.",
-    tags: ["Arcade", "Solo"],
+    desc: "Le classique des blocs qui tombent : complète des lignes, enchaîne les combos et grimpe de niveau. Pièce en réserve, aperçu des suivantes et top 10 des scores. Nouveau : Versus en ligne de 2 à 8 joueurs, envoie des lignes à tes adversaires et sois le dernier en vie !",
+    tags: ["Arcade", "Solo", "Multijoueur"],
     colors: ["#4fc3e8", "#b06bd8"],
     etat: "dispo",
     badge: "Nouveau"

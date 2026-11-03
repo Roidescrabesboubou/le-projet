@@ -445,6 +445,7 @@ function connectBroker(i){
   });
 }
 function openRoom(c,code){
+  if(isHost&&window.Groupe)Groupe.salleCreee(code);   /* invite le groupe 👥 */
   client=c;roomCode=code;topic=TOPIC+code;
   c.subscribe(topic,{qos:1});
   c.on("message",(tp,buf)=>{if(tp!==topic)return;let m;try{m=JSON.parse(buf.toString());}catch(e){return;}onNet(m);});
