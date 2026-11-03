@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anidle</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#d6417d;--fond1:rgba(214,65,125,.14);--fond2:rgba(91,107,208,.14);--mid:#e39a2b;--no:#d24b4b}
+main{width:100%;max-width:1040px;margin:0 auto;padding:14px 12px 50px}
+.modes{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.modes button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-weight:700;font-size:.9rem}
+.modes button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.sub{text-align:center;color:var(--muted);font-size:.85rem;margin:6px 0 14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;max-width:520px;margin:0 auto 14px;text-align:center}
+.panel h2{margin:0 0 4px;font-size:1.2rem}
+.panel p{margin:0;color:var(--muted);font-size:.9rem}
+.search{position:relative;margin-top:12px;display:flex;gap:8px}
+.search input{flex:1;font-weight:700;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--text);min-width:0}
+.search input:focus{outline:none;border-color:var(--accent)}
+.search button{border:0;border-radius:12px;padding:0 18px;background:var(--accent);color:#fff;font-weight:800}
+#sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;max-height:280px;overflow:auto;z-index:20;text-align:left;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+#sugg>div{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-weight:700}
+#sugg>div.sel,#sugg>div:hover{background:var(--soft)}
+#sugg small{display:block;color:var(--muted);font-weight:600;font-size:.75rem}
+.av{width:34px;height:34px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:Fredoka,sans-serif;font-weight:700;color:#fff;font-size:.95rem;background:var(--c)}
+.hints{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.hints button{border:1px dashed var(--line);background:transparent;border-radius:10px;padding:6px 12px;font-size:.85rem;font-weight:700}
+.hints button:disabled{opacity:.5;cursor:default}
+.hints button.shown{border-style:solid;border-color:var(--accent);opacity:1}
+.count{margin-top:10px;font-size:.85rem;color:var(--muted)}
+.tablewrap{overflow-x:auto;padding-bottom:6px}
+table{border-collapse:separate;border-spacing:5px;margin:0 auto;min-width:900px}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;padding:0 2px 2px;border-bottom:2px solid var(--line)}
+td{width:96px;height:76px;border-radius:10px;text-align:center;vertical-align:middle;font-weight:800;font-size:.8rem;color:#fff;padding:4px;line-height:1.2;word-break:break-word}
+td.name{background:var(--card);color:var(--text);border:1px solid var(--line)}
+td.name .av{width:44px;height:44px;margin:0 auto 4px;font-size:1.1rem}
+td.ok{background:var(--ok)}td.mid{background:var(--mid)}td.no{background:var(--no)}
+td .arr{display:block;font-size:1.3rem;line-height:1}
+tr.new td{animation:flip .5s ease both}
+tr.new td:nth-child(2){animation-delay:.15s}tr.new td:nth-child(3){animation-delay:.3s}tr.new td:nth-child(4){animation-delay:.45s}
+tr.new td:nth-child(5){animation-delay:.6s}tr.new td:nth-child(6){animation-delay:.75s}tr.new td:nth-child(7){animation-delay:.9s}tr.new td:nth-child(8){animation-delay:1.05s}tr.new td:nth-child(9){animation-delay:1.2s}
+@keyframes flip{0%{transform:rotateY(90deg);opacity:0}100%{transform:none;opacity:1}}
+.legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin:12px 0}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.shake{animation:shake .4s}@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:40}
+.modal.hidden{display:none}
+.box{background:var(--card);border-radius:20px;padding:22px;max-width:440px;width:100%;position:relative;max-height:90vh;overflow:auto}
+.box h2{margin:0 0 12px;text-align:center}
+.close{position:absolute;top:8px;right:10px;background:transparent;border:0;font-size:1.4rem;color:var(--muted)}
+.found{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:14px}
+.found .av{width:56px;height:56px;font-size:1.4rem}
+.found b{font-family:Fredoka,sans-serif;font-size:1.5rem}
+.found small{display:block;color:var(--muted);font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:6px;margin-bottom:16px}
+.stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.6rem}
+.stats small{color:var(--muted);font-size:.72rem}
+.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.next{text-align:center;color:var(--muted);font-size:.9rem;margin-top:14px}
+.next b{display:block;font-family:Fredoka,sans-serif;font-size:1.5rem;color:var(--text)}
+.sq{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px}
+</style>
+</head>
+<body>
+<main>
+  <div class="modes">
+    <button id="mDaily" class="on">📅 Personnage du jour</button>
+    <button id="mFree">♾️ Partie libre</button>
+  </div>
+  <div class="sub" id="sub"></div>
+
+  <div class="panel" id="panel">
+    <h2>Devine le personnage d'anime</h2>
+    <p id="intro"></p>
+    <div class="search" id="search">
+      <input id="inp" placeholder="Nom du personnage…" autocomplete="off" spellcheck="false">
+      <button id="bGo">Valider</button>
+      <div id="sugg" hidden></div>
+    </div>
+    <div class="hints">
+      <button id="h1" disabled>🎬 Initiale de l'œuvre</button>
+      <button id="h2" disabled>🔤 Initiale du personnage</button>
+    </div>
+    <div class="count" id="count"></div>
+  </div>
+
+  <div class="tablewrap">
+    <table id="tbl" hidden>
+      <thead><tr><th>Personnage</th><th>Genre</th><th>Espèce</th><th>Cheveux</th><th>Pouvoirs</th><th>Rôle</th><th>Œuvre</th><th>Format</th><th>Année</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="legend" id="legend" hidden>
+    <span><i style="background:var(--ok)"></i>Correct</span>
+    <span><i style="background:var(--mid)"></i>Partiellement correct</span>
+    <span><i style="background:var(--no)"></i>Incorrect</span>
+    <span>↑ ↓ œuvre plus récente ou plus ancienne</span>
+  </div>
+</main>
+
+<div class="modal hidden" id="mdEnd"><div class="box">
+  <button class="close" data-close>✕</button>
+  <h2 id="endTitle"></h2>
+  <div class="found" id="found"></div>
+  <div class="stats" id="endStats"></div>
+  <div class="actions">
+    <button class="btn" id="bShare">📋 Partager</button>
+    <button class="btn ghost" id="bAgain">♾️ Partie libre</button>
+  </div>
+  <div class="next" id="nextBox">Prochain personnage dans<b id="countdown">--:--:--</b></div>
+  <div id="ajZone"></div>
+  <div id="srZone"></div>
+</div></div>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
+<script src="persos.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const store=Base.stock("anidle_");
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");
+const liste=s=>s.split(",").map(x=>x.trim()).filter(Boolean);
+const GENRES={H:"Homme",F:"Femme",A:"Autre"};
+
+/* ---------- Données ---------- */
+const OEUVRES={};
+ANI_OEUVRES.trim().split("\n").forEach((l,i)=>{const[titre,format,annee]=l.split("|");OEUVRES[titre]={format,annee:+annee}});
+const PERSOS=ANI_PERSOS.trim().split("\n").map(l=>{
+  const[name,alias,genre,especes,cheveux,pouvoirs,roles,oeuvre,jour]=l.split("|");
+  return{name,genre,especes:liste(especes),cheveux:liste(cheveux),pouvoirs:liste(pouvoirs),roles:liste(roles),oeuvre,
+    format:OEUVRES[oeuvre].format,annee:OEUVRES[oeuvre].annee,jour:jour==="1",
+    cles:[name,...liste(alias)].map(norm)};
+});
+const BY={};PERSOS.forEach(c=>BY[c.name]=c);
+
+const bStats=Base.el("button","📊","b-ico");bStats.title="Statistiques";
+Base.entete({titre:"Anidle",emoji:"🎌",boutons:[bStats],
+  aide:`<p>Trouve le personnage d'anime mystère. Essais illimités : chaque proposition te révèle ses points communs avec la réponse.</p>
+  <ul>
+    <li><span class="sq" style="background:var(--ok)"></span> la caractéristique est <b>exactement</b> la même ;</li>
+    <li><span class="sq" style="background:var(--mid)"></span> <b>en partie</b> correcte (ex : un pouvoir en commun sur deux) ;</li>
+    <li><span class="sq" style="background:var(--no)"></span> <b>aucun</b> point commun ;</li>
+    <li>↑ / ↓ : l'œuvre du personnage mystère a commencé <b>plus tard</b> / <b>plus tôt</b>.</li>
+    <li>Attention aux spoilers : espèce, rôle et pouvoirs tiennent compte de toute l'histoire.</li>
+  </ul>
+  <p>Des indices se débloquent après <b>5</b> et <b>9</b> essais.</p>
+  <p>📅 Le <b>personnage du jour</b> est tiré parmi les plus connus et change à minuit, le même pour tout le monde. ♾️ La <b>partie libre</b> tire n'importe quel personnage.</p>`});
+$("intro").textContent=`${PERSOS.length} personnages de ${Object.keys(OEUVRES).length} œuvres. Tape un nom pour commencer.`;
+
+function color(name){let h=0;for(const ch of name)h=(h*31+ch.charCodeAt(0))%360;return`hsl(${h} 55% 45%)`}
+function initials(name){const p=name.replace(/[^A-Za-zÀ-ÿ ]/g,"").split(" ").filter(Boolean);return(p.length>1?p[0][0]+p[1][0]:name.slice(0,2)).toUpperCase()}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function avatar(name){return`<span class="av" style="--c:${color(name)}">${esc(initials(name))}</span>`}
+
+/* ---------- Personnage du jour ---------- */
+const START=Date.UTC(2026,10,3);
+function parisDay(){
+  const[y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);
+  return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);
+}
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const ORDER=(()=>{const a=PERSOS.filter(c=>c.jour).map(c=>c.name).sort(),r=rng(4242);for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a})();
+const dailyName=d=>ORDER[((d%ORDER.length)+ORDER.length)%ORDER.length];
+
+/* ---------- Comparaison ---------- */
+function cmpSet(a,b){const A=new Set(a),inter=b.filter(x=>A.has(x)).length;return inter===a.length&&inter===b.length?"ok":inter?"mid":"no"}
+function compare(g,a){
+  return{genre:g.genre===a.genre?"ok":"no",especes:cmpSet(g.especes,a.especes),cheveux:cmpSet(g.cheveux,a.cheveux),
+    pouvoirs:cmpSet(g.pouvoirs,a.pouvoirs),roles:cmpSet(g.roles,a.roles),oeuvre:g.oeuvre===a.oeuvre?"ok":"no",
+    format:g.format===a.format?"ok":"no",annee:g.annee===a.annee?"ok":"no",
+    dirs:{annee:g.annee===a.annee?"":g.annee<a.annee?"↑":"↓"}};
+}
+
+/* ---------- État ---------- */
+let mode="daily",answer=null,guesses=[],over=false,selIdx=0,shown={h1:false,h2:false};
+const defStats=()=>({played:0,wins:0,streak:0,best:0,total:0,lastWin:null,last:null});
+
+function rowHTML(name,isNew){
+  const g=BY[name],r=compare(g,answer);
+  const cell=(cls,txt,dir)=>`<td class="${cls}">${esc(txt)}${dir?`<span class="arr">${dir}</span>`:""}</td>`;
+  return`<tr class="${isNew?"new":""}"><td class="name">${avatar(name)}${esc(name)}</td>`+
+    cell(r.genre,GENRES[g.genre])+cell(r.especes,g.especes.join(", "))+cell(r.cheveux,g.cheveux.join(", "))+
+    cell(r.pouvoirs,g.pouvoirs.join(", "))+cell(r.roles,g.roles.join(", "))+cell(r.oeuvre,g.oeuvre)+
+    cell(r.format,g.format)+cell(r.annee,String(g.annee),r.dirs.annee)+"</tr>";
+}
+function draw(newest){
+  $("rows").innerHTML=[...guesses].reverse().map((n,i)=>rowHTML(n,newest&&i===0)).join("");
+  $("tbl").hidden=$("legend").hidden=!guesses.length;
+  $("count").textContent=guesses.length?`${guesses.length} essai${guesses.length>1?"s":""}`:"";
+  $("inp").disabled=$("bGo").disabled=over;
+  $("inp").placeholder=over?"Trouvé ! Reviens demain ou lance une partie libre":"Nom du personnage…";
+  updateHints();
+}
+function updateHints(){
+  const h=[["h1",5,"🎬 Initiale de l'œuvre",()=>`🎬 L'œuvre commence par « ${answer.oeuvre[0]} »`],
+           ["h2",9,"🔤 Initiale du personnage",()=>`🔤 Le nom commence par « ${answer.name[0]} »`]];
+  for(const[id,n,label,reveal]of h){
+    const b=$(id),left=n-guesses.length;
+    if(shown[id]||over&&guesses.length>=n){b.textContent=reveal();b.disabled=true;b.className="shown"}
+    else if(left>0){b.textContent=`${label} (dans ${left})`;b.disabled=true;b.className=""}
+    else{b.textContent=label+" — voir";b.disabled=over;b.className=""}
+  }
+}
+["h1","h2"].forEach(id=>$(id).onclick=()=>{shown[id]=true;save();updateHints()});
+
+/* ---------- Saisie / suggestions (nom ou alias) ---------- */
+function matches(q){
+  const n=norm(q);if(!n)return[];
+  const libres=PERSOS.filter(c=>!guesses.includes(c.name));
+  const debut=libres.filter(c=>c.cles.some(k=>k.startsWith(n)));
+  const milieu=libres.filter(c=>!debut.includes(c)&&c.cles.some(k=>k.includes(n)));
+  return debut.concat(milieu).slice(0,8);
+}
+function renderSugg(){
+  const list=matches($("inp").value),box=$("sugg");
+  if(!list.length||over){box.hidden=true;return}
+  selIdx=Math.min(selIdx,list.length-1);
+  box.innerHTML=list.map((c,i)=>`<div data-n="${esc(c.name)}" class="${i===selIdx?"sel":""}">${avatar(c.name)}<span>${esc(c.name)}<small>${esc(c.oeuvre)}</small></span></div>`).join("");
+  box.hidden=false;
+  box.querySelectorAll(":scope>div").forEach(d=>d.onmousedown=e=>{e.preventDefault();guess(d.dataset.n)});
+}
+$("inp").addEventListener("input",()=>{selIdx=0;renderSugg()});
+$("inp").addEventListener("blur",()=>setTimeout(()=>$("sugg").hidden=true,100));
+$("inp").addEventListener("focus",renderSugg);
+$("inp").addEventListener("keydown",e=>{
+  const list=matches($("inp").value);
+  if(e.key==="ArrowDown"){e.preventDefault();selIdx=Math.min(selIdx+1,list.length-1);renderSugg()}
+  else if(e.key==="ArrowUp"){e.preventDefault();selIdx=Math.max(selIdx-1,0);renderSugg()}
+  else if(e.key==="Enter"){e.preventDefault();submit()}
+  else if(e.key==="Escape")$("sugg").hidden=true;
+});
+$("bGo").onclick=submit;
+function submit(){
+  const v=$("inp").value,list=matches(v);
+  const exact=PERSOS.find(c=>c.cles.includes(norm(v)));
+  if(exact&&guesses.includes(exact.name)&&!list.length){Base.toast("Déjà proposé !");return shakeIt()}
+  const pick=list[selIdx]||list[0];
+  if(!pick){Base.toast("Personnage inconnu");return shakeIt()}
+  guess(pick.name);
+}
+function shakeIt(){const s=$("search");s.classList.remove("shake");void s.offsetWidth;s.classList.add("shake")}
+function guess(name){
+  if(over||guesses.includes(name))return;
+  guesses.push(name);$("inp").value="";$("sugg").hidden=true;selIdx=0;
+  if(name===answer.name){over=true;recordStats()}
+  save();draw(true);
+  if(over)setTimeout(()=>showEnd(),1500);else $("inp").focus();
+}
+
+/* ---------- Sauvegarde & stats ---------- */
+function save(){
+  if(mode==="daily")store.ecrire("daily",{day:parisDay(),guesses,shown});
+  else store.ecrire("free",{answer:answer.name,guesses,over,shown});
+}
+function recordStats(){
+  const key=mode==="daily"?"statsDaily":"statsFree",s=store.lire(key,defStats());
+  if(mode==="daily"){const d=parisDay();if(s.last===d)return;s.streak=s.lastWin===d-1?s.streak+1:1;s.lastWin=d;s.last=d}
+  else s.streak++;
+  s.played++;s.wins++;s.total+=guesses.length;s.best=Math.max(s.best,s.streak);
+  store.ecrire(key,s);
+  if(mode==="daily")Series.envoyer("anidle",s,parisDay());
+}
+
+/* ---------- Modes ---------- */
+function startDaily(){
+  mode="daily";const d=parisDay();answer=BY[dailyName(d)];
+  const sv=store.lire("daily",null),ok=sv&&sv.day===d;
+  guesses=ok?sv.guesses.filter(n=>BY[n]):[];shown=ok&&sv.shown?sv.shown:{h1:false,h2:false};
+  over=guesses.includes(answer.name);
+  $("sub").textContent=`Personnage n°${d+1} · ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",timeZone:"Europe/Paris"})}`;
+  setBtns();draw(false);
+}
+function startFree(fresh){
+  mode="free";const sv=store.lire("free",null);
+  if(!fresh&&sv&&BY[sv.answer]&&!sv.over){answer=BY[sv.answer];guesses=sv.guesses.filter(n=>BY[n]);shown=sv.shown||{h1:false,h2:false}}
+  else{let c;do{c=PERSOS[Math.floor(Math.random()*PERSOS.length)]}while(answer&&c.name===answer.name);
+    answer=c;guesses=[];shown={h1:false,h2:false}}
+  over=false;save();
+  $("sub").textContent="Partie libre · un personnage au hasard à chaque partie";
+  setBtns();draw(false);$("inp").focus();
+}
+function setBtns(){$("mDaily").className=mode==="daily"?"on":"";$("mFree").className=mode==="free"?"on":""}
+$("mDaily").onclick=()=>{closeAll();startDaily()};
+$("mFree").onclick=()=>{closeAll();startFree(false)};
+
+/* ---------- Fin / stats ---------- */
+function showEnd(){
+  const s=store.lire(mode==="daily"?"statsDaily":"statsFree",defStats());
+  const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
+  if(mode==="daily")Series.panneau($("srZone"),"anidle",store.lire("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
+  if(mode==="daily")Series.aujourdhui($("ajZone"),"anidle",jourAuj,{moi:over?{e:guesses.length,g:true}:null,unite:"coup",gagnantsSeulement:false,reussite:false});else $("ajZone").innerHTML="";
+  $("endTitle").textContent=over?`🎉 Trouvé en ${guesses.length} essai${guesses.length>1?"s":""} !`:(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)");
+  $("found").innerHTML=over?avatar(answer.name)+`<div><b>${esc(answer.name)}</b><small>${esc(answer.oeuvre)}</small></div>`:"";
+  const avg=s.wins?(s.total/s.wins).toFixed(1):"–";
+  $("endStats").innerHTML=[[s.wins,"Trouvés"],[avg,"Essais moy."],[s.streak,"Série"],[s.best,"Meilleure série"]].map(([v,l])=>`<div><b>${v}</b><small>${l}</small></div>`).join("");
+  $("bShare").style.display=over?"":"none";
+  $("bAgain").textContent=mode==="free"?"🔁 Nouveau personnage":"♾️ Partie libre";
+  $("nextBox").style.display=mode==="daily"?"":"none";
+  $("mdEnd").classList.remove("hidden");
+}
+$("bAgain").onclick=()=>{closeAll();startFree(true)};
+$("bShare").onclick=async()=>{
+  const em={ok:"🟩",mid:"🟧",no:"🟥"},keys=["genre","especes","cheveux","pouvoirs","roles","oeuvre","format","annee"];
+  const head=mode==="daily"?`Anidle n°${parisDay()+1}`:"Anidle (partie libre)";
+  const lines=guesses.slice(-6).map(n=>{const r=compare(BY[n],answer);return keys.map(k=>r.dirs[k]?(r.dirs[k]==="↑"?"⬆️":"⬇️"):em[r[k]]).join("")});
+  const txt=`${head} — trouvé en ${guesses.length} essai${guesses.length>1?"s":""}\n${guesses.length>6?"…\n":""}${lines.join("\n")}\n\n${location.href.split("#")[0]}`;
+  try{await navigator.clipboard.writeText(txt);Base.toast("Résultat copié !")}
+  catch(e){if(navigator.share)navigator.share({text:txt}).catch(()=>{});else Base.toast("Copie impossible")}
+};
+function tick(){
+  const p=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(new Date()).split(":").map(Number);
+  let left=86400-(p[0]*3600+p[1]*60+p[2]);if(left>=86400)left=0;
+  const f=n=>String(n).padStart(2,"0");
+  $("countdown").textContent=`${f(Math.floor(left/3600))}:${f(Math.floor(left/60)%60)}:${f(left%60)}`;
+  if(mode==="daily"&&answer&&answer.name!==dailyName(parisDay())){closeAll();startDaily();Base.toast("Nouveau personnage du jour !")}
+}
+setInterval(tick,1000);
+
+function closeAll(){document.querySelectorAll(".modal").forEach(m=>m.classList.add("hidden"))}
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m||e.target.hasAttribute("data-close"))closeAll()}));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll()});
+bStats.onclick=()=>showEnd();
+
+startDaily();tick();
+</script>
+</body>
+</html>
