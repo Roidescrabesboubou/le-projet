@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Devine ta Catégorie</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#e07a2e;--fond1:rgba(224,122,46,.14);--fond2:rgba(42,157,143,.13);--cat:#2a9d8f;--peu:#e0a526}
+.panneau{max-width:620px}
+.hero{text-align:center}
+.hero .logo{font-size:3.4rem;line-height:1}
+.hero h2{font-size:2rem;margin:6px 0 4px}
+.choix{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+@media (max-width:480px){.choix{grid-template-columns:1fr}}
+.choix button{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:16px;text-align:left}
+.choix button:hover{border-color:var(--accent)}
+.choix b{display:block;font-family:Fredoka,sans-serif;font-size:1.2rem;margin:4px 0}
+.choix span{font-size:2rem}
+.choix small{color:var(--muted)}
+.etapes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;font-size:.85rem;font-weight:700}
+.etapes span{background:var(--soft);border-radius:999px;padding:4px 10px}
+.ligne{display:flex;gap:8px;align-items:center}
+.ligne .champ{flex:1;min-width:0}
+.liste{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.liste li{display:flex;align-items:center;gap:10px;background:var(--soft);border-radius:12px;padding:6px 10px}
+.liste .av{font-size:1.4rem}
+.liste .n{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.liste .x{border:0;background:transparent;color:var(--muted);font-size:1.1rem;padding:2px 8px}
+.reg .bloc{margin-top:12px}
+.reg .bloc>b{display:block;font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.reg .pilules{justify-content:flex-start}
+.code{font-family:Fredoka,sans-serif;font-size:2.2rem;letter-spacing:8px;text-align:center;background:var(--soft);border-radius:14px;padding:6px;margin:8px 0}
+#codeIn{text-transform:uppercase;letter-spacing:3px;font-weight:800}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.note{font-size:.88rem;color:var(--muted);min-height:1.2em;margin-top:8px}
+
+/* ---- Partie ---- */
+#jeu{width:100%;max-width:680px;display:flex;flex-direction:column;gap:12px}
+.barre{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-weight:800}
+.barre .esp{flex:1}
+.barre .muted{font-weight:700}
+.joueurs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.jo{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px 4px 6px;font-weight:700;font-size:.9rem}
+.jo .av{font-size:1.2rem}
+.jo.fini{opacity:.6}
+.jo.actif{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.jo .ok{color:var(--ok)}
+.scene{text-align:center}
+.scene h3{font-size:1.35rem;margin:0 0 6px}
+.scene .gros{font-size:3rem;line-height:1.1;margin:6px 0}
+.saisieBox{max-width:460px;margin:12px auto 0}
+.saisieBox .boutons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+@media (max-width:420px){.saisieBox .boutons{grid-template-columns:1fr}}
+.btn.devine{background:var(--cat)}
+.propo{margin:8px auto;max-width:420px;border-radius:16px;padding:14px;background:var(--soft);font-family:Fredoka,sans-serif;font-size:1.7rem;overflow-wrap:anywhere}
+.propo.devine{background:rgba(42,157,143,.16)}
+.catBox{margin:12px auto;max-width:420px;border-radius:18px;padding:18px 14px;background:linear-gradient(135deg,var(--cat),#1b6b62);color:#fff;font-family:Fredoka,sans-serif;font-size:1.45rem;overflow-wrap:anywhere;user-select:none;-webkit-user-select:none}
+.catBox small{display:block;font-family:Nunito,sans-serif;font-size:.85rem;opacity:.85;margin-bottom:4px}
+.catBox.ferme{background:repeating-linear-gradient(45deg,var(--soft),var(--soft) 12px,var(--line) 12px,var(--line) 24px);color:var(--text);font-size:1.05rem;cursor:pointer}
+.catBox[data-a]{cursor:pointer}
+.votes{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;max-width:520px;margin:12px auto 0}
+.votes button{border:2px solid var(--line);background:var(--card);border-radius:16px;padding:12px 8px;font-weight:800;font-size:1rem;display:flex;flex-direction:column;align-items:center;gap:2px}
+.votes button span{font-size:1.8rem}
+.votes button.oui:hover,.votes button.oui.on{border-color:var(--ok);background:rgba(58,167,109,.12)}
+.votes button.peu:hover,.votes button.peu.on{border-color:var(--peu);background:rgba(224,165,38,.14)}
+.votes button.non:hover,.votes button.non.on{border-color:var(--ko);background:rgba(232,96,122,.12)}
+.verdict{border-radius:16px;padding:12px;text-align:center;background:var(--soft);margin-bottom:12px}
+.verdict small{display:block;color:var(--muted);font-weight:700}
+.verdict b{font-family:Fredoka,sans-serif;font-size:1.35rem}
+.verdict.oui{background:rgba(58,167,109,.16)}
+.verdict.peu{background:rgba(224,165,38,.18)}
+.verdict.non{background:rgba(232,96,122,.14)}
+.verdict .det{font-size:.88rem;color:var(--muted);margin-top:2px}
+.carnets{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.carnet{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.carnet.actif{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.carnet .tete{display:flex;justify-content:space-between;gap:8px;font-weight:800}
+.carnet .tete .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.carnet .cat{font-size:.88rem;margin:4px 0 6px;color:var(--cat);font-weight:800;overflow-wrap:anywhere}
+.carnet .cat.cache2{color:var(--muted);font-weight:700}
+.hist{display:flex;flex-wrap:wrap;gap:4px}
+.hist .h{border-radius:8px;padding:2px 8px;font-size:.85rem;background:var(--soft);overflow-wrap:anywhere}
+.hist .h.oui{background:rgba(58,167,109,.16)}
+.hist .h.peu{background:rgba(224,165,38,.2)}
+.hist .h.non{background:rgba(232,96,122,.13)}
+.hist .h.devine{font-style:italic}
+.hist .vide{color:var(--muted);font-size:.85rem}
+.bandeauFin{font-family:Fredoka,sans-serif;font-size:1.7rem;text-align:center;padding:14px;border-radius:16px;color:#fff;background:linear-gradient(135deg,var(--accent),#b04f12)}
+.tab{width:100%;border-collapse:collapse;margin-top:8px;font-size:.92rem;text-align:left}
+.tab td{padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+.tab td:last-child{text-align:right;font-weight:800;white-space:nowrap}
+.tab small{color:var(--muted)}
+.tab .plus{color:var(--ok);font-weight:800}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <!-- Menu -->
+  <section id="eMenu" class="b-carte panneau">
+    <div class="hero">
+      <div class="logo">🏷️</div>
+      <h2>Devine ta Catégorie</h2>
+      <p class="muted">Les autres t'inventent une catégorie secrète (« il lui manque un œil », « a des pouvoirs magiques »…). Cite des personnages, ils te disent s'ils en font partie… et trouve ta catégorie avant tout le monde !</p>
+      <div class="etapes"><span>1 · Catégories secrètes</span><span>2 · Cite un perso</span><span>3 · Les autres votent</span><span>4 · Devine !</span></div>
+    </div>
+    <div class="choix">
+      <button id="vLocal"><span>📱</span><b>Un seul appareil</b><small>On se passe le téléphone. De 2 à 20 joueurs.</small></button>
+      <button id="vLigne"><span>🌐</span><b>En ligne</b><small>Chacun sur son appareil avec un code de salle. De 2 à 12 joueurs.</small></button>
+    </div>
+  </section>
+
+  <!-- Préparation un seul appareil -->
+  <section id="eLocal" class="b-carte panneau cache">
+    <button class="btn ghost petit retour">← Retour</button>
+    <h2 style="margin:12px 0 4px">📱 Les joueurs</h2>
+    <div class="ligne">
+      <input class="champ" id="nomIn" placeholder="Prénom du joueur" maxlength="16" autocomplete="off">
+      <button class="btn" id="ajout">Ajouter</button>
+    </div>
+    <ul class="liste" id="listeLocale"></ul>
+    <p class="note" id="noteLocale"></p>
+    <h2 style="margin:16px 0 0">⚙️ Réglages</h2>
+    <div class="reg" id="regLocal"></div>
+    <div class="actions"><button class="btn" id="goLocal" style="font-size:1.1rem;padding:12px 28px">Lancer la partie 🏷️</button></div>
+  </section>
+
+  <!-- En ligne : créer / rejoindre -->
+  <section id="eLigne" class="b-carte panneau cache">
+    <button class="btn ghost petit retour">← Retour</button>
+    <h2 style="margin:12px 0 4px">🌐 Jouer en ligne</h2>
+    <label class="etiquette" for="pseudo">Ton pseudo</label>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton prénom ou pseudo" autocomplete="off">
+    <div class="actions"><button class="btn" id="creer">🏠 Créer une salle</button></div>
+    <label class="etiquette" for="codeIn">… ou rejoindre une salle</label>
+    <div class="ligne">
+      <input class="champ" id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off">
+      <button class="btn ghost" id="rejoindre">Rejoindre</button>
+    </div>
+    <p class="note" id="msgLigne"></p>
+    <div class="actions"><button class="btn ghost petit" id="tester">🩺 Tester la connexion</button></div>
+  </section>
+
+  <!-- Salon en ligne -->
+  <section id="eSalon" class="b-carte panneau cache">
+    <div style="text-align:center">
+      <p class="muted" style="margin:0">Code de la salle</p>
+      <div class="code" id="code">····</div>
+      <button class="btn ghost petit" id="copier">🔗 Copier le lien d'invitation</button>
+    </div>
+    <h3 style="margin:16px 0 0">Joueurs <span class="muted" id="nbSalon"></span></h3>
+    <ul class="liste" id="listeSalon"></ul>
+    <h3 style="margin:16px 0 0">⚙️ Réglages</h3>
+    <div class="reg" id="regLigne"></div>
+    <p class="note" id="noteSalon"></p>
+    <div class="actions">
+      <button class="btn" id="goLigne" style="font-size:1.1rem;padding:12px 28px">Lancer la partie 🏷️</button>
+      <button class="btn ghost" id="quitterSalon">Quitter</button>
+    </div>
+  </section>
+
+  <!-- Partie -->
+  <section id="eJeu" class="cache" style="width:100%;display:flex;justify-content:center">
+    <div id="jeu"></div>
+  </section>
+</main>
+
+<div id="fx" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50"></div>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="idees.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("categorie_");
+const IDEES = window.CATEGORIE_IDEES || ["A des pouvoirs magiques"];
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const hasard = n => Math.floor(Math.random() * n);
+const melanger = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = hasard(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const propre = (s, n) => String(s || "").replace(/\s+/g, " ").trim().slice(0, n);
+
+/* Réponses possibles des autres joueurs (k = clé du vote) */
+const VAL = {oui: 2, peu: 1, non: 0};
+const CHOIX = {
+  perso:  {oui: ["✅", "Complètement dedans"], peu: ["🤏", "Un peu"], non: ["❌", "Pas du tout"]},
+  devine: {oui: ["🎯", "C'est ça !"], peu: ["🔥", "Presque"], non: ["❌", "Non"]}
+};
+function etiquette(type, res, niv){
+  if(res === "peu" && niv === 2) return ["⚖️", "Avis partagés"];
+  return (type === "devine" ? {oui: ["🎯", "Trouvé !"], peu: ["🔥", "Presque !"], non: ["❌", "Raté"]}
+                            : {oui: ["✅", "Dedans"], peu: ["🤏", "Un peu"], non: ["❌", "Pas dedans"]})[res];
+}
+const GAINS = [5, 3, 2];   // 1er, 2e, 3e à trouver ; ensuite 1 point
+
+Base.entete({
+  titre: "Devine ta Catégorie", emoji: "🏷️",
+  aide: `<p>C'est un « devine-tête » avec une <b>catégorie</b> à la place d'un personnage.</p>
+  <ul>
+    <li><b>Au début</b>, chaque joueur invente en secret la catégorie d'un autre : « il lui manque un œil », « a des pouvoirs magiques », « vient de One Piece »… Tout le monde la connaît, sauf le joueur concerné.</li>
+    <li><b>À ton tour</b>, cite un personnage (de n'importe quel univers). Les autres se mettent d'accord : ✅ il est <b>complètement dedans</b>, 🤏 <b>un peu</b>, ou ❌ <b>pas du tout</b>.</li>
+    <li>Note bien les réponses dans ton carnet pour deviner ce qui relie les ✅ !</li>
+    <li>Quand tu penses avoir trouvé, utilise ton tour pour <b>deviner ta catégorie</b>. Les autres disent si c'est bon (🔥 « presque » si tu chauffes).</li>
+    <li>Le premier à trouver gagne 5 points, le 2e 3 points, le 3e 2 points, les suivants 1 point. Moins tu utilises d'essais, mieux tu es classé.</li>
+  </ul>
+  <p class="muted">Sur un seul appareil, les votes se font à voix haute : discutez, puis touchez la réponse du groupe. En ligne, chacun vote et c'est la majorité qui l'emporte.</p>`
+});
+
+/* =================================================================
+   RÉGLAGES
+   ================================================================= */
+const DEF_R = {niv: 3, limite: 0};
+let R = Object.assign({}, DEF_R, stock.lire("reglages", {}));
+const sauverR = () => stock.ecrire("reglages", R);
+
+function pilules(titre, options, val, change){
+  const b = Base.el("div", null, "bloc");
+  b.appendChild(Base.el("b", titre));
+  const p = Base.el("div", null, "pilules");
+  options.forEach(([v, t]) => {
+    const x = Base.el("button", t); if(v === val) x.className = "on";
+    x.onclick = () => change(v);
+    p.appendChild(x);
+  });
+  b.appendChild(p);
+  return b;
+}
+function resumeR(r){
+  return (r.niv === 2 ? "Réponses ✅ / ❌ (oui ou non)" : "Réponses ✅ / 🤏 / ❌ (avec « un peu »)") +
+    " · " + (r.limite ? r.limite + " essais max par joueur" : "essais illimités");
+}
+function reglagesUI(box, local, lecture){
+  box.innerHTML = "";
+  if(lecture){ box.appendChild(Base.el("p", resumeR(R), "muted")); return; }
+  const re = () => { sauverR(); reglagesUI(box, local, false); if(!local) diffuserSalon(); };
+  box.appendChild(pilules("Les autres répondent", [[3, "✅ 🤏 ❌ avec « un peu »"], [2, "✅ ❌ oui ou non"]], R.niv, v => { R.niv = v; re(); }));
+  box.appendChild(pilules("Essais max par joueur", [[0, "Illimité"], [10, "10"], [15, "15"], [20, "20"]], R.limite, v => { R.limite = v; re(); }));
+}
+
+/* =================================================================
+   MOTEUR DE PARTIE (même code en local et chez l'hôte en ligne)
+   ================================================================= */
+const jDe = (G, id) => G.J.find(j => j.id === id);
+const presents = G => G.J.filter(j => !j.parti);
+const actifs = G => G.J.filter(j => !j.fini && !j.parti);
+const courant = G => G.ordre[G.ci];
+const votants = G => G.J.filter(j => !j.parti && j.id !== courant(G));
+const cleDe = G => G.mid + ":" + (G.phase === "jeu" ? courant(G) + ":" + jDe(G, courant(G)).essais : G.phase);
+
+function idee(G){
+  const prises = G ? G.J.map(j => j.cat) : [];
+  const l = IDEES.filter(i => !prises.includes(i));
+  return (l.length ? l : IDEES)[hasard((l.length ? l : IDEES).length)];
+}
+function nouvelleManche(joueurs, r){
+  const ordre = melanger(joueurs.map(j => j.id));
+  const ecrit = {};                         // auteur → joueur dont il écrit la catégorie
+  ordre.forEach((id, i) => ecrit[id] = ordre[(i + 1) % ordre.length]);
+  const J = joueurs.map(j => ({id: j.id, nom: j.nom, avatar: j.avatar, cat: "", par: null, auto: false, essais: 0, hist: [], fini: null, rang: 0, parti: false}));
+  const G = {mid: Math.random().toString(36).slice(2, 8), J, ordre, ecrit, phase: "ecriture", wi: 0, wvu: false,
+    ci: 0, prop: null, votes: {}, dernier: null, tour: 1, gains: {}, niv: r.niv === 2 ? 2 : 3, limite: +r.limite || 0};
+  Object.keys(ecrit).forEach(w => jDe(G, ecrit[w]).par = w);
+  return G;
+}
+function ecrire(G, auteur, txt){
+  if(G.phase !== "ecriture") return;
+  const t = jDe(G, G.ecrit[auteur]), c = propre(txt, 80);
+  if(!t || !c) return;
+  t.cat = c; t.auto = false;
+  if(presents(G).every(j => j.cat)) demarrerJeu(G);
+}
+function demarrerJeu(G){
+  if(G.phase !== "ecriture") return;
+  G.J.forEach(j => { if(!j.cat){ j.cat = idee(G); j.auto = true; } });
+  G.phase = "jeu"; G.prop = null; G.votes = {};
+  G.ci = G.ordre.findIndex(id => !jDe(G, id).parti);
+  if(G.ci < 0 || presents(G).length < 2) finir(G);
+}
+function proposer(G, id, type, txt){
+  if(G.phase !== "jeu" || G.prop || id !== courant(G)) return;
+  const t = propre(txt, 60); if(!t) return;
+  G.prop = {type: type === "devine" ? "devine" : "perso", txt: t}; G.votes = {};
+}
+function annulerProp(G, id){ if(G.phase === "jeu" && G.prop && id === courant(G)){ G.prop = null; G.votes = {}; } }
+function voter(G, de, k){
+  if(G.phase !== "jeu" || !G.prop || !(k in VAL) || (G.niv === 2 && k === "peu")) return;
+  if(!votants(G).some(j => j.id === de)) return;
+  G.votes[de] = k;
+  if(votants(G).every(j => G.votes[j.id])) trancher(G);
+}
+function trancher(G, force){
+  if(G.phase !== "jeu" || !G.prop) return;
+  let res, det = null;
+  if(force) res = force;
+  else{
+    const vs = Object.values(G.votes); if(!vs.length) return;
+    det = {oui: 0, peu: 0, non: 0}; vs.forEach(k => det[k]++);
+    const m = vs.reduce((a, k) => a + VAL[k], 0) / vs.length;
+    res = m >= 1.5 ? "oui" : m >= .5 ? "peu" : "non";
+  }
+  const p = jDe(G, courant(G));
+  p.essais++;
+  const e = {type: G.prop.type, txt: G.prop.txt, res, det};
+  p.hist.push(e);
+  G.dernier = Object.assign({id: p.id}, e);
+  if(e.type === "devine" && res === "oui") p.fini = "trouve";
+  else if(G.limite && p.essais >= G.limite){ p.fini = "perdu"; G.dernier.limite = true; }
+  G.prop = null; G.votes = {};
+  avancer(G);
+}
+function abandonner(G, id){
+  if(G.phase !== "jeu" || G.prop || id !== courant(G)) return;
+  jDe(G, id).fini = "perdu";
+  G.dernier = {id, type: "abandon"};
+  avancer(G);
+}
+function avancer(G){
+  if(!actifs(G).length || presents(G).length < 2) return finir(G);
+  const n = G.ordre.length;
+  for(let k = 1; k <= n; k++){
+    const i = (G.ci + k) % n, j = jDe(G, G.ordre[i]);
+    if(!j.fini && !j.parti){ if(i <= G.ci) G.tour++; G.ci = i; return; }
+  }
+}
+function partir(G, id){
+  const p = jDe(G, id); if(!p || p.parti) return;
+  p.parti = true; delete G.votes[id];
+  if(G.phase === "ecriture"){
+    const t = jDe(G, G.ecrit[id]);
+    if(t && !t.cat){ t.cat = idee(G); t.auto = true; }
+    if(presents(G).length < 2) return finir(G);
+    if(presents(G).every(j => j.cat)) demarrerJeu(G);
+    return;
+  }
+  if(G.phase !== "jeu") return;
+  if(presents(G).length < 2 || !actifs(G).length) return finir(G);
+  if(courant(G) === id){ G.prop = null; G.votes = {}; avancer(G); return; }
+  if(G.prop && votants(G).every(j => G.votes[j.id])) trancher(G);
+}
+function finir(G){
+  if(G.phase === "fin") return;
+  G.phase = "fin"; G.prop = null; G.votes = {};
+  const tr = G.J.filter(j => j.fini === "trouve").sort((a, b) => a.essais - b.essais);
+  let rang = 0, avant = -1;
+  tr.forEach((j, i) => { if(j.essais !== avant){ rang = i + 1; avant = j.essais; } j.rang = rang; });
+  G.gains = {};
+  G.J.forEach(j => G.gains[j.id] = j.fini === "trouve" ? (GAINS[j.rang - 1] || 1) : 0);
+  apresFin(G);
+}
+
+/* Vue publique : ce que tout le monde a le droit de voir (les catégories non trouvées n'y sont pas) */
+function publier(G){
+  const fin = G.phase === "fin", jeu = G.phase === "jeu";
+  return {
+    mid: G.mid, phase: G.phase, niv: G.niv, limite: G.limite, tour: G.tour, ordre: G.ordre, ecrit: G.ecrit,
+    cle: cleDe(G), cur: jeu ? courant(G) : null, prop: G.prop, aVote: Object.keys(G.votes),
+    votants: jeu && G.prop ? votants(G).map(j => j.id) : [], dernier: G.dernier,
+    ecritOk: G.phase === "ecriture" ? G.ordre.filter(w => { const t = jDe(G, G.ecrit[w]); return t && t.cat; }) : [],
+    J: G.J.map(j => ({id: j.id, nom: j.nom, avatar: j.avatar, essais: j.essais, hist: j.hist, fini: j.fini, rang: j.rang, parti: j.parti,
+      cat: j.fini || fin ? j.cat : null, par: fin ? j.par : null, auto: fin ? j.auto : false})),
+    gains: fin ? G.gains : null
+  };
+}
+
+/* =================================================================
+   ÉCRANS
+   ================================================================= */
+let mode = null, G = null, V = null, salle = null, mesCats = null, scores = {}, demande = 0;
+let voirCat = false, brouillon = "", monEcrit = null, monVote = null, attente = null;
+function ecran(id){
+  const deja = !$(id).classList.contains("cache");
+  ["eMenu", "eLocal", "eLigne", "eSalon", "eJeu"].forEach(e => $(e).classList.toggle("cache", e !== id));
+  if(!deja) window.scrollTo(0, 0);
+}
+document.querySelectorAll(".retour").forEach(b => b.onclick = () => ecran("eMenu"));
+$("vLocal").onclick = () => { mode = "local"; afficherLocale(); reglagesUI($("regLocal"), true, false); ecran("eLocal"); };
+$("vLigne").onclick = () => { $("pseudo").value = Base.joueur.pseudo(); $("msgLigne").textContent = ""; ecran("eLigne"); };
+
+/* ---------- Joueurs (un seul appareil) ---------- */
+let noms = stock.lire("noms", []);
+if(!noms.length && Base.joueur.pseudo()) noms = [Base.joueur.pseudo()];
+function afficherLocale(){
+  const ul = $("listeLocale"); ul.innerHTML = "";
+  const AV = Base.joueur.AVATARS;
+  noms.forEach((n, i) => {
+    const li = Base.el("li");
+    li.append(Base.el("span", AV[i % AV.length], "av"), Base.el("span", n, "n"));
+    const x = Base.el("button", "✕", "x"); x.title = "Retirer";
+    x.onclick = () => { noms.splice(i, 1); stock.ecrire("noms", noms); afficherLocale(); };
+    li.appendChild(x); ul.appendChild(li);
+  });
+  const n = noms.length;
+  $("noteLocale").textContent = n < 2 ? `Ajoute au moins ${2 - n} joueur${2 - n > 1 ? "s" : ""} (idéal : de 3 à 8).` : `${n} joueurs : chacun inventera la catégorie d'un autre.`;
+  $("goLocal").disabled = n < 2;
+}
+function ajouterNom(){
+  const v = $("nomIn").value.trim().slice(0, 16);
+  if(!v) return;
+  if(noms.some(n => n.toLowerCase() === v.toLowerCase())){ Base.toast("Ce prénom est déjà dans la liste"); return; }
+  if(noms.length >= 20){ Base.toast("20 joueurs maximum"); return; }
+  noms.push(v); stock.ecrire("noms", noms); $("nomIn").value = ""; $("nomIn").focus(); afficherLocale();
+}
+$("ajout").onclick = ajouterNom;
+$("nomIn").addEventListener("keydown", e => { if(e.key === "Enter") ajouterNom(); });
+function lancerLocal(){
+  const AV = Base.joueur.AVATARS;
+  G = nouvelleManche(noms.map((n, i) => ({id: "p" + i, nom: n, avatar: AV[i % AV.length]})), R);
+  voirCat = false; brouillon = "";
+}
+$("goLocal").onclick = () => { if(noms.length < 2) return; mode = "local"; lancerLocal(); ecran("eJeu"); rendre(); };
+
+/* =================================================================
+   RENDU DE LA PARTIE
+   ================================================================= */
+const moiId = () => mode === "ligne" && salle ? salle.moi : null;
+
+/* catégorie de j telle que JE peux la voir (null = cachée pour moi) */
+function catPour(j){
+  if(j.cat) return j.cat;                      // déjà révélée (trouvée, abandonnée ou fin)
+  if(mode !== "ligne") return null;            // un seul appareil : on ne l'affiche qu'à la demande
+  if(j.id === moiId()) return null;
+  if(salle && salle.hote && G){ const g = jDe(G, j.id); return g ? g.cat || null : null; }
+  return mesCats && mesCats.mid === V.mid ? mesCats.map[j.id] || null : null;
+}
+
+function rendre(){
+  const box = $("jeu");
+  const garde = box.querySelector("#saisie"), txt = garde ? garde.value : "", focus = garde && document.activeElement === garde;
+  if(mode === "local" || (salle && salle.hote && G)) V = publier(G);
+  if(!V){ box.innerHTML = `<div class="b-carte scene"><h3>⏳ Connexion à la partie…</h3></div>`; return; }
+  const moi = moiId(), dansPartie = !moi || V.J.some(j => j.id === moi);
+  const vj = id => V.J.find(j => j.id === id) || {nom: "?", avatar: "❔", hist: []};
+  let h = "";
+
+  /* barre du haut */
+  const trouves = V.J.filter(j => j.fini === "trouve").length;
+  h += `<div class="barre">` + (V.phase === "ecriture" ? `<span>✍️ Catégories secrètes</span>` : `<span>🔄 Tour ${V.tour}</span><span class="muted">🎯 ${trouves}/${V.J.length} ont trouvé</span>`) +
+    `<span class="esp"></span>${V.limite ? `<span class="muted">${V.limite} essais max</span>` : ""}</div>`;
+
+  /* joueurs */
+  h += `<div class="joueurs">` + V.ordre.map(id => {
+    const j = vj(id);
+    let fin = "";
+    if(j.parti) fin = " 🚪";
+    else if(j.fini === "trouve") fin = " 🎯";
+    else if(j.fini === "perdu") fin = " 🏳️";
+    else if(V.phase === "ecriture" && V.ecritOk.includes(id)) fin = ` <span class="ok">✓</span>`;
+    else if(V.prop && mode === "ligne" && V.aVote.includes(id)) fin = ` <span class="ok">✓</span>`;
+    return `<span class="jo${j.fini || j.parti ? " fini" : ""}${id === V.cur ? " actif" : ""}"><span class="av">${esc(j.avatar)}</span><span class="n">${esc(j.nom)}${id === moi ? " (toi)" : ""}</span>${fin}</span>`;
+  }).join("") + `</div>`;
+
+  /* panneau de la phase */
+  h += `<div class="b-carte scene">` + (mode === "local" ? panneauLocal(vj) : panneauLigne(vj, moi, dansPartie)) + `</div>`;
+
+  /* carnets */
+  if(V.phase !== "ecriture") h += carnets(vj, moi);
+  if(V.phase === "fin") h += tableauScores();
+  box.innerHTML = h;
+  brancher();
+  const s = box.querySelector("#saisie");
+  if(s){
+    if(txt) s.value = txt;
+    else if(brouillon){ s.value = brouillon; brouillon = ""; }
+    if(focus) s.focus();
+  }
+}
+
+function saisieProposition(nom, moi){
+  return `<div class="saisieBox">
+    <input class="champ" id="saisie" maxlength="60" placeholder="${moi ? "Un personnage… ou ta catégorie" : "Le personnage cité par " + esc(nom)}" autocomplete="off">
+    <div class="boutons"><button class="btn" data-a="perso">🧑 Proposer ce personnage</button><button class="btn devine" data-a="devine">🎯 Deviner ${moi ? "ma" : "sa"} catégorie</button></div>
+    <div class="actions" style="margin-top:8px"><button class="btn ghost petit" data-a="abandon">🏳️ ${moi ? "J'abandonne" : "Abandonner"}</button></div>
+  </div>`;
+}
+function propoHtml(p, prop){
+  return `<p class="muted" style="margin:10px 0 0">${prop.type === "perso" ? esc(p.nom) + " propose le personnage :" : esc(p.nom) + " pense que sa catégorie est :"}</p>
+    <div class="propo ${prop.type}">${prop.type === "devine" ? "« " + esc(prop.txt) + " »" : esc(prop.txt)}</div>`;
+}
+function boutonsVote(type, niv, choisi){
+  return `<div class="votes">` + Object.keys(CHOIX[type]).filter(k => niv !== 2 || k !== "peu").map(k =>
+    `<button class="${k}${choisi === k ? " on" : ""}" data-k="${k}"><span>${CHOIX[type][k][0]}</span>${CHOIX[type][k][1]}</button>`).join("") + `</div>`;
+}
+function dernierHtml(vj){
+  const d = V.dernier; if(!d) return "";
+  const j = vj(d.id);
+  if(d.type === "abandon") return `<div class="verdict non"><small>${esc(j.avatar)} ${esc(j.nom)} abandonne</small><b>🏳️ Sa catégorie était « ${esc(j.cat)} »</b></div>`;
+  const [ico, lab] = etiquette(d.type, d.res, V.niv);
+  let h = `<div class="verdict ${d.res}"><small>${esc(j.avatar)} ${esc(j.nom)} ${d.type === "devine" ? "a tenté « " + esc(d.txt) + " »" : "a proposé " + esc(d.txt)}</small><b>${ico} ${lab}</b>`;
+  if(d.det){
+    const t = ["oui", "peu", "non"].filter(k => d.det[k]).map(k => d.det[k] + " " + CHOIX[d.type][k][0]).join(" · ");
+    if(t) h += `<div class="det">Votes : ${t}</div>`;
+  }
+  if(d.type === "devine" && d.res === "oui") h += `<div class="det">🎉 Sa catégorie : « ${esc(j.cat)} »</div>`;
+  else if(d.limite) h += `<div class="det">Plus d'essais ! C'était « ${esc(j.cat)} »</div>`;
+  return h + `</div>`;
+}
+
+/* ---------- panneaux UN SEUL APPAREIL ---------- */
+function panneauLocal(vj){
+  const ph = G.phase;
+  if(ph === "ecriture"){
+    const w = jDe(G, G.ordre[G.wi]), t = jDe(G, G.ecrit[w.id]);
+    if(!G.wvu) return `<p class="muted">Catégories secrètes · ${G.wi + 1}/${G.ordre.length}</p>
+      <div class="gros">📱</div><h3>Passe l'appareil à <b>${esc(w.nom)}</b></h3>
+      <p class="muted">${esc(w.nom)} va inventer la catégorie de <b>${esc(t.nom)}</b>. ${esc(t.nom)}, ne regarde surtout pas l'écran !</p>
+      <button class="btn" data-a="voirEcr">Je suis ${esc(w.nom)} ✍️</button>`;
+    return `<h3>✍️ ${esc(w.nom)}, invente la catégorie de <b>${esc(t.avatar)} ${esc(t.nom)}</b></h3>
+      <p class="muted">Une particularité que certains personnages ont et d'autres non. ${esc(t.nom)} devra la deviner !</p>
+      <div class="ligne saisieBox"><input class="champ" id="saisie" maxlength="80" placeholder="Ex. : il lui manque un œil" autocomplete="off"><button class="btn ghost" data-a="idee" title="Une idée au hasard">💡</button></div>
+      <div class="actions"><button class="btn" data-a="ecrire">Valider et cacher ✅</button></div>`;
+  }
+  if(ph === "jeu"){
+    const p = jDe(G, courant(G));
+    let h = dernierHtml(vj);
+    if(!G.prop){
+      return h + `<p class="muted">Tour ${G.tour} · essai n°${p.essais + 1}${G.limite ? "/" + G.limite : ""}</p>
+        <div class="gros">${esc(p.avatar)}</div><h3>À <b>${esc(p.nom)}</b> de jouer !</h3>
+        <p class="muted">Cite un personnage : les autres diront s'il fait partie de ta catégorie. Ou tente de la deviner !</p>` +
+        saisieProposition(p.nom, false) +
+        `<div class="actions"><button class="btn ghost petit" data-a="terminer">⏹️ Terminer la partie</button></div>`;
+    }
+    h += propoHtml(p, G.prop);
+    h += `<p class="muted">Les autres, mettez-vous d'accord à voix haute. <b>${esc(p.nom)}, ne regarde pas l'écran !</b></p>`;
+    h += voirCat ? `<div class="catBox" data-a="voirCat"><small>Catégorie de ${esc(p.nom)} · touche pour cacher</small>${esc(p.cat)}</div>`
+                 : `<div class="catBox ferme" data-a="voirCat">👁️ Touche pour voir la catégorie de ${esc(p.nom)}</div>`;
+    h += boutonsVote(G.prop.type, G.niv, null);
+    return h + `<div class="actions"><button class="btn ghost petit" data-a="annuler">↩️ Corriger la proposition</button></div>`;
+  }
+  if(ph === "fin") return finale(vj) + `<div class="actions"><button class="btn" data-a="rejouer">🔁 Nouvelle partie</button><button class="btn ghost" data-a="joueurs">👥 Changer les joueurs</button></div>`;
+  return "";
+}
+
+/* ---------- panneaux EN LIGNE ---------- */
+function panneauLigne(vj, moi, dansPartie){
+  const ph = V.phase, hote = salle && salle.hote;
+  if(!dansPartie) return `<div class="gros">👀</div><h3>Partie en cours</h3><p class="muted">Tu joueras à la prochaine partie. En attendant, suis les carnets !</p>` + (ph === "fin" ? finale(vj) : dernierHtml(vj));
+  if(ph === "ecriture"){
+    const t = vj(V.ecrit[moi]);
+    const envoye = V.ecritOk.includes(moi) || (attente && attente.m.t === "cat");
+    const att = V.ordre.filter(w => !V.ecritOk.includes(w) && !vj(w).parti).map(w => esc(vj(w).nom)).join(", ");
+    let h;
+    if(!envoye) h = `<h3>✍️ Invente la catégorie secrète de <b>${esc(t.avatar)} ${esc(t.nom)}</b></h3>
+      <p class="muted">Une particularité que certains personnages ont et d'autres non. Tous les autres la verront, sauf ${esc(t.nom)} !</p>
+      <div class="ligne saisieBox"><input class="champ" id="saisie" maxlength="80" placeholder="Ex. : il lui manque un œil" autocomplete="off"><button class="btn ghost" data-a="idee" title="Une idée au hasard">💡</button></div>
+      <div class="actions"><button class="btn" data-a="ecrire">Envoyer ✅</button></div>`;
+    else h = `<div class="gros">✅</div><h3>Catégorie envoyée</h3>` +
+      (monEcrit && monEcrit.mid === V.mid ? `<p class="muted">Pour ${esc(t.nom)} : « ${esc(monEcrit.txt)} »</p>` : "") +
+      `<p class="muted">En attente de : ${att || "…"}</p>`;
+    if(hote) h += `<div class="actions"><button class="btn ghost petit" data-a="forcer">Commencer sans attendre (idées au hasard pour les retardataires)</button></div>`;
+    return h;
+  }
+  if(ph === "jeu"){
+    const p = vj(V.cur), moiJ = vj(moi);
+    let h = dernierHtml(vj);
+    const fin = hote ? `<div class="actions"><button class="btn ghost petit" data-a="terminer">⏹️ Terminer la partie</button></div>` : "";
+    if(V.cur === moi){
+      if(!V.prop){
+        if(attente && attente.m.t === "prop" && attente.m.cle === V.cle) return h + `<div class="gros">⏳</div><h3>Envoi…</h3>`;
+        return h + `<p class="muted">Tour ${V.tour} · essai n°${moiJ.essais + 1}${V.limite ? "/" + V.limite : ""}</p>
+          <h3>🎤 À toi de jouer !</h3><p class="muted">Cite un personnage, ou tente de deviner ta catégorie.</p>` + saisieProposition(moiJ.nom, true) + fin;
+      }
+      const att = V.votants.filter(id => !V.aVote.includes(id)).map(id => esc(vj(id).nom)).join(", ");
+      return h + propoHtml(p, V.prop) + `<p class="muted">⏳ Les autres votent… ${V.aVote.length}/${V.votants.length}${att ? " · en attente de " + att : ""}</p>` +
+        `<div class="actions"><button class="btn ghost petit" data-a="annuler">↩️ Corriger ma proposition</button></div>` + fin;
+    }
+    const cat = catPour(p);
+    const boite = `<div class="catBox"><small>Catégorie secrète de ${esc(p.nom)}</small>${cat ? esc(cat) : "⏳ réception…"}</div>`;
+    if(!V.prop) return h + `<div class="gros">${esc(p.avatar)}</div><h3>${esc(p.nom)} réfléchit…</h3>` + boite + fin;
+    const mien = monVote && monVote.cle === V.cle ? monVote.k : null;
+    const att = V.votants.filter(id => !V.aVote.includes(id)).map(id => esc(vj(id).nom)).join(", ");
+    h += propoHtml(p, V.prop) + boite;
+    h += `<p class="muted" style="margin-bottom:0">${V.prop.type === "perso" ? "Ce personnage fait-il partie de la catégorie ?" : "Est-ce la bonne catégorie ?"}</p>`;
+    h += boutonsVote(V.prop.type, V.niv, mien);
+    h += `<p class="muted">${mien ? "✅ Vote envoyé (tu peux encore changer). " : ""}${V.aVote.length}/${V.votants.length} votes${att ? " · en attente de " + att : ""}</p>`;
+    if(hote && V.aVote.length && V.aVote.length < V.votants.length) h += `<div class="actions"><button class="btn ghost petit" data-a="trancher">⚡ Trancher avec les votes reçus</button></div>`;
+    return h + fin;
+  }
+  if(ph === "fin") return finale(vj) + (hote ? `<div class="actions"><button class="btn" data-a="rejouer">🔁 Nouvelle partie</button><button class="btn ghost" data-a="salon">Retour au salon</button></div>` : `<p class="muted">L'hôte peut relancer une partie…</p>`);
+  return "";
+}
+
+function carnets(vj, moi){
+  return `<div class="carnets">` + V.ordre.map(id => {
+    const j = vj(id), cat = catPour(j);
+    let etat = j.essais + " essai" + (j.essais > 1 ? "s" : "");
+    if(j.parti) etat = "🚪 parti";
+    else if(j.fini === "trouve") etat = "🎯 trouvé en " + j.essais;
+    else if(j.fini === "perdu") etat = "🏳️ " + etat;
+    const ligneCat = cat ? `<div class="cat">🏷️ ${esc(cat)}</div>`
+      : `<div class="cat cache2">${id === moi ? "🙈 Ta catégorie est secrète" : "🔒 Catégorie cachée"}</div>`;
+    const hist = j.hist.length ? j.hist.map(e => {
+      const ico = etiquette(e.type, e.res, V.niv)[0];
+      return e.type === "devine" ? `<span class="h ${e.res} devine">💭 « ${esc(e.txt)} » ${ico}</span>` : `<span class="h ${e.res}">${ico} ${esc(e.txt)}</span>`;
+    }).join("") : `<span class="vide">Aucun personnage proposé</span>`;
+    return `<div class="carnet${id === V.cur ? " actif" : ""}"><div class="tete"><span class="n">${esc(j.avatar)} ${esc(j.nom)}${id === moi ? " (toi)" : ""}</span><span class="muted">${etat}</span></div>${ligneCat}<div class="hist">${hist}</div></div>`;
+  }).join("") + `</div>`;
+}
+function finale(vj){
+  const tr = V.J.filter(j => j.fini === "trouve").length;
+  let h = `<div class="bandeauFin">${tr ? "🏁 Partie terminée !" : "🏁 Personne n'a trouvé sa catégorie !"}</div>`;
+  const l = V.J.slice().sort((a, b) => (a.fini === "trouve" ? 0 : 1) - (b.fini === "trouve" ? 0 : 1) || (a.rang || 99) - (b.rang || 99) || a.essais - b.essais);
+  h += `<table class="tab">` + l.map(j => {
+    const g = V.gains ? V.gains[j.id] : 0, med = j.fini === "trouve" ? (["🥇", "🥈", "🥉"][j.rang - 1] || "🎯") : "🏳️";
+    return `<tr><td>${med} ${esc(j.avatar)} ${esc(j.nom)}${j.parti ? " 🚪" : ""}<br><small>${j.fini === "trouve" ? "trouvé en " + j.essais + " essai" + (j.essais > 1 ? "s" : "") : "pas trouvé (" + j.essais + " essai" + (j.essais > 1 ? "s" : "") + ")"}</small></td>
+      <td>« ${esc(j.cat)} »<br><small>${j.auto ? "idée tirée au hasard" : "écrite par " + esc(vj(j.par).nom)}</small></td>
+      <td>${g ? `<span class="plus">+${g}</span>` : "0"}</td></tr>`;
+  }).join("") + `</table>`;
+  return h;
+}
+function tableauScores(){
+  const cle = j => mode === "local" ? j.nom : j.id;
+  const lignes = V.J.map(j => ({j, s: scores[cle(j)] || 0})).sort((a, b) => b.s - a.s);
+  if(!lignes.some(l => l.s)) return "";
+  return `<div class="b-carte"><b>🏆 Scores cumulés</b><table class="tab">` + lignes.map((l, i) =>
+    `<tr><td>${["🥇", "🥈", "🥉"][i] || ""} ${esc(l.j.avatar)} ${esc(l.j.nom)}</td><td></td><td>${l.s} pts</td></tr>`).join("") + `</table></div>`;
+}
+function apresFin(G){
+  G.J.forEach(j => { const k = mode === "local" ? j.nom : j.id; scores[k] = (scores[k] || 0) + (G.gains[j.id] || 0); });
+  const m = mode === "ligne" && salle ? jDe(G, salle.moi) : null;
+  compterFin(m && m.fini === "trouve" ? m.essais : 0);
+}
+function compterFin(essaisMoi){
+  const n = stock.lire("parties", 0) + 1; stock.ecrire("parties", n);
+  let best = stock.lire("meilleur", 0);
+  if(essaisMoi && (!best || essaisMoi < best)){ best = essaisMoi; stock.ecrire("meilleur", best); }
+  Base.record("categorie", n, {texte: n + " partie" + (n > 1 ? "s" : "") + (best ? " · record : trouvée en " + best + " essai" + (best > 1 ? "s" : "") : "")});
+  pluie("🏷️");
+}
+function pluie(e){
+  const L = $("fx");
+  for(let i = 0; i < 18; i++){
+    const x = Base.el("span", e); x.style.cssText = `position:absolute;bottom:-20px;left:${5 + Math.random() * 90}%;font-size:1.8rem;transition:transform 2.2s ease-out,opacity 2.2s;`;
+    L.appendChild(x);
+    setTimeout(() => { x.style.transform = `translateY(-${60 + Math.random() * 30}vh) rotate(${Math.random() * 60 - 30}deg)`; x.style.opacity = "0"; }, 30 + Math.random() * 400);
+    setTimeout(() => x.remove(), 2800);
+  }
+}
+
+/* ---------- actions ---------- */
+function brancher(){
+  const box = $("jeu");
+  box.querySelectorAll("[data-a]").forEach(b => b.onclick = () => action(b.dataset.a));
+  box.querySelectorAll("[data-k]").forEach(b => b.onclick = () => vote(b.dataset.k));
+  const s = box.querySelector("#saisie");
+  if(s) s.addEventListener("keydown", e => {
+    if(e.key !== "Enter") return;
+    const b = box.querySelector('[data-a="ecrire"],[data-a="perso"]'); if(b) b.click();
+  });
+}
+function vote(k){
+  if(mode === "local"){ trancher(G, k); voirCat = false; rendre(); return; }
+  monVote = {cle: V.cle, k};
+  envoyerAction({t: "vote", k, cle: V.cle});
+  rendre();
+}
+function action(a){
+  const s = $("jeu").querySelector("#saisie"), txt = s ? s.value.trim() : "";
+  if(a === "idee"){ if(s){ s.value = IDEES[hasard(IDEES.length)]; s.focus(); } return; }
+  if(a === "voirCat"){ voirCat = !voirCat; rendre(); return; }
+  if((a === "perso" || a === "devine" || a === "ecrire") && !txt){
+    Base.toast(a === "ecrire" ? "Écris une catégorie (ou touche 💡)" : a === "perso" ? "Écris le nom d'un personnage" : "Écris la catégorie que tu proposes");
+    if(s) s.focus();
+    return;
+  }
+  if(a === "abandon" && !confirm("Abandonner ? Ta catégorie sera révélée et tu ne pourras plus marquer de points.")) return;
+  if(a === "terminer" && !confirm("Terminer la partie maintenant et révéler toutes les catégories ?")) return;
+  if(mode === "local"){
+    if(a === "voirEcr") G.wvu = true;
+    else if(a === "ecrire"){
+      ecrire(G, G.ordre[G.wi], txt); if(s) s.value = "";
+      G.wvu = false; G.wi++;
+      if(G.wi >= G.ordre.length) demarrerJeu(G);
+    }
+    else if(a === "perso" || a === "devine"){ proposer(G, courant(G), a, txt); if(s) s.value = ""; voirCat = false; }
+    else if(a === "annuler"){ brouillon = G.prop ? G.prop.txt : ""; annulerProp(G, courant(G)); voirCat = false; }
+    else if(a === "abandon") abandonner(G, courant(G));
+    else if(a === "terminer") finir(G);
+    else if(a === "rejouer") lancerLocal();
+    else if(a === "joueurs"){ G = null; V = null; afficherLocale(); reglagesUI($("regLocal"), true, false); ecran("eLocal"); return; }
+    rendre();
+    return;
+  }
+  /* en ligne */
+  if(a === "ecrire"){ monEcrit = {mid: V.mid, txt: propre(txt, 80)}; envoyerAction({t: "cat", txt}); return; }
+  if(a === "perso" || a === "devine"){ envoyerAction({t: "prop", type: a, txt, cle: V.cle}); return; }
+  if(a === "annuler"){ brouillon = V.prop ? V.prop.txt : ""; envoyerAction({t: "annuler", cle: V.cle}); return; }
+  if(a === "abandon"){ envoyerAction({t: "abandon", cle: V.cle}); return; }
+  if(!salle || !salle.hote || !G) return;
+  if(a === "forcer") demarrerJeu(G);
+  else if(a === "trancher") trancher(G);
+  else if(a === "terminer") finir(G);
+  else if(a === "rejouer"){ demarrerLigne(); return; }
+  else if(a === "salon"){ G = null; V = null; afficherSalon(); ecran("eSalon"); diffuserSalon(); return; }
+  maj();
+}
+
+/* =================================================================
+   EN LIGNE
+   ================================================================= */
+const cod = (s, k) => btoa(unescape(encodeURIComponent([...s].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ k.charCodeAt(i % k.length))).join(""))));
+const decod = (s, k) => { const t = decodeURIComponent(escape(atob(s))); return [...t].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ k.charCodeAt(i % k.length))).join(""); };
+
+function pseudoOk(){
+  const p = $("pseudo").value.trim();
+  if(!p){ $("msgLigne").textContent = "Choisis d'abord un pseudo."; $("pseudo").focus(); return false; }
+  Base.joueur.changerPseudo(p); return true;
+}
+/* Quand un message d'un invité se perd en route, on le renvoie tant que l'état reçu ne le reflète pas */
+const CONFIRME = {
+  cat: (V, m, moi) => V.phase !== "ecriture" || V.ecritOk.includes(moi),
+  prop: (V, m) => V.cle !== m.cle || !!V.prop,
+  vote: (V, m, moi) => V.cle !== m.cle || !V.prop || V.aVote.includes(moi),
+  annuler: (V, m) => V.cle !== m.cle || !V.prop,
+  abandon: (V, m) => V.cle !== m.cle
+};
+function envoyerAction(m){
+  if(!salle) return;
+  if(salle.hote){ recuHote(m, {id: salle.moi}); return; }
+  salle.envoyer(m);
+  attente = {m, t: Date.now()};
+  rendre();
+}
+function maj(){
+  if(G && G.phase !== "ecriture" && catsEnvoyees !== G.mid){ catsEnvoyees = G.mid; diffuserCats(); setTimeout(diffuserCats, 1500); }
+  diffuser(); rendre();
+}
+let catsEnvoyees = null;
+function diffuser(){ if(salle && salle.hote && G) salle.envoyer({t: "etat", V: publier(G), scores}); }
+/* chaque joueur reçoit les catégories de tous les autres… sauf la sienne */
+function diffuserCats(){
+  if(!salle || !salle.hote || !G || G.phase === "ecriture") return;
+  const l = {};
+  G.J.forEach(r => {
+    const map = {};
+    G.J.forEach(j => { if(j.id !== r.id) map[j.id] = j.cat; });
+    l[r.id] = cod(JSON.stringify(map), r.id);
+  });
+  salle.envoyer({t: "cats", mid: G.mid, l});
+}
+function diffuserSalon(){ if(salle && salle.hote) salle.envoyer({t: "salon", R, scores}); }
+
+function recuHote(m, j){
+  if(!G){ if(m.t === "etat?") diffuserSalon(); return; }
+  if(m.t === "etat?"){ diffuser(); return; }
+  if(m.t === "cats?"){ diffuserCats(); return; }
+  if(m.t === "cat") ecrire(G, j.id, m.txt);
+  else if(["prop", "vote", "annuler", "abandon"].includes(m.t)){
+    if(m.cle !== cleDe(G)) return;            // message en retard (tour déjà passé)
+    if(m.t === "prop") proposer(G, j.id, m.type, m.txt);
+    else if(m.t === "vote") voter(G, j.id, String(m.k));
+    else if(m.t === "annuler") annulerProp(G, j.id);
+    else abandonner(G, j.id);
+  }
+  else return;
+  maj();
+}
+function recuInvite(m){
+  if(m.t === "salon"){ R = Object.assign({}, DEF_R, m.R); scores = m.scores || {}; G = null; V = null; attente = null; afficherSalon(); ecran("eSalon"); return; }
+  if(m.t === "etat"){
+    const nouv = !V || V.mid !== m.V.mid, ancienne = V ? V.phase : null;
+    if(nouv){ monEcrit = null; monVote = null; attente = null; }
+    V = m.V; scores = m.scores || {};
+    if(attente){
+      if(CONFIRME[attente.m.t](V, attente.m, salle.moi)) attente = null;
+      else if(Date.now() - attente.t > 4000){ attente.t = Date.now(); salle.envoyer(attente.m); }
+    }
+    if(V.phase === "fin" && (nouv || ancienne !== "fin")){
+      const me = V.J.find(j => j.id === salle.moi);
+      compterFin(me && me.fini === "trouve" ? me.essais : 0);
+    }
+    ecran("eJeu"); rendre();
+    if(V.phase !== "ecriture" && V.J.some(j => j.id === salle.moi) && (!mesCats || mesCats.mid !== V.mid) && Date.now() - demande > 3000){
+      demande = Date.now(); salle.envoyer({t: "cats?"});
+    }
+    return;
+  }
+  if(m.t === "cats"){
+    const x = m.l && m.l[salle.moi];
+    if(x){ try{ mesCats = {mid: m.mid, map: JSON.parse(decod(x, salle.moi))}; }catch(e){} if(V) rendre(); }
+  }
+}
+
+function afficherSalon(){
+  const hote = salle && salle.hote;
+  $("code").textContent = salle ? salle.code : "····";
+  const ul = $("listeSalon"); ul.innerHTML = "";
+  const l = salle ? salle.joueurs : [];
+  l.forEach((j, i) => {
+    const li = Base.el("li");
+    li.append(Base.el("span", j.avatar, "av"), Base.el("span", j.pseudo + (i === 0 ? " 👑" : "") + (j.id === salle.moi ? " (toi)" : ""), "n"));
+    const s = scores[j.id]; if(s) li.appendChild(Base.el("span", s + " pts", "muted"));
+    ul.appendChild(li);
+  });
+  $("nbSalon").textContent = `(${l.length}/12)`;
+  reglagesUI($("regLigne"), false, !hote);
+  $("goLigne").classList.toggle("cache", !hote);
+  $("noteSalon").textContent = hote ? (l.length < 2 ? "Il faut au moins 2 joueurs : envoie le code à tes amis !" : `${l.length} joueurs : chacun inventera la catégorie d'un autre.`) : "⏳ L'hôte va lancer la partie…";
+  $("goLigne").disabled = l.length < 2;
+}
+function demarrerLigne(){
+  if(!salle || !salle.hote) return;
+  if(salle.joueurs.length < 2){ Base.toast("Il faut au moins 2 joueurs"); return; }
+  G = nouvelleManche(salle.joueurs.map(j => ({id: j.id, nom: j.pseudo, avatar: j.avatar})), R);
+  monEcrit = null; monVote = null; brouillon = "";
+  ecran("eJeu"); maj();
+}
+$("goLigne").onclick = demarrerLigne;
+
+$("creer").onclick = async () => {
+  if(!pseudoOk()) return;
+  mode = "ligne"; $("msgLigne").textContent = "Création de la salle…";
+  try{
+    salle = await Reseau.creer("categorie", {
+      max: 12,
+      surEssai(t){ $("msgLigne").textContent = t; },
+      surArrivee(j){ Base.toast(j.avatar + " " + j.pseudo + " a rejoint la salle"); if(!G){ afficherSalon(); diffuserSalon(); } else maj(); },
+      surDepart(j){ Base.toast(j.pseudo + " est parti·e"); if(G){ partir(G, j.id); maj(); } else afficherSalon(); },
+      surMessage(m, j){ recuHote(m, j); }
+    });
+    G = null; scores = {}; afficherSalon(); ecran("eSalon");
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+};
+async function rejoindre(code){
+  if(!pseudoOk()) return;
+  mode = "ligne"; $("msgLigne").textContent = "Connexion à la salle " + code + "…";
+  try{
+    salle = await Reseau.rejoindre("categorie", code, {
+      surMessage: recuInvite,
+      surListe(){ if(!V) afficherSalon(); },
+      surHotePerdu(){ Base.toast("L'hôte ne répond plus…"); },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; V = null; ecran("eMenu"); }
+    });
+    V = null; afficherSalon(); ecran("eSalon");
+    salle.envoyer({t: "etat?"});
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+}
+$("rejoindre").onclick = () => { const c = $("codeIn").value.trim().toUpperCase(); if(c) rejoindre(c); };
+$("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("rejoindre").click(); });
+$("tester").onclick = async () => { $("msgLigne").textContent = "Test des relais…"; $("msgLigne").textContent = await Reseau.tester(); };
+$("copier").onclick = async () => {
+  if(!salle) return;
+  try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à tes amis 📨"); }
+  catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
+};
+$("quitterSalon").onclick = () => { if(salle){ salle.quitter(); salle = null; } G = null; V = null; ecran("eMenu"); };
+
+/* l'hôte renvoie l'état régulièrement (au cas où un message se perde) */
+setInterval(() => { if(salle && salle.hote){ if(G) diffuser(); else diffuserSalon(); } }, 6000);
+
+/* arrivée par un lien d'invitation */
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){
+  $("codeIn").value = codeLien; $("pseudo").value = Base.joueur.pseudo(); ecran("eLigne");
+  if(Base.joueur.pseudo()) rejoindre(codeLien);
+}
+</script>
+</body>
+</html>

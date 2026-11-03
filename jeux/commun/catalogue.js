@@ -72,6 +72,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "categorie",
+    title: "Devine ta Catégorie",
+    emoji: "🏷️",
+    desc: "Les autres t'inventent une catégorie secrète (« il lui manque un œil », « a des pouvoirs magiques »…). Cite des personnages, ils te disent s'ils sont dedans, un peu ou pas du tout… et devine ta catégorie ! Sur un seul téléphone ou en ligne, de 2 à 12 joueurs.",
+    tags: ["Party", "Multijoueur", "Animé"],
+    colors: ["#f2a65a", "#2a9d8f"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "imposteur",
     title: "L'Imposteur",
     emoji: "🕵️",
