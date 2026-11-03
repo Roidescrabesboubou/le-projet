@@ -72,6 +72,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "encheres",
+    title: "La Grande Enchère",
+    emoji: "🔨",
+    desc: "Des personnages d'un animé sont mis aux enchères un par un : One Piece, Naruto, Dragon Ball, Jujutsu Kaisen… Gère ton argent, surenchéris ou laisse filer, et monte l'équipe la plus forte ! À deux, sur un seul écran ou en ligne.",
+    tags: ["Stratégie", "Multijoueur", "Animé"],
+    colors: ["#d9822b", "#5b6bd0"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "categorie",
     title: "Devine ta Catégorie",
     emoji: "🏷️",

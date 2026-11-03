@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>La Grande Enchère</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#d9822b;--fond1:rgba(217,130,43,.14);--fond2:rgba(91,107,208,.12);--j1:#e8607a;--j2:#3b8fd9}
+.b-page{max-width:720px}
+
+/* ---------- Menu ---------- */
+.reglage{margin-bottom:14px}
+.reglage:last-child{margin-bottom:0}
+.reglage .etiquette{margin:0 0 6px;text-align:center}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;width:100%}
+.mode{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 12px;transition:transform .15s,box-shadow .15s}
+.mode:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.1)}
+.mode .ic{font-size:2.2rem}
+.mode b{font-family:Fredoka,sans-serif;font-size:1.15rem}
+.mode small{color:var(--muted)}
+.panneau h2{margin:0 0 8px;font-size:1.2rem}
+.ligne{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ligne .champ{flex:1;min-width:140px}
+.code{font-family:Fredoka,sans-serif;font-size:2.4rem;letter-spacing:6px;text-align:center;margin:6px 0}
+.msg{min-height:1.3em;font-weight:700;font-size:.9rem;margin:8px 0 0}
+.sep{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem;margin:14px 0}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:var(--line)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+/* ---------- Partie ---------- */
+#jeu{width:100%;display:flex;flex-direction:column;gap:12px}
+.infos{text-align:center;font-weight:800;color:var(--muted);font-size:.92rem}
+.joueurs{display:flex;gap:10px;width:100%}
+.jr{flex:1;min-width:0;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:8px 12px;transition:border-color .2s,transform .2s}
+.jr.actif{border-color:var(--c);transform:scale(1.02)}
+.jr .haut{display:flex;align-items:center;gap:6px}
+.jr .pastille{width:12px;height:12px;border-radius:50%;background:var(--c);flex:none}
+.jr .nom{flex:1;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr .mch{font-weight:800;font-size:.85rem;color:var(--muted);white-space:nowrap}
+.jr .bas{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.jr .argent{font-family:Fredoka,sans-serif;font-size:1.4rem;white-space:nowrap}
+.jr .eff{font-size:.85rem;color:var(--muted);font-weight:700;white-space:nowrap}
+
+.vente{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.portrait{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Fredoka,sans-serif;font-size:1.8rem;color:#fff;background:var(--accent);box-shadow:inset 0 -5px 0 rgba(0,0,0,.15)}
+.vente h2{margin:0;font-size:1.5rem}
+.force{font-weight:800;color:var(--accent);font-size:.95rem}
+.etat{font-weight:800;font-size:1.05rem;min-height:1.4em}
+.note{font-size:.88rem;color:var(--muted);min-height:1.2em;margin:0}
+
+.mise{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+.mise button{border:1px solid var(--line);background:var(--bg);border-radius:12px;min-width:46px;height:46px;font-weight:800;touch-action:manipulation}
+.mise button:disabled{opacity:.4;cursor:default}
+.mise input{width:92px;height:46px;text-align:center;font-family:Fredoka,sans-serif;font-size:1.4rem;border:2px solid var(--accent);border-radius:12px;background:var(--bg)}
+.mise input::-webkit-outer-spin-button,.mise input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.mise input{-moz-appearance:textfield;appearance:textfield}
+.choix{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.choix .btn{min-width:150px;padding:12px 18px}
+.adjuge{font-family:Fredoka,sans-serif;font-size:1.25rem;animation:pop .25s ease-out}
+@keyframes pop{from{transform:scale(.8)}to{transform:none}}
+
+.a-venir{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.a-venir span{font-size:.8rem;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+.titre-bloc{font-weight:800;font-size:.85rem;color:var(--muted);text-align:center;margin:0 0 6px}
+
+.equipes{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.equipe{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:14px;padding:10px;min-width:0}
+.equipe h3{margin:0 0 6px;font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.equipe ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.equipe li{display:flex;justify-content:space-between;gap:6px;font-size:.88rem;font-weight:700;background:var(--soft);border-radius:8px;padding:4px 8px}
+.equipe li .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.equipe li .v{white-space:nowrap;color:var(--muted)}
+.equipe li.top{outline:2px solid var(--accent)}
+.equipe .vide{color:var(--muted);font-size:.85rem;margin:0}
+.total{font-family:Fredoka,sans-serif;font-size:1.5rem;text-align:center;margin-top:8px}
+.verdict{text-align:center}
+.verdict h2{margin:0 0 4px;font-size:1.5rem}
+.verdict p{margin:0;color:var(--muted);font-weight:700}
+@media (max-width:520px){
+  .equipe li{flex-direction:column;gap:0}
+  .equipe li .n{white-space:normal}
+  .mise button{min-width:40px;padding:0 6px}
+  .mise input{width:68px}
+}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <!-- MENU -->
+  <section id="menu" style="width:100%;display:flex;flex-direction:column;gap:14px">
+    <div class="b-carte">
+      <div class="reglage"><div class="etiquette">Univers</div><div class="pilules" data-reglage="univers"></div></div>
+      <div class="reglage"><div class="etiquette">Personnages tirés (la moitié pour chaque équipe)</div><div class="pilules" data-reglage="persos"></div></div>
+      <div class="reglage"><div class="etiquette">Argent de départ</div><div class="pilules" data-reglage="argent"></div></div>
+      <div class="reglage"><div class="etiquette">Manches</div><div class="pilules" data-reglage="manches"></div></div>
+      <div class="reglage"><div class="etiquette">Puissance des personnages</div><div class="pilules" data-reglage="visible"></div></div>
+    </div>
+    <div class="modes">
+      <button class="mode" data-mode="local"><span class="ic">👥</span><b>À deux</b><small>Sur le même écran</small></button>
+      <button class="mode" data-mode="ligne"><span class="ic">🌐</span><b>En ligne</b><small>Contre un ami, chacun chez soi</small></button>
+    </div>
+  </section>
+
+  <!-- À DEUX -->
+  <section id="pLocal" class="b-carte panneau cache">
+    <h2>👥 Qui joue ?</h2>
+    <label class="etiquette" for="nom1">Joueur 1</label>
+    <input class="champ" id="nom1" maxlength="16" placeholder="Joueur 1">
+    <label class="etiquette" for="nom2">Joueur 2</label>
+    <input class="champ" id="nom2" maxlength="16" placeholder="Joueur 2">
+    <div class="actions" style="margin-top:14px"><button class="btn" id="goLocal">Lancer la vente</button><button class="btn ghost retour">Retour</button></div>
+  </section>
+
+  <!-- EN LIGNE -->
+  <section id="pLigne" class="b-carte panneau cache">
+    <h2>🌐 Jouer en ligne</h2>
+    <label class="etiquette" for="pseudo">Ton pseudo</label>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton pseudo">
+    <div class="actions" style="margin-top:12px;justify-content:flex-start"><button class="btn" id="creer">Créer une salle</button></div>
+    <div class="sep">ou rejoindre un ami</div>
+    <div class="ligne"><input class="champ" id="codeIn" maxlength="5" placeholder="Code (ex. KXRT1)" style="text-transform:uppercase"><button class="btn" id="rejoindre">Rejoindre</button></div>
+    <p class="msg" id="msgLigne"></p>
+    <div class="actions" style="margin-top:8px;justify-content:flex-start"><button class="btn ghost petit retour">Retour</button><button class="btn ghost petit" id="tester">🩺 Tester ma connexion</button></div>
+  </section>
+
+  <!-- ATTENTE (hôte) -->
+  <section id="pAttente" class="b-carte panneau cache" style="text-align:center">
+    <h2>⏳ En attente d'un adversaire…</h2>
+    <p class="muted">Donne ce code à ton ami :</p>
+    <p class="code" id="code"></p>
+    <div class="actions"><button class="btn" id="copier">🔗 Copier le lien d'invitation</button><button class="btn ghost" id="annuler">Annuler</button></div>
+  </section>
+
+  <!-- PARTIE -->
+  <section id="jeu" class="cache">
+    <div class="infos" id="infos"></div>
+    <div class="joueurs">
+      <div class="jr" id="jr1" style="--c:var(--j1)"><div class="haut"><span class="pastille"></span><span class="nom"></span><span class="mch"></span></div><div class="bas"><span class="argent"></span><span class="eff"></span></div></div>
+      <div class="jr" id="jr2" style="--c:var(--j2)"><div class="haut"><span class="pastille"></span><span class="nom"></span><span class="mch"></span></div><div class="bas"><span class="argent"></span><span class="eff"></span></div></div>
+    </div>
+
+    <!-- Vente en cours -->
+    <div class="b-carte vente" id="vente">
+      <div class="portrait" id="portrait"></div>
+      <h2 id="nomPerso"></h2>
+      <div class="force" id="force"></div>
+      <div class="etat" id="etat"></div>
+      <p class="note" id="note"></p>
+      <div id="commandes" style="display:flex;flex-direction:column;gap:10px;align-items:center;width:100%">
+        <div class="mise">
+          <button id="m10" aria-label="Retirer 10">−10</button>
+          <button id="m1" aria-label="Retirer 1">−1</button>
+          <input id="mise" type="number" inputmode="numeric" min="0" aria-label="Montant de l'enchère">
+          <button id="p1" aria-label="Ajouter 1">+1</button>
+          <button id="p10" aria-label="Ajouter 10">+10</button>
+          <button id="tapis">Tapis</button>
+        </div>
+        <div class="choix">
+          <button class="btn" id="encherir"></button>
+          <button class="btn ghost" id="laisser">🏳️ Laisser</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fin de manche -->
+    <div class="b-carte verdict cache" id="verdict"></div>
+
+    <div class="b-carte cache" id="blocVenir"><p class="titre-bloc">Encore en vente</p><div class="a-venir" id="aVenir"></div></div>
+    <div class="equipes">
+      <div class="equipe" id="eq1" style="--c:var(--j1)"></div>
+      <div class="equipe" id="eq2" style="--c:var(--j2)"></div>
+    </div>
+    <div class="actions">
+      <button class="btn cache" id="suite"></button>
+      <button class="btn ghost" id="quitter">🏠 Menu</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="persos.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("encheres_");
+const UNIVERS = window.ENCHERES_UNIVERS;
+const ALEA = "alea";
+const hasard = t => t[Math.floor(Math.random() * t.length)];
+function melange(t){ const a = t.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+
+Base.entete({
+  titre: "La Grande Enchère", emoji: "🔨",
+  aide: `<p>Des personnages d'un animé sont mis en vente un par un. Achetez-les aux enchères : à la fin, <b>l'équipe la plus forte gagne</b> la manche.</p>
+  <ul>
+    <li>Chacun a le même argent au départ et chaque équipe a la même taille (la moitié des personnages).</li>
+    <li>À chaque vente, un joueur ouvre (0 est permis), puis on surenchérit à tour de rôle. L'ouverture change à chaque personnage.</li>
+    <li><b>🏳️ Laisser</b> : l'adversaire remporte le personnage au prix de sa dernière enchère. Si personne n'a encore misé, il l'a gratuitement.</li>
+    <li>Plus d'argent ? Tu enchéris automatiquement 0 quand tu ouvres, et tu laisses quand tu ne peux pas suivre.</li>
+    <li>Une équipe est complète ? Tous les personnages restants vont gratuitement à l'autre joueur.</li>
+    <li>À la fin, on additionne la puissance des équipes. En cas d'égalité, celui à qui il reste le plus d'argent gagne.</li>
+  </ul>`
+});
+
+/* =================================================================
+   RÉGLAGES
+   ================================================================= */
+const OPTIONS = {
+  univers: [...UNIVERS.map(u => [u.id, u.emoji + " " + u.nom]), [ALEA, "🎲 Aléatoire"]],
+  persos: [[6, "6"], [8, "8"], [10, "10"], [12, "12"], [14, "14"], [16, "16"], [ALEA, "🎲"]],
+  argent: [[50, "50"], [100, "100"], [200, "200"], [500, "500"], [1000, "1000"], [ALEA, "🎲"]],
+  manches: [[1, "1"], [3, "3"], [5, "5"], [7, "7"], [ALEA, "🎲"]],
+  visible: [[false, "🙈 Cachée jusqu'à la fin"], [true, "👁️ Visible"]]
+};
+const PLAGES = {persos: [6, 8, 10, 12, 14, 16], argent: [50, 100, 150, 200, 300, 500, 750, 1000], manches: [1, 3, 5]};
+const reglages = {univers: ALEA, persos: 10, argent: 100, manches: 1, visible: false, ...stock.lire("reglages", {})};
+
+function afficherReglages(){
+  document.querySelectorAll("[data-reglage]").forEach(z => {
+    const cle = z.dataset.reglage; z.innerHTML = "";
+    for(const [v, t] of OPTIONS[cle]){
+      const b = document.createElement("button"); b.textContent = t;
+      if(v === reglages[cle]) b.className = "on";
+      b.onclick = () => { reglages[cle] = v; stock.ecrire("reglages", reglages); afficherReglages(); };
+      z.appendChild(b);
+    }
+  });
+}
+afficherReglages();
+/* Les valeurs « aléatoire » sont tirées une fois pour toute la partie (sauf l'univers, à chaque manche) */
+const figer = () => ({
+  univers: reglages.univers,
+  persos: reglages.persos === ALEA ? hasard(PLAGES.persos) : reglages.persos,
+  argent: reglages.argent === ALEA ? hasard(PLAGES.argent) : reglages.argent,
+  manches: reglages.manches === ALEA ? hasard(PLAGES.manches) : reglages.manches,
+  visible: reglages.visible
+});
+
+/* =================================================================
+   ÉTAT DE LA PARTIE
+   G est tout ce qu'il faut pour dessiner (envoyé tel quel en ligne)
+   ================================================================= */
+let G = null, mode = null, salle = null, moi = 1, attenteCoup = false, minuteur = null, cleMise = "";
+const PAUSE = 1800, PAUSE_AUTO = 1000;
+
+function nouvellePartie(noms, cfg){
+  G = {cfg, noms: ["", ...noms], scores: [0, 0, 0], manche: 0, premier: 2, champion: null, uvx: null};
+  nouvelleManche();
+}
+function nouvelleManche(){
+  G.manche++;
+  G.premier = 3 - G.premier;
+  const dispo = UNIVERS.length > 1 ? UNIVERS.filter(u => u.id !== G.uvx) : UNIVERS;
+  const u = G.cfg.univers === ALEA ? hasard(dispo) : UNIVERS.find(x => x.id === G.cfg.univers);
+  G.uvx = u.id; G.uNom = u.emoji + " " + u.nom;
+  G.file = melange(u.persos).slice(0, G.cfg.persos).map(s => { const [n, p] = s.split("|"); return {n, p: +p}; });
+  G.i = 0;
+  G.argent = [0, G.cfg.argent, G.cfg.argent];
+  G.equipes = [null, [], []];
+  G.res = null;
+  ouvrirVente();
+}
+
+const taille = () => G.cfg.persos / 2;
+const ouvreur = () => G.i % 2 === 0 ? G.premier : 3 - G.premier;
+const miseMin = () => G.enchere ? G.enchere.montant + 1 : 0;
+
+function ouvrirVente(){
+  G.phase = "vente"; G.enchere = null; G.adj = null; G.note = "";
+  const complet = [1, 2].find(j => G.equipes[j].length >= taille());
+  if(complet){
+    adjuger(3 - complet, 0, `L'équipe de ${G.noms[complet]} est complète : ce personnage part gratuitement.`, true);
+    return;
+  }
+  G.tour = ouvreur();
+  if(G.argent[G.tour] === 0){
+    const j = G.tour;
+    miser(j, 0);
+    if(G.phase === "vente") G.note = `${G.noms[j]} n'a plus d'argent : enchère automatique de 0.`;
+  }
+}
+function miser(j, m){
+  G.enchere = {montant: m, par: j}; G.tour = 3 - j; G.note = "";
+  if(G.argent[G.tour] <= m) adjuger(j, m, `${G.noms[G.tour]} ne peut pas surenchérir.`, true);
+}
+function adjuger(j, prix, note, auto){
+  const p = G.file[G.i];
+  G.argent[j] -= prix;
+  G.equipes[j].push({...p, prix});
+  G.i++;
+  G.phase = "adjuge"; G.adj = {j, prix, n: p.n, p: p.p}; G.note = note || ""; G.auto = !!auto;
+}
+/* Une action d'un joueur. Renvoie false si elle n'est pas permise. */
+function agir(j, a){
+  if(!G || G.phase !== "vente" || G.tour !== j) return false;
+  if(a.type === "laisser"){
+    if(G.enchere) adjuger(G.enchere.par, G.enchere.montant);
+    else adjuger(3 - j, 0, `${G.noms[j]} laisse le personnage sans enchère.`);
+    return true;
+  }
+  if(a.type === "miser"){
+    const m = Math.floor(+a.montant);
+    if(!(m >= miseMin() && m <= G.argent[j])) return false;
+    miser(j, m);
+    return true;
+  }
+  return false;
+}
+function apresAdjuge(){
+  if(!G || G.phase !== "adjuge") return;
+  if(G.i < G.file.length) ouvrirVente(); else finDeManche();
+}
+const totalEquipe = j => G.equipes[j].reduce((s, p) => s + p.p, 0);
+function finDeManche(){
+  const t1 = totalEquipe(1), t2 = totalEquipe(2);
+  let g = t1 > t2 ? 1 : t2 > t1 ? 2 : 0, raison = "";
+  if(!g){
+    g = G.argent[1] > G.argent[2] ? 1 : G.argent[2] > G.argent[1] ? 2 : 0;
+    raison = g ? "Égalité de puissance : l'argent restant départage." : "Égalité parfaite !";
+  }
+  if(g) G.scores[g]++;
+  G.res = {g, raison, t: [0, t1, t2]};
+  G.phase = "fin";
+  const maj = Math.floor(G.cfg.manches / 2) + 1;
+  const decide = G.scores[1] >= maj || G.scores[2] >= maj;
+  if(decide || G.manche >= G.cfg.manches){
+    G.champion = G.scores[1] > G.scores[2] ? 1 : G.scores[2] > G.scores[1] ? 2 : 0;
+    G.terminee = true;
+    if(mode === "ligne" && G.champion === 1) enregistrerVictoire();
+  }
+}
+function enregistrerVictoire(){
+  const n = stock.lire("victoires", 0) + 1;
+  stock.ecrire("victoires", n);
+  Base.record("encheres", n, {texte: `${n} victoire${n > 1 ? "s" : ""} en ligne`});
+}
+function suiteDePartie(){
+  if(!G || G.phase !== "fin") return;
+  if(G.terminee){ const {cfg, noms} = G; G = null; nouvellePartie(noms.slice(1), cfg); }
+  else nouvelleManche();
+}
+
+/* =================================================================
+   CE QUI DÉCIDE DU RYTHME : seul l'arbitre (hôte ou mode local) avance
+   ================================================================= */
+const arbitre = () => mode === "local" || (mode === "ligne" && salle && salle.hote);
+function apresChangement(){
+  dessiner();
+  diffuser();
+  clearTimeout(minuteur);
+  if(G && G.phase === "adjuge" && arbitre()){
+    minuteur = setTimeout(() => { apresAdjuge(); apresChangement(); }, G.auto ? PAUSE_AUTO : PAUSE);
+  }
+}
+function diffuser(){ if(salle && salle.hote) salle.envoyer({t: "etat", G}); }
+
+const monTour = () => {
+  if(!G || G.phase !== "vente") return false;
+  if(mode === "local") return true;
+  return G.tour === moi && !attenteCoup;
+};
+function action(a){
+  if(!monTour()) return;
+  if(mode === "ligne" && !salle.hote){
+    attenteCoup = true; salle.envoyer({t: "action", a}); dessiner();
+    setTimeout(() => { if(attenteCoup){ attenteCoup = false; dessiner(); } }, 4000);
+    return;
+  }
+  if(agir(G.tour, a)) apresChangement();
+}
+
+/* =================================================================
+   AFFICHAGE
+   ================================================================= */
+const initiales = n => n.replace(/\(.*?\)/g, "").split(/[\s-]+/).filter(Boolean).slice(0, 2).map(m => m[0]).join("").toUpperCase();
+const teinte = n => { let h = 0; for(const c of n) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+
+function dessiner(){
+  if(!G) return;
+  const fin = G.phase === "fin", voirForce = G.cfg.visible || fin;
+  $("infos").textContent = `${G.uNom} · Manche ${G.manche}/${G.cfg.manches}` + (fin ? "" : ` · Personnage ${Math.min(G.i + (G.phase === "vente" ? 1 : 0), G.file.length)}/${G.file.length}`);
+
+  for(const j of [1, 2]){
+    const b = $("jr" + j);
+    b.querySelector(".nom").textContent = G.noms[j];
+    b.querySelector(".mch").textContent = G.cfg.manches > 1 ? "🏆 " + G.scores[j] : "";
+    b.querySelector(".argent").textContent = G.argent[j] + " 💰";
+    b.querySelector(".eff").textContent = `${G.equipes[j].length}/${taille()} persos`;
+    b.classList.toggle("actif", G.phase === "vente" && G.tour === j);
+
+    const eq = $("eq" + j), liste = fin ? G.equipes[j].slice().sort((x, y) => y.p - x.p) : G.equipes[j];
+    const lignes = liste.map(p => `<li><span class="n">${esc(p.n)}</span><span class="v">${voirForce ? "⚡" + p.p + " · " : ""}${p.prix} 💰</span></li>`).join("");
+    eq.innerHTML = `<h3>${esc(G.noms[j])}</h3>` + (lignes ? `<ul>${lignes}</ul>` : `<p class="vide">Personne pour l'instant</p>`) +
+      (fin ? `<div class="total">⚡ ${G.res.t[j]}</div>` : "");
+  }
+
+  $("vente").classList.toggle("cache", fin);
+  $("verdict").classList.toggle("cache", !fin);
+  const restants = G.file.slice(G.phase === "vente" ? G.i + 1 : G.i);
+  $("blocVenir").classList.toggle("cache", fin || !restants.length);
+  $("aVenir").innerHTML = restants.map(p => `<span>${esc(p.n)}${G.cfg.visible ? " ⚡" + p.p : ""}</span>`).join("");
+
+  if(fin) dessinerVerdict(); else dessinerVente();
+
+  const s = $("suite");
+  s.classList.toggle("cache", !fin);
+  s.textContent = G.terminee ? "🔁 Revanche" : "▶️ Manche suivante";
+}
+
+function dessinerVente(){
+  const adj = G.phase === "adjuge";
+  const p = adj ? G.adj : G.file[G.i];
+  const po = $("portrait");
+  po.textContent = initiales(p.n);
+  po.style.background = `hsl(${teinte(p.n)} 55% 48%)`;
+  $("nomPerso").textContent = p.n;
+  $("force").textContent = G.cfg.visible ? `⚡ Puissance ${p.p}` : "";
+  $("note").textContent = G.note;
+
+  const e = $("etat"); e.classList.toggle("adjuge", adj);
+  if(adj){
+    e.textContent = `🔨 Adjugé à ${G.noms[G.adj.j]} pour ${G.adj.prix} 💰`;
+  }else{
+    const toi = mode === "ligne" && G.tour === moi, lui = mode === "ligne" && G.tour !== moi;
+    const nom = G.noms[G.tour];
+    if(G.enchere) e.textContent = `${G.noms[G.enchere.par]} mise ${G.enchere.montant} 💰. ` + (toi ? "À toi !" : lui ? `${nom} réfléchit…` : `À ${nom} !`);
+    else e.textContent = toi ? "À toi d'ouvrir l'enchère" : lui ? `${nom} ouvre l'enchère…` : `À ${nom} d'ouvrir l'enchère`;
+  }
+
+  const actif = monTour();
+  $("commandes").classList.toggle("cache", !actif);
+  if(!actif) return;
+  const cle = `${G.manche}-${G.i}-${G.tour}-${G.enchere ? G.enchere.montant : "x"}`;
+  if(cle !== cleMise){ cleMise = cle; $("mise").value = miseMin(); }
+  majBoutonsMise();
+}
+function valeurMise(){
+  const v = Math.floor(+$("mise").value);
+  return Number.isFinite(v) ? v : miseMin();
+}
+function majBoutonsMise(){
+  const min = miseMin(), max = G.argent[G.tour], v = valeurMise();
+  $("mise").min = min; $("mise").max = max;
+  $("m10").disabled = $("m1").disabled = v <= min;
+  $("p10").disabled = $("p1").disabled = $("tapis").disabled = v >= max;
+  const ok = v >= min && v <= max;
+  $("encherir").disabled = !ok;
+  $("encherir").textContent = ok ? `🔨 Enchérir ${v} 💰` : `Entre ${min} et ${max} 💰`;
+}
+function changerMise(d){
+  if(!monTour()) return;
+  $("mise").value = Math.max(miseMin(), Math.min(G.argent[G.tour], valeurMise() + d));
+  majBoutonsMise();
+}
+$("m10").onclick = () => changerMise(-10);
+$("m1").onclick = () => changerMise(-1);
+$("p1").onclick = () => changerMise(1);
+$("p10").onclick = () => changerMise(10);
+$("tapis").onclick = () => changerMise(Infinity);
+$("mise").addEventListener("input", () => { if(monTour()) majBoutonsMise(); });
+$("mise").addEventListener("keydown", e => { if(e.key === "Enter") $("encherir").click(); });
+$("encherir").onclick = () => action({type: "miser", montant: valeurMise()});
+$("laisser").onclick = () => action({type: "laisser"});
+
+function dessinerVerdict(){
+  const g = G.res.g;
+  const nom = j => mode === "ligne" && j === moi ? "Tu" : G.noms[j];
+  let titre, sous = G.res.raison;
+  if(G.terminee && G.cfg.manches > 1){
+    const c = G.champion;
+    titre = c ? `🏆 ${nom(c)} ${mode === "ligne" && c === moi ? "remportes" : "remporte"} la partie !` : "🤝 Partie nulle !";
+    sous = `${G.noms[1]} ${G.scores[1]} – ${G.scores[2]} ${G.noms[2]}` + (sous ? ` · ${sous}` : "");
+  }else if(g){
+    titre = `🎉 ${nom(g)} ${mode === "ligne" && g === moi ? "as" : "a"} l'équipe la plus forte !`;
+  }else titre = "🤝 Match nul !";
+  $("verdict").innerHTML = `<h2>${esc(titre)}</h2><p>${esc(sous)}</p>`;
+}
+
+/* =================================================================
+   ÉCRANS
+   ================================================================= */
+function ecran(id){
+  ["menu", "pLocal", "pLigne", "pAttente", "jeu"].forEach(x => $(x).classList.toggle("cache", x !== id));
+}
+function lancer(){ cleMise = ""; ecran("jeu"); apresChangement(); }
+document.querySelectorAll(".retour").forEach(b => b.onclick = () => ecran("menu"));
+document.querySelectorAll(".mode").forEach(b => b.onclick = () => {
+  if(b.dataset.mode === "local"){
+    $("nom1").value = stock.lire("nom1", Base.joueur.pseudo() || "");
+    $("nom2").value = stock.lire("nom2", "");
+    ecran("pLocal");
+  }else{
+    $("pseudo").value = Base.joueur.pseudo(); $("msgLigne").textContent = ""; ecran("pLigne");
+  }
+});
+$("goLocal").onclick = () => {
+  const a = $("nom1").value.trim(), b = $("nom2").value.trim();
+  stock.ecrire("nom1", a); stock.ecrire("nom2", b);
+  mode = "local";
+  nouvellePartie([a || "Joueur 1", b || "Joueur 2"], figer());
+  lancer();
+};
+$("suite").onclick = () => {
+  if(mode === "ligne" && !salle.hote){ salle.envoyer({t: "suite"}); Base.toast("Demande envoyée…"); return; }
+  suiteDePartie(); apresChangement();
+};
+$("quitter").onclick = () => {
+  clearTimeout(minuteur);
+  if(salle){ salle.quitter(); salle = null; }
+  G = null; mode = null; ecran("menu");
+};
+
+/* =================================================================
+   EN LIGNE : l'hôte arbitre, l'invité envoie ses actions
+   ================================================================= */
+function pseudoOK(){
+  const p = $("pseudo").value.trim();
+  if(!p){ $("pseudo").focus(); $("msgLigne").textContent = "Choisis d'abord un pseudo 🙂"; return false; }
+  Base.joueur.changerPseudo(p); return true;
+}
+$("creer").onclick = async () => {
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Création de la salle…";
+  try{
+    salle = await Reseau.creer("encheres", {
+      max: 2,
+      surEssai: t => $("msgLigne").textContent = t,
+      surArrivee(j){
+        mode = "ligne"; moi = 1;
+        nouvellePartie([Base.joueur.pseudo() || "Hôte", j.pseudo], figer());
+        lancer();
+        Base.toast(j.avatar + " " + j.pseudo + " a rejoint la partie !");
+      },
+      surDepart(j){
+        Base.toast(j.pseudo + " a quitté la partie.");
+        clearTimeout(minuteur);
+        G = null; $("code").textContent = salle.code; ecran("pAttente");
+      },
+      surMessage(m){
+        if(m.t === "etat?") diffuser();
+        if(m.t === "action"){ if(agir(2, m.a)) apresChangement(); else diffuser(); }
+        if(m.t === "suite" && G && G.phase === "fin"){ suiteDePartie(); apresChangement(); }
+      }
+    });
+    $("code").textContent = salle.code; $("msgLigne").textContent = "";
+    ecran("pAttente");
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+};
+$("rejoindre").onclick = () => rejoindre($("codeIn").value);
+$("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("rejoindre").click(); });
+async function rejoindre(code){
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Connexion à la salle…";
+  try{
+    salle = await Reseau.rejoindre("encheres", code, {
+      surMessage(m){
+        if(m.t !== "etat") return;
+        const nouveau = !G;
+        const avant = G && G.terminee;
+        G = m.G; attenteCoup = false;
+        if(nouveau){ mode = "ligne"; moi = 2; cleMise = ""; ecran("jeu"); }
+        if(!avant && G.terminee && G.champion === 2) enregistrerVictoire();
+        dessiner();
+      },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; G = null; ecran("menu"); }
+    });
+    $("msgLigne").textContent = "Connecté ! En attente de la vente…";
+    salle.envoyer({t: "etat?"});
+  }catch(e){ salle = null; $("msgLigne").textContent = "❌ " + e.message; }
+}
+$("annuler").onclick = () => { if(salle){ salle.quitter(); salle = null; } ecran("pLigne"); };
+$("copier").onclick = async () => {
+  try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à ton ami 📨"); }
+  catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
+};
+$("tester").onclick = async () => { $("msgLigne").textContent = "Test des relais…"; $("msgLigne").textContent = await Reseau.tester(); };
+
+/* Arrivée par un lien d'invitation (?salle=CODE) */
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){
+  $("codeIn").value = codeLien; $("pseudo").value = Base.joueur.pseudo(); ecran("pLigne");
+  if(Base.joueur.pseudo()) rejoindre(codeLien);
+  else $("msgLigne").textContent = "Choisis ton pseudo puis clique sur « Rejoindre ».";
+}
+</script>
+</body>
+</html>
