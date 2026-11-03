@@ -125,7 +125,7 @@ window.SALLE_CATALOGUE = [
     slug: "anidle",
     title: "Anidle",
     emoji: "🎌",
-    desc: "Devine le personnage d'anime : genre, espèce, cheveux, pouvoirs, rôle, œuvre, format, année… Près de 300 personnages de 69 œuvres, un nouveau chaque jour, plus une partie libre.",
+    desc: "Devine le personnage d'anime : genre, espèce, cheveux, pouvoirs, rôle, œuvre, format, année… Plus de 300 personnages de 75 œuvres, un nouveau chaque jour, plus une partie libre.",
     tags: ["Quotidien", "Solo", "Animé"],
     colors: ["#d6417d", "#5b6bd0"],
     etat: "dispo",

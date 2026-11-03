@@ -127,7 +127,12 @@ const GENRES={H:"Homme",F:"Femme",A:"Autre"};
 
 /* ---------- Données ---------- */
 const OEUVRES={};
-ANI_OEUVRES.trim().split("\n").forEach((l,i)=>{const[titre,format,annee]=l.split("|");OEUVRES[titre]={format,annee:+annee}});
+const mots=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^a-z0-9]+/).filter(Boolean);
+ANI_OEUVRES.trim().split("\n").forEach(l=>{
+  const[titre,format,annee,autres]=l.split("|"),titres=[titre,...liste(autres||"")];
+  // recherche par titre entier ou par un de ses mots (« titans », « dxd », « snk »…)
+  OEUVRES[titre]={format,annee:+annee,cles:titres.flatMap(x=>[norm(x),...mots(x)])};
+});
 const PERSOS=ANI_PERSOS.trim().split("\n").map(l=>{
   const[name,alias,genre,especes,cheveux,pouvoirs,roles,oeuvre,jour]=l.split("|");
   return{name,genre,especes:liste(especes),cheveux:liste(cheveux),pouvoirs:liste(pouvoirs),roles:liste(roles),oeuvre,
@@ -144,11 +149,12 @@ Base.entete({titre:"Anidle",emoji:"🎌",boutons:[bStats],
     <li><span class="sq" style="background:var(--mid)"></span> <b>en partie</b> correcte (ex : un pouvoir en commun sur deux) ;</li>
     <li><span class="sq" style="background:var(--no)"></span> <b>aucun</b> point commun ;</li>
     <li>↑ / ↓ : l'œuvre du personnage mystère a commencé <b>plus tard</b> / <b>plus tôt</b>.</li>
+    <li>Dans la recherche, tape le <b>titre d'une œuvre</b> pour voir tous ses personnages.</li>
     <li>Attention aux spoilers : espèce, rôle et pouvoirs tiennent compte de toute l'histoire.</li>
   </ul>
   <p>Des indices se débloquent après <b>5</b> et <b>9</b> essais.</p>
   <p>📅 Le <b>personnage du jour</b> est tiré parmi les plus connus et change à minuit, le même pour tout le monde. ♾️ La <b>partie libre</b> tire n'importe quel personnage.</p>`});
-$("intro").textContent=`${PERSOS.length} personnages de ${Object.keys(OEUVRES).length} œuvres. Tape un nom pour commencer.`;
+$("intro").textContent=`${PERSOS.length} personnages de ${Object.keys(OEUVRES).length} œuvres. Tape un nom, ou le titre d'une œuvre pour voir ses personnages.`;
 
 function color(name){let h=0;for(const ch of name)h=(h*31+ch.charCodeAt(0))%360;return`hsl(${h} 55% 45%)`}
 function initials(name){const p=name.replace(/[^A-Za-zÀ-ÿ ]/g,"").split(" ").filter(Boolean);return(p.length>1?p[0][0]+p[1][0]:name.slice(0,2)).toUpperCase()}
@@ -191,7 +197,7 @@ function draw(newest){
   $("tbl").hidden=$("legend").hidden=!guesses.length;
   $("count").textContent=guesses.length?`${guesses.length} essai${guesses.length>1?"s":""}`:"";
   $("inp").disabled=$("bGo").disabled=over;
-  $("inp").placeholder=over?"Trouvé ! Reviens demain ou lance une partie libre":"Nom du personnage…";
+  $("inp").placeholder=over?"Trouvé ! Reviens demain ou lance une partie libre":"Personnage ou œuvre…";
   updateHints();
 }
 function updateHints(){
@@ -206,14 +212,20 @@ function updateHints(){
 }
 ["h1","h2"].forEach(id=>$(id).onclick=()=>{shown[id]=true;save();updateHints()});
 
-/* ---------- Saisie / suggestions (nom ou alias) ---------- */
+/* ---------- Saisie / suggestions (nom, alias ou œuvre) ---------- */
+const parNom=(c,n)=>c.cles.some(k=>k.includes(n));
 function matches(q){
   const n=norm(q);if(!n)return[];
   const libres=PERSOS.filter(c=>!guesses.includes(c.name));
   const debut=libres.filter(c=>c.cles.some(k=>k.startsWith(n)));
-  const milieu=libres.filter(c=>!debut.includes(c)&&c.cles.some(k=>k.includes(n)));
-  return debut.concat(milieu).slice(0,8);
+  const milieu=libres.filter(c=>!debut.includes(c)&&parNom(c,n));
+  const noms=debut.concat(milieu).slice(0,8);
+  // puis tous les personnages de l'œuvre cherchée (à partir de 2 lettres)
+  const oeuvre=n.length<2?[]:libres.filter(c=>!noms.includes(c)&&OEUVRES[c.oeuvre].cles.some(k=>k.startsWith(n)));
+  return noms.concat(oeuvre);
 }
+/* Si le 1er résultat vient seulement de l'œuvre, rien n'est présélectionné :
+   Entrée ne doit pas proposer un personnage au hasard de cette œuvre */
 function renderSugg(){
   const list=matches($("inp").value),box=$("sugg");
   if(!list.length||over){box.hidden=true;return}
@@ -221,24 +233,27 @@ function renderSugg(){
   box.innerHTML=list.map((c,i)=>`<div data-n="${esc(c.name)}" class="${i===selIdx?"sel":""}">${avatar(c.name)}<span>${esc(c.name)}<small>${esc(c.oeuvre)}</small></span></div>`).join("");
   box.hidden=false;
   box.querySelectorAll(":scope>div").forEach(d=>d.onmousedown=e=>{e.preventDefault();guess(d.dataset.n)});
+  const sel=box.querySelector(".sel");if(sel)sel.scrollIntoView({block:"nearest"});
 }
-$("inp").addEventListener("input",()=>{selIdx=0;renderSugg()});
+function selectionDepart(){const list=matches($("inp").value);selIdx=list.length&&!parNom(list[0],norm($("inp").value))?-1:0}
+$("inp").addEventListener("input",()=>{selectionDepart();renderSugg()});
 $("inp").addEventListener("blur",()=>setTimeout(()=>$("sugg").hidden=true,100));
 $("inp").addEventListener("focus",renderSugg);
 $("inp").addEventListener("keydown",e=>{
   const list=matches($("inp").value);
   if(e.key==="ArrowDown"){e.preventDefault();selIdx=Math.min(selIdx+1,list.length-1);renderSugg()}
-  else if(e.key==="ArrowUp"){e.preventDefault();selIdx=Math.max(selIdx-1,0);renderSugg()}
-  else if(e.key==="Enter"){e.preventDefault();submit()}
+  else if(e.key==="ArrowUp"){e.preventDefault();selIdx=Math.max(selIdx-1,0);renderSugg()}  else if(e.key==="Enter"){e.preventDefault();submit()}
   else if(e.key==="Escape")$("sugg").hidden=true;
 });
 $("bGo").onclick=submit;
 function submit(){
   const v=$("inp").value,list=matches(v);
   const exact=PERSOS.find(c=>c.cles.includes(norm(v)));
-  if(exact&&guesses.includes(exact.name)&&!list.length){Base.toast("Déjà proposé !");return shakeIt()}
-  const pick=list[selIdx]||list[0];
-  if(!pick){Base.toast("Personnage inconnu");return shakeIt()}
+  const pick=list[selIdx];
+  if(!pick){
+    Base.toast(exact&&guesses.includes(exact.name)?"Déjà proposé !":list.length?"Choisis un personnage dans la liste":"Personnage inconnu");
+    return shakeIt();
+  }
   guess(pick.name);
 }
 function shakeIt(){const s=$("search");s.classList.remove("shake");void s.offsetWidth;s.classList.add("shake")}
