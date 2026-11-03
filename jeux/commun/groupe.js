@@ -28,7 +28,7 @@
 
   /* ---------- État ---------- */
   let moi = null, gid = null, G = null, invits = {}, demandes = {}, amis = {}, profils = {};
-  let flux = [], erreur = "", onglet = "groupe", ouvert = false, minuterie = null, vuFluxGroupe = false;
+  let flux = [], erreur = "", onglet = "groupe", ouvert = false, minuterie = null;
 
   const catalogue = () => window.SALLE_CATALOGUE || [];
   const titreDe = s => { const g = catalogue().find(x => x.slug === s); return g ? g.title : s; };
@@ -49,11 +49,7 @@
 
   /* ---------- Accès base ---------- */
   async function db(chemin, opts){
-    try{ return await Compte.db(chemin, opts); }
-    catch(e){
-      if(/Accès refusé/.test(e.message) && !gid) erreur = "regles";
-      throw e;
-    }
+    return Compte.db(chemin, opts);
   }
   const maj = corps => db("", {method: "PATCH", body: corps});
 
@@ -69,22 +65,22 @@
     return racine;
   }
   function ecouter(chemin, surDonnees){
-    let es = null, arret = false, donnees = null, renouv = null, essais = 0;
+    let es = null, arret = false, donnees = null, renouv = null, essais = 0, recu = false;
     async function ouvrir(){
       if(arret || !moi) return;
       let t; try{ t = await Compte.jeton(); }catch(e){ return; }
       if(arret) return;
       es = new EventSource(`${Compte.DB}/${chemin}.json?auth=${encodeURIComponent(t)}`);
-      es.addEventListener("put", e => { essais = 0; const m = JSON.parse(e.data); donnees = appliquer(donnees, m.path, m.data); surDonnees(donnees); });
+      es.addEventListener("put", e => { essais = 0; recu = true; const m = JSON.parse(e.data); donnees = appliquer(donnees, m.path, m.data); surDonnees(donnees); });
       es.addEventListener("patch", e => { essais = 0; const m = JSON.parse(e.data); for(const [k, v] of Object.entries(m.data || {})) donnees = appliquer(donnees, m.path.replace(/\/$/, "") + "/" + k, v); surDonnees(donnees); });
-      const relancer = ms => { if(es) es.close(); es = null; if(!arret) setTimeout(ouvrir, ms); };
+      const relancer = ms => { if(es) es.close(); es = null; recu = false; if(!arret) setTimeout(ouvrir, ms); };
       es.addEventListener("auth_revoked", () => relancer(300));
       es.addEventListener("cancel", () => relancer(15000));
       es.onerror = () => { if(++essais > 4) relancer(10000); };
       clearTimeout(renouv); renouv = setTimeout(() => relancer(0), 45 * 60000);   // jeton valable 1 h
     }
     ouvrir();
-    const f = {fermer(){ arret = true; clearTimeout(renouv); if(es) es.close(); }, chemin};
+    const f = {fermer(){ arret = true; clearTimeout(renouv); if(es) es.close(); }, chemin, ok: () => !!es && es.readyState === 1 && recu};
     flux.push(f);
     return f;
   }
@@ -92,58 +88,99 @@
     flux = flux.filter(f => { if(!filtre || filtre(f.chemin)){ f.fermer(); return false; } return true; });
   }
 
-  /* ---------- Démarrage ---------- */
-  let session = 0;
+  /* ---------- Démarrage ----------
+     Tout est d'abord lu normalement (affichage immédiat), puis :
+     - une seule connexion en direct par page, sur le groupe (départs en jeu) ;
+     - amis, demandes et invitations relus toutes les 8 s ;
+     - si la connexion en direct ne marche pas, le groupe est relu toutes les 4 s.
+     On ne sort jamais du groupe sans l'avoir vérifié auprès du serveur. */
+  let session = 0, premierPoll = true, fluxGroupe = null;
   async function relancer(){
     const n = ++session;
-    arreterFlux(); moi = Compte.session(); gid = null; G = null; invits = {}; demandes = {}; amis = {}; erreur = ""; vuFluxGroupe = false;
+    arreterFlux(); fluxGroupe = null;
+    moi = Compte.session(); gid = null; G = null; invits = {}; demandes = {}; amis = {}; erreur = ""; premierPoll = true;
     dessiner();
     if(!moi || !Compte.pret) return;
-    try{
-      const p = await db(`profils/${moi.uid}`);
+    let p;
+    try{ p = await db(`profils/${moi.uid}`); }
+    catch(e){
       if(n !== session) return;
-      gid = (p && p.groupe) || null;
-    }catch(e){ if(n === session){ erreur = "regles"; dessiner(); } return; }
-    await presence();
+      erreur = /Accès refusé/.test(e.message) ? "regles" : "reseau"; dessiner();
+      setTimeout(() => { if(n === session) relancer(); }, 5000);
+      return;
+    }
     if(n !== session) return;
-    const nouveaux = (avant, apres, quoi) => Object.keys(apres || {}).filter(k => !(avant || {})[k]).forEach(k => notifier(quoi, k, apres[k]));
-    let premierI = true, premierD = true;
-    ecouter(`invitations/${moi.uid}`, d => { const av = invits; invits = d || {}; if(!premierI) nouveaux(av, invits, "invit"); else Object.keys(invits).forEach(k => notifier("invit", k, invits[k], true)); premierI = false; dessiner(); });
-    ecouter(`demandes/${moi.uid}`, d => { const av = demandes; demandes = d || {}; if(!premierD) nouveaux(av, demandes, "demande"); premierD = false; dessiner(); });
-    ecouter(`amis/${moi.uid}`, d => { amis = d || {}; chargerAmis(); });
+    gid = (p && p.groupe) || null;
+    if(!gid){                                   // secours : dernier groupe connu sur cet appareil
+      const c = L("salle_groupe_id", null);
+      if(c){ try{ if(await db(`groupes/${c}/membres/${moi.uid}`)) gid = c; }catch(e){} }
+      if(n !== session) return;
+    }
+    erreur = "";
     if(gid) suivreGroupe();
+    await Promise.all([presence(), rafraichir()]);
+  }
+
+  const nouveaux = (avant, apres, quoi) => Object.keys(apres || {}).filter(k => !(avant || {})[k]).forEach(k => notifier(quoi, k, apres[k]));
+  async function rafraichir(){
+    if(!moi) return;
+    const u = moi.uid;
+    const [i, d, a] = await Promise.all([`invitations/${u}`, `demandes/${u}`, `amis/${u}`].map(c => db(c).catch(() => undefined)));
+    if(!moi || moi.uid !== u) return;
+    if(i !== undefined){ const av = invits; invits = i || {}; if(premierPoll) Object.keys(invits).forEach(k => notifier("invit", k, invits[k], true)); else nouveaux(av, invits, "invit"); }
+    if(d !== undefined){ const av = demandes; demandes = d || {}; if(!premierPoll) nouveaux(av, demandes, "demande"); }
+    if(a !== undefined){
+      const change = Object.keys(a || {}).sort().join() !== Object.keys(amis).sort().join();
+      amis = a || {};
+      if(change || premierPoll || ouvert) chargerAmis();
+    }
+    premierPoll = false;
+    dessiner();
   }
 
   function suivreGroupe(){
     arreterFlux(c => c.startsWith("groupes/"));
-    vuFluxGroupe = false;
     const g = gid;
-    ecouter(`groupes/${g}`, d => {
-      if(g !== gid) return;
-      const avant = G; G = d;
+    E("salle_groupe_id", g);
+    lireGroupe();
+    fluxGroupe = ecouter(`groupes/${g}`, d => { if(g === gid) majGroupe(d, false); });
+  }
+  async function lireGroupe(){
+    const g = gid; if(!g || !moi) return;
+    let d; try{ d = await db(`groupes/${g}`); }catch(e){ return; }
+    if(g === gid) majGroupe(d, true);
+  }
+  async function majGroupe(d, verifie){
+    const g = gid;
+    if(!d || !d.membres || !d.membres[moi.uid]){
+      if(!verifie){ try{ d = await db(`groupes/${g}`); }catch(e){ return; } if(g !== gid) return; }
       if(!d || !d.membres || !d.membres[moi.uid]){
-        if(vuFluxGroupe || avant) toast(d ? "Tu ne fais plus partie du groupe." : "Le groupe a été dissous.");
-        quitterLocal(); return;
+        if(G) toast(d ? "Tu ne fais plus partie du groupe." : "Le groupe a été dissous.");
+        sortirDuGroupe(); return;
       }
-      vuFluxGroupe = true;
-      verifierLancement();
-      dessiner();
-    });
+    }
+    G = d;
+    verifierLancement();
+    dessiner();
   }
 
   async function presence(){
     if(!moi) return;
+    const infos = {pseudo: pseudo().slice(0, 16), avatar: avatar(), vu: SV, ou: lieu().slice(0, 40)};
     try{
-      await db(`profils/${moi.uid}`, {method: "PATCH", body: {pseudo: pseudo().slice(0, 16), avatar: avatar(), vu: SV, ou: lieu().slice(0, 40), groupe: gid || null}});
-      if(erreur === "regles") erreur = "";
+      await db(`profils/${moi.uid}`, {method: "PATCH", body: gid ? {...infos, groupe: gid} : infos});
+      if(erreur) { erreur = ""; dessiner(); }
     }catch(e){}
     if(gid){
-      try{ await db(`groupes/${gid}/membres/${moi.uid}`, {method: "PATCH", body: {pseudo: pseudo().slice(0, 16), avatar: avatar(), vu: SV, ou: lieu().slice(0, 40)}}); }
-      catch(e){ if(/Accès refusé/.test(e.message)) quitterLocal(); }
+      try{ await db(`groupes/${gid}/membres/${moi.uid}`, {method: "PATCH", body: infos}); }
+      catch(e){ lireGroupe(); }      // refusé ? on vérifie avant de conclure
     }
   }
-  setInterval(() => { if(moi && document.visibilityState === "visible") presence(); }, 45000);
-  document.addEventListener("visibilitychange", () => { if(moi && document.visibilityState === "visible") presence(); });
+  const visible = () => document.visibilityState === "visible";
+  setInterval(() => { if(moi && visible()) presence(); }, 45000);
+  setInterval(() => { if(moi && visible()) rafraichir(); }, 8000);
+  setInterval(() => { if(moi && gid && visible() && !(fluxGroupe && fluxGroupe.ok())) lireGroupe(); }, 4000);
+  document.addEventListener("visibilitychange", () => { if(moi && visible()){ presence(); rafraichir(); if(gid) lireGroupe(); } });
 
   /* ---------- Amis ---------- */
   async function chargerAmis(){
@@ -176,6 +213,7 @@
     const qui = (demandes[u] && demandes[u].pseudo) || (profils[u] && profils[u].pseudo) || "ton ami";
     await maj({[`amis/${moi.uid}/${u}`]: true, [`amis/${u}/${moi.uid}`]: true, [`demandes/${moi.uid}/${u}`]: null});
     delete demandes[u];
+    rafraichir();
     popup("🤝", "Vous êtes maintenant amis !", `Tu peux inviter ${qui} dans ton groupe.`);
     chargerAmis();
   }
@@ -209,6 +247,8 @@
   }
   async function quitter(silence){
     if(!gid) return;
+    if(!G) await lireGroupe();
+    if(!gid) return;
     const autres = membres().filter(m => m.uid !== moi.uid);
     try{
       if(!autres.length) await db(`groupes/${gid}`, {method: "DELETE"});
@@ -217,11 +257,15 @@
         await maj({[`groupes/${gid}/chef`]: nouveau.uid, [`groupes/${gid}/membres/${moi.uid}`]: null});
       }else await db(`groupes/${gid}/membres/${moi.uid}`, {method: "DELETE"});
     }catch(e){}
-    quitterLocal();
-    presence();
+    sortirDuGroupe();
     if(!silence) toast("Tu as quitté le groupe.");
   }
-  function quitterLocal(){ arreterFlux(c => c.startsWith("groupes/")); gid = null; G = null; dessiner(); }
+  function quitterLocal(){ arreterFlux(c => c.startsWith("groupes/")); fluxGroupe = null; gid = null; G = null; E("salle_groupe_id", null); dessiner(); }
+  /* On n'est plus dans le groupe (vérifié) : on l'efface aussi du profil */
+  function sortirDuGroupe(){
+    quitterLocal();
+    if(moi) db(`profils/${moi.uid}`, {method: "PATCH", body: {groupe: null}}).catch(() => {});
+  }
   async function exclure(u){ if(estChef()) await db(`groupes/${gid}/membres/${u}`, {method: "DELETE"}); }
   async function nommerChef(u){ if(estChef()) await db(`groupes/${gid}/chef`, {method: "PUT", body: u}); }
   async function inviter(u){
@@ -455,6 +499,10 @@
       panneau.appendChild(el("p", "Connecte-toi pour ajouter des amis et créer un groupe qui vous suit de jeu en jeu."));
       const b = el("button", "👤 Se connecter", "gr-b"); b.onclick = () => { fermer(); Compte.ouvrir("connexion"); };
       panneau.appendChild(b); return;
+    }
+    if(erreur === "reseau"){
+      panneau.appendChild(el("p", "⏳ Connexion au serveur… nouvel essai dans quelques secondes."));
+      return;
     }
     if(erreur === "regles"){
       panneau.appendChild(el("p", "⚠️ Les amis et les groupes ne sont pas encore activés : un admin doit mettre à jour les règles Firebase (fichier firebase-regles.json)."));
