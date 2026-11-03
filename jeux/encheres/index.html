@@ -60,10 +60,6 @@
 .adjuge{font-family:Fredoka,sans-serif;font-size:1.25rem;animation:pop .25s ease-out}
 @keyframes pop{from{transform:scale(.8)}to{transform:none}}
 
-.a-venir{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
-.a-venir span{font-size:.8rem;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
-.titre-bloc{font-weight:800;font-size:.85rem;color:var(--muted);text-align:center;margin:0 0 6px}
-
 .equipes{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
 .equipe{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:14px;padding:10px;min-width:0}
 .equipe h3{margin:0 0 6px;font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -167,7 +163,6 @@
     <!-- Fin de manche -->
     <div class="b-carte verdict cache" id="verdict"></div>
 
-    <div class="b-carte cache" id="blocVenir"><p class="titre-bloc">Encore en vente</p><div class="a-venir" id="aVenir"></div></div>
     <div class="equipes">
       <div class="equipe" id="eq1" style="--c:var(--j1)"></div>
       <div class="equipe" id="eq2" style="--c:var(--j2)"></div>
@@ -198,6 +193,7 @@ Base.entete({
   aide: `<p>Des personnages d'un animé sont mis en vente un par un. Achetez-les aux enchères : à la fin, <b>l'équipe la plus forte gagne</b> la manche.</p>
   <ul>
     <li>Chacun a le même argent au départ et chaque équipe a la même taille (la moitié des personnages).</li>
+    <li>Tu découvres chaque personnage au moment de sa vente : impossible de savoir qui arrive ensuite !</li>
     <li>À chaque vente, un joueur ouvre (0 est permis), puis on surenchérit à tour de rôle. L'ouverture change à chaque personnage.</li>
     <li><b>🏳️ Laisser</b> : l'adversaire remporte le personnage au prix de sa dernière enchère. Si personne n'a encore misé, il l'a gratuitement.</li>
     <li>Plus d'argent ? Tu enchéris automatiquement 0 quand tu ouvres, et tu laisses quand tu ne peux pas suivre.</li>
@@ -400,9 +396,6 @@ function dessiner(){
 
   $("vente").classList.toggle("cache", fin);
   $("verdict").classList.toggle("cache", !fin);
-  const restants = G.file.slice(G.phase === "vente" ? G.i + 1 : G.i);
-  $("blocVenir").classList.toggle("cache", fin || !restants.length);
-  $("aVenir").innerHTML = restants.map(p => `<span>${esc(p.n)}${G.cfg.visible ? " ⚡" + p.p : ""}</span>`).join("");
 
   if(fin) dessinerVerdict(); else dessinerVente();
 
