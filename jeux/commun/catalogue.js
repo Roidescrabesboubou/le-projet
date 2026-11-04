@@ -191,6 +191,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "motsfleches",
+    title: "Mots fléchés",
+    emoji: "🏹",
+    desc: "Les définitions sont directement dans la grille : suis les flèches et remplis les mots. Une nouvelle grille chaque jour à minuit, plus des grilles au hasard à volonté.",
+    tags: ["Mots", "Quotidien", "Solo"],
+    colors: ["#e0955a", "#5b6bd0"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "sudoku",
     title: "Sudoku du jour",
     emoji: "🔢",

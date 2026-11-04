@@ -118,7 +118,7 @@ function render(){
 /* Record du joueur sur cet appareil, affiché sur la carte du jeu.
    Les nouveaux jeux passent par Base.record() ; les anciens sont lus ici. */
 function lireLS(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } }
-const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions", "anidle", "motscroises", "sudoku", "shikaku"];
+const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions", "anidle", "motscroises", "sudoku", "shikaku", "motsfleches"];
 function recordDe(slug){
   try{
     const r = Base.records()[slug];
