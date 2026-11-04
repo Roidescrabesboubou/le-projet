@@ -54,7 +54,9 @@
 .ligne b{display:block;line-height:1.2}
 .ligne small{display:block;color:var(--muted);font-size:.8rem;line-height:1.25}
 .ligne .prix{font-weight:800;font-size:.86rem;color:var(--ok);display:block}
-.ligne .nb{font-family:Fredoka,sans-serif;font-size:1.5rem;color:var(--muted);flex:none;padding-left:4px}
+.ligne .recap{flex:none;max-width:38%;text-align:right;padding-left:4px}
+.ligne .nb{display:block;font-family:Fredoka,sans-serif;font-size:1.5rem;line-height:1.1;color:var(--muted)}
+.ligne .total{font-weight:800;overflow-wrap:anywhere}
 .ligne.mystere{opacity:.55}
 .voir{margin-top:8px;width:100%}
 .sceaux p{margin:0 0 10px}
@@ -384,10 +386,13 @@ function construire(){
     const nom = Base.el("b", e.nom), det = Base.el("small", e.txt), prix = Base.el("span", "", "prix");
     txt.append(nom, det, prix);
     const nb = Base.el("span", "0", "nb");
-    b.append(ico, txt, nb);
+    const total = Base.el("small", "", "total");
+    const recap = Base.el("span", null, "recap");
+    recap.append(nb, total);
+    b.append(ico, txt, recap);
     b.onclick = () => acheter(e);
     $("entrainements").appendChild(b);
-    lignes[e.id] = {b, ico, nom, det, prix, nb};
+    lignes[e.id] = {b, ico, nom, det, prix, nb, total};
   });
   const f = $("frappe");
   f.addEventListener("pointerdown", e => { e.preventDefault(); frapper(e.clientX, e.clientY); });
@@ -438,10 +443,12 @@ function afficherEntrainements(){
     l.b.classList.toggle("mystere", !connu);
     ecrire(l.ico, connu ? e.ico : "❔");
     ecrire(l.nom, connu ? e.nom : "???");
-    ecrire(l.det, connu ? `${e.txt} · +${fmt(prodEntrainement(e))}/s` : "Continue de t'entraîner…");
+    const parUnite = prodEntrainement(e) * (enRage() ? 7 : 1);
+    ecrire(l.det, connu ? `${e.txt} · +${fmt(parUnite)}/s l'unité` : "Continue de t'entraîner…");
     const n = quantite(e), c = coutDe(e, n);
-    ecrire(l.prix, (n > 1 ? "×" + n + " : " : "") + fmt(c) + " ⚡");
-    ecrire(l.nb, String(J.bats[e.id]));
+    ecrire(l.prix, (n > 1 ? "×" + n + " : " : "") + fmt(c) + " ⚡");
+    ecrire(l.nb, fmt(J.bats[e.id]));
+    ecrire(l.total, J.bats[e.id] ? `Total : ${fmt(parUnite * J.bats[e.id])}/s` : "");
     l.b.disabled = c > J.puissance;
   });
 }
