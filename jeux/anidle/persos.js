@@ -1,7 +1,7 @@
 /* ============================================================
    PERSONNAGES – Anidle
 
-   ŒUVRES : Titre|Format|Année
+   ŒUVRES : Titre|Format|Année|Autres titres (facultatif, pour la recherche)
    - Format : Shōnen, Seinen, Light novel, Webtoon, Anime original, Jeu vidéo
    - Année : première publication dans ce format (LN : le 1er tome, pas la version web)
 
@@ -27,17 +27,17 @@
    ============================================================ */
 window.ANI_OEUVRES = `
 One Piece|Shōnen|1997
-Naruto|Shōnen|1999
-Dragon Ball|Shōnen|1984
+Naruto|Shōnen|1999|Shippuden
+Dragon Ball|Shōnen|1984|DBZ,Dragon Ball Z,DBS,Dragon Ball Super
 Bleach|Shōnen|2001
-My Hero Academia|Shōnen|2014
-Demon Slayer|Shōnen|2016
-Jujutsu Kaisen|Shōnen|2018
-L'Attaque des Titans|Shōnen|2009
-Hunter x Hunter|Shōnen|1998
-Fullmetal Alchemist|Shōnen|2001
+My Hero Academia|Shōnen|2014|MHA,BNHA,Boku no Hero Academia
+Demon Slayer|Shōnen|2016|Kimetsu no Yaiba,KNY
+Jujutsu Kaisen|Shōnen|2018|JJK
+L'Attaque des Titans|Shōnen|2009|SNK,AOT,Shingeki no Kyojin,Attack on Titan
+Hunter x Hunter|Shōnen|1998|HXH
+Fullmetal Alchemist|Shōnen|2001|FMA,FMAB,Brotherhood
 Death Note|Shōnen|2003
-One Punch Man|Seinen|2012
+One Punch Man|Seinen|2012|OPM
 Fairy Tail|Shōnen|2006
 Chainsaw Man|Shōnen|2018
 Spy x Family|Shōnen|2019
@@ -47,12 +47,12 @@ Pokémon|Jeu vidéo|1996
 Dr. Stone|Shōnen|2017
 Mob Psycho 100|Shōnen|2012
 Code Geass|Anime original|2006
-Neon Genesis Evangelion|Anime original|1995
+Neon Genesis Evangelion|Anime original|1995|NGE,Eva
 Gintama|Shōnen|2003
 Blue Lock|Shōnen|2018
 Solo Leveling|Webtoon|2018
-Frieren|Shōnen|2020
-Seven Deadly Sins|Shōnen|2012
+Frieren|Shōnen|2020|Sousou no Frieren
+Seven Deadly Sins|Shōnen|2012|7DS,Nanatsu no Taizai
 Dandadan|Shōnen|2021
 Kaiju No. 8|Shōnen|2020
 Sakamoto Days|Shōnen|2020
@@ -60,34 +60,34 @@ Cyberpunk Edgerunners|Anime original|2022
 Hell's Paradise|Shōnen|2018
 Mashle|Shōnen|2020
 Tokyo Revengers|Shōnen|2017
-Les Carnets de l'apothicaire|Light novel|2014
+Les Carnets de l'apothicaire|Light novel|2014|Apothecary Diaries,Kusuriya
 Fire Force|Shōnen|2015
 Assassination Classroom|Shōnen|2012
 Vinland Saga|Seinen|2005
 Re:Zero|Light novel|2014
-Sword Art Online|Light novel|2009
+Sword Art Online|Light novel|2009|SAO
 Konosuba|Light novel|2013
-Moi, quand je me réincarne en Slime|Light novel|2014
+Moi, quand je me réincarne en Slime|Light novel|2014|Tensura,That Time I Got Reincarnated as a Slime
 Overlord|Light novel|2012
-The Rising of the Shield Hero|Light novel|2013
-Mushoku Tensei|Light novel|2014
+The Rising of the Shield Hero|Light novel|2013|Tate no Yuusha
+Mushoku Tensei|Light novel|2014|Jobless Reincarnation
 The Eminence in Shadow|Light novel|2018
-Classroom of the Elite|Light novel|2015
+Classroom of the Elite|Light novel|2015|COTE
 Berserk|Seinen|1989
 Steins;Gate|Jeu vidéo|2009
 Kill la Kill|Anime original|2013
 Violet Evergarden|Light novel|2015
 Beastars|Shōnen|2016
-Kaguya-sama|Seinen|2015
+Kaguya-sama|Seinen|2015|Love is War
 Oshi no Ko|Seinen|2020
 Toradora!|Light novel|2006
 Bloom Into You|Shōnen|2015
 Blue Box|Shōnen|2021
 Horimiya|Shōnen|2011
 My Dress-Up Darling|Seinen|2018
-The Quintessential Quintuplets|Shōnen|2017
+The Quintessential Quintuplets|Shōnen|2017|Quintuplées,Gotoubun
 The Dangers in My Heart|Shōnen|2018
-Komi cherche ses mots|Shōnen|2016
+Komi cherche ses mots|Shōnen|2016|Komi Can't Communicate
 Rent-a-Girlfriend|Shōnen|2017
 Saint Seiya|Shōnen|1986
 Yu Yu Hakusho|Shōnen|1990
@@ -95,6 +95,12 @@ Yu-Gi-Oh!|Shōnen|1996
 Inuyasha|Shōnen|1996
 Cowboy Bebop|Anime original|1998
 Slam Dunk|Shōnen|1990
+Highschool DxD|Light novel|2008|DxD
+High School of the Dead|Shōnen|2006|HOTD
+To Love-Ru|Shōnen|2006|To Love Ru
+Delicious in Dungeon|Seinen|2014|Gloutons et Dragons,Dungeon Meshi
+Wind Breaker|Shōnen|2021
+Lycoris Recoil|Anime original|2022
 `;
 
 window.ANI_PERSOS = `
@@ -395,4 +401,33 @@ Faye Valentine|Faye|F|Humain|Violet|Arme|Allié|Cowboy Bebop|
 Jet Black|Jet|H|Humain|Chauve|Arme|Allié|Cowboy Bebop|
 Hanamichi Sakuragi|Sakuragi,Hanamichi|H|Humain|Rouge|Sport|Protagoniste|Slam Dunk|1
 Kaede Rukawa|Rukawa,Kaede|H|Humain|Noir|Sport|Rival|Slam Dunk|
+Issei Hyodo|Issei|H|Démon|Brun|Pouvoir spécial,Transformation|Protagoniste|Highschool DxD|1
+Rias Gremory|Rias|F|Démon|Rouge|Magie|Allié|Highschool DxD|1
+Akeno Himejima|Akeno|F|Démon|Noir|Magie|Allié|Highschool DxD|
+Asia Argento|Asia|F|Démon|Blond|Pouvoir spécial|Allié|Highschool DxD|
+Koneko Toujou|Koneko|F|Démon|Blanc|Combat|Allié|Highschool DxD|
+Takashi Komuro|Takashi|H|Humain|Brun|Arme|Protagoniste|High School of the Dead|1
+Rei Miyamoto||F|Humain|Orange|Arme|Allié|High School of the Dead|
+Saeko Busujima|Saeko|F|Humain|Violet|Arme|Allié|High School of the Dead|1
+Saya Takagi|Saya|F|Humain|Rose|Intellect|Allié|High School of the Dead|
+Kohta Hirano|Kohta|H|Humain|Noir|Arme|Allié|High School of the Dead|
+Shizuka Marikawa|Shizuka|F|Humain|Blond|Aucun|Allié|High School of the Dead|
+Rito Yuki|Rito|H|Humain|Orange|Aucun|Protagoniste|To Love-Ru|1
+Lala Satalin Deviluke|Lala|F|Extraterrestre|Rose|Technologie,Intellect|Protagoniste|To Love-Ru|1
+Golden Darkness|Yami,Konjiki no Yami|F|Extraterrestre|Blond|Transformation|Rival,Allié|To Love-Ru|1
+Haruna Sairenji|Haruna|F|Humain|Bleu|Aucun|Allié|To Love-Ru|
+Momo Belia Deviluke|Momo Deviluke|F|Extraterrestre|Rose|Pouvoir spécial|Allié|To Love-Ru|
+Laios Touden|Laios|H|Humain|Blond|Arme|Protagoniste|Delicious in Dungeon|1
+Marcille Donato|Marcille|F|Elfe|Blond|Magie|Allié|Delicious in Dungeon|1
+Senshi||H|Nain|Brun|Arme|Allié|Delicious in Dungeon|1
+Izutsumi||F|Humain,Animal|Noir|Arme,Combat|Allié|Delicious in Dungeon|
+Haruka Sakura|Sakura Haruka|H|Humain|Noir,Blanc|Combat|Protagoniste|Wind Breaker|1
+Hajime Umemiya|Umemiya|H|Humain|Blanc|Combat|Mentor|Wind Breaker|
+Hayato Suo|Suo|H|Humain|Rouge|Combat,Intellect|Allié|Wind Breaker|
+Akihiko Nirei|Nirei|H|Humain|Blond|Intellect|Allié|Wind Breaker|
+Chisato Nishikigi|Chisato|F|Humain|Blond|Arme|Protagoniste|Lycoris Recoil|1
+Takina Inoue|Takina|F|Humain|Noir|Arme|Protagoniste|Lycoris Recoil|1
+Kento Nanami|Nanami|H|Humain|Blond|Énergie,Arme|Mentor,Allié|Jujutsu Kaisen|
+Yuta Okkotsu|Yuta|H|Humain|Noir|Énergie,Arme|Allié|Jujutsu Kaisen|1
+Akaza||H|Démon|Rose|Combat|Antagoniste|Demon Slayer|1
 `;

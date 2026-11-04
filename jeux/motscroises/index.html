@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mots croisés</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#3f8f8a;--fond1:rgba(63,143,138,.14);--fond2:rgba(242,190,92,.12);--mot:#cfe9e6;--sel:#f2c14e;--case:#fff;--noire:transparent}
+@media (prefers-color-scheme:dark){:root{--mot:#24504d;--sel:#a97f1c;--case:#2c2536}}
+.barre{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;max-width:880px;flex-wrap:wrap}
+.chrono{font-family:Fredoka,sans-serif;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.jeu{display:flex;gap:22px;align-items:flex-start;justify-content:center;width:100%;max-width:880px}
+.gauche{flex:1 1 440px;min-width:0;max-width:480px;display:flex;flex-direction:column;gap:10px}
+#grille{display:grid;gap:2px;width:100%;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.c{position:relative;aspect-ratio:1;background:var(--noire)}
+.c.l{background:var(--case);border-radius:4px;box-shadow:0 0 0 1px var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-family:Fredoka,sans-serif;font-weight:700;font-size:var(--taille,1.3rem);color:var(--text)}
+.c.mot{background:var(--mot)}
+.c.sel{background:var(--sel)}
+.c.faux{color:var(--ko);text-decoration:line-through}
+.c.revele{color:var(--accent)}
+.c i{position:absolute;top:1px;left:2px;font:700 var(--tailleN,.6rem)/1 Nunito,sans-serif;color:var(--muted);font-style:normal;pointer-events:none}
+.fini .c.l{cursor:default}
+.defActive{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-weight:700;min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.defActive b{font-family:Fredoka,sans-serif;color:var(--accent);white-space:nowrap}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.defs{flex:1 1 360px;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.defs h2{font-family:Fredoka,sans-serif;font-size:1.05rem;margin:0 0 6px}
+.defs ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.defs li{padding:5px 8px;border-radius:8px;cursor:pointer;font-size:.9rem;line-height:1.25}
+.defs li b{font-family:Fredoka,sans-serif;margin-right:4px}
+.defs li:hover{background:var(--soft)}
+.defs li.on{background:var(--mot);font-weight:700}
+.defs li.ok{color:var(--muted);text-decoration:line-through}
+.clavier{display:none;flex-direction:column;gap:5px;user-select:none;-webkit-user-select:none}
+.clavier div{display:flex;justify-content:center;gap:4px}
+.clavier button{flex:1;max-width:38px;height:44px;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font-weight:800;font-size:1rem;touch-action:manipulation}
+.clavier button.large{max-width:58px;flex:1.5}
+.clavier button:active{background:var(--soft)}
+.bas{display:flex;flex-direction:column;gap:6px}
+.recap{text-align:center}
+.recap .gros{font-family:Fredoka,sans-serif;font-size:2.2rem;margin:0}
+.recap .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0}
+.recap .stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.4rem}
+.recap .stats small{color:var(--muted);font-size:.72rem}
+.help{color:var(--muted);font-size:.8rem;text-align:center;margin:0}
+@media (max-width:760px){.jeu{flex-direction:column;align-items:center}.gauche{flex:none;width:100%}.defs{flex:none;width:100%;max-width:480px}}
+@media (pointer:coarse){
+  .clavier{display:flex}.help{display:none}
+  .bas{position:sticky;bottom:0;z-index:5;background:var(--bg);padding:6px 0 8px}
+  .jeu{gap:12px}
+}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="barre">
+    <div class="pilules">
+      <button id="mJour">📅 Grille du jour</button>
+      <button id="mLibre">♾️ Partie libre</button>
+    </div>
+    <span class="chrono" id="chrono">0:00</span>
+  </div>
+  <div class="jeu">
+    <div class="gauche">
+      <div id="grille"></div>
+      <div class="actions">
+        <button class="btn ghost petit" id="bVerif">✔️ Vérifier</button>
+        <button class="btn ghost petit" id="bIndice">💡 Une lettre</button>
+        <button class="btn ghost petit" id="bSol">🏳️ Solution</button>
+        <button class="btn petit cache" id="bNouvelle">🔄 Nouvelle grille</button>
+      </div>
+      <div class="bas">
+        <div class="defActive" id="defActive" title="Changer de sens"></div>
+        <div class="clavier" id="clavier"></div>
+      </div>
+      <p class="help">Clique sur une case et tape au clavier · Clique à nouveau ou Espace : changer de sens · Tab : mot suivant</p>
+    </div>
+    <div class="defs">
+      <section><h2>➡️ Horizontal</h2><ol id="defsH"></ol></section>
+      <section><h2>⬇️ Vertical</h2><ol id="defsV"></ol></section>
+    </div>
+  </div>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="mots.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const store=Base.stock("motscroises_");
+
+Base.entete({titre:"Mots croisés",emoji:"✏️",
+  aide:`<p>Remplis la grille à l'aide des définitions. Les accents ne comptent pas : É s'écrit E.</p>
+  <ul>
+    <li>Touche une case pour la choisir, touche-la encore pour changer de sens.</li>
+    <li><b>Vérifier</b> barre les lettres fausses, <b>Une lettre</b> révèle la case choisie.</li>
+    <li>La grille est gagnée dès que toutes les lettres sont bonnes.</li>
+    <li>📅 Même grille pour tout le monde, nouvelle chaque jour à minuit. ♾️ La partie libre donne une grille au hasard.</li>
+  </ul>`});
+
+/* ---------- Générateur : mots entrecroisés à partir d'une graine ---------- */
+const MAX=11,NB_MOTS=10,ESSAIS=12,CANDIDATS=60;
+const DIR={H:[1,0],V:[0,1]};
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function melange(a,r){a=[...a];for(let i=a.length-1;i>0;i--){const j=r()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+const cle=(x,y)=>x+","+y;
+
+/* Nombre de croisements si le mot tient à cette place, -1 sinon */
+function essai(cases,bord,mot,x,y,d){
+  const[dx,dy]=DIR[d],[px,py]=[dy,dx];
+  const x2=x+dx*(mot.length-1),y2=y+dy*(mot.length-1);
+  if(Math.max(bord.x2,x2)-Math.min(bord.x1,x)>=MAX||Math.max(bord.y2,y2)-Math.min(bord.y1,y)>=MAX)return -1;
+  if(cases.has(cle(x-dx,y-dy))||cases.has(cle(x2+dx,y2+dy)))return -1;
+  let croise=0;
+  for(let i=0;i<mot.length;i++){
+    const X=x+dx*i,Y=y+dy*i,c=cases.get(cle(X,Y));
+    if(c){if(c.l!==mot[i]||c[d])return -1;croise++}
+    else if(cases.has(cle(X+px,Y+py))||cases.has(cle(X-px,Y-py)))return -1;
+  }
+  return croise;
+}
+function poser(cases,bord,mots,w,x,y,d){
+  const[dx,dy]=DIR[d];
+  for(let i=0;i<w.mot.length;i++){
+    const k=cle(x+dx*i,y+dy*i),c=cases.get(k)||{l:w.mot[i]};
+    c[d]=true;cases.set(k,c);
+  }
+  bord.x1=Math.min(bord.x1,x);bord.y1=Math.min(bord.y1,y);
+  bord.x2=Math.max(bord.x2,x+dx*(w.mot.length-1));bord.y2=Math.max(bord.y2,y+dy*(w.mot.length-1));
+  mots.push({mot:w.mot,def:w.def,x,y,d});
+}
+function construire(r){
+  const liste=melange(window.MC_MOTS,r),cases=new Map(),mots=[];
+  const bord={x1:0,y1:0,x2:0,y2:0};
+  const debut=liste.find(w=>w.mot.length>=6&&w.mot.length<=8);
+  poser(cases,bord,mots,debut,0,0,"H");
+  let croisements=0,i=0;
+  while(mots.length<NB_MOTS){
+    let top=null,vus=0;
+    for(;i<liste.length&&vus<CANDIDATS;i++){
+      const w=liste[i];
+      // pas de CHAT et CHATEAU dans la même grille
+      if(mots.some(m=>m.mot.includes(w.mot)||w.mot.includes(m.mot)))continue;
+      vus++;
+      for(const[k,c]of cases){
+        const[cx,cy]=k.split(",").map(Number);
+        for(const d of["H","V"]){
+          if(c[d])continue;
+          for(let p=0;p<w.mot.length;p++){
+            if(w.mot[p]!==c.l)continue;
+            const x=d==="H"?cx-p:cx,y=d==="V"?cy-p:cy,n=essai(cases,bord,w.mot,x,y,d);
+            if(n<1)continue;
+            const score=n*10+r();
+            if(!top||score>top.score)top={score,w,x,y,d,n};
+          }
+        }
+      }
+    }
+    if(!top)break;
+    poser(cases,bord,mots,top.w,top.x,top.y,top.d);croisements+=top.n;
+    i=(i-CANDIDATS/2)|0;if(i<0)i=0;
+  }
+  return{mots,bord,croisements};
+}
+function generer(seed){
+  const r=rng(seed);let top=null;
+  for(let e=0;e<ESSAIS;e++){
+    const g=construire(r);
+    const l=g.bord.x2-g.bord.x1+1,h=g.bord.y2-g.bord.y1+1;
+    const score=g.mots.length*100+g.croisements*20-l*h-Math.abs(l-h)*5;
+    if(!top||score>top.score)top={...g,score,l,h};
+  }
+  /* Grille finale : coordonnées à partir de 0, numéros de gauche à droite et de haut en bas */
+  const mots=top.mots.map(m=>({...m,x:m.x-top.bord.x1,y:m.y-top.bord.y1}));
+  const departs=[...new Set(mots.map(m=>m.y*100+m.x))].sort((a,b)=>a-b);
+  mots.forEach(m=>m.n=departs.indexOf(m.y*100+m.x)+1);
+  mots.sort((a,b)=>a.n-b.n);
+  const cases=new Map();
+  mots.forEach((m,i)=>{const[dx,dy]=DIR[m.d];
+    for(let p=0;p<m.mot.length;p++){const k=cle(m.x+dx*p,m.y+dy*p),c=cases.get(k)||{l:m.mot[p],x:m.x+dx*p,y:m.y+dy*p};c[m.d]=i;cases.set(k,c)}});
+  return{mots,cases,cols:top.l,rows:top.h};
+}
+
+/* ---------- Partie ---------- */
+const START=Date.UTC(2026,10,4);
+function parisDay(){
+  const[y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);
+  return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);
+}
+const defStats=()=>({played:0,wins:0,streak:0,best:0,lastWin:null,last:null,temps:null});
+let mode="jour",G=null,seed=0,lettres={},reveles={},faux={},secondes=0,indices=0,fini=false,gagne=false,sel=null,dirSel="H",plein=false;
+const signature=()=>G.mots.map(m=>m.mot).join();
+
+function sauver(){store.ecrire(mode,{seed,sig:signature(),jour:parisDay(),lettres,reveles,faux,secondes,indices,fini,gagne})}
+function charger(m){
+  mode=m;$("mJour").classList.toggle("on",m==="jour");$("mLibre").classList.toggle("on",m==="libre");
+  const sv=store.lire(m,null);
+  if(m==="jour"){seed=parisDay()*7919+13}
+  else seed=sv&&sv.seed!=null?sv.seed:Math.random()*2147483647|0;
+  G=generer(seed);
+  // une partie sauvegardée n'est reprise que si c'est bien la même grille
+  const ok=sv&&sv.seed===seed&&sv.sig===signature();
+  lettres=ok?sv.lettres:{};reveles=ok?sv.reveles:{};faux=ok?sv.faux:{};
+  secondes=ok?sv.secondes:0;indices=ok?sv.indices:0;fini=ok&&sv.fini;gagne=ok&&sv.gagne;plein=false;
+  const m0=G.mots[0];sel={x:m0.x,y:m0.y};dirSel=m0.d;
+  construireGrille();construireDefs();rafraichir();
+}
+function nouvelleLibre(){store.ecrire("libre",null);charger("libre")}
+
+/* ---------- Affichage ---------- */
+function construireGrille(){
+  const g=$("grille");g.innerHTML="";
+  g.style.gridTemplateColumns=`repeat(${G.cols},1fr)`;
+  // taille des lettres selon la place dont dispose une case
+  g.style.setProperty("--taille",`clamp(.8rem,${(60/Math.max(G.cols,6)).toFixed(1)}vw,${(14/Math.max(G.cols,6)+.3).toFixed(2)}rem)`);
+  for(let y=0;y<G.rows;y++)for(let x=0;x<G.cols;x++){
+    const c=G.cases.get(cle(x,y)),d=document.createElement("div");
+    d.className="c"+(c?" l":"");
+    if(c){
+      d.dataset.k=cle(x,y);
+      d.onclick=()=>choisirCase(x,y);
+      const m=G.mots.find(m=>m.x===x&&m.y===y);
+      if(m){const n=document.createElement("i");n.textContent=m.n;d.appendChild(n)}
+      d.appendChild(document.createElement("span"));
+    }
+    g.appendChild(d);
+  }
+}
+function construireDefs(){
+  for(const d of["H","V"]){
+    const ol=$("defs"+d);ol.innerHTML="";
+    G.mots.forEach((m,i)=>{
+      if(m.d!==d)return;
+      const li=document.createElement("li");li.dataset.i=i;
+      const b=document.createElement("b");b.textContent=m.n+".";
+      li.append(b,document.createTextNode(m.def));
+      li.onclick=()=>{dirSel=d;sel=premiereCase(m);rafraichir()};
+      ol.appendChild(li);
+    });
+  }
+}
+const motCourant=()=>{const c=G.cases.get(cle(sel.x,sel.y));return c[dirSel]!=null?G.mots[c[dirSel]]:null};
+const casesDe=m=>{const[dx,dy]=DIR[m.d];return[...m.mot].map((_,p)=>({x:m.x+dx*p,y:m.y+dy*p}))};
+const premiereCase=m=>casesDe(m).find(c=>!lettres[cle(c.x,c.y)])||casesDe(m)[0];
+const motRempli=m=>casesDe(m).every(c=>lettres[cle(c.x,c.y)]);
+function rafraichir(){
+  const m=motCourant(),dansMot=new Set(m&&!fini?casesDe(m).map(c=>cle(c.x,c.y)):[]);
+  document.querySelectorAll("#grille .c.l").forEach(d=>{
+    const k=d.dataset.k;
+    d.querySelector("span").textContent=lettres[k]||"";
+    d.classList.toggle("mot",dansMot.has(k));
+    d.classList.toggle("sel",!fini&&k===cle(sel.x,sel.y));
+    d.classList.toggle("faux",!!faux[k]);
+    d.classList.toggle("revele",!!reveles[k]);
+  });
+  $("grille").classList.toggle("fini",fini);
+  document.querySelectorAll(".defs li").forEach(li=>{
+    const w=G.mots[+li.dataset.i];
+    li.classList.toggle("on",!fini&&w===m);
+    li.classList.toggle("ok",fini||motRempli(w));
+  });
+  const a=$("defActive");a.innerHTML="";
+  if(fini)a.textContent=gagne?"🎉 Grille terminée !":"🏳️ Voici la solution.";
+  else if(m){const b=document.createElement("b");b.textContent=m.n+(m.d==="H"?" ➡️":" ⬇️");a.append(b,document.createTextNode(m.def+" ("+m.mot.length+" lettres)"))}
+  $("bVerif").classList.toggle("cache",fini);$("bIndice").classList.toggle("cache",fini);$("bSol").classList.toggle("cache",fini);
+  $("bNouvelle").classList.toggle("cache",!(fini&&mode==="libre"));
+  $("chrono").textContent=formatTemps(secondes);
+}
+const formatTemps=s=>Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+
+/* ---------- Saisie ---------- */
+function choisirCase(x,y){
+  if(fini)return;
+  const c=G.cases.get(cle(x,y));
+  if(sel.x===x&&sel.y===y){if(c.H!=null&&c.V!=null)dirSel=dirSel==="H"?"V":"H"}
+  else{sel={x,y};if(c[dirSel]==null)dirSel=dirSel==="H"?"V":"H"}
+  rafraichir();
+}
+function ecrire(l){
+  if(fini)return;
+  const k=cle(sel.x,sel.y);
+  if(!reveles[k]){lettres[k]=l;delete faux[k]}
+  avancer();verifierFin();sauver();rafraichir();
+}
+function avancer(){
+  const m=motCourant();if(!m)return;
+  const cs=casesDe(m),i=cs.findIndex(c=>c.x===sel.x&&c.y===sel.y);
+  if(i<cs.length-1){sel=cs[i+1];return}
+  // bout du mot : on saute au prochain mot pas encore rempli
+  const j=G.mots.indexOf(m);
+  for(let n=1;n<G.mots.length;n++){const w=G.mots[(j+n)%G.mots.length];
+    if(!motRempli(w)){dirSel=w.d;sel=premiereCase(w);return}}
+}
+function effacer(){
+  if(fini)return;
+  const k=cle(sel.x,sel.y);
+  if(lettres[k]&&!reveles[k]){delete lettres[k];delete faux[k]}
+  else{const m=motCourant();if(m){const cs=casesDe(m),i=cs.findIndex(c=>c.x===sel.x&&c.y===sel.y);
+    if(i>0){sel=cs[i-1];const p=cle(sel.x,sel.y);if(!reveles[p]){delete lettres[p];delete faux[p]}}}}
+  plein=false;sauver();rafraichir();
+}
+function deplacer(dx,dy){
+  dirSelon(dx?"H":"V");
+  for(let n=1;n<MAX;n++){const x=sel.x+dx*n,y=sel.y+dy*n;
+    if(G.cases.has(cle(x,y))){sel={x,y};const c=G.cases.get(cle(x,y));if(c[dirSel]==null)dirSel=dirSel==="H"?"V":"H";rafraichir();return}}
+  rafraichir();
+}
+function dirSelon(d){if(G.cases.get(cle(sel.x,sel.y))[d]!=null)dirSel=d}
+function motSuivant(sens){
+  const j=G.mots.indexOf(motCourant()),n=G.mots.length,w=G.mots[(j+sens+n)%n];
+  dirSel=w.d;sel=premiereCase(w);rafraichir();
+}
+function verifierFin(){
+  const toutes=[...G.cases.entries()];
+  if(!toutes.every(([k])=>lettres[k])){plein=false;return}
+  if(toutes.every(([k,c])=>lettres[k]===c.l)){terminer(true);return}
+  if(!plein)Base.toast("La grille est pleine, mais il reste des erreurs.");
+  plein=true;
+}
+function verifier(){
+  if(fini)return;
+  let n=0;
+  for(const[k,c]of G.cases){if(!lettres[k])continue;
+    if(lettres[k]!==c.l){faux[k]=true;n++}}
+  Base.toast(n?`${n} lettre${n>1?"s":""} fausse${n>1?"s":""}.`:"Aucune erreur pour l'instant 👍");
+  sauver();rafraichir();
+}
+function indice(){
+  if(fini)return;
+  const k=cle(sel.x,sel.y),c=G.cases.get(k);
+  if(reveles[k])return;
+  lettres[k]=c.l;reveles[k]=true;delete faux[k];indices++;
+  avancer();verifierFin();sauver();rafraichir();
+}
+function abandonner(){
+  if(fini||!confirm("Afficher la solution et terminer cette grille ?"))return;
+  for(const[k,c]of G.cases)if(lettres[k]!==c.l){lettres[k]=c.l;reveles[k]=true}
+  faux={};terminer(false);sauver();rafraichir();
+}
+
+/* ---------- Fin de partie ---------- */
+function compter(ok){
+  const cle2=mode==="jour"?"statsDaily":"statsFree",s=store.lire(cle2,defStats());
+  if(mode==="jour"){const d=parisDay();if(s.last===d)return s;s.last=d;
+    if(ok){s.streak=s.lastWin===d-1?s.streak+1:1;s.lastWin=d}else s.streak=0}
+  else s.streak=ok?s.streak+1:0;
+  s.played++;if(ok)s.wins++;
+  s.best=Math.max(s.best,s.streak);
+  if(ok&&!indices&&(s.temps==null||secondes<s.temps))s.temps=secondes;
+  store.ecrire(cle2,s);
+  return s;
+}
+function terminer(ok){
+  fini=true;gagne=ok;
+  const s=compter(ok);
+  sauver();rafraichir();
+  if(ok)setTimeout(()=>fenetreFin(s),300);
+}
+function fenetreFin(s){
+  const r=document.createElement("div");r.className="recap";
+  r.innerHTML=`<p class="gros">${formatTemps(secondes)}</p><p class="muted">${indices?indices+" lettre"+(indices>1?"s":"")+" révélée"+(indices>1?"s":""):"Sans aucune aide !"}</p>
+    <div class="stats"><div><b>${s.streak}</b><small>${mode==="jour"?"jours de suite":"grilles de suite"}</small></div>
+    <div><b>${s.best}</b><small>meilleure série</small></div>
+    <div><b>${s.temps==null?"–":formatTemps(s.temps)}</b><small>record sans aide</small></div></div>`;
+  const acts=document.createElement("div");acts.className="actions";
+  if(mode==="jour"){
+    const p=document.createElement("button");p.className="btn ghost petit";p.textContent="📋 Partager";
+    p.onclick=async()=>{const t=`✏️ Mots croisés du jour\n⏱️ ${formatTemps(secondes)}${indices?` · 💡 ${indices}`:""}`;
+      try{await navigator.clipboard.writeText(t);Base.toast("Résultat copié !")}catch(e){Base.toast(t)}};
+    acts.appendChild(p);
+    const n=document.createElement("p");n.className="muted";n.style.margin="0 0 10px";n.textContent="Nouvelle grille à minuit.";r.appendChild(n);
+  }
+  r.appendChild(acts);
+  Base.fenetre("🎉 Bravo !",r,{bouton:"Fermer"});
+}
+
+/* ---------- Contrôles ---------- */
+document.addEventListener("keydown",e=>{
+  if(/INPUT|TEXTAREA/.test(e.target.tagName)||document.querySelector("dialog[open]")||e.ctrlKey||e.metaKey||e.altKey)return;
+  const fl={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+  if(fl){e.preventDefault();if(!fini)deplacer(fl[0],fl[1]);return}
+  if(e.key==="Tab"){e.preventDefault();if(!fini)motSuivant(e.shiftKey?-1:1);return}
+  if(e.key===" "){e.preventDefault();if(!fini)choisirCase(sel.x,sel.y);return}
+  if(e.key==="Backspace"||e.key==="Delete"){e.preventDefault();effacer();return}
+  if(e.key.length===1){
+    const l=e.key.normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
+    if(/^[A-Z]$/.test(l)){e.preventDefault();ecrire(l)}
+  }
+});
+["AZERTYUIOP","QSDFGHJKLM","WXCVBN⌫"].forEach(ligne=>{
+  const d=document.createElement("div");
+  for(const t of ligne){
+    const b=document.createElement("button");b.textContent=t;b.type="button";
+    if(t==="⌫")b.className="large";
+    // pointerdown : la saisie reste vive sur téléphone, sans délai de clic
+    b.addEventListener("pointerdown",e=>{e.preventDefault();t==="⌫"?effacer():ecrire(t)});
+    d.appendChild(b);
+  }
+  $("clavier").appendChild(d);
+});
+$("defActive").onclick=()=>{if(!fini)choisirCase(sel.x,sel.y)};
+$("bVerif").onclick=verifier;$("bIndice").onclick=indice;$("bSol").onclick=abandonner;$("bNouvelle").onclick=nouvelleLibre;
+$("mJour").onclick=()=>charger("jour");
+$("mLibre").onclick=()=>charger("libre");
+setInterval(()=>{if(G&&!fini&&!document.hidden&&!document.querySelector("dialog[open]")){secondes++;$("chrono").textContent=formatTemps(secondes);if(secondes%10===0)sauver()}},1000);
+
+charger("jour");
+</script>
+</body>
+</html>

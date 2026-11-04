@@ -14,10 +14,11 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 8
 .game{display:flex;gap:12px;align-items:flex-start;justify-content:center}
 .boardwrap{position:relative;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 #board{display:block;background:var(--well)}
-.side{display:flex;flex-direction:column;gap:10px;width:104px}
+.side{display:flex;flex-direction:column;justify-content:space-between;gap:10px;align-self:stretch;flex:none}
 .box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
 .box small{display:block;color:var(--muted);font-weight:800;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}
-.box b{font-family:Fredoka,sans-serif;font-size:1.25rem}
+.box b{display:block;font-family:Fredoka,sans-serif;font-size:1.25rem;margin-bottom:4px;line-height:1.2}
+.box b:last-child{margin-bottom:0}
 .box canvas{display:block;margin:4px auto 0}
 .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center;overflow:auto;
   background:rgba(20,15,26,.82);color:#fff;backdrop-filter:blur(2px)}
@@ -59,23 +60,28 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 8
 .lj li{padding:4px 8px;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lj li.me{background:rgba(242,211,107,.3);font-weight:800}
 .sep{opacity:.7;font-size:.8rem}
+@media (max-width:419px){.game{gap:8px}.box{padding:5px}.box small{font-size:.6rem;letter-spacing:0}.box b{font-size:.88rem}}
 @media (max-width:699px){.game{flex-wrap:wrap}.versus .adv{order:-1;width:100%;display:flex;justify-content:center;overflow-x:auto}}
 </style>
 </head>
 <body>
 <main>
   <div class="game">
+    <div class="side">
+      <div class="box"><small>Réserve</small><canvas id="cHold"></canvas></div>
+      <div class="box">
+        <small id="lScore">Score</small><b id="vScore">0</b>
+        <small>Lignes</small><b id="vLines">0</b>
+        <small id="lLevel">Niveau</small><b id="vLevel">1</b>
+        <small id="lBest">Record</small><b id="vBest">0</b>
+      </div>
+    </div>
     <div class="boardwrap">
       <canvas id="board"></canvas>
       <div class="overlay" id="ov"></div>
     </div>
     <div class="side">
-      <div class="box"><small>Réserve</small><canvas id="cHold"></canvas></div>
       <div class="box"><small>Suivants</small><canvas id="cNext"></canvas></div>
-      <div class="box"><small id="lScore">Score</small><b id="vScore">0</b></div>
-      <div class="box"><small>Lignes</small><b id="vLines">0</b></div>
-      <div class="box"><small id="lLevel">Niveau</small><b id="vLevel">1</b></div>
-      <div class="box"><small id="lBest">Record</small><b id="vBest">0</b></div>
     </div>
     <div class="adv" id="adv"></div>
   </div>
@@ -263,21 +269,24 @@ function hud(){
 
 /* ---------- Dessin ---------- */
 let CS=28;const ctx=$("board").getContext("2d");
+const NB_NEXT=5,NEXT_H=NB_NEXT*3-1;
 function size(){
   const vw=document.documentElement.clientWidth||window.innerWidth;
-  const side=vw<420?92:116;
+  const side=vw<420?66:vw<700?84:104,gap=vw<420?8:12;
   const advW=sizeOps();
   const pad=matchMedia("(pointer:coarse)").matches?132:60;
   const hAvail=window.innerHeight-$("board").getBoundingClientRect().top-pad;
-  const wAvail=vw-side-36-advW;
+  const wAvail=vw-2*side-2*gap-16-advW;
   CS=Math.max(14,Math.floor(Math.min(hAvail/ROWS,wAvail/COLS,34)));
   const dpr=window.devicePixelRatio||1,c=$("board");
   c.width=COLS*CS*dpr;c.height=ROWS*CS*dpr;c.style.width=COLS*CS+"px";c.style.height=ROWS*CS+"px";
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  document.querySelector(".side").style.width=(side-12)+"px";
-  sizeMini($("cHold"),4,2);sizeMini($("cNext"),4,9);
+  document.querySelectorAll(".side").forEach(e=>e.style.width=side+"px");
+  /* Les pièces remplissent la colonne, sans que les suivants dépassent la grille */
+  const s=Math.min(Math.floor((side-(vw<420?12:18))/4),Math.floor((ROWS*CS-40)/NEXT_H));
+  sizeMini($("cHold"),4,2,s);sizeMini($("cNext"),4,NEXT_H,s);
 }
-function sizeMini(c,w,h){const s=(document.documentElement.clientWidth||window.innerWidth)<420?14:18,dpr=window.devicePixelRatio||1;
+function sizeMini(c,w,h,s){const dpr=window.devicePixelRatio||1;
   c.width=w*s*dpr;c.height=h*s*dpr;c.style.width=w*s+"px";c.style.height=h*s+"px";c.getContext("2d").setTransform(dpr,0,0,dpr,0,0);c.dataset.s=s}
 function cell(g,x,y,s,col,alpha){
   g.globalAlpha=alpha??1;
@@ -303,14 +312,15 @@ function draw(){
   if(flashR>0){ctx.fillStyle="rgba(232,96,122,"+(flashR/250*.3)+")";ctx.fillRect(0,0,W,H)}
   const p=Math.min(ROWS,attente.reduce((s,b)=>s+b.n,0));
   if(p){ctx.fillStyle="#ff4f6d";ctx.fillRect(0,H-p*CS,5,p*CS)}
-  drawMini($("cHold"),hold?[hold]:[],canHold?1:.4);
-  drawMini($("cNext"),queue?queue.slice(0,3):[],1);
+  /* Rien à regarder pendant la pause : on ne prépare pas son coup à l'arrêt */
+  drawMini($("cHold"),hold&&!paused?[hold]:[],canHold?1:.4);
+  drawMini($("cNext"),queue&&!paused?queue.slice(0,NB_NEXT):[],1);
 }
 function drawMini(c,list,alpha){
   const g=c.getContext("2d"),s=+c.dataset.s,W=4*s;g.clearRect(0,0,W,c.height);
   list.forEach((t,i)=>{
     const m=SHAPES[t].filter(r=>r.some(Boolean));const w=m[0].length,h=m.length;
-    const ox=(W-w*s)/2,oy=i*3*s+(2*s-h*s)/2+(i?s*.5:0);
+    const ox=(W-w*s)/2,oy=i*3*s+(2*s-h*s)/2;
     m.forEach((row,r)=>row.forEach((v,cc)=>{if(v)cell(g,ox+cc*s,oy+r*s,s,COLORS[t],alpha)}));
   });
 }
