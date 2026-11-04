@@ -203,7 +203,7 @@ window.SALLE_CATALOGUE = [
     slug: "quiz",
     title: "Quiz Culture G",
     emoji: "🧠",
-    desc: "Plus de 750 questions dans 16 thèmes (histoire, sciences, animés, mythologie, Marseille…). Réponds vite pour marquer gros ! En solo, à plusieurs sur un écran ou en ligne, chacun sur son appareil.",
+    desc: "Plus de 750 questions dans 16 thèmes (histoire, sciences, animés, mythologie, Marseille…) et des manches spéciales : blind test, répliques cultes, emojis, drapeaux, intrus. Réponds vite pour marquer gros ! En solo, à plusieurs sur un écran ou en ligne, chacun sur son appareil.",
     tags: ["Quiz", "Multijoueur", "Party", "Solo"],
     colors: ["#9b84f5", "#ff8a3d"],
     etat: "dispo",
