@@ -35,6 +35,26 @@ window.SALLE_CATALOGUE = [
     ia: true
   },
   {
+    slug: "poker",
+    title: "Poker",
+    emoji: "♠️",
+    desc: "Texas Hold'em sans limite : choisis les jetons de départ et les blindes, puis affronte l'ordi, tes amis sur le même téléphone ou en ligne (2 à 8 joueurs). Le dernier qui a encore des jetons rafle tout !",
+    tags: ["Cartes", "Casino", "Multijoueur", "Solo"],
+    colors: ["#2fa36b", "#1d2b4f"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "blackjack",
+    title: "Blackjack",
+    emoji: "🂡",
+    desc: "Bats le croupier sans dépasser 21. Tu reçois des jetons chaque jour, et c'est tout : aucun autre moyen d'en gagner que de jouer. Gère ton tapis et grimpe au classement des plus riches !",
+    tags: ["Cartes", "Casino", "Quotidien", "Solo"],
+    colors: ["#d9475a", "#1f7d52"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "coupdefeu",
     title: "Coup de Feu",
     emoji: "🔥",

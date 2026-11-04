@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Blackjack</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#b8323f;--fond1:rgba(184,50,63,.13);--fond2:rgba(31,138,91,.13);--or:#e2b93b;--tapis1:#1f7d52;--tapis2:#0e4630;--bois:#5e3a20}
+.porte{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.solde{font-family:Fredoka,sans-serif;font-size:2rem;line-height:1}
+.solde small{display:block;font-family:Nunito,sans-serif;font-size:.8rem;color:var(--muted);font-weight:700;margin-bottom:4px}
+.cadeau{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
+.cadeau .muted{font-size:.85rem}
+.btn.or{background:var(--or);color:#22192b}
+.btn.vert{background:#2c9a62}
+.sync{font-size:.8rem;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.tapis{width:100%;border-radius:28px;padding:18px 14px 22px;background:radial-gradient(ellipse at 50% 0%,var(--tapis1),var(--tapis2) 80%);
+  border:10px solid var(--bois);box-shadow:inset 0 0 40px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.25);color:#fff;display:flex;flex-direction:column;align-items:center;gap:14px;min-height:420px}
+.zone{display:flex;flex-direction:column;align-items:center;gap:6px}
+.etiq{font-weight:800;font-size:.85rem;color:rgba(255,255,255,.8);letter-spacing:.04em;text-transform:uppercase}
+.rangee{display:flex;justify-content:center;--cw:66px;min-height:calc(66px*1.4)}
+.rangee .carte + .carte{margin-left:-22px}
+.valeur{background:rgba(0,0,0,.4);border-radius:999px;padding:2px 12px;font-weight:800;font-size:.95rem;min-height:1.5em}
+.regle{font-size:.78rem;color:rgba(255,255,255,.65);text-align:center;border-top:1px dashed rgba(255,255,255,.25);border-bottom:1px dashed rgba(255,255,255,.25);padding:4px 16px}
+.annonce{font-family:Fredoka,sans-serif;font-size:1.25rem;text-align:center;min-height:1.5em;color:#ffe9a8;text-shadow:0 2px 6px rgba(0,0,0,.4)}
+.mains{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;width:100%}
+.main{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:16px;border:2px solid transparent;transition:border-color .2s}
+.main.active{border-color:var(--or);background:rgba(226,185,59,.12)}
+.main .res{font-weight:800;font-size:.85rem;padding:2px 10px;border-radius:999px;background:rgba(0,0,0,.35)}
+.res.gagne,.res.bj{background:#2c9a62}
+.res.perdu,.res.depasse{background:#b8323f}
+.mise{display:flex;align-items:center;gap:6px;font-weight:800}
+.pile{width:22px;height:22px;border-radius:50%;background:var(--or);border:3px dashed #fff;box-shadow:0 0 0 2px var(--or)}
+.mains.plusieurs .rangee{--cw:52px;min-height:calc(52px*1.4)}
+@media (max-width:520px){
+  .rangee{--cw:56px;min-height:calc(56px*1.4)}
+  .mains.plusieurs .rangee{--cw:42px;min-height:calc(42px*1.4)}
+  .mains{gap:6px}
+}
+
+.commandes{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.jetons{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.jt{--c:#3b6fd6;width:58px;height:58px;border-radius:50%;border:0;color:#fff;font-weight:800;font-size:.9rem;
+  background:radial-gradient(circle,var(--c) 52%,transparent 53%),repeating-conic-gradient(var(--c) 0 20deg,#fff 20deg 40deg);
+  box-shadow:0 3px 8px rgba(0,0,0,.3),inset 0 0 0 3px rgba(255,255,255,.25);transition:transform .1s}
+.jt:hover{transform:translateY(-3px)}
+.jt:disabled{opacity:.35;transform:none;cursor:default}
+.miseEnCours{font-family:Fredoka,sans-serif;font-size:1.5rem;text-align:center}
+.boutons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.boutons .btn{min-width:110px}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;text-align:center}
+.stats div{background:var(--soft);border-radius:12px;padding:8px}
+.stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.3rem}
+.stats span{font-size:.78rem;color:var(--muted);font-weight:700}
+.top{list-style:none;padding:0;margin:8px 0 0}
+.top li{display:flex;justify-content:space-between;padding:6px 10px;border-radius:10px}
+.top li:nth-child(odd){background:var(--soft)}
+.top li.moi{outline:2px solid var(--accent)}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <section class="b-carte">
+    <div class="porte">
+      <div class="solde"><small>💰 Tes jetons</small><span id="solde">—</span></div>
+      <div class="cadeau" id="cadeau"></div>
+    </div>
+    <div class="sync" id="sync"></div>
+  </section>
+
+  <section class="tapis" id="tapis">
+    <div class="zone">
+      <div class="etiq">Croupier</div>
+      <div class="rangee" id="croupier"></div>
+      <div class="valeur" id="vCroupier"></div>
+    </div>
+    <div class="regle">Le blackjack paie 3 pour 2 · Le croupier tire jusqu'à 16 et reste à 17 · Assurance 2 pour 1</div>
+    <div class="annonce" id="annonce"></div>
+    <div class="mains" id="mains"></div>
+  </section>
+
+  <section class="b-carte commandes" id="commandes"></section>
+
+  <section class="b-carte">
+    <h3 style="margin:0 0 10px">📊 Tes statistiques</h3>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="b-carte cache" id="carteTop">
+    <h3 style="margin:0">🏆 Les plus riches</h3>
+    <ol class="top" id="top"></ol>
+  </section>
+
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/cartes.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => Number(n || 0).toLocaleString("fr-FR");
+const S = Base.stock("blackjack_");
+
+/* ---------- Réglages du jeu ---------- */
+const JOURNALIER = 1000;       // jetons offerts chaque jour
+const MISE_MIN = 10;
+const NB_JEUX = 6;             // jeux de 52 cartes dans le sabot
+const JETONS = [[10, "#3b6fd6"], [25, "#2c9a62"], [100, "#2b2b2b"], [500, "#8a4fd0"], [1000, "#c99a1e"]];
+
+Base.entete({
+  titre: "Blackjack",
+  emoji: "🂡",
+  aide: `<p>Approche-toi le plus possible de <b>21</b> sans le dépasser, et fais mieux que le croupier.</p>
+  <ul>
+    <li><b>Chaque jour, tu reçois ${fmt(JOURNALIER)} jetons</b> (bouton 🎁). Il n'y a <b>aucun autre moyen</b> d'en gagner que de jouer : si tu perds tout, rendez-vous demain !</li>
+    <li>Les figures valent 10, l'As vaut 1 ou 11. <b>Blackjack</b> = As + carte à 10 dès le départ : payé 3 pour 2.</li>
+    <li><b>Tirer</b> : une carte de plus. <b>Rester</b> : tu t'arrêtes. <b>Doubler</b> : tu doubles ta mise et reçois une seule carte. <b>Séparer</b> : deux cartes de même valeur → deux mains (jusqu'à 4).</li>
+    <li>Le croupier tire jusqu'à 16 et s'arrête à 17. S'il montre un As, tu peux prendre une <b>assurance</b> (moitié de ta mise, payée 2 pour 1 s'il a blackjack).</li>
+    <li>Ta mise est retirée dès la distribution : quitter en pleine main ne la rend pas (la main reprend où elle en était).</li>
+    <li>Connecte-toi pour retrouver tes jetons sur tous tes appareils et apparaître au classement des plus riches.</li>
+  </ul>`
+});
+
+/* ============================================================
+   PORTEFEUILLE (local + compte en ligne)
+   ============================================================ */
+let uid = "invite", porte = null, P = null, syncEtat = "local", attenteSync = null;
+const vide = () => ({s: 0, j: -1, m: 0, t: 0, st: {mains: 0, gagnees: 0, bj: 0, gros: 0, perdues: 0}});
+const jourLocal = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
+function nouvellePartie(){ return {sabot: [], mains: [], croupier: [], phase: "mise", cour: 0, assurance: 0, enCours: 0, derniere: MISE_MIN, annonce: "", revele: false}; }
+
+function charger(){
+  porte = Object.assign(vide(), S.lire("porte_" + uid, {}));
+  porte.st = Object.assign(vide().st, porte.st || {});
+  P = Object.assign(nouvellePartie(), S.lire("partie_" + uid, {}));
+}
+function sauver(distant){
+  porte.t = Date.now();
+  if(porte.s > porte.m) porte.m = porte.s;
+  S.ecrire("porte_" + uid, porte);
+  S.ecrire("partie_" + uid, P);
+  if(porte.m > 0) Base.record("blackjack", porte.m, {texte: fmt(porte.m) + " jetons"});
+  if(distant !== false) syncPlus_tard();
+}
+
+const session = () => window.Compte && Compte.pret && Compte.session && Compte.session();
+async function syncLire(){
+  if(uid === "invite") return;
+  syncEtat = "…"; dessinerPorte();
+  try{
+    const r = await Compte.db("blackjack/" + uid);
+    if(r && typeof r.s === "number"){
+      porte.j = Math.max(porte.j, r.j == null ? -1 : r.j);
+      porte.m = Math.max(porte.m || 0, r.m || 0);
+      if((r.d || 0) > (porte.t || 0) && P.phase === "mise"){ porte.s = r.s; porte.t = r.d; S.ecrire("porte_" + uid, porte); }
+      else if((r.d || 0) < (porte.t || 0) || r.s !== porte.s) await syncEcrire();
+    }else await syncEcrire();
+    syncEtat = "ok";
+  }catch(e){ syncEtat = "ko"; }
+  dessiner();
+}
+async function syncEcrire(){
+  if(uid === "invite") return;
+  const s = session();
+  try{
+    await Compte.db("blackjack/" + uid, {method: "PUT", body: {n: (s && s.pseudo || Base.joueur.pseudo() || "Joueur").slice(0, 16), s: porte.s, j: Math.max(0, porte.j), m: Math.max(porte.m, porte.s), d: {".sv": "timestamp"}}});
+    syncEtat = "ok";
+  }catch(e){ syncEtat = "ko"; }
+  dessinerPorte();
+}
+function syncPlus_tard(){
+  if(uid === "invite") return;
+  clearTimeout(attenteSync);
+  attenteSync = setTimeout(() => syncEcrire().then(chargerTop), 1200);
+}
+async function chargerTop(){
+  if(!window.Compte || !Compte.pret) return;
+  try{
+    const r = await Compte.db("blackjack", {auth: false, query: 'orderBy="s"&limitToLast=10'});
+    const l = Object.entries(r || {}).map(([id, v]) => ({id, ...v})).filter(x => typeof x.s === "number").sort((a, b) => b.s - a.s);
+    if(!l.length){ $("carteTop").classList.add("cache"); return; }
+    $("top").innerHTML = l.map((x, k) => `<li class="${x.id === uid ? "moi" : ""}"><span>${["🥇","🥈","🥉"][k] || (k + 1) + "."} ${esc(x.n)}</span><b>${fmt(x.s)}</b></li>`).join("");
+    $("carteTop").classList.remove("cache");
+  }catch(e){ $("carteTop").classList.add("cache"); }
+}
+
+function changerCompte(){
+  const s = session();
+  const nouveau = s && s.uid ? s.uid : "invite";
+  if(nouveau === uid && porte) return;
+  uid = nouveau; charger(); dessiner();
+  if(uid !== "invite") syncLire();
+  if(P.phase === "croupier") setTimeout(tourCroupier, 600);
+}
+
+/* ---------- Allocation quotidienne ---------- */
+function recuperer(){
+  if(porte.j >= jourLocal()) return;
+  porte.j = jourLocal(); porte.s += JOURNALIER;
+  sauver();
+  Base.toast(`🎁 +${fmt(JOURNALIER)} jetons ! Bonne chance.`);
+  dessiner();
+}
+function avantDemain(){
+  const d = new Date(); const m = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  const s = Math.max(0, Math.floor((m - d) / 1000));
+  const h = Math.floor(s / 3600), mn = Math.floor(s % 3600 / 60);
+  return h ? `${h} h ${String(mn).padStart(2, "0")}` : `${mn} min ${String(s % 60).padStart(2, "0")} s`;
+}
+
+/* ============================================================
+   RÈGLES DU BLACKJACK
+   ============================================================ */
+const valCarte = c => c[0] === "A" ? 11 : "TJQK".includes(c[0]) ? 10 : +c[0];
+function valeur(cs){
+  let t = 0, as = 0;
+  cs.forEach(c => { t += valCarte(c); if(c[0] === "A") as++; });
+  while(t > 21 && as){ t -= 10; as--; }
+  return {t, souple: as > 0 && t <= 21};
+}
+const estBJ = m => m.c.length === 2 && valeur(m.c).t === 21 && !m.split;
+function tirer(){
+  if(!P.sabot.length) P.sabot = Cartes.melanger(Cartes.paquet(NB_JEUX));
+  return P.sabot.pop();
+}
+const main = () => P.mains[P.cour];
+
+function distribuer(){
+  const mise = P.enCours;
+  if(P.phase !== "mise" || mise < MISE_MIN || mise > porte.s) return;
+  let melange = false;
+  if(P.sabot.length < NB_JEUX * 52 * 0.25){ P.sabot = Cartes.melanger(Cartes.paquet(NB_JEUX)); melange = true; }
+  porte.s -= mise; porte.st.mains++;
+  P.mains = [{c: [], mise, dbl: false, fini: false, split: false, res: "", gain: 0}];
+  P.croupier = []; P.assurance = 0; P.derniere = mise; P.enCours = 0; P.cour = 0; P.revele = false;
+  P.mains[0].c.push(tirer()); P.croupier.push(tirer()); P.mains[0].c.push(tirer()); P.croupier.push(tirer());
+  P.annonce = melange ? "🔀 Nouveau sabot mélangé" : "";
+  if(P.croupier[0][0] === "A" && !estBJ(P.mains[0]) && porte.s >= Math.floor(mise / 2) && Math.floor(mise / 2) > 0){
+    P.phase = "assurance";
+    P.annonce = "Le croupier montre un As… Assurance ?";
+  }else verifierPic();
+  sauver();
+  dessiner(true);
+}
+
+function assurance(oui){
+  if(P.phase !== "assurance") return;
+  if(oui){ P.assurance = Math.floor(P.mains[0].mise / 2); porte.s -= P.assurance; }
+  verifierPic();
+  sauver(); dessiner(true);
+}
+
+function verifierPic(){
+  const up = P.croupier[0], m = P.mains[0];
+  const bjC = (up[0] === "A" || valCarte(up) === 10) && valeur(P.croupier).t === 21;
+  if(bjC){
+    P.revele = true;
+    if(P.assurance){ porte.s += P.assurance * 3; }
+    m.fini = true;
+    if(estBJ(m)){ m.res = "egal"; m.gain = m.mise; porte.s += m.mise; }
+    else { m.res = "perdu"; m.gain = 0; }
+    P.annonce = "Blackjack du croupier !" + (P.assurance ? ` L'assurance te rend ${fmt(P.assurance * 3)}.` : "");
+    terminer(); return;
+  }
+  if(P.assurance) P.annonce = "Pas de blackjack : l'assurance est perdue.";
+  if(estBJ(m)){
+    P.revele = true; m.fini = true; m.res = "bj";
+    m.gain = Math.floor(m.mise * 2.5); porte.s += m.gain; porte.st.bj++;
+    P.annonce = "🂡 BLACKJACK !";
+    terminer(); return;
+  }
+  P.phase = "joueur";
+}
+
+function peutDoubler(){ const m = main(); return P.phase === "joueur" && m && m.c.length === 2 && porte.s >= m.mise && !(m.split && m.c[0][0] === "A"); }
+function peutSeparer(){
+  const m = main();
+  return P.phase === "joueur" && m && m.c.length === 2 && valCarte(m.c[0]) === valCarte(m.c[1]) && P.mains.length < 4 && porte.s >= m.mise && !(m.split && m.c[0][0] === "A");
+}
+function action(t){
+  if(P.phase !== "joueur" || verrou) return;
+  const m = main(); if(!m || m.fini) return;
+  if(t === "tirer"){
+    m.c.push(tirer());
+  }else if(t === "rester"){
+    m.fini = true;
+  }else if(t === "doubler"){
+    if(!peutDoubler()) return;
+    porte.s -= m.mise; m.mise *= 2; m.dbl = true;
+    m.c.push(tirer()); m.fini = true;
+  }else if(t === "separer"){
+    if(!peutSeparer()) return;
+    porte.s -= m.mise;
+    const n = {c: [m.c.pop()], mise: m.mise, dbl: false, fini: false, split: true, res: "", gain: 0};
+    m.split = true;
+    m.c.push(tirer()); n.c.push(tirer());
+    P.mains.splice(P.cour + 1, 0, n);
+    if(m.c[0][0] === "A"){ m.fini = true; n.fini = true; }
+  }
+  const v = valeur(m.c).t;
+  if(v > 21){ m.fini = true; m.res = "depasse"; }
+  else if(v === 21) m.fini = true;
+  suivante();
+  sauver(); dessiner(true);
+}
+function suivante(){
+  const i = P.mains.findIndex(x => !x.fini);
+  if(i >= 0){ P.cour = i; return; }
+  P.phase = "croupier"; P.revele = true;
+  setTimeout(tourCroupier, 700);
+}
+function tourCroupier(){
+  if(P.phase !== "croupier") return;
+  const vivantes = P.mains.filter(m => m.res !== "depasse");
+  if(vivantes.length && valeur(P.croupier).t < 17){
+    P.croupier.push(tirer());
+    sauver(false); dessiner(true);
+    setTimeout(tourCroupier, 650);
+    return;
+  }
+  const dv = valeur(P.croupier).t;
+  P.mains.forEach(m => {
+    if(m.res) return;
+    const v = valeur(m.c).t;
+    if(dv > 21 || v > dv){ m.res = "gagne"; m.gain = m.mise * 2; }
+    else if(v === dv){ m.res = "egal"; m.gain = m.mise; }
+    else { m.res = "perdu"; m.gain = 0; }
+    porte.s += m.gain;
+  });
+  P.annonce = dv > 21 ? "Le croupier saute !" : "";
+  terminer();
+  sauver(); dessiner(true);
+}
+function terminer(){
+  P.phase = "fin";
+  const mise = P.mains.reduce((a, m) => a + m.mise, 0) + P.assurance;
+  const gain = P.mains.reduce((a, m) => a + m.gain, 0) + (P.assurance && P.revele && valeur(P.croupier).t === 21 && P.croupier.length === 2 ? P.assurance * 3 : 0);
+  const net = gain - mise;
+  if(net > 0){ porte.st.gagnees++; porte.st.gros = Math.max(porte.st.gros, net); }
+  else if(net < 0) porte.st.perdues++;
+  const bilan = net > 0 ? `+${fmt(net)} jetons 🎉` : net < 0 ? `−${fmt(-net)} jetons` : "Égalité, mise rendue";
+  P.annonce = (P.annonce ? P.annonce + " · " : "") + bilan;
+  P.enCours = Math.min(P.derniere, porte.s);
+  if(porte.s > porte.m) porte.m = porte.s;
+}
+function nouvelleMain(memeMise){
+  if(P.phase !== "fin") return;
+  P.phase = "mise"; P.mains = []; P.croupier = []; P.annonce = ""; P.revele = false; P.assurance = 0;
+  P.enCours = memeMise ? Math.min(P.derniere, porte.s) : 0;
+  sauver(false); dessiner();
+  if(memeMise && P.enCours >= MISE_MIN) distribuer();
+}
+
+/* ============================================================
+   AFFICHAGE
+   ============================================================ */
+let verrou = false, deja = {};
+const RES = {bj: "Blackjack ! +", gagne: "Gagné +", egal: "Égalité", perdu: "Perdu", depasse: "Plus de 21 !"};
+function rangee(z, cartes, cle, cacheIdx){
+  z.innerHTML = "";
+  const avant = deja[cle] || 0;
+  let delai = 0;
+  cartes.forEach((c, k) => {
+    const e = Cartes.element(k === cacheIdx ? null : c, {anim: k >= avant});
+    if(k >= avant){ e.style.animationDelay = (delai * 0.22) + "s"; delai++; }
+    z.appendChild(e);
+  });
+  deja[cle] = cartes.length;
+  return delai;
+}
+function dessinerPorte(){
+  $("solde").textContent = fmt(porte.s);
+  const cad = $("cadeau"); cad.innerHTML = "";
+  if(porte.j < jourLocal()){
+    const b = document.createElement("button"); b.className = "btn or"; b.textContent = `🎁 Récupérer mes ${fmt(JOURNALIER)} jetons du jour`;
+    b.onclick = recuperer; cad.appendChild(b);
+  }else{
+    const p = document.createElement("span"); p.className = "muted";
+    p.textContent = `🎁 Jetons du jour récupérés · prochains dans ${avantDemain()}`;
+    cad.appendChild(p);
+  }
+  const sy = $("sync"); sy.innerHTML = "";
+  if(uid === "invite"){
+    sy.appendChild(document.createTextNode(window.Compte && Compte.pret ? "👤 Jetons gardés sur cet appareil seulement. Connecte-toi pour les retrouver partout et entrer au classement." : "Jetons gardés sur cet appareil."));
+    if(window.Compte && Compte.pret){ const b = document.createElement("button"); b.className = "btn ghost petit"; b.textContent = "Se connecter"; b.onclick = () => Compte.ouvrir("connexion"); sy.appendChild(b); }
+  }else{
+    sy.textContent = syncEtat === "ok" ? "☁️ Jetons liés à ton compte" : syncEtat === "ko" ? "⚠️ Sauvegarde en ligne indisponible pour l'instant (tes jetons restent sur cet appareil)" : "☁️ Synchronisation…";
+  }
+}
+function dessiner(anime){
+  if(!porte) return;
+  dessinerPorte();
+  /* croupier */
+  const cache = P.revele ? -1 : 1;
+  const dC = rangee($("croupier"), P.croupier, "c", P.croupier.length > 1 ? cache : -1);
+  const vc = P.croupier.length ? (P.revele ? valeur(P.croupier).t : valeur([P.croupier[0]]).t) : "";
+  $("vCroupier").textContent = vc === "" ? "" : (P.revele ? vc : vc + " + ?");
+  $("vCroupier").style.visibility = vc === "" ? "hidden" : "";
+  /* mains */
+  const zm = $("mains"); zm.innerHTML = "";
+  zm.classList.toggle("plusieurs", P.mains.length > 1);
+  let dMax = dC;
+  P.mains.forEach((m, k) => {
+    const d = document.createElement("div");
+    d.className = "main" + (P.phase === "joueur" && k === P.cour && P.mains.length > 1 ? " active" : "");
+    const r = document.createElement("div"); r.className = "rangee";
+    dMax = Math.max(dMax, rangee(r, m.c, "m" + k));
+    const v = valeur(m.c);
+    const val = document.createElement("div"); val.className = "valeur";
+    val.textContent = estBJ(m) ? "21 · Blackjack" : (v.souple && v.t < 21 && P.phase === "joueur" ? `${v.t - 10} / ${v.t}` : v.t);
+    const mi = document.createElement("div"); mi.className = "mise";
+    mi.innerHTML = `<span class="pile"></span>${fmt(m.mise)}${m.dbl ? " (doublée)" : ""}`;
+    d.append(r, val, mi);
+    if(m.res){ const x = document.createElement("div"); x.className = "res " + m.res; x.textContent = RES[m.res] + (m.res === "gagne" || m.res === "bj" ? fmt(m.gain - m.mise) : ""); d.appendChild(x); }
+    zm.appendChild(d);
+  });
+  for(let k = P.mains.length; k < 4; k++) delete deja["m" + k];
+  $("annonce").textContent = P.annonce || (P.phase === "mise" ? (porte.s >= MISE_MIN ? "Place ta mise" : "") : P.phase === "joueur" && P.mains.length > 1 ? `Main ${P.cour + 1} sur ${P.mains.length}` : "");
+  /* commandes après les animations */
+  verrou = !!anime && dMax > 0;
+  dessinerCommandes();
+  if(verrou) setTimeout(() => { verrou = false; dessinerCommandes(); }, dMax * 220 + 250);
+  dessinerStats();
+}
+function btn(t, cls, f, off){ const b = document.createElement("button"); b.className = "btn " + (cls || ""); b.textContent = t; b.onclick = f; b.disabled = !!off; return b; }
+function dessinerCommandes(){
+  const z = $("commandes"); z.innerHTML = "";
+  if(verrou && P.phase !== "mise"){ z.innerHTML = "<span class='muted'>…</span>"; return; }
+  if(P.phase === "mise"){
+    if(porte.s < MISE_MIN){
+      const p = document.createElement("p"); p.style.textAlign = "center"; p.style.margin = "0";
+      p.innerHTML = porte.j < jourLocal() ? "Tu n'as plus de jetons… mais ton cadeau du jour t'attend en haut ! 🎁"
+        : `Plus de jetons pour aujourd'hui 😢<br><span class="muted">Reviens dans ${avantDemain()} pour recevoir ${fmt(JOURNALIER)} nouveaux jetons.</span>`;
+      z.appendChild(p);
+      return;
+    }
+    const me = document.createElement("div"); me.className = "miseEnCours";
+    me.textContent = "Mise : " + fmt(P.enCours);
+    const j = document.createElement("div"); j.className = "jetons";
+    JETONS.forEach(([v, c]) => {
+      const b = document.createElement("button"); b.className = "jt"; b.style.setProperty("--c", c); b.textContent = v >= 1000 ? v / 1000 + "k" : v;
+      b.title = "Ajouter " + fmt(v); b.disabled = P.enCours + v > porte.s;
+      b.onclick = () => { P.enCours += v; sauver(false); dessinerCommandes(); };
+      j.appendChild(b);
+    });
+    const bs = document.createElement("div"); bs.className = "boutons";
+    bs.append(
+      btn("Effacer", "ghost", () => { P.enCours = 0; sauver(false); dessinerCommandes(); }, !P.enCours),
+      btn("Tout miser", "ghost", () => { P.enCours = porte.s; sauver(false); dessinerCommandes(); }),
+      btn("🃏 Distribuer", "vert", distribuer, P.enCours < MISE_MIN || P.enCours > porte.s)
+    );
+    z.append(me, j, bs);
+    if(P.enCours > 0 && P.enCours < MISE_MIN){ const p = document.createElement("small"); p.className = "muted"; p.textContent = `Mise minimale : ${MISE_MIN} jetons`; z.appendChild(p); }
+    return;
+  }
+  const bs = document.createElement("div"); bs.className = "boutons";
+  if(P.phase === "assurance"){
+    bs.append(btn(`Prendre l'assurance (${fmt(Math.floor(P.mains[0].mise / 2))})`, "or", () => assurance(true)), btn("Non merci", "ghost", () => assurance(false)));
+  }else if(P.phase === "joueur"){
+    bs.append(btn("Tirer", "vert", () => action("tirer")), btn("Rester", "", () => action("rester")));
+    if(main() && main().c.length === 2){
+      bs.append(btn("Doubler", "or", () => action("doubler"), !peutDoubler()));
+      if(valCarte(main().c[0]) === valCarte(main().c[1])) bs.append(btn("Séparer", "ghost", () => action("separer"), !peutSeparer()));
+    }
+  }else if(P.phase === "croupier"){
+    z.innerHTML = "<span class='muted'>Le croupier joue…</span>"; return;
+  }else if(P.phase === "fin"){
+    const m = Math.min(P.derniere, porte.s);
+    if(m >= MISE_MIN) bs.append(btn(`🔁 Rejouer (${fmt(m)})`, "vert", () => nouvelleMain(true)));
+    bs.append(btn(m >= MISE_MIN ? "Changer la mise" : "Continuer", "ghost", () => nouvelleMain(false)));
+  }
+  z.appendChild(bs);
+}
+function dessinerStats(){
+  const s = porte.st;
+  const taux = s.mains ? Math.round(s.gagnees / s.mains * 100) + " %" : "—";
+  $("stats").innerHTML = [
+    [fmt(s.mains), "mains jouées"], [taux, "mains gagnées"], [fmt(s.bj), "blackjacks"],
+    [fmt(s.gros), "plus gros gain"], [fmt(porte.m), "record de jetons"]
+  ].map(([v, t]) => `<div><b>${v}</b><span>${t}</span></div>`).join("");
+}
+
+/* ---------- Clavier ---------- */
+document.addEventListener("keydown", e => {
+  if(e.target.closest && e.target.closest("input,textarea")) return;
+  const k = e.key.toLowerCase();
+  if(P.phase === "joueur"){ if(k === "t") action("tirer"); if(k === "r") action("rester"); if(k === "d") action("doubler"); if(k === "s") action("separer"); }
+  else if(P.phase === "mise" && k === "enter") distribuer();
+  else if(P.phase === "fin" && k === "enter") nouvelleMain(true);
+});
+
+/* ---------- Démarrage ---------- */
+charger(); dessiner();
+if(P.phase === "croupier") setTimeout(tourCroupier, 600);
+setInterval(dessinerPorte, 30000);
+(function attendreCompte(n){
+  if(window.Compte){
+    changerCompte();
+    Compte.surChangement(() => changerCompte());
+    chargerTop();
+    return;
+  }
+  if(n < 60) setTimeout(() => attendreCompte(n + 1), 100);
+})(0);
+</script>
+</body>
+</html>
