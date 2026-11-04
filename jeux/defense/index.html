@@ -35,12 +35,16 @@
 .td-vue header h2{margin:0;flex:1;font-size:1.2rem}
 .td-corps{flex:1;overflow:auto;padding:12px}
 .td-arbre{position:relative;margin:0 auto}
-.td-hex{position:absolute;width:64px;height:72px;border:0;padding:0;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:#3b3b4a;color:#fff;font-size:.56rem;font-weight:800;line-height:1.05}
-.td-hex b{display:block;font-size:1.15rem;font-weight:400}
-.td-hex.pris{background:var(--accent)}
-.td-hex.dispo{background:#b9812c}
-.td-hex.loin{opacity:.35}
-.td-hex.on{filter:brightness(1.35)}
+.td-corps.td-glisse{cursor:grab;user-select:none}
+.td-hex{position:absolute;width:64px;height:72px;border:0;padding:0;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--c,#3b3b4a);color:#fff;font-size:.54rem;font-weight:800;line-height:1.05;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.td-hex b{display:block;font-size:1.1rem;font-weight:400}
+.td-hex i{display:block;font-style:normal;color:#ffe08a}
+.td-hex.dispo{filter:brightness(.62)}
+.td-hex.loin{filter:brightness(.3)}
+.td-hex.loin b{color:#ffe08a;font-weight:800}
+.td-hex.on{filter:brightness(1.3)}
+.td-hex.dispo.on{filter:brightness(.95)}
+.td-hex.loin.on{filter:brightness(.55)}
 .td-hex.depart{background:#35b4d6}
 .td-bas{border-top:1px solid var(--line);padding:10px 14px 10px 66px;background:var(--card);display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
 .td-stats{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.78rem;color:var(--muted);padding:0 14px 8px}
@@ -51,6 +55,7 @@
 .td-camp strong{display:block;font-size:.95rem}
 .td-camp .btn{width:100%;margin-top:6px}
 .td-butin{font-size:.82rem;margin:3px 0}
+.td-compte{margin:0 0 10px;color:var(--muted);font-size:.85rem;text-align:center}
 .td-note{margin:12px 0 2px;font-size:1rem}
 dialog.b-fen .td-note + ul{margin:0;font-size:.9rem}
 .td-classement{list-style:none;margin:6px 0 0;padding:0}
@@ -85,13 +90,18 @@ dialog.b-fen .td-note + ul{margin:0;font-size:.9rem}
 
 <div class="td-vue cache" id="vueArbre">
   <header><h2>⬆️ Améliorations</h2><span id="arbreOr"></span><button class="btn ghost petit" data-fermer>Fermer</button></header>
-  <div class="td-corps"><div class="td-arbre" id="arbre"></div></div>
+  <div class="td-corps td-glisse" id="corpsArbre"><div class="td-arbre" id="arbre"></div></div>
   <div class="td-stats" id="arbreStats"></div>
   <div class="td-bas" id="arbreBas"></div>
 </div>
 <div class="td-vue cache" id="vueBoutique">
   <header><h2>🛒 Camps</h2><span id="boutiqueInfo"></span><button class="btn ghost petit" data-fermer>Fermer</button></header>
   <div class="td-corps"><div class="td-camps" id="boutique"></div></div>
+</div>
+
+<div class="td-vue cache" id="vueIndex">
+  <header><h2>📖 Index</h2><button class="btn ghost petit" data-fermer>Fermer</button></header>
+  <div class="td-corps" id="index"></div>
 </div>
 
 <script src="../commun/garde.js"></script>
@@ -101,7 +111,7 @@ dialog.b-fen .td-note + ul{margin:0;font-size:.9rem}
 <script>
 const $ = id => document.getElementById(id);
 const el = Base.el;
-const {RARETES, TOURS, FORMES, MATIERES, CAMPS, SECTEURS, COUT_ANNEAU} = TD;
+const {RARETES, TOURS, FORMES, MATIERES, CAMPS, CARTE, FAMILLES, SPECIAUX} = TD;
 const stock = Base.stock("defense_");
 const TOUR = Object.fromEntries(TOURS.map(t => [t.id, t]));
 const CAMP = Object.fromEntries(CAMPS.map(c => [c.id, c]));
@@ -117,6 +127,10 @@ bClassement.onclick = () => {
   Base.fenetre("🏆 Meilleures vagues", zone, {bouton: "Fermer"});
   Classement.tableau(zone, optionsClassement());
 };
+
+const bIndex = el("button", "📖", "b-ico");
+bIndex.title = "Index";
+bIndex.onclick = () => { if(!B) ouvrirIndex(); };
 
 const bPatch = el("button", "📜", "b-ico");
 bPatch.title = "Patch note";
@@ -134,10 +148,11 @@ bPatch.onclick = () => {
 Base.entete({
   titre: "Défense du Château",
   emoji: "🏰",
-  boutons: [bPatch, bClassement],
+  boutons: [bIndex, bPatch, bClassement],
   aide: `<p>Protège le château des vagues d'ennemis et agrandis ton royaume.</p>
     <ul>
       <li><b>Construire</b> : relie chaque camp au château avec des chemins, puis place tes tours à côté et oriente-les : la plupart ne tirent que dans un cône. Glisse un élément posé pour le déplacer.</li>
+      <li><b>Pièges</b> : ils se posent directement sur un chemin et frappent ce qui passe dessus.</li>
       <li><b>Combattre</b> : les ennemis rapportent de l'or selon le camp et la vague.</li>
       <li>Chaque <b>boss</b> tué fait un tirage : nouvelle tour ou nouveau chemin. Plus le camp est rare, meilleures sont les chances. Le 👑 au-dessus d'un camp indique dans combien de vagues arrive son boss.</li>
       <li><b>Relance auto</b> : le combat repart tout seul quand le château tombe, pour farmer.</li>
@@ -165,7 +180,7 @@ const pc = v => Math.round(v * 1000) / 10 + " %";
 function partieNeuve(){
   const plan = {[cle(0, 6)]: {t: "camp", k: "foret"}};
   for(let l = 1; l <= 5; l++) plan[cle(0, l)] = {t: "chemin", k: "terre_droit", r: 0};
-  return {v: 3, t: 0, or: 0, achats: {}, plan, premierT: false,
+  return {v: 4, t: 0, or: 0, achats: {}, plan, premierT: false,
     inv: {tours: {"arbalete:0": 3}, chemins: {terre_droit: 5}, camps: {foret: 1}},
     bilan: {vagueMax: 0, ennemis: 0, boss: 0, batailles: 0, orTotal: 0},
     boutique: null};
@@ -202,7 +217,34 @@ function migrer(){
       G.plan[k].r = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 0 : 2);
     });
   }
-  G.v = 3;
+  /* v4 : nouvel arbre, tout l'or dépensé est remboursé et le terrain revient aux limites de départ */
+  if((G.v || 1) < 4){
+    const rembourse = ancienArbreDepense();
+    G.or += rembourse;
+    G.achats = {};
+    recalculer();
+    remettreDansLesLimites();
+    if(rembourse) rembourseMsg = `🌳 Nouvel arbre ! ${nb(rembourse)} d'or remboursés.`;
+  }
+  G.v = 4;
+}
+let rembourseMsg = "";
+/* Prix de l'ancien arbre : ses nœuds s'appelaient s<secteur>_<anneau>_<rang> */
+function ancienArbreDepense(){
+  const anneaux = [60, 400, 3000, 30000];
+  return Object.keys(G.achats || {}).reduce((total, id) => {
+    const m = /^s(\d)_(\d)_(\d)$/.exec(id);
+    return m ? total + Math.round(anneaux[m[2] - 1] * (1 + m[3] * .6) * (1 + m[1] * .05)) : total;
+  }, 0);
+}
+/* Ce qui ne rentre plus retourne dans l'inventaire : on enlève d'abord ce qui est le plus loin du château */
+function remettreDansLesLimites(){
+  const loin = k => { const [c, l] = deCle(k); return Math.abs(c) + l; };
+  Object.keys(G.plan).forEach(k => { const [c, l] = deCle(k); if(!dansTerrain(c, l)) delete G.plan[k]; });
+  [["tour", ST.defenses], ["camp", ST.camps]].forEach(([t, max]) => {
+    const liste = Object.keys(G.plan).filter(k => G.plan[k].t === t).sort((a, b) => loin(a) - loin(b));
+    liste.slice(max).forEach(k => delete G.plan[k]);
+  });
 }
 async function envoyerNuage(){
   const s = session(); if(!s) return;
@@ -227,27 +269,51 @@ async function chargerSauvegarde(){
       nuage = "☁️ Sauvegardé";
     }catch(e){ nuage = "💾 Sauvegarde locale"; }
   }
+  recalculer();
   migrer();
   recalculer();
   toutDessiner();
+  if(rembourseMsg){ Base.toast(rembourseMsg, 5000); rembourseMsg = ""; sauver(); }
 }
 
 /* ---------- Statistiques (arbre) ---------- */
 let ST = {};
 const NOEUDS = [];
 const AX = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
-SECTEURS.forEach((liste, d) => {
-  let n = 0;
-  for(let an = 1; an <= 4; an++) for(let i = 0; i < an; i++){
-    const q = an * AX[d][0] + i * AX[(d + 1) % 6][0], r = an * AX[d][1] + i * AX[(d + 1) % 6][1];
-    NOEUDS.push({...liste[n++], id: `s${d}_${an}_${i}`, q, r, cout: Math.round(COUT_ANNEAU[an - 1] * (1 + i * .6) * (1 + d * .05))});
-  }
-});
-function recalculer(){
-  ST = {degats: 0, cadence: 0, critC: .05, critD: 1.5, pv: 100, terrain: 7, defenses: 5, camps: 1, or: 0, chance: 0, interet: 0, bossOr: 0, doubleButin: 0, secondeVie: 0};
-  NOEUDS.forEach(n => { if(G.achats[n.id]) ST[n.stat] += n.val; });
-}
 const voisin = (a, b) => AX.some(([q, r]) => a.q + q === b.q && a.r + r === b.r);
+const romain = n => [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]].reduce((s, [v, t]) => { while(n >= v){ s += t; n -= v; } return s; }, "");
+const arrondi = v => { const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(v)) - 1)); return Math.round(v / p) * p; };
+/* Lit la carte de l'arbre, puis numérote et tarife chaque famille en partant du Départ */
+(function(){
+  CARTE.forEach(([r, de, cases]) => [...cases].forEach((lettre, i) => {
+    if(lettre === "." || lettre === "*") return;
+    const col = de + i * 2;
+    NOEUDS.push({id: `n${r}_${col}`, lettre, q: (col - r) / 2, r});
+  }));
+  const dist = new Map(), file = [];
+  NOEUDS.filter(n => voisin(n, {q: 0, r: 0})).forEach(n => { dist.set(n, 1); file.push(n); });
+  while(file.length){
+    const n = file.shift();
+    NOEUDS.forEach(m => { if(!dist.has(m) && voisin(n, m)){ dist.set(m, dist.get(n) + 1); file.push(m); } });
+  }
+  const rangs = {};
+  [...NOEUDS].sort((a, b) => dist.get(a) - dist.get(b) || a.r - b.r || a.q - b.q).forEach(n => {
+    const s = SPECIAUX[n.lettre];
+    if(s){ Object.assign(n, s, {couleur: "#6a5a3a", special: true}); return; }
+    const f = FAMILLES[n.lettre], i = rangs[n.lettre] = (rangs[n.lettre] || 0) + 1;
+    Object.assign(n, {nom: f.nom + " " + romain(i), emoji: f.emoji, stat: f.stat, couleur: f.couleur,
+      val: Array.isArray(f.val) ? f.val[i - 1] : f.val, cout: arrondi(f.base * Math.pow(f.raison, i - 1))});
+  });
+})();
+function recalculer(){
+  ST = {degats: 0, cadence: 0, critC: .05, critD: 1.5, pv: 100, terrain: 7, defenses: 5, camps: 1, pieges: 1, or: 0, chance: 0, interet: 0, bossOr: 0,
+    doubleButin: 0, secondeVie: 0, brulure: 0, bossDeg: 0, portee: 0, prefusion: 0, vagueDepart: 1};
+  NOEUDS.forEach(n => {
+    if(!G.achats[n.id]) return;
+    if(n.stat === "vagueDepart") ST.vagueDepart = Math.max(ST.vagueDepart, n.val);
+    else ST[n.stat] += n.val;
+  });
+}
 function noeudDispo(n){
   if(G.achats[n.id]) return false;
   if(voisin(n, {q: 0, r: 0})) return true;
@@ -258,9 +324,15 @@ function noeudDispo(n){
 const cleChemin = (m, f) => m + "_" + f;
 function places(t, k){
   let n = 0;
-  for(const c in G.plan) if(G.plan[c].t === t && (k == null || G.plan[c].k === k)) n++;
+  for(const c in G.plan){
+    const p = G.plan[c];
+    if(p.t === t && (k == null || p.k === k)) n++;
+    if(t === "tour" && k != null && p.piege === k) n++;     // un piège est posé sur un chemin
+  }
   return n;
 }
+const placesPieges = () => Object.values(G.plan).filter(p => p.piege).length;
+const estPiege = a => a && a.t === "tour" && defTour(a.k).piege;
 const possede = (t, k) => t === "chemin" ? G.inv.chemins[k] || 0 : t === "tour" ? G.inv.tours[k] || 0 : G.inv.camps[k] || 0;
 const restant = (t, k) => possede(t, k) - places(t, k);
 const defTour = k => TOUR[k.split(":")[0]];
@@ -395,7 +467,7 @@ function tirage(camp){
   const tours = poolTours(r, camp), chemins = poolChemins(r);
   const prendreTour = chemins.length ? (tours.length && Math.random() < .6) : true;
   if(prendreTour){
-    const d = choix(tours), k = d.id + ":0";
+    const d = choix(tours), k = d.id + ":" + (Math.random() < ST.prefusion ? 1 : 0);
     ajouter("tour", k);
     return {t: "tour", k, r, chance: chanceArticle("tour", k, camp)};
   }
@@ -424,6 +496,8 @@ let relance = false;      // relance auto : le prochain combat démarre à l'ima
 let farm = null;          // totaux depuis le dernier lancement manuel
 function difficulte(camp){ return Math.pow(1.35, CAMPS.indexOf(camp)); }
 const relanceAuto = () => stock.lire("auto", false);
+const vagueDepart = () => Math.min(stock.lire("depart", 1), ST.vagueDepart);
+const porteeDe = d => d.portee * (1 + ST.portee);
 const angleDe = r => (r - 1) * Math.PI / 2;      // 0 haut, 1 droite, 2 bas, 3 gauche
 function dansArc(s, e){
   if(s.d.arc >= 360) return true;
@@ -440,18 +514,25 @@ function lancerCombat(enAuto){
     const p = G.plan[k];
     if(p.t !== "tour") continue;
     const d = defTour(p.k), pt = pointDe(k);
-    tours.push({d, x: pt.x, y: pt.y, a: angleDe(p.r || 0), mDeg: Math.pow(1.5, niveauTour(p.k)) * (1 + ST.degats), mCad: 1 + ST.cadence, cd: 0, cible: null, rampe: 0, gel: 0, retour: d.retour || 0});
+    tours.push({d, x: pt.x, y: pt.y, a: angleDe(p.r || 0), mDeg: Math.pow(1.5, niveauTour(p.k)) * (1 + ST.degats), mCad: 1 + ST.cadence, portee: porteeDe(d),
+      cd: d.charge || 0, cible: null, rampe: 0, gel: 0, retour: d.retour || 0, bDeg: 0, bPortee: 0});
   }
-  tours.forEach(s => {
-    if(!s.d.buffDeg && !s.d.buffCad) return;
-    tours.forEach(t => {
-      if(t === s || Math.hypot(t.x - s.x, t.y - s.y) > s.d.portee) return;
-      t.mDeg += s.d.buffDeg || 0; t.mCad += s.d.buffCad || 0;
-    });
-  });
+  const auras = tours.filter(s => s.d.mode === "aura");
+  auras.forEach(s => tours.forEach(t => {
+    if(t === s || Math.hypot(t.x - s.x, t.y - s.y) > s.portee) return;
+    t.bDeg += s.d.buffDeg || 0; t.bPortee += s.d.buffPortee || 0; t.mCad += s.d.buffCad || 0;
+  }));
+  tours.forEach(t => { t.mDeg *= 1 + t.bDeg; t.portee *= 1 + t.bPortee; });
+  const pieges = [];
+  for(const k in G.plan){
+    const p = G.plan[k];
+    if(!p.piege) continue;
+    const pt = pointDe(k);
+    pieges.push({d: defTour(p.piege), x: pt.x, y: pt.y, mDeg: Math.pow(1.5, niveauTour(p.piege)) * (1 + ST.degats), cd: 0});
+  }
   const camps = [];
   for(const k in G.plan) if(G.plan[k].t === "camp") camps.push({k, camp: CAMP[G.plan[k].k]});
-  B = {vague: 0, pv: ST.pv, pvMax: ST.pv, dist: e.dist, tours, camps, ennemis: [], file: [], attente: 1, fx: [],
+  B = {vague: vagueDepart() - 1, pv: ST.pv, pvMax: ST.pv, dist: e.dist, tours, pieges, mines: [], retombees: 0, camps, ennemis: [], file: [], attente: 1, fx: [],
     vie2: ST.secondeVie > 0, gains: 0, tues: 0, boss: 0, butins: farm.derniers, vitesse: stock.lire("vitesse", 1), acc: 0, depuis: 0, horloge: 0};
   G.bilan.batailles++;
   farm.combats++;
@@ -477,15 +558,18 @@ function creerEnnemi(f){
     k: f.k, route: creerTrajet(f.k, B.dist), p: 0, x: 0, y: 0,
     hp, hpMax: hp, boss: f.boss, camp: f.camp,
     v: (f.boss ? .55 : 1) * (1 + f.camp.r * .04),
-    or: 2 * Math.pow(1.3, CAMPS.indexOf(f.camp)) * (1 + .1 * (w - 1)) * (f.boss ? 15 : 1),
+    or: 2 * Math.pow(1.3, CAMPS.indexOf(f.camp)) * (1 + .1 * (w - 1)) * Math.pow(1.06, w - 1) * (f.boss ? 15 : 1),
     coup: (f.boss ? 25 : 2) * (1 + w / 10),
-    lent: 0, lentT: 0, stun: 0, brule: 0, bruleT: 0, poison: 0, poisonT: 0, infecte: false
+    lent: 0, lentT: 0, stun: 0, brule: 0, bruleT: 0, poison: 0, poisonT: 0, vuln: 0, vulnT: 0, infecte: false
   });
 }
 function blesser(e, dmg, s){
   if(e.mort) return;
+  if(e.vuln) dmg *= 1 + e.vuln;
+  if(e.boss) dmg *= 1 + ST.bossDeg;
   const crit = Math.random() < ST.critC + ((s && s.d.crit) || 0);
   e.hp -= crit ? dmg * ST.critD : dmg;
+  if(s && s.d.execute && !e.boss && e.hp < e.hpMax * s.d.execute) e.hp = 0;
   if(e.hp <= 0) tuer(e);
 }
 function tuer(e){
@@ -493,7 +577,7 @@ function tuer(e){
   let or = e.or * (1 + ST.or);
   if(e.boss) or *= 1 + ST.bossOr;
   if(e.infecte) or *= 2;
-  if(B.tours.some(t => t.d.or && Math.hypot(t.x - e.x, t.y - e.y) <= t.d.portee)) or *= 1.1;
+  or *= 1 + B.tours.reduce((m, t) => t.d.or && t.d.or > m && Math.hypot(t.x - e.x, t.y - e.y) <= t.portee ? t.d.or : m, 0);
   gagner(or);
   B.tues++; G.bilan.ennemis++;
   if(e.boss){
@@ -523,12 +607,14 @@ function appliquerEffets(e, s){
   const d = s.d;
   if(d.ralentit && d.ralentit.p >= e.lent){ e.lent = d.ralentit.p; e.lentT = d.ralentit.d; }
   if(d.etourdit) e.stun = Math.max(e.stun, e.boss ? d.etourdit / 2 : d.etourdit);
-  if(d.brule){ e.brule = Math.max(e.brule, d.brule.dps * s.mDeg); e.bruleT = d.brule.d; }
+  if(d.brule){ e.brule = Math.max(e.brule, d.brule.dps * s.mDeg * (1 + ST.brulure)); e.bruleT = d.brule.d; }
   if(d.poison){ e.poison = Math.min(d.poison.max * s.mDeg, e.poison + d.poison.dps * s.mDeg); e.poisonT = d.poison.d; }
   if(d.infection) e.infecte = true;
+  if(d.vuln && d.vuln.p >= e.vuln){ e.vuln = d.vuln.p; e.vulnT = d.vuln.d; }
+  if(d.recul) e.p = Math.max(0, e.p - (e.boss ? d.recul / 3 : d.recul));
 }
 function viser(s){
-  const d = s.d, r2 = d.portee * d.portee;
+  const d = s.d, r2 = s.portee * s.portee;
   let best = null, score = -Infinity;
   for(const e of B.ennemis){
     if(e.mort) continue;
@@ -540,14 +626,25 @@ function viser(s){
   return best;
 }
 function tirer(s){
-  const d = s.d, dmg = d.dmg * s.mDeg;
+  const d = s.d, dmg = d.dmg * s.mDeg * (d.de ? hasard(1, 6) / 3.5 : 1);
+  if(d.mode === "silo"){
+    if(!B.ennemis.length) return false;
+    for(const e of B.ennemis){
+      if(e.mort) continue;
+      if(e.boss) blesser(e, e.hpMax * .5, s); else tuer(e);
+    }
+    B.retombees = 60;
+    ajouterFx({type: "rond", x: s.x, y: s.y, r: tailleN(), c: "#ffd34d"});
+    Base.toast("☢️ Frappe nucléaire !");
+    return true;
+  }
   if(d.mode === "champ"){
     let touche = false;
     for(const e of B.ennemis){
-      if(e.mort || Math.hypot(e.x - s.x, e.y - s.y) > d.portee) continue;
+      if(e.mort || Math.hypot(e.x - s.x, e.y - s.y) > s.portee) continue;
       blesser(e, dmg, s); appliquerEffets(e, s); touche = true;
     }
-    if(touche) ajouterFx({type: "rond", x: s.x, y: s.y, r: d.portee, c: RARETES[d.r].couleur});
+    if(touche) ajouterFx({type: "rond", x: s.x, y: s.y, r: Math.min(s.portee, tailleN()), c: RARETES[d.r].couleur});
     return touche;
   }
   const c = viser(s);
@@ -559,7 +656,7 @@ function tirer(s){
   }else if(d.mode === "cone"){
     const a = Math.atan2(c.y - s.y, c.x - s.x);
     for(const e of B.ennemis){
-      if(e.mort || Math.hypot(e.x - s.x, e.y - s.y) > d.portee) continue;
+      if(e.mort || Math.hypot(e.x - s.x, e.y - s.y) > s.portee) continue;
       let da = Math.abs(Math.atan2(e.y - s.y, e.x - s.x) - a);
       if(da > Math.PI) da = 2 * Math.PI - da;
       if(da <= .6 && dansArc(s, e)){ blesser(e, dmg, s); appliquerEffets(e, s); }
@@ -579,6 +676,22 @@ function tirer(s){
       ajouterFx({type: "trait", x: cur.x, y: cur.y, x2: suite.x, y2: suite.y, c: "#8fd7ff"});
       vus.add(suite); blesser(suite, dmg, s); appliquerEffets(suite, s); cur = suite;
     }
+  }else if(d.mode === "ligne"){
+    const h = Math.hypot(c.x - s.x, c.y - s.y) || 1, ux = (c.x - s.x) / h, uy = (c.y - s.y) / h, lg = Math.min(s.portee, tailleN() * 1.5);
+    for(const e of B.ennemis){
+      if(e.mort) continue;
+      const dx = e.x - s.x, dy = e.y - s.y, t = dx * ux + dy * uy;
+      if(t < 0 || t > lg || Math.abs(dx * uy - dy * ux) > .4) continue;
+      blesser(e, dmg, s);
+      if(d.double) blesser(e, dmg, s);
+      appliquerEffets(e, s);
+    }
+    ajouterFx({type: "trait", x: s.x, y: s.y, x2: s.x + ux * lg, y2: s.y + uy * lg, c: RARETES[d.r].couleur});
+  }else if(d.mode === "mine"){
+    if(B.mines.length < 30) B.mines.push({x: c.x, y: c.y, dmg, s});
+  }else if(d.pct){
+    if(s.cible !== c){ s.cible = c; s.rampe = 0; }
+    blesser(c, dmg + c.hp * d.pct[s.rampe < 2.5 ? 0 : s.rampe < 5 ? 1 : 2] / d.cad, s);
   }else if(d.rampe){
     if(s.cible !== c){ s.cible = c; s.rampe = 0; }
     const dps = d.rampe[0] + (d.rampe[1] - d.rampe[0]) * Math.min(1, s.rampe / 3);
@@ -605,8 +718,10 @@ function pasCombat(h){
     if(e.brule && e.bruleT > 0){ e.bruleT -= h; blesser(e, e.brule * h); }
     if(e.poison && e.poisonT > 0){ e.poisonT -= h; blesser(e, e.poison * h); } else e.poison = 0;
     if(e.infecte) blesser(e, 100 * h);
+    if(B.retombees > 0) blesser(e, e.hpMax * .08 * h);
     if(e.mort) continue;
     if(e.lentT > 0) e.lentT -= h; else e.lent = 0;
+    if(e.vulnT > 0) e.vulnT -= h; else e.vuln = 0;
     if(e.stun > 0) e.stun -= h;
     else {
       const a = e.route[Math.min(e.route.length - 1, Math.floor(e.p))];
@@ -628,7 +743,7 @@ function pasCombat(h){
     if(s.retour){
       s.retourT = (s.retourT || 0) - h;
       if(s.retourT <= 0){
-        const v = B.ennemis.filter(e => !e.mort && !e.boss && Math.hypot(e.x - s.x, e.y - s.y) <= s.d.portee && dansArc(s, e)).sort((a, b) => b.p - a.p)[0];
+        const v = B.ennemis.filter(e => !e.mort && !e.boss && Math.hypot(e.x - s.x, e.y - s.y) <= s.portee && dansArc(s, e)).sort((a, b) => b.p - a.p)[0];
         if(v){ v.p = 0; s.retourT = s.retour; ajouterFx({type: "rond", x: s.x, y: s.y, r: 1, c: "#ffd34d"}); }
       }
     }
@@ -638,6 +753,25 @@ function pasCombat(h){
       else s.cd = 0;
     }
   }
+  for(const s of B.pieges){
+    s.cd -= h;
+    if(s.cd > 0) continue;
+    let touche = false;
+    for(const e of B.ennemis){
+      if(e.mort || Math.hypot(e.x - s.x, e.y - s.y) > .6) continue;
+      if(s.d.dmg) blesser(e, s.d.dmg * s.mDeg, s);
+      appliquerEffets(e, s);
+      touche = true;
+    }
+    if(touche){ s.cd = 1 / s.d.cad; ajouterFx({type: "rond", x: s.x, y: s.y, r: .5, c: RARETES[s.d.r].couleur}); }
+  }
+  B.mines = B.mines.filter(m => {
+    if(!B.ennemis.some(e => !e.mort && Math.hypot(e.x - m.x, e.y - m.y) < .5)) return true;
+    for(const e of B.ennemis) if(!e.mort && Math.hypot(e.x - m.x, e.y - m.y) <= m.s.d.rayon) blesser(e, m.dmg, m.s);
+    ajouterFx({type: "rond", x: m.x, y: m.y, r: m.s.d.rayon, c: "#ff9a3d"});
+    return false;
+  });
+  if(B.retombees > 0) B.retombees -= h;
   B.ennemis = B.ennemis.filter(e => !e.mort);
   for(const f of B.fx) f.vie -= h;
   B.fx = B.fx.filter(f => f.vie > 0);
@@ -802,7 +936,7 @@ function dessinerBatiment(p, px, py, s, coupe){
 }
 /* Portée d'une tour : un disque, ou un cône dans la direction r */
 function zoneDeTir(pt, d, r){
-  const [x, y] = versPx(pt.x, pt.y), R = d.portee * cote();
+  const [x, y] = versPx(pt.x, pt.y), R = Math.min(porteeDe(d), tailleN() * 1.5) * cote();
   ctx.beginPath();
   if(d.arc >= 360) ctx.arc(x, y, R, 0, 7);
   else {
@@ -822,7 +956,7 @@ function dessinerCompteursBoss(s){
   for(const k in G.plan){
     const p = G.plan[k];
     if(p.t !== "camp" || k === glisse) continue;
-    const tous = RARETES[CAMP[p.k].r].boss, v = B ? B.vague : 0;
+    const tous = RARETES[CAMP[p.k].r].boss, v = B ? B.vague : vagueDepart() - 1;
     const present = B && (B.ennemis.some(e => e.boss && e.k === k) || B.file.some(f => f.boss && f.k === k));
     const texte = present ? "👑 BOSS" : "👑 " + (tous - v % tous);
     const pt = pointDe(k), [x, y] = versPx(pt.x, pt.y - .5);
@@ -839,8 +973,17 @@ function dessinerApercu(s){
   const p = glisse ? G.plan[glisse] : sel ? {t: sel.t, k: sel.k, r: rotation} : null;
   if(!p) return;
   const k = cle(survol.c, survol.l), pt = pointDe(k), [px, py] = versPx(pt.x - .5, pt.y - .5);
-  const ok = k !== cle(0, 0) && (glisse || (!G.plan[k] && !refusPose(sel.t, sel.k)));
+  const piege = !glisse && estPiege(sel);
+  const libre = piege ? G.plan[k] && G.plan[k].t === "chemin" && !G.plan[k].piege : !G.plan[k];
+  const ok = k !== cle(0, 0) && (glisse || (libre && !refusPose(sel.t, sel.k)));
   ctx.globalAlpha = .75;
+  if(piege){
+    poser(defTour(sel.k).emoji, px + s / 2, py + s / 2, s * .5);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = ok ? "#fff" : "#e8607a"; ctx.lineWidth = Math.max(2, s * .05);
+    ctx.strokeRect(px, py, s, s);
+    return;
+  }
   if(p.t === "chemin") dessinerChemin(p, px, py, s);
   else dessinerBatiment(p, px, py, s, false);
   ctx.globalAlpha = 1;
@@ -858,6 +1001,7 @@ function dessinerChemin(p, px, py, s){
     if(d === 1) ctx.fillRect(cx, cy - l / 2, s / 2 + 1, l);
     if(d === 3) ctx.fillRect(px, cy - l / 2, s / 2, l);
   });
+  if(p.piege) poser(defTour(p.piege).emoji, cx, cy, s * .46);
 }
 function dessinerCombat(s){
   for(const f of B.fx){
@@ -874,6 +1018,7 @@ function dessinerCombat(s){
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+  for(const m of B.mines){ const [x, y] = versPx(m.x, m.y); poser("🥏", x, y, s * .3); }
   for(const e of B.ennemis){
     if(!e.p && !e.x) continue;
     const [x, y] = versPx(e.x, e.y), t = s * (e.boss ? .8 : .46);
@@ -987,9 +1132,15 @@ let onglet = "tour", sel = null, cellSel = null, rotation = 0;
 function refusPose(t, k){
   if(restant(t, k) <= 0) return "Tu n'en as plus en réserve";
   if(t === "tour"){
+    const d = defTour(k);
+    if(d.piege){
+      if(placesPieges() >= ST.pieges) return `Limite de pièges atteinte (${ST.pieges})`;
+      return "";
+    }
     if(places("tour") >= ST.defenses) return `Limite de défenses atteinte (${ST.defenses})`;
-    const r = defTour(k).r, max = r === 6 ? 1 : r === 5 ? 3 : Infinity;
+    const r = d.r, max = r === 6 ? 1 : r === 5 ? 3 : Infinity;
     if(r >= 5 && placesRarete(r) >= max) return `${RARETES[r].nom} : ${max} au maximum sur le terrain`;
+    if(d.limite && Object.values(G.plan).filter(p => p.t === "tour" && defTour(p.k) === d).length >= d.limite) return `${d.nom} : ${d.limite} au maximum sur le terrain`;
   }
   if(t === "camp" && places("camp") >= ST.camps) return `Limite de camps atteinte (${ST.camps})`;
   return "";
@@ -1000,6 +1151,18 @@ function toucherCase(c){
   const k = cle(c.c, c.l);
   if(k === cle(0, 0)){ cellSel = null; dessinerPanneau(); return; }
   const dessus = G.plan[k];
+  if(estPiege(sel)){
+    if(!dessus || dessus.t !== "chemin"){ Base.toast("Un piège se pose sur un chemin"); return; }
+    if(!dessus.piege){
+      const refus = refusPose(sel.t, sel.k);
+      if(refus){ Base.toast(refus); return; }
+      dessus.piege = sel.k;
+      if(restant(sel.t, sel.k) <= 0) sel = null;
+      sauver();
+      dessinerPanneau();
+      return;
+    }
+  }
   if(dessus){ cellSel = k; sel = null; dessinerPanneau(); return; }
   if(!sel){ cellSel = null; dessinerPanneau(); return; }
   const refus = refusPose(sel.t, sel.k);
@@ -1041,7 +1204,7 @@ function tourner(k){
   dessinerPanneau();
 }
 function articles(){
-  if(onglet === "tour") return Object.keys(G.inv.tours).filter(k => G.inv.tours[k] > 0)
+  if(onglet === "tour" || onglet === "piege") return Object.keys(G.inv.tours).filter(k => G.inv.tours[k] > 0 && !defTour(k).piege === (onglet === "tour"))
     .sort((a, b) => defTour(b).r - defTour(a).r || niveauTour(b) - niveauTour(a)).map(k => ({t: "tour", k}));
   if(onglet === "camp") return Object.keys(G.inv.camps).filter(k => G.inv.camps[k] > 0)
     .sort((a, b) => CAMP[b].r - CAMP[a].r).map(k => ({t: "camp", k}));
@@ -1074,8 +1237,17 @@ function carteArticle(a){
 }
 function texteTour(k){
   const d = defTour(k), m = Math.pow(1.5, niveauTour(k)) * (1 + ST.degats);
-  const dps = d.rampe ? `${Math.round(d.rampe[0] * m)} à ${Math.round(d.rampe[1] * m)}` : nb(Math.round(d.dmg * d.cad * m * 10) / 10);
-  return `${RARETES[d.r].nom} · ${dps} DPS · portée ${d.portee} · ${d.arc < 360 ? "cône de " + d.arc + "°" : "360°"} — ${d.txt} · ${texteChance("tour", k)}`;
+  const dps = d.rampe ? `${nb(Math.round(d.rampe[0] * m))} à ${nb(Math.round(d.rampe[1] * m))}` : nb(Math.round(d.dmg * d.cad * m * 10) / 10);
+  const infos = [RARETES[d.r].nom];
+  if(d.piege){
+    infos.push("Piège de chemin");
+    if(d.dmg) infos.push(nb(Math.round(d.dmg * m)) + " dégâts");
+  }else{
+    if(d.mode !== "aura" && d.mode !== "silo") infos.push(dps + " DPS");
+    infos.push("portée " + (d.portee >= 99 ? "illimitée" : Math.round(porteeDe(d) * 10) / 10));
+    infos.push(d.arc < 360 ? "cône de " + d.arc + "°" : "360°");
+  }
+  return `${infos.join(" · ")} — ${d.txt} · ${texteChance("tour", k)}`;
 }
 /* Chance sur un boss, avec le meilleur camp posé (ou la Forêt s'il n'y en a aucun) */
 function texteChance(t, k){
@@ -1120,7 +1292,7 @@ function dessinerPanneau(){
 
   const pil = el("div", null, "pilules");
   pil.style.marginTop = "8px";
-  [["tour", `🗼 Tours ${places("tour")}/${ST.defenses}`], ["chemin", "🛤️ Chemins"], ["camp", `⛺ Camps ${places("camp")}/${ST.camps}`]].forEach(([k, t]) => {
+  [["tour", `🗼 Tours ${places("tour")}/${ST.defenses}`], ["piege", `🚧 Pièges ${placesPieges()}/${ST.pieges}`], ["chemin", "🛤️ Chemins"], ["camp", `⛺ Camps ${places("camp")}/${ST.camps}`]].forEach(([k, t]) => {
     const b = el("button", t); if(k === onglet) b.className = "on";
     b.onclick = () => { onglet = k; sel = null; dessinerPanneau(); };
     pil.appendChild(b);
@@ -1135,6 +1307,12 @@ function dessinerPanneau(){
       const b = el("button", "⟳ Tourner", "btn petit"); b.onclick = () => tourner(cellSel); i.appendChild(b);
     }
     const r = el("button", "Retirer", "btn ghost petit"); r.onclick = () => retirer(cellSel); i.appendChild(r);
+    if(a.piege){
+      i.appendChild(el("div", `${defTour(a.piege).emoji} ${nomDe("tour", a.piege)} : ${texteTour(a.piege)}`));
+      const rp = el("button", "Retirer le piège", "btn ghost petit");
+      rp.onclick = () => { delete a.piege; sauver(); dessinerPanneau(); };
+      i.appendChild(rp);
+    }
     p.appendChild(i);
   }else if(sel){
     const i = el("div", null, "td-info");
@@ -1156,13 +1334,25 @@ function dessinerPanneau(){
   const arts = articles();
   arts.forEach(a => liste.appendChild(carteArticle(a)));
   p.appendChild(liste);
-  if(onglet === "tour"){
+  if(onglet === "tour" || onglet === "piege"){
     const f = el("button", "✨ Tout fusionner (3 → +1)", "btn ghost petit");
     f.style.marginTop = "8px"; f.onclick = fusionnerTout;
     p.appendChild(f);
   }
   p.appendChild(el("div"));
   p.appendChild(boutonRelance());
+  if(ST.vagueDepart > 1){
+    const v = el("div", "Commencer à la vague :", "muted");
+    v.style.marginTop = "8px";
+    const pv = el("div", null, "pilules");
+    [1, 50, 100].filter(x => x <= ST.vagueDepart).forEach(x => {
+      const b = el("button", String(x)); if(x === vagueDepart()) b.className = "on";
+      b.onclick = () => { stock.ecrire("depart", x); dessinerPanneau(); };
+      pv.appendChild(b);
+    });
+    v.appendChild(pv);
+    p.appendChild(v);
+  }
 }
 function dessinerPanneauCombat(p){
   p.appendChild(el("h3", "⚔️ Combat"));
@@ -1229,7 +1419,41 @@ function toutDessiner(){ dessinerHaut(); dessinerPanneau(); dessinerMenu(); }
 
 /* ---------- Arbre des améliorations ---------- */
 let noeudSel = null;
-function ouvrirArbre(){ $("vueArbre").classList.remove("cache"); dessinerArbre(); }
+let zoomArbre = 1, arbreGlisse = null, arbreBouge = false;
+function ouvrirArbre(){
+  $("vueArbre").classList.remove("cache");
+  dessinerArbre();
+  /* on arrive centré sur le Départ */
+  const corps = $("corpsArbre"), z = corps.getBoundingClientRect(), d = document.querySelector(".td-hex.depart").getBoundingClientRect();
+  corps.scrollLeft += d.left + d.width / 2 - z.left - corps.clientWidth / 2;
+  corps.scrollTop += d.top + d.height / 2 - z.top - corps.clientHeight / 2;
+}
+/* Glisser pour se déplacer, molette pour zoomer (au doigt, le défilement natif suffit) */
+(function(){
+  const corps = $("corpsArbre");
+  corps.addEventListener("pointerdown", ev => {
+    arbreBouge = false;
+    if(ev.pointerType === "mouse") arbreGlisse = {x: ev.clientX, y: ev.clientY};
+  });
+  document.addEventListener("pointermove", ev => {
+    if(!arbreGlisse) return;
+    if(Math.hypot(ev.clientX - arbreGlisse.x, ev.clientY - arbreGlisse.y) > 4) arbreBouge = true;
+    if(!arbreBouge) return;
+    corps.scrollLeft -= ev.clientX - arbreGlisse.x;
+    corps.scrollTop -= ev.clientY - arbreGlisse.y;
+    arbreGlisse = {x: ev.clientX, y: ev.clientY};
+  });
+  document.addEventListener("pointerup", () => { arbreGlisse = null; });
+  corps.addEventListener("wheel", ev => {
+    ev.preventDefault();
+    const avant = zoomArbre;
+    zoomArbre = Math.min(1.6, Math.max(.45, zoomArbre * (ev.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    const r = corps.getBoundingClientRect(), mx = ev.clientX - r.left, my = ev.clientY - r.top, f = zoomArbre / avant;
+    $("arbre").style.zoom = zoomArbre;
+    corps.scrollLeft = (corps.scrollLeft + mx) * f - mx;
+    corps.scrollTop = (corps.scrollTop + my) * f - my;
+  }, {passive: false});
+})();
 function dessinerArbre(){
   const a = $("arbre");
   a.innerHTML = "";
@@ -1248,26 +1472,31 @@ function dessinerArbre(){
     const pris = G.achats[n.id], dispo = noeudDispo(n);
     const b = el("button", null, "td-hex " + (pris ? "pris" : dispo ? "dispo" : "loin"));
     if(noeudSel === n) b.classList.add("on");
-    b.append(el("b", n.emoji), document.createTextNode(n.nom));
+    b.style.setProperty("--c", n.couleur);
+    if(pris || dispo){
+      b.append(el("b", n.emoji), document.createTextNode(n.nom));
+      if(dispo) b.appendChild(el("i", nb(n.cout)));
+    }else b.appendChild(el("b", "?"));
     place(b, n.q, n.r);
-    b.onclick = () => { noeudSel = n; dessinerArbre(); };
+    b.onclick = () => { if(arbreBouge) return; noeudSel = n; dessinerArbre(); };
     a.appendChild(b);
   });
   $("arbreOr").textContent = "💰 " + nb(G.or);
 
   const s = $("arbreStats");
   s.innerHTML = "";
-  [["Dégâts", "+" + pc(ST.degats)], ["Cadence", "+" + pc(ST.cadence)], ["Terrain", `${ST.terrain} × ${ST.terrain}`], ["Château", ST.pv + " PV"], ["Défenses", ST.defenses], ["Camps", ST.camps],
-   ["Or", "+" + pc(ST.or)], ["Chance", "+" + pc(ST.chance)], ["Crit.", pc(ST.critC)], ["Dégâts crit.", "×" + ST.critD.toFixed(2)], ["Intérêts", pc(ST.interet)], ["Prime de boss", "+" + pc(ST.bossOr)]]
+  [["Dégâts", "+" + pc(ST.degats)], ["Cadence", "+" + pc(ST.cadence)], ["Terrain", `${ST.terrain} × ${ST.terrain}`], ["Château", ST.pv + " PV"], ["Défenses", ST.defenses], ["Pièges", ST.pieges], ["Camps", ST.camps],
+   ["Or", "+" + pc(ST.or)], ["Chance", "+" + pc(ST.chance)], ["Crit.", pc(ST.critC)], ["Dégâts crit.", "×" + ST.critD.toFixed(2)], ["Intérêts", pc(ST.interet)], ["Prime de boss", "+" + pc(ST.bossOr)], ["Vague de départ", ST.vagueDepart]]
    .forEach(([k, v]) => { const i = el("span", k + " "); i.appendChild(el("strong", String(v))); s.appendChild(i); });
 
   const bas = $("arbreBas");
   bas.innerHTML = "";
   if(!noeudSel){ bas.appendChild(el("span", "Touche un hexagone pour voir son effet. On débloque à partir du Départ.", "muted")); return; }
   const n = noeudSel, pris = G.achats[n.id];
+  if(!pris && !noeudDispo(n)){ bas.appendChild(el("span", "❓ Case à découvrir : achète une case voisine pour la révéler.", "muted")); return; }
   bas.appendChild(el("span", `${n.emoji} ${n.nom} : ${effetNoeud(n)}`));
-  const acheter = el("button", pris ? "Déjà acheté" : noeudDispo(n) ? `Acheter · 💰 ${nb(n.cout)}` : "Pas encore relié", "btn");
-  acheter.disabled = pris || !noeudDispo(n) || G.or < n.cout;
+  const acheter = el("button", pris ? "Déjà acheté" : `Acheter · 💰 ${nb(n.cout)}`, "btn");
+  acheter.disabled = pris || G.or < n.cout;
   acheter.onclick = () => {
     G.or -= n.cout; G.achats[n.id] = true;
     recalculer(); sauver(); dessinerArbre(); toutDessiner();
@@ -1277,8 +1506,52 @@ function dessinerArbre(){
 function effetNoeud(n){
   const p = v => "+" + Math.round(v * 1000) / 10 + " %";
   return {degats: p(n.val) + " de dégâts", cadence: p(n.val) + " de cadence", critC: p(n.val) + " de chance de critique", critD: p(n.val) + " de dégâts critiques",
-    pv: "+" + n.val + " PV au château", defenses: "+" + n.val + " défenses", terrain: "+" + n.val + " lignes et colonnes", camps: "+1 camp", or: p(n.val) + " d'or", chance: p(n.val) + " de chance",
-    interet: p(n.val) + " d'or à chaque vague", bossOr: p(n.val) + " d'or sur les boss", doubleButin: p(n.val) + " de chance de double butin", secondeVie: "Le château se relève une fois par combat"}[n.stat];
+    pv: "+" + n.val + " PV au château", defenses: "+" + n.val + " défenses", terrain: "+" + n.val + " lignes et colonnes", camps: "+" + n.val + " camp" + (n.val > 1 ? "s" : ""), or: p(n.val) + " d'or", chance: p(n.val) + " de chance",
+    interet: p(n.val) + " d'or à chaque vague", bossOr: p(n.val) + " d'or sur les boss", doubleButin: p(n.val) + " de chance de double butin", secondeVie: "Le château se relève une fois par combat",
+    pieges: "+" + n.val + " piège", brulure: p(n.val) + " de dégâts de brûlure", bossDeg: p(n.val) + " de dégâts aux boss", portee: p(n.val) + " de portée pour toutes les tours",
+    prefusion: p(n.val) + " de chance qu'une tour tombe déjà au niveau +1", vagueDepart: "Permet de commencer les combats à la vague " + n.val}[n.stat];
+}
+
+/* ---------- Index des tours ---------- */
+let rareteIndex = 0, tourIndex = null;
+const decouverte = d => Object.keys(G.inv.tours).some(k => defTour(k) === d);
+function ouvrirIndex(){ $("vueIndex").classList.remove("cache"); dessinerIndex(); }
+function dessinerIndex(){
+  const z = $("index");
+  z.innerHTML = "";
+  z.appendChild(el("p", `${TOURS.filter(decouverte).length} / ${TOURS.length} tours découvertes`, "td-compte"));
+  const pil = el("div", null, "pilules");
+  pil.style.justifyContent = "center";
+  RARETES.forEach((r, i) => {
+    const l = TOURS.filter(t => t.r === i);
+    const b = el("button", `${r.nom} ${l.filter(decouverte).length}/${l.length}`);
+    if(i === rareteIndex) b.className = "on";
+    b.onclick = () => { rareteIndex = i; tourIndex = null; dessinerIndex(); };
+    pil.appendChild(b);
+  });
+  z.appendChild(pil);
+  const liste = el("div", null, "td-liste");
+  liste.style.maxWidth = "760px"; liste.style.margin = "10px auto";
+  TOURS.filter(t => t.r === rareteIndex).forEach(t => {
+    const vu = decouverte(t), b = el("button", null, "td-item");
+    b.append(el("b", vu ? t.emoji : "❓"), document.createTextNode(vu ? t.nom : "???"));
+    b.style.borderColor = RARETES[t.r].couleur;
+    if(tourIndex === t) b.classList.add("on");
+    b.onclick = () => { tourIndex = t; dessinerIndex(); };
+    liste.appendChild(b);
+  });
+  z.appendChild(liste);
+  if(!tourIndex) return;
+  const t = tourIndex, i = el("div", null, "td-info");
+  i.style.maxWidth = "760px"; i.style.margin = "0 auto";
+  if(decouverte(t)){
+    i.appendChild(el("strong", `${t.emoji} ${t.nom}`));
+    i.appendChild(el("div", texteTour(t.id + ":0")));
+  }else{
+    i.appendChild(el("strong", "❓ Pas encore découverte"));
+    i.appendChild(el("div", `${RARETES[t.r].nom} · ${texteChance("tour", t.id + ":0")}`));
+  }
+  z.appendChild(i);
 }
 
 /* ---------- Boutique de camps ---------- */

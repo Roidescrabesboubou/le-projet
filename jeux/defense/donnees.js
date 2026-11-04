@@ -15,44 +15,100 @@ window.TD = (function(){
   ];
 
   /* dmg × cad = DPS. portee en cases. mode :
-     mono, zone (rayon), cone, chaine (n), continu (5 fois/s), champ (tous à portée), aura (ne tire pas) */
+     mono, zone (rayon), cone, chaine (n), ligne (traverse tout), continu (5 fois/s), champ (tous à portée),
+     mine (posée sur le trajet), silo (frappe tout le terrain), aura (ne tire pas).
+     piege : se pose sur un chemin et frappe ce qui passe sur la case.
+     Effets : ralentit, etourdit, brule, poison, recul (cases), vuln (dégâts reçus), execute (achève sous x % de PV),
+     pct (% des PV actuels par seconde, 3 paliers), de (dégâts au dé), double (aller-retour), limite (par terrain). */
   const TOURS = [
     {id: "arbalete", nom: "Arbalète", emoji: "🏹", r: 0, dmg: 10, cad: 1, portee: 3, mode: "mono", txt: "Une seule cible"},
     {id: "mitrailleuse", nom: "Mitrailleuse", emoji: "🔫", r: 0, dmg: 3, cad: 3, portee: 2.5, mode: "mono", txt: "Tir rapide, courte portée"},
     {id: "catapulte", nom: "Catapulte", emoji: "☄️", r: 0, dmg: 12, cad: .5, portee: 3.5, mode: "zone", rayon: .8, txt: "Petite zone"},
+    {id: "canon", nom: "Canon", emoji: "🧨", r: 0, dmg: 16, cad: .5, portee: 3, mode: "zone", rayon: .5, txt: "Boulet à très petite zone"},
+    {id: "harpon", nom: "Harpon", emoji: "🔱", r: 0, dmg: 20, cad: .4, portee: 4, mode: "mono", recul: 1, txt: "Ramène l'ennemi d'une case en arrière"},
+    {id: "barils", nom: "Barils explosifs", emoji: "🛢️", r: 0, dmg: 36, cad: .25, portee: 2, mode: "zone", rayon: 1.3, txt: "Grosse explosion, très lente, courte portée"},
+    {id: "baliste_p", nom: "Baliste perçante", emoji: "📍", r: 0, dmg: 18, cad: .5, portee: 4, mode: "ligne", txt: "Traverse tous les ennemis alignés"},
+    {id: "phare", nom: "Phare", emoji: "💡", r: 0, dmg: 0, cad: 0, portee: 2, mode: "aura", buffPortee: .2, txt: "+20 % de portée aux tours voisines"},
+    {id: "pointes", nom: "Barrière à pointes", emoji: "🌵", r: 0, dmg: 12, cad: 1, piege: true, txt: "Blesse tout ce qui passe sur la case"},
+    {id: "ours", nom: "Piège à ours", emoji: "🐻", r: 0, dmg: 30, cad: .25, etourdit: 1.5, piege: true, txt: "Immobilise 1,5 s, se réarme en 4 s"},
 
     {id: "baliste", nom: "Baliste", emoji: "🎯", r: 1, dmg: 60, cad: 1/3, portee: 6, mode: "mono", vise: "fort", txt: "Vise l'ennemi le plus résistant"},
     {id: "givre", nom: "Tour de givre", emoji: "❄️", r: 1, dmg: 6, cad: 1.5, portee: 3, mode: "mono", ralentit: {p: .2, d: 2}, txt: "Ralentit de 20 %"},
     {id: "bombarde", nom: "Bombarde", emoji: "💣", r: 1, dmg: 24, cad: .5, portee: 3.5, mode: "zone", rayon: 1.2, txt: "Zone moyenne"},
+    {id: "triple", nom: "Triple canon", emoji: "🎇", r: 1, dmg: 7, cad: 3, portee: 3, mode: "mono", txt: "Trois canons tirent à tour de rôle"},
+    {id: "guet", nom: "Tour de guet", emoji: "🔭", r: 1, dmg: 30, cad: .7, portee: 5, mode: "mono", txt: "Des mousquetaires qui voient loin"},
+    {id: "caserne_a", nom: "Caserne alliée", emoji: "🛡️", r: 1, dmg: 15, cad: 1.2, portee: 2, mode: "mono", etourdit: .3, txt: "Des soldats retiennent l'ennemi"},
+    {id: "goudron_l", nom: "Lance-goudron", emoji: "⚫", r: 1, dmg: 16, cad: .6, portee: 3.5, mode: "zone", rayon: 1, ralentit: {p: .25, d: 2}, txt: "Zone qui ralentit de 25 %"},
+    {id: "boomerang", nom: "Boomerang", emoji: "🌙", r: 1, dmg: 16, cad: .8, portee: 3.5, mode: "ligne", double: true, txt: "Touche à l'aller et au retour"},
+    {id: "marteau", nom: "Marteau à vapeur", emoji: "🔨", r: 1, dmg: 40, cad: .5, portee: 1.8, mode: "zone", rayon: 1, etourdit: .4, txt: "Écrase et étourdit au corps à corps"},
+    {id: "cloche", nom: "Cloche de guerre", emoji: "🔔", r: 1, dmg: 0, cad: 0, portee: 2, mode: "aura", buffCad: .1, txt: "+10 % de cadence aux tours voisines"},
+    {id: "mur", nom: "Mur de pierre", emoji: "🧱", r: 1, dmg: 0, cad: .25, etourdit: 1.2, piege: true, txt: "Bloque les ennemis 1,2 s toutes les 4 s"},
+    {id: "barbele", nom: "Fil barbelé", emoji: "🕸️", r: 1, dmg: 20, cad: 1, ralentit: {p: .3, d: 1.5}, piege: true, txt: "Blesse et ralentit de 30 %"},
 
     {id: "flammes", nom: "Lance-flammes", emoji: "🔥", r: 2, dmg: 6, cad: 4, portee: 2.5, mode: "cone", brule: {dps: 8, d: 2}, txt: "Cône, brûlure de 8 DPS"},
     {id: "arc", nom: "Arc électrique", emoji: "⚡", r: 2, dmg: 30, cad: 1, portee: 3.5, mode: "chaine", n: 3, txt: "Touche 3 ennemis à la chaîne"},
     {id: "poison", nom: "Tour à poison", emoji: "🧪", r: 2, dmg: 10, cad: 1, portee: 3.5, mode: "mono", poison: {dps: 7, max: 35, d: 4}, txt: "Poison cumulable, 35 DPS max"},
+    {id: "sniper", nom: "Sniper des collines", emoji: "🦅", r: 2, dmg: 220, cad: 1/3.5, portee: 9, mode: "mono", vise: "fort", txt: "Énormes dégâts, très longue portée, recharge lente"},
+    {id: "cristal", nom: "Cristal arcanique", emoji: "🔮", r: 2, dmg: 35, cad: 1.2, portee: 3.5, mode: "mono", vuln: {p: .1, d: 2}, txt: "La cible subit +10 % de dégâts"},
+    {id: "flak", nom: "Canon antiaérien", emoji: "🛩️", r: 2, dmg: 22, cad: 1.5, portee: 4.5, mode: "zone", rayon: .9, txt: "Explosions rapides en l'air"},
+    {id: "riveteuse", nom: "Riveteuse", emoji: "🔧", r: 2, dmg: 3, cad: 5, portee: 3, mode: "continu", rampe: [25, 70], txt: "Monte de 25 à 70 DPS sur la même cible"},
+    {id: "des", nom: "Tour de dés", emoji: "🎲", r: 2, dmg: 45, cad: 1, portee: 3.5, mode: "mono", de: true, txt: "Dégâts au hasard, jusqu'à près de ×2"},
+    {id: "broyeur", nom: "Broyeur", emoji: "⚙️", r: 2, dmg: 8, cad: 5, portee: 2, mode: "cone", brule: {dps: 6, d: 1}, txt: "Cône court qui déchiquette"},
+    {id: "tornade", nom: "Canon tornade", emoji: "🌪️", r: 2, dmg: 30, cad: .7, portee: 3.5, mode: "zone", rayon: 1.1, recul: .6, txt: "Repousse tout ce qui est dans la zone"},
+    {id: "choc", nom: "Plaque de choc", emoji: "🔌", r: 2, dmg: 60, cad: .5, etourdit: .5, piege: true, txt: "Décharge et étourdit toutes les 2 s"},
 
     {id: "laser", nom: "Laser", emoji: "🔴", r: 3, dmg: 12, cad: 5, portee: 4, mode: "continu", rampe: [60, 160], txt: "Monte de 60 à 160 DPS sur la même cible"},
     {id: "mortier", nom: "Mortier à fragments", emoji: "🎆", r: 3, dmg: 120, cad: .5, portee: 4.5, mode: "zone", rayon: 1.5, txt: "Grande zone et éclats"},
     {id: "comptoir", nom: "Comptoir", emoji: "🏦", r: 3, dmg: 20, cad: 1, portee: 2, mode: "mono", or: .1, txt: "+10 % d'or sur les ennemis à portée"},
     {id: "balise", nom: "Balise", emoji: "📡", r: 3, dmg: 0, cad: 0, portee: 1.5, mode: "aura", buffDeg: .2, txt: "+20 % de dégâts aux tours voisines"},
+    {id: "railgun", nom: "Railgun", emoji: "🔋", r: 3, dmg: 900, cad: 1/4.5, portee: 10, mode: "ligne", limite: 4, txt: "Se charge 4,5 s puis traverse toute la ligne. 4 max"},
+    {id: "gatling", nom: "Gatling", emoji: "💢", r: 3, dmg: 14, cad: 7, portee: 3.5, mode: "mono", txt: "Un déluge de balles"},
+    {id: "obusier", nom: "Obusier", emoji: "🚛", r: 3, dmg: 350, cad: .3, portee: 7, mode: "zone", rayon: 1.6, txt: "Très longue portée, grande zone"},
+    {id: "incinerateur", nom: "Incinérateur", emoji: "♨️", r: 3, dmg: 18, cad: 5, portee: 2.5, mode: "cone", brule: {dps: 40, d: 3}, txt: "Cône, brûlure de 40 DPS"},
+    {id: "mines", nom: "Lance-mines", emoji: "🥏", r: 3, dmg: 220, cad: .5, portee: 4, mode: "mine", rayon: 1.2, txt: "Sème des mines sur le trajet des ennemis"},
+    {id: "acide", nom: "Pulvérisateur d'acide", emoji: "🧴", r: 3, dmg: 12, cad: 5, portee: 3, mode: "cone", vuln: {p: .25, d: 2}, txt: "Les ennemis touchés subissent +25 % de dégâts"},
+    {id: "emp", nom: "Impulsion EMP", emoji: "📴", r: 3, dmg: 60, cad: .25, portee: 3, mode: "champ", etourdit: 1, txt: "Toutes les 4 s, étourdit tout ce qui est à portée"},
+    {id: "pistolero", nom: "Pistolero", emoji: "🤠", r: 3, dmg: 90, cad: 1, portee: 4, mode: "chaine", n: 2, crit: .3, txt: "Ricochet et +30 % de chance de critique"},
+    {id: "barricade", nom: "Barricade militaire", emoji: "🚧", r: 3, dmg: 40, cad: 1/3, etourdit: 2, piege: true, txt: "Bloque les ennemis 2 s toutes les 3 s"},
 
     {id: "missiles", nom: "Missile Battery", emoji: "🚀", r: 4, dmg: 300, cad: .5, portee: 5, mode: "zone", rayon: 1.8, txt: "Grande zone"},
     {id: "storm", nom: "Storm Coil", emoji: "🌩️", r: 4, dmg: 170, cad: 1, portee: 4, mode: "chaine", n: 5, etourdit: .3, txt: "Chaîne de 5, étourdit 0,3 s"},
     {id: "cryo", nom: "Cryo Beam", emoji: "🧊", r: 4, dmg: 24, cad: 5, portee: 4, mode: "continu", ralentit: {p: .4, d: .5}, gel: {tous: 5, d: 1}, txt: "Ralentit de 40 %, gèle 1 s toutes les 5 s"},
     {id: "ruche", nom: "Bee Hive", emoji: "🐝", r: 4, dmg: 50, cad: 5, portee: 4.5, mode: "mono", txt: "Des abeilles poursuivent les ennemis"},
-    {id: "ronin", nom: "Cyber Ronin", emoji: "⚔️", r: 4, dmg: 500, cad: .5, portee: 2, mode: "mono", crit: .25, txt: "+25 % de chance de critique"},
+    {id: "ronin", nom: "Cyber Ronin", emoji: "⚔️", r: 4, dmg: 400, cad: .9, portee: 2, mode: "mono", crit: .25, txt: "+25 % de chance de critique"},
     {id: "pince", nom: "Claw Machine", emoji: "🕹️", r: 4, dmg: 80, cad: 1, portee: 4, mode: "mono", retour: 8, txt: "Renvoie un ennemi au départ toutes les 8 s"},
+    {id: "mecha", nom: "Hangar à mechas", emoji: "🦾", r: 4, dmg: 300, cad: .9, portee: 3, mode: "mono", etourdit: .4, txt: "Un mecha cogne et étourdit"},
+    {id: "anubis", nom: "Balance d'Anubis", emoji: "⚖️", r: 4, dmg: 180, cad: 1.2, portee: 3.5, mode: "mono", execute: .2, txt: "Achève les ennemis sous 20 % de PV, sauf les boss"},
+    {id: "torii", nom: "Torii du dragon néon", emoji: "🎏", r: 4, dmg: 60, cad: 5, portee: 3.5, mode: "cone", brule: {dps: 60, d: 2}, txt: "Souffle néon, brûlure de 60 DPS"},
+    {id: "circuit", nom: "Circuit de course", emoji: "🏁", r: 4, dmg: 350, cad: .8, portee: 6, mode: "ligne", txt: "Des bolides traversent tout sur leur passage"},
+    {id: "bunker", nom: "Bunker secret", emoji: "🏢", r: 4, dmg: 600, cad: .5, portee: 5, mode: "zone", rayon: 1.5, camp: "base", txt: "Pilonnage lourd depuis un bunker"},
 
     {id: "dragon", nom: "Dragon", emoji: "🐉", r: 5, dmg: 140, cad: 5, portee: 5, mode: "cone", brule: {dps: 100, d: 3}, camp: "enfers", txt: "Grand cône, forte brûlure"},
     {id: "trounoir", nom: "Trou noir", emoji: "🕳️", r: 5, dmg: 80, cad: 5, portee: 3.5, mode: "champ", ralentit: {p: .5, d: .3}, camp: "colosse", txt: "Attire et ralentit tout ce qui est à portée"},
     {id: "horloge", nom: "Horloge", emoji: "🕰️", r: 5, dmg: 0, cad: 0, portee: 2, mode: "aura", buffCad: .3, txt: "+30 % de cadence aux tours à portée"},
+    {id: "plasma", nom: "Laser à plasma", emoji: "🔆", r: 5, dmg: 100, cad: 5, portee: 3, mode: "continu", pct: [.011, .022, .033], txt: "Brûle 1,1 puis 2,2 puis 3,3 % des PV actuels par seconde"},
+    {id: "sonique", nom: "Canon sonique", emoji: "📢", r: 5, dmg: 500, cad: 1.2, portee: 6, mode: "ligne", recul: .4, txt: "Onde qui traverse et repousse"},
+    {id: "kraken", nom: "Puits du Kraken", emoji: "🐙", r: 5, dmg: 120, cad: 5, portee: 3, mode: "champ", retour: 4, txt: "Blesse à portée, renvoie un ennemi au départ toutes les 4 s"},
+    {id: "alien", nom: "Liaison extraterrestre", emoji: "👽", r: 5, dmg: 1500, cad: .45, portee: 99, mode: "zone", rayon: 1, vise: "fort", txt: "Frappe orbitale n'importe où sur le terrain"},
+    {id: "reine", nom: "Reine des glaces", emoji: "👸", r: 5, dmg: 100, cad: 5, portee: 3.5, mode: "champ", ralentit: {p: .5, d: .5}, txt: "Blizzard : blesse et ralentit tout à portée"},
+    {id: "faille", nom: "Faille temporelle", emoji: "⏳", r: 5, dmg: 0, cad: 0, portee: 2.5, mode: "aura", buffCad: .2, buffDeg: .2, txt: "+20 % de cadence et de dégâts aux tours voisines"},
+    {id: "golem", nom: "Golem doré", emoji: "💎", r: 5, dmg: 800, cad: .8, portee: 2.5, mode: "mono", or: .5, txt: "+50 % d'or sur les ennemis à portée"},
+    {id: "titan", nom: "Titan de pierre", emoji: "🗻", r: 5, dmg: 1800, cad: .4, portee: 3, mode: "zone", rayon: 1.6, etourdit: .5, txt: "Fait trembler le sol et étourdit"},
+    {id: "oeil", nom: "Œil céleste", emoji: "👁️", r: 5, dmg: 900, cad: .8, portee: 99, mode: "ligne", txt: "Un rayon qui traverse tout le terrain"},
 
-    {id: "corrompu", nom: "Serveur corrompu", emoji: "🖥️", r: 6, dmg: 400, cad: 5, portee: 5, mode: "continu", infection: true, camp: "serveur", txt: "L'infection se propage et double l'or des infectés"}
+    {id: "corrompu", nom: "Serveur corrompu", emoji: "🖥️", r: 6, dmg: 400, cad: 5, portee: 5, mode: "continu", infection: true, camp: "serveur", txt: "L'infection se propage et double l'or des infectés"},
+    {id: "silo", nom: "Silo nucléaire", emoji: "☢️", r: 6, dmg: 0, cad: 1/180, charge: 180, portee: 99, mode: "silo", txt: "Toutes les 3 min : tue tout, boss à -50 % de PV, puis retombées pendant 60 s"}
   ];
 
   /* Angle de tir en degrés, centré sur l'orientation de la tour.
-     Les tours absentes de cette liste tirent à 360° (électricité, abeilles, champ, auras). */
-  const ARCS = {arbalete: 120, mitrailleuse: 120, catapulte: 120, baliste: 70, givre: 120, bombarde: 120,
-    flammes: 90, poison: 120, laser: 100, mortier: 120, comptoir: 120, missiles: 120, cryo: 90, ronin: 150,
-    pince: 120, dragon: 100, corrompu: 120};
+     Les tours absentes de cette liste tirent à 360° (électricité, abeilles, champ, auras, pièges). */
+  const ARCS = {arbalete: 120, mitrailleuse: 120, catapulte: 120, canon: 120, harpon: 90, barils: 150, baliste_p: 90,
+    baliste: 70, givre: 120, bombarde: 120, triple: 120, guet: 90, caserne_a: 180, goudron_l: 120, boomerang: 120, marteau: 180,
+    flammes: 90, poison: 120, sniper: 60, flak: 150, riveteuse: 100, broyeur: 90, tornade: 120,
+    laser: 100, mortier: 120, comptoir: 120, railgun: 40, gatling: 100, obusier: 90, incinerateur: 90, mines: 150, acide: 90,
+    missiles: 120, cryo: 90, ronin: 150, pince: 120, mecha: 180, torii: 110, circuit: 90, bunker: 120,
+    dragon: 100, plasma: 100, sonique: 90, golem: 180, titan: 180,
+    corrompu: 120};
   TOURS.forEach(t => { t.arc = ARCS[t.id] || 360; });
 
   /* ports : côtés ouverts sans rotation (0 haut, 1 droite, 2 bas, 3 gauche) */
@@ -94,31 +150,85 @@ window.TD = (function(){
     {id: "serveur",  nom: "Serveur corrompu",   emoji: "💾", r: 6, prix: 100000000, ennemi: "👾", mult: [2.1, 5.5, 11, 16, 30, 3.8], pitie: 180}
   ];
 
-  /* Arbre hexagonal : 6 secteurs de 10 nœuds, du centre vers l'extérieur
-     (1 nœud sur l'anneau 1, 2 sur le 2, 3 sur le 3, 4 sur le 4).
-     [nom, emoji, statistique, valeur] */
-  const n = (nom, emoji, stat, val) => ({nom, emoji, stat, val});
-  const deg = (s, v) => n("Dégâts " + s, "💥", "degats", v);
-  const cc = (s, v) => n("Chance crit. " + s, "🎯", "critC", v);
-  const cd = (s, v) => n("Dégâts crit. " + s, "🗡️", "critD", v);
-  const pv = (s, v) => n("PV château " + s, "❤️", "pv", v);
-  const def = (s, v) => n("Défenses " + s, "🏗️", "defenses", v);
-  const ter = s => n("Terrain " + s, "🗺️", "terrain", 2);
-  const cmp = s => n("Camps " + s, "⛺", "camps", 1);
-  const or = (s, v) => n("Or " + s, "💰", "or", v);
-  const ch = (s, v) => n("Chance " + s, "🍀", "chance", v);
-  const SECTEURS = [
-    [deg("I", .1), deg("II", .1), deg("III", .15), deg("IV", .15), deg("V", .2), deg("VI", .2), deg("VII", .3), deg("VIII", .3), deg("IX", .4), n("Cadence I", "⏩", "cadence", .1)],
-    [cc("I", .02), cd("I", .15), cc("II", .03), cd("II", .2), cc("III", .04), cd("III", .25), cc("IV", .05), cd("IV", .3), cc("V", .05), cd("V", .4)],
-    [pv("I", 50), pv("II", 50), pv("III", 100), pv("IV", 100), pv("V", 150), pv("VI", 200), pv("VII", 300), pv("VIII", 400), pv("IX", 500), n("Seconde vie", "💖", "secondeVie", 1)],
-    [def("I", 3), ter("I"), def("II", 4), def("III", 5), ter("II"), def("IV", 5), ter("III"), def("V", 5), ter("IV"), def("VI", 10)],
-    [cmp("I"), cmp("II"), n("Prime de boss I", "👑", "bossOr", .1), cmp("III"), cmp("IV"), n("Prime de boss II", "👑", "bossOr", .15), cmp("V"), cmp("VI"), cmp("VII"), cmp("VIII")],
-    [or("I", .1), ch("I", .1), or("II", .15), ch("II", .15), n("Intérêts I", "🏦", "interet", .001), ch("III", .25), or("III", .25), ch("IV", .4), n("Double butin", "🎁", "doubleButin", .05), n("Intérêts II", "🏦", "interet", .001)]
+  /* Arbre hexagonal : chaque lettre est une case, de gauche à droite.
+     [ligne (0 = celle du Départ), colonne de la première case (en demi-cases depuis le Départ), cases]
+     Minuscule : une famille de FAMILLES. Majuscule ou * : un nœud unique de SPECIAUX. Point : vide. */
+  const CARTE = [
+    [-9, -7, "kkkk...cc"],
+    [-8, -6, "kkkkcccc"],
+    [-7, -5, "kkkcccc"],
+    [-6, -4, "kkkcccJ"],
+    [-5, -5, "hkkcccdB"],
+    [-4, -8, "ShhkkccddNM"],
+    [-3, -11, "Hhhhhkccddd"],
+    [-2, -12, "Whhhhhkcdddd"],
+    [-1, -15, "LTbbbbhhcddddd"],
+    [0, -16, "Qfffffff*dddddAC"],
+    [1, -13, "ffffftolllluuzz"],
+    [2, -12, "fffttoollluuzzG"],
+    [3, -11, "fRtsooolluuz.P"],
+    [4, -8, "tsooooluuz"],
+    [5, -7, "sooooouuz"],
+    [6, -8, "sIUoooozz"],
+    [7, -9, "sV...XYZz"],
+    [8, 8, "E"],
+    [9, 7, "F"]
   ];
-  const COUT_ANNEAU = [60, 400, 3000, 30000];
+  /* Le prix d'une famille monte de ×raison à chaque nœud ; val est un gain fixe ou une liste, nœud par nœud */
+  const FAMILLES = {
+    d: {nom: "Dégâts", emoji: "💥", stat: "degats", val: .08, base: 50, raison: 2.2, couleur: "#c8434f"},
+    c: {nom: "Chance crit.", emoji: "🎯", stat: "critC", val: .02, base: 70, raison: 2, couleur: "#d97a2b"},
+    k: {nom: "Dégâts crit.", emoji: "🗡️", stat: "critD", val: .15, base: 100, raison: 2.1, couleur: "#d43f8d"},
+    h: {nom: "PV château", emoji: "❤️", stat: "pv", val: [50, 50, 100, 100, 150, 150, 200, 200, 250, 250, 300, 300, 350, 450], base: 40, raison: 2.6, couleur: "#2da58e"},
+    b: {nom: "Terrain", emoji: "🗺️", stat: "terrain", val: 2, base: 150, raison: 20, couleur: "#2f7fdd"},
+    f: {nom: "Défenses", emoji: "🏗️", stat: "defenses", val: [2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4], base: 60, raison: 2.5, couleur: "#8a4fd0"},
+    t: {nom: "Pièges", emoji: "🚧", stat: "pieges", val: 1, base: 500, raison: 40, couleur: "#8a7a6a"},
+    s: {nom: "Camps", emoji: "⛺", stat: "camps", val: [1, 2, 4, 5, 7], base: 200, raison: 12, couleur: "#a8622f"},
+    o: {nom: "Or", emoji: "💰", stat: "or", val: .08, base: 60, raison: 2.1, couleur: "#d9a227"},
+    l: {nom: "Chance", emoji: "🍀", stat: "chance", val: .05, base: 80, raison: 2, couleur: "#38a84d"},
+    u: {nom: "Super chance", emoji: "🍀", stat: "chance", val: .08, base: 50000, raison: 1.9, couleur: "#2b7fd6"},
+    z: {nom: "Ultra chance", emoji: "🍀", stat: "chance", val: .12, base: 20000000, raison: 1.5, couleur: "#c9a81f"}
+  };
+  const SPECIAUX = {
+    A: {nom: "Cadence I", emoji: "⏩", stat: "cadence", val: .1, cout: 1e8},
+    C: {nom: "Cadence II", emoji: "⏩", stat: "cadence", val: .15, cout: 1e9},
+    B: {nom: "Labo de brûlure I", emoji: "🧯", stat: "brulure", val: .5, cout: 2.5e8},
+    J: {nom: "Labo de brûlure II", emoji: "🧯", stat: "brulure", val: .5, cout: 2e9},
+    N: {nom: "Tueur de boss I", emoji: "👹", stat: "bossDeg", val: .25, cout: 2.5e8},
+    M: {nom: "Tueur de boss II", emoji: "👹", stat: "bossDeg", val: .25, cout: 2e9},
+    Q: {nom: "Long tir I", emoji: "🔭", stat: "portee", val: .1, cout: 2e8},
+    L: {nom: "Long tir II", emoji: "🔭", stat: "portee", val: .1, cout: 2e9},
+    T: {nom: "Terrain V", emoji: "🗺️", stat: "terrain", val: 2, cout: 1e9},
+    W: {nom: "Vague 50", emoji: "🚀", stat: "vagueDepart", val: 50, cout: 4e8},
+    H: {nom: "Vague 100", emoji: "🚀", stat: "vagueDepart", val: 100, cout: 1.36e9},
+    S: {nom: "Seconde vie", emoji: "💖", stat: "secondeVie", val: 1, cout: 1e10},
+    I: {nom: "Intérêts I", emoji: "🏦", stat: "interet", val: .001, cout: 2e7},
+    U: {nom: "Intérêts II", emoji: "🏦", stat: "interet", val: .001, cout: 1.94e9},
+    X: {nom: "Chasseur de primes I", emoji: "👑", stat: "bossOr", val: .05, cout: 3e7},
+    Y: {nom: "Chasseur de primes II", emoji: "👑", stat: "bossOr", val: .05, cout: 8.98e8},
+    Z: {nom: "Chasseur de primes III", emoji: "👑", stat: "bossOr", val: .1, cout: 5e9},
+    E: {nom: "Double butin I", emoji: "🎁", stat: "doubleButin", val: .05, cout: 1e9},
+    F: {nom: "Double butin II", emoji: "🎁", stat: "doubleButin", val: .05, cout: 5e9},
+    P: {nom: "Pré-fusion I", emoji: "✨", stat: "prefusion", val: .05, cout: 1e9},
+    R: {nom: "Arsenal", emoji: "🏗️", stat: "defenses", val: 5, cout: 5e8},
+    V: {nom: "Camps VI", emoji: "⛺", stat: "camps", val: 5, cout: 2e9},
+    G: {nom: "Trèfle d'or", emoji: "☘️", stat: "chance", val: .5, cout: 3e9}
+  };
 
   /* Patch note affiché par le bouton 📜 : la version la plus récente en premier */
   const PATCH_NOTES = [
+    {version: "v2", titre: "Le patch de la collection", lignes: [
+      "L'arbre d'améliorations passe à plus de 170 cases, avec de nouvelles familles : Super chance, Ultra chance, Pièges",
+      "Nouvelles améliorations uniques : Cadence, Labo de brûlure, Tueur de boss, Long tir, Double butin, Pré-fusion…",
+      "Les prix montent maintenant par paliers, des premières dizaines d'or jusqu'aux milliards",
+      "Les cases encore hors de portée sont cachées : à toi de les découvrir",
+      "L'or remonte plus vite dans les vagues hautes",
+      "Ton or dépensé dans l'ancien arbre t'est entièrement remboursé",
+      "De 23 à 71 tours : Railgun, Sniper, Pistolero, Balance d'Anubis, Laser à plasma, Silo nucléaire…",
+      "Les pièges arrivent : ils se posent directement sur les chemins",
+      "Avec Vague 50 et Vague 100, tu peux commencer un combat plus loin",
+      "Ajout de l'Index 📖 pour voir toutes les tours et tes chances de les obtenir"
+    ]},
     {version: "v1.2", titre: "Le patch du patch note", lignes: [
       "Ajout du patch note. Parce que c'est drôle."
     ]},
@@ -145,5 +255,5 @@ window.TD = (function(){
     ]}
   ];
 
-  return {RARETES, TOURS, FORMES, MATIERES, CAMPS, SECTEURS, COUT_ANNEAU, PATCH_NOTES};
+  return {RARETES, TOURS, FORMES, MATIERES, CAMPS, CARTE, FAMILLES, SPECIAUX, PATCH_NOTES};
 })();
