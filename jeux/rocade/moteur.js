@@ -63,17 +63,14 @@
     function libre(c){
       return !dehorsCarte(X(c),Y(c))&&sol[c]===HERBE&&!J.liens.has(c)&&!J.empreinte.has(c)&&dansZone(c);
     }
-    /* Une porte vise une case libre, pas au bord de la zone si possible */
-    function porteLibre(c, cases){
-      const opts = [];
-      for(const [dx,dy] of DIRS.slice(0,4)){
+    /* Un bâtiment doit garder au moins une case accessible autour de lui */
+    function accessible(c, cases){
+      return DIRS.slice(0,4).some(([dx,dy])=>{
         const x = X(c)+dx, y = Y(c)+dy;
-        if(dehorsCarte(x,y)) continue;
+        if(dehorsCarte(x,y)) return false;
         const v = id(x,y);
-        if(cases.includes(v)||!dansZone(v)||J.empreinte.has(v)||sol[v]===EAU||sol[v]===MONT) continue;
-        opts.push(v);
-      }
-      return opts.length?opts[r()*opts.length|0]:-1;
+        return !cases.includes(v)&&dansZone(v)&&!J.empreinte.has(v)&&sol[v]!==EAU&&sol[v]!==MONT;
+      });
     }
     /* Cherche une place près de "autour", en s'écartant peu à peu */
     function chercher(autour, taille){
@@ -85,23 +82,23 @@
         for(let j=0;j<taille;j++) for(let i=0;i<taille;i++) cases.push(id(x+i,y+j));
         if(!cases.every(libre)) continue;
         if(cases.some(c=>[...J.empreinte.keys()].some(e=>Math.hypot(X(e)-X(c),Y(e)-Y(c))<2.1))) continue;
-        const noeud = cases[r()*cases.length|0], porte = porteLibre(noeud,cases);
-        if(porte<0) continue;
-        return {cases,noeud,porte};
+        const noeud = cases[r()*cases.length|0];
+        if(!cases.some(c=>accessible(c,cases))) continue;
+        return {cases,noeud};
       }
       return null;
     }
     function ajouterMaison(couleur){
       const p = chercher(J.centres[couleur],1);
       if(!p) return null;
-      const m = {type:"maison", couleur, c:p.noeud, porte:p.porte, cases:p.cases, voitures:2, dehors:0, ne:J.temps};
+      const m = {type:"maison", couleur, c:p.noeud, cases:p.cases, voitures:2, dehors:0, ne:J.temps};
       J.batiments.set(m.c,m); p.cases.forEach(c=>J.empreinte.set(c,m)); J.maisons.push(m);
       return m;
     }
     function ajouterDest(couleur){
       const p = chercher(J.centres[couleur],2);
       if(!p) return null;
-      const d = {type:"dest", couleur, c:p.noeud, porte:p.porte, cases:p.cases, pins:0, reserves:0, danger:0, places:3, prochain:6+r()*5, ne:J.temps};
+      const d = {type:"dest", couleur, c:p.noeud, cases:p.cases, pins:0, reserves:0, danger:0, places:3, prochain:6+r()*5, ne:J.temps};
       J.batiments.set(d.c,d); p.cases.forEach(c=>J.empreinte.set(c,d)); J.dests.push(d);
       J.nbDests++;
       return d;
@@ -182,18 +179,21 @@
     }
     /* Vrai si c'est posé, sinon le texte qui explique le refus (ou "" si rien à dire) */
     function relier(a,b){
-      if(a===b) return "";
-      if(Math.max(Math.abs(X(a)-X(b)),Math.abs(Y(a)-Y(b)))!==1) return "";
-      if(J.liens.get(a)&&J.liens.get(a).has(b)) return true;
+      const ea = J.empreinte.get(a), eb = J.empreinte.get(b);
+      if(a===b||(ea&&eb)) return "";
+      // un bâtiment se branche par n'importe quel côté, sur son point d'entrée
+      const pres = (c,e) => e.cases.some(k=>Math.max(Math.abs(X(k)-X(c)),Math.abs(Y(k)-Y(c)))===1);
+      if(ea?!pres(b,ea):eb?!pres(a,eb):Math.max(Math.abs(X(a)-X(b)),Math.abs(Y(a)-Y(b)))!==1) return "";
+      const A = ea?ea.c:a, B = eb?eb.c:b;
+      if(J.liens.get(A)&&J.liens.get(A).has(B)) return true;
       if(!dansZone(a)||!dansZone(b)) return "";
-      for(const [p,q] of [[a,b],[b,a]]){
-        const e = J.empreinte.get(p);
-        if(e&&(e.c!==p||e.porte!==q)) return "";
-      }
-      if(croise(a,b)) return "";
-      poser(a,b,"r");
+      if(!ea&&!eb&&croise(a,b)) return "";
+      // une seule route par destination : c'est ce qui crée les files d'attente
+      const dest = [ea,eb].find(e=>e&&e.type==="dest");
+      if(dest&&J.liens.has(dest.c)) return "Cette destination a déjà sa route : branche-toi dessus.";
+      poser(A,B,"r");
       const u = compter(), refus = depasse(u);
-      if(refus){retirer(a,b);return refus}
+      if(refus){retirer(A,B);return refus}
       J.utilise = u; J.sale = true;
       return true;
     }

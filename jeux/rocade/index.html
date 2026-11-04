@@ -74,7 +74,7 @@ const COULEURS=["#d8432f","#2b78d0","#e8a20c","#8a4fd0","#0f9d8e","#d0468f"];
 Base.entete({titre:"Rocade",emoji:"🛣️",
   aide:`<p>Chaque destination réclame des voitures de sa couleur. Relie-la aux maisons de la même couleur : les voitures font le trajet toutes seules.</p>
   <ul>
-    <li><b>Route</b> : glisse pour tracer, en droite ou en diagonale. Un bâtiment se branche uniquement par sa porte, le petit trait gris.</li>
+    <li><b>Route</b> : glisse pour tracer, la route suit ton geste, diagonales comprises. Un bâtiment se branche par n'importe quel côté, et une destination n'accepte qu'une route.</li>
     <li><b>Gomme</b> ou clic droit : efface et rend ce qui était posé.</li>
     <li><b>Pont</b> et <b>tunnel</b> : ils se posent tout seuls quand ta route touche l'eau ou un relief (6 cases au plus).</li>
     <li><b>Carrefour</b> : dès que 3 routes se croisent, une seule voiture passe à la fois. Ça bouchonne vite !</li>
@@ -128,7 +128,7 @@ function afficherMenu(){
 
 /* ---------- Partie ---------- */
 const cv=$("scene"),ctx=cv.getContext("2d");
-let J=null,fond=null,outil="route",pause=false,vite=false,dernier=0,geste=null,fenetreOuverte=false,finAffichee=false;
+let J=null,fond=null,outil="route",pause=false,vite=false,dernier=0,geste=null,survol=-1,fenetreOuverte=false,finAffichee=false;
 let vue={x:0,y:0,w:L,h:H},W=800,Hc=500,portrait=false,ech=20,ox=0,oy=0;
 const OUTILS=[
   {id:"route",nom:"Route",e:"🛣️",k:"routes"},
@@ -226,50 +226,53 @@ function caseSous(e){
 
 /* ---------- Tracé ---------- */
 function refus(t){if(typeof t==="string"&&t)Base.toast(t)}
-function pas(cur,c){
-  const dx=X(c)-X(cur),dy=Y(c)-Y(cur),ax=Math.abs(dx),ay=Math.abs(dy);
-  const sx=ax>=ay*2?Math.sign(dx):ay>=ax*2?0:Math.sign(dx);
-  const sy=ay>=ax*2?Math.sign(dy):ax>=ay*2?0:Math.sign(dy);
-  return idCase(X(cur)+sx,Y(cur)+sy);
-}
-/* Vers un bâtiment, la route contourne les obstacles pour rejoindre sa porte */
-function contourner(de,vers){
-  const av=new Map([[de,-1]]),f=[de];
-  for(let i=0;i<f.length;i++){
-    const c=f[i];
-    if(c===vers){const p=[];let k=c;while(k!==-1){p.push(k);k=av.get(k)}return p.reverse()}
-    for(const[dx,dy]of J.DIRS){
-      const x=X(c)+dx,y=Y(c)+dy;
-      if(x<0||y<0||x>=L||y>=H)continue;
-      const v=idCase(x,y);
-      if(av.has(v)||!J.dansZone(v)||J.empreinte.has(v))continue;
-      if((J.sol[v]===J.EAU||J.sol[v]===J.MONT)&&!J.liens.has(v))continue;
-      av.set(v,c);f.push(v);
-    }
+const cheb=(a,b)=>Math.max(Math.abs(X(a)-X(b)),Math.abs(Y(a)-Y(b)));
+const casesDe=c=>{const e=J.empreinte.get(c);return e?e.cases:[c]};
+/* Pose un tronçon. Si deux diagonales se croiseraient, on passe par le coin */
+function lier(a,b){
+  const r=J.relier(a,b);
+  if(r!==""||J.empreinte.has(a)||J.empreinte.has(b)||X(a)===X(b)||Y(a)===Y(b))return r;
+  for(const o of[idCase(X(b),Y(a)),idCase(X(a),Y(b))]){
+    if(J.empreinte.has(o)||J.relier(a,o)!==true)continue;
+    return J.relier(o,b);
   }
-  return null;
+  return r;
 }
+/* La route rejoint la case visée en ligne droite, depuis la dernière case posée */
 function tracerVers(c){
+  const cible=J.empreinte.get(c),visees=casesDe(c);
   let cur=geste.dernier;
-  const cible=J.empreinte.get(c);
-  const but=cible?cible.porte:c;
-  const depart=J.batiments.get(cur);
-  if(depart&&cur!==but){
-    const r=J.relier(cur,depart.porte);
-    if(r!==true){refus(r);return}
-    cur=depart.porte;
-  }
-  const detour=cible&&contourner(cur,but);
-  while(cur!==but){
-    const s=detour?detour[detour.indexOf(cur)+1]:pas(cur,but),r=J.relier(cur,s);
+  if(cible&&cible===J.empreinte.get(cur))return;
+  for(;;){
+    const depuis=casesDe(cur);
+    if(depuis.some(a=>visees.some(b=>cheb(a,b)===1))){
+      const r=lier(cur,cible?cible.c:c);
+      if(r===true)cur=cible?cible.c:c;else refus(r);
+      break;
+    }
+    const base=depuis.reduce((m,a)=>cheb(a,c)<cheb(m,c)?a:m);
+    const s=idCase(X(base)+Math.sign(X(c)-X(base)),Y(base)+Math.sign(Y(c)-Y(base)));
+    if(J.empreinte.has(s))break;
+    const r=lier(cur,s);
     if(r!==true){refus(r);break}
     cur=s;
   }
-  if(cur===but&&cible&&cible!==depart){
-    const r=J.relier(cur,cible.c);
-    if(r===true)cur=cible.c;else refus(r);
-  }
   geste.dernier=cur;
+}
+/* On suit tout le trajet du pointeur, même rapide. Une case ne compte que si on passe
+   près de son centre : aller en diagonale fait une diagonale, pas un escalier. */
+const RAYON=.42;
+function suivre(x,y){
+  const[px,py]=geste.pos,n=Math.max(1,Math.ceil(Math.hypot(x-px,y-py)/.1));
+  for(let i=1;i<=n;i++){
+    const a=px+(x-px)*i/n,b=py+(y-py)*i/n,u=Math.floor(a),v=Math.floor(b);
+    if(u<0||v<0||u>=L||v>=H)continue;
+    const c=idCase(u,v);
+    if(geste.outil==="gomme"){if(c!==geste.dernier){J.effacer(c);geste.dernier=c}continue}
+    if(c===geste.dernier)continue;
+    if(J.empreinte.has(c)||Math.hypot(a-u-.5,b-v-.5)<RAYON)tracerVers(c);
+  }
+  geste.pos=[x,y];
 }
 cv.addEventListener("pointerdown",e=>{
   e.preventDefault();
@@ -279,18 +282,22 @@ cv.addEventListener("pointerdown",e=>{
   const t=e.button===2?"gomme":outil;
   if(t==="rond"||t==="feu"){refus(J.jonction(c,t));return}
   const b=J.empreinte.get(c);
-  geste={outil:t,dernier:b?b.c:c,debut:c,fin:c};
+  // partir d'une destination déjà reliée, c'est prolonger sa route
+  const depart=b&&b.type==="dest"&&t==="route"&&J.liens.has(b.c)?[...J.liens.get(b.c).keys()][0]:b?b.c:c;
+  geste={outil:t,dernier:depart,debut:c,fin:c,pos:monde(e)};
   if(t==="gomme")J.effacer(c);
 });
 cv.addEventListener("pointermove",e=>{
-  if(!geste||!J||J.fini)return;
+  if(!J||J.fini)return;
+  survol=e.pointerType==="touch"?-1:caseSous(e);
+  if(!geste)return;
   const c=caseSous(e);
-  if(c<0)return;
-  geste.fin=c;
+  if(c>=0)geste.fin=c;
   if(geste.outil==="autoroute")return;
-  if(geste.outil==="gomme"){if(c!==geste.dernier){J.effacer(c);geste.dernier=c}return}
-  if(c!==geste.dernier&&J.empreinte.get(c)!==J.batiments.get(geste.dernier))tracerVers(c);
+  const[x,y]=monde(e);
+  suivre(x,y);
 });
+cv.addEventListener("pointerleave",()=>{survol=-1});
 function lacherGeste(){
   if(geste&&geste.outil==="autoroute"&&J&&geste.debut!==geste.fin)refus(J.autoroute(geste.debut,geste.fin));
   geste=null;
@@ -348,13 +355,26 @@ function dessinerAutoroutes(){
     ctx.moveTo(cx(geste.debut),cy(geste.debut));ctx.lineTo(cx(geste.fin),cy(geste.fin));ctx.stroke();
   }
 }
-function dessinerPorte(b){
-  ctx.strokeStyle=J.liens.has(b.c)?"#4d525c":"#8b8f97";ctx.lineWidth=.3;ctx.lineCap="round";ctx.beginPath();
-  ctx.moveTo(cx(b.c),cy(b.c));ctx.lineTo(cx(b.c)+(X(b.porte)-X(b.c))*.72,cy(b.c)+(Y(b.porte)-Y(b.c))*.72);ctx.stroke();
+/* Repères de tracé : grille pendant le geste, case visée, point de départ de la route */
+function dessinerReperes(){
+  const z=J.zone;
+  if(geste&&geste.outil!=="gomme"){
+    ctx.strokeStyle="rgba(30,35,50,.13)";ctx.lineWidth=.03;ctx.beginPath();
+    for(let x=z.x1;x<=z.x2+1;x++){ctx.moveTo(x,z.y1);ctx.lineTo(x,z.y2+1)}
+    for(let y=z.y1;y<=z.y2+1;y++){ctx.moveTo(z.x1,y);ctx.lineTo(z.x2+1,y)}
+    ctx.stroke();
+  }
+  if(survol>=0&&J.dansZone(survol)&&!geste){
+    ctx.fillStyle=outil==="gomme"?"rgba(216,50,40,.28)":"rgba(255,255,255,.34)";
+    for(const c of casesDe(survol))ctx.fillRect(X(c),Y(c),1,1);
+  }
+  if(geste&&geste.outil==="route"){
+    const c=geste.dernier;
+    ctx.strokeStyle="#fff";ctx.lineWidth=.08;ctx.beginPath();ctx.arc(cx(c),cy(c),.3,0,7);ctx.stroke();
+  }
 }
 function apparition(b){return Math.min(1,(J.temps-b.ne)*4+.01)}
 function dessinerMaison(m){
-  dessinerPorte(m);
   const x=cx(m.c),y=cy(m.c),e=apparition(m)*.42,c=COULEURS[m.couleur];
   ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x-e,y-e,e*2,e*2,.1);ctx.fill();
   ctx.fillStyle="rgba(0,0,0,.2)";ctx.beginPath();ctx.moveTo(x-e,y);ctx.lineTo(x,y-e);ctx.lineTo(x+e,y);ctx.lineTo(x+e,y+e);ctx.lineTo(x-e,y+e);ctx.closePath();ctx.fill();
@@ -362,7 +382,6 @@ function dessinerMaison(m){
   for(let i=0;i<l;i++)rond(x+(i-(l-1)/2)*.26,y+.14,.08,"#fff");
 }
 function dessinerDest(d){
-  dessinerPorte(d);
   const xs=d.cases.map(X),ys=d.cases.map(Y),x1=Math.min(...xs),y1=Math.min(...ys),a=apparition(d);
   const mx=x1+1,my=y1+1,c=COULEURS[d.couleur];
   ctx.save();ctx.translate(mx,my);ctx.scale(a,a);
@@ -399,10 +418,11 @@ function dessiner(){
   ctx.translate(ox,oy);ctx.scale(ech,ech);
   ctx.drawImage(fond,0,0,L,H);
   dessinerRoutes();
+  J.voitures.forEach(dessinerVoiture);
   J.maisons.forEach(dessinerMaison);
   J.dests.forEach(dessinerDest);
-  J.voitures.forEach(dessinerVoiture);
   dessinerAutoroutes();
+  dessinerReperes();
   // hors de la zone constructible, la carte reste visible mais voilée
   const z=J.zone;
   ctx.fillStyle="rgba(30,32,40,.45)";ctx.beginPath();ctx.rect(-2,-2,L+4,H+4);ctx.rect(z.x1,z.y1,z.x2-z.x1+1,z.y2-z.y1+1);ctx.fill("evenodd");
