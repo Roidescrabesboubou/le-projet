@@ -181,6 +181,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "sudoku",
+    title: "Sudoku du jour",
+    emoji: "🔢",
+    desc: "Une grille de sudoku par jour, la même pour tout le monde : facile en début de semaine, difficile le week-end. Notes, indices, chrono et séries de jours. Plus des grilles libres à volonté en 3 niveaux.",
+    tags: ["Réflexion", "Quotidien", "Solo"],
+    colors: ["#7fa3f0", "#f2a55a"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "connexions",
     title: "Connexions",
     emoji: "🔗",
