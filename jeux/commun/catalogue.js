@@ -290,12 +290,12 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
-    slug: "sentiers",
-    title: "Sentiers",
-    emoji: "🐾",
-    desc: "Trace des sentiers dans la forêt pour relier les terriers aux arbres fruitiers de leur couleur, avant qu'un arbre ne déborde. Plus la partie avance, plus ça bouchonne !",
+    slug: "rocade",
+    title: "Rocade",
+    emoji: "🛣️",
+    desc: "Trace le réseau routier de Paris, New York, Las Vegas, Londres, Tokyo ou Venise : ponts, tunnels, ronds-points, feux et autoroutes. La ville grandit chaque semaine, jusqu'à la paralysie !",
     tags: ["Réflexion", "Solo"],
-    colors: ["#7fb85a", "#c9853e"],
+    colors: ["#5b8fd0", "#e2783c"],
     etat: "dispo",
     badge: "Nouveau"
   },
