@@ -117,5 +117,33 @@ window.TD = (function(){
   ];
   const COUT_ANNEAU = [60, 400, 3000, 30000];
 
-  return {RARETES, TOURS, FORMES, MATIERES, CAMPS, SECTEURS, COUT_ANNEAU};
+  /* Patch note affiché par le bouton 📜 : la version la plus récente en premier */
+  const PATCH_NOTES = [
+    {version: "v1.2", titre: "Le patch du patch note", lignes: [
+      "Ajout du patch note. Parce que c'est drôle."
+    ]},
+    {version: "v1.1", titre: "Le patch des plaintes", lignes: [
+      "Classement de la meilleure vague : semaine, depuis toujours et sur ton appareil",
+      "Les bâtiments se déplacent en les glissant, fini le retirer puis replacer",
+      "Aperçu en temps réel de ce que tu places, avec sa zone de tir",
+      "La plupart des tours tirent maintenant en cône : pense à bien les orienter",
+      "Compte à rebours du boss au-dessus de chaque camp",
+      "La chance d'obtenir une tour ou un chemin s'affiche quand tu cliques dessus",
+      "Relance auto pour farmer quand le château tombe",
+      "Plus aucun chemin illimité : tout se droppe, croisements compris",
+      "Les boss ont moins de PV, pour compenser les cônes"
+    ]},
+    {version: "v1", titre: "La sortie", lignes: [
+      "Construis ton terrain : camps, chemins et tours, tous reliés au château",
+      "Vagues d'ennemis, boss et or à gagner selon le camp",
+      "Chaque boss tué fait un tirage : une tour ou un chemin, du commun au secret",
+      "23 tours à collectionner et à fusionner",
+      "Chemins de 9 matières, dont le miel, le slime et le goudron qui ralentissent",
+      "Arbre d'améliorations : terrain, dégâts, critiques, chance, or et plus encore",
+      "Boutique de 15 camps, renouvelée toutes les 2 minutes",
+      "Sauvegarde sur ton compte"
+    ]}
+  ];
+
+  return {RARETES, TOURS, FORMES, MATIERES, CAMPS, SECTEURS, COUT_ANNEAU, PATCH_NOTES};
 })();

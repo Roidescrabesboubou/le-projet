@@ -51,6 +51,8 @@
 .td-camp strong{display:block;font-size:.95rem}
 .td-camp .btn{width:100%;margin-top:6px}
 .td-butin{font-size:.82rem;margin:3px 0}
+.td-note{margin:12px 0 2px;font-size:1rem}
+dialog.b-fen .td-note + ul{margin:0;font-size:.9rem}
 .td-classement{list-style:none;margin:6px 0 0;padding:0}
 .td-classement li{display:flex;justify-content:space-between;gap:10px;padding:5px 10px;border-radius:9px}
 .td-classement li:nth-child(odd){background:var(--soft)}
@@ -116,10 +118,23 @@ bClassement.onclick = () => {
   Classement.tableau(zone, optionsClassement());
 };
 
+const bPatch = el("button", "📜", "b-ico");
+bPatch.title = "Patch note";
+bPatch.onclick = () => {
+  const c = el("div");
+  TD.PATCH_NOTES.forEach(n => {
+    c.appendChild(el("h3", `${n.version} : ${n.titre}`, "td-note"));
+    const ul = el("ul");
+    n.lignes.forEach(l => ul.appendChild(el("li", l)));
+    c.appendChild(ul);
+  });
+  Base.fenetre("📜 Patch note", c, {bouton: "Fermer"});
+};
+
 Base.entete({
   titre: "Défense du Château",
   emoji: "🏰",
-  boutons: [bClassement],
+  boutons: [bPatch, bClassement],
   aide: `<p>Protège le château des vagues d'ennemis et agrandis ton royaume.</p>
     <ul>
       <li><b>Construire</b> : relie chaque camp au château avec des chemins, puis place tes tours à côté et oriente-les : la plupart ne tirent que dans un cône. Glisse un élément posé pour le déplacer.</li>
