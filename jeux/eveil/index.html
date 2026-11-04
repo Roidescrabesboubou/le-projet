@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Éveil</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#e4572e;--fond1:rgba(228,87,46,.14);--fond2:rgba(242,193,78,.12);--aura:#e4572e}
+.b-page{max-width:1080px}
+.jeu{display:grid;grid-template-columns:minmax(280px,5fr) minmax(320px,6fr);gap:14px;width:100%}
+.colonne{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* ---------- Le héros ---------- */
+.heros{text-align:center;position:sticky;top:10px;z-index:5;overflow:hidden}
+.rang{font-family:Fredoka,sans-serif;font-size:1.05rem;margin:0}
+.jauge{height:7px;border-radius:99px;background:var(--soft);margin:6px auto 10px;max-width:260px;overflow:hidden}
+.jauge i{display:block;height:100%;width:0;background:var(--aura);transition:width .2s}
+.puissance{font-family:Fredoka,sans-serif;font-size:2rem;line-height:1.15;margin:0;overflow-wrap:anywhere}
+.parsec{margin:2px 0 12px;color:var(--muted);font-weight:700;font-size:.92rem}
+.frappe{width:190px;height:190px;border-radius:50%;border:0;font-size:5.4rem;line-height:1;
+  background:radial-gradient(circle,color-mix(in srgb,var(--aura) 34%,var(--card)) 0%,var(--card) 72%);
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--aura) 55%,transparent),0 0 34px color-mix(in srgb,var(--aura) 60%,transparent);
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  transition:transform .07s;animation:souffle 2.6s ease-in-out infinite}
+.frappe.tape{transform:scale(.93)}
+.frappe:focus-visible{outline:3px solid var(--text);outline-offset:6px}
+@keyframes souffle{50%{box-shadow:0 0 0 9px color-mix(in srgb,var(--aura) 32%,transparent),0 0 52px color-mix(in srgb,var(--aura) 72%,transparent)}}
+.parclic{margin:12px 0 0;color:var(--muted);font-size:.88rem;font-weight:700}
+.effets{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;min-height:0}
+.effets span{background:var(--aura);color:#fff;font-weight:800;font-size:.84rem;border-radius:99px;padding:3px 11px;margin-top:8px}
+.volant{position:fixed;pointer-events:none;z-index:20;font-family:Fredoka,sans-serif;font-size:1.25rem;color:var(--aura);
+  text-shadow:0 1px 2px rgba(0,0,0,.28);transform:translate(-50%,-50%);animation:monte .8s ease-out forwards;white-space:nowrap}
+@keyframes monte{to{transform:translate(-50%,-70px);opacity:0}}
+
+/* ---------- Le rival ---------- */
+.rival{position:fixed;z-index:30;width:78px;height:78px;border-radius:50%;border:3px solid #fff;background:#f2c14e;font-size:2.6rem;line-height:1;
+  box-shadow:0 0 26px #f2c14e;touch-action:manipulation;animation:defi .7s ease-in-out infinite alternate}
+@keyframes defi{to{transform:scale(1.13) rotate(7deg)}}
+
+/* ---------- Boutique ---------- */
+.b-carte h2{margin:0 0 10px;font-size:1.15rem}
+.titre-ligne{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.titre-ligne h2{margin:0}
+.pilules button{padding:4px 11px;font-size:.84rem}
+.liste{display:flex;flex-direction:column;gap:6px}
+.ligne{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);touch-action:manipulation}
+.ligne:not(:disabled):hover{border-color:var(--accent)}
+.ligne:not(:disabled):active{transform:scale(.985)}
+.ligne:disabled{cursor:default}
+.ligne:disabled .prix{color:var(--ko)}
+.ligne .ico{font-size:1.65rem;width:36px;text-align:center;flex:none}
+.ligne .txt{flex:1;min-width:0}
+.ligne b{display:block;line-height:1.2}
+.ligne small{display:block;color:var(--muted);font-size:.8rem;line-height:1.25}
+.ligne .prix{font-weight:800;font-size:.86rem;color:var(--ok);display:block}
+.ligne .nb{font-family:Fredoka,sans-serif;font-size:1.5rem;color:var(--muted);flex:none;padding-left:4px}
+.ligne.mystere{opacity:.55}
+.voir{margin-top:8px;width:100%}
+.sceaux p{margin:0 0 10px}
+
+@media (max-width:760px){
+  .jeu{grid-template-columns:minmax(0,1fr)}
+  .colonne:first-child{display:contents}
+  .heros{top:0;padding:10px 12px 12px}
+  .puissance{font-size:1.55rem}
+  .parsec{margin-bottom:8px}
+  .jauge{margin:4px auto 6px}
+  .frappe{width:124px;height:124px;font-size:3.5rem}
+  .parclic{margin-top:8px}
+}
+@media (max-width:760px) and (max-height:720px){
+  .frappe{width:92px;height:92px;font-size:2.6rem}
+  .parclic{display:none}
+}
+@media (prefers-reduced-motion:reduce){.frappe,.rival{animation:none}}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="jeu">
+    <div class="colonne">
+      <section class="b-carte heros">
+        <p class="rang" id="rang"></p>
+        <div class="jauge"><i id="jauge"></i></div>
+        <p class="puissance"><span id="puissance">0</span> ⚡</p>
+        <p class="parsec"><span id="parsec">0</span> par seconde</p>
+        <button class="frappe" id="frappe" aria-label="Frapper pour gagner de la puissance"></button>
+        <div class="effets" id="effets"></div>
+        <p class="parclic">+<span id="parclic">1</span> par frappe</p>
+      </section>
+    </div>
+    <div class="colonne">
+      <section class="b-carte cache" id="carteTech">
+        <h2>📜 Techniques</h2>
+        <div class="liste" id="techniques"></div>
+        <button class="btn ghost petit voir cache" id="voirTech"></button>
+      </section>
+      <section class="b-carte">
+        <div class="titre-ligne">
+          <h2>🏋️ Entraînements</h2>
+          <div class="pilules" id="modes"></div>
+        </div>
+        <div class="liste" id="entrainements"></div>
+      </section>
+      <section class="b-carte sceaux cache" id="carteSceaux">
+        <h2>🌌 Transcendance</h2>
+        <p id="texteSceaux"></p>
+        <button class="btn" id="transcender"></button>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("eveil_");
+
+/* ---------- Données ---------- */
+const ENTRAINEMENTS = [
+  {id: "pompes",    nom: "Pompes",              ico: "💪", cout: 15,     prod: 0.1,  txt: "Une, deux. Une, deux."},
+  {id: "sac",       nom: "Sac de frappe",       ico: "🥊", cout: 110,    prod: 1,    txt: "Il ne rend pas les coups. Pour l'instant."},
+  {id: "poids",     nom: "Poids aux chevilles", ico: "🏋️", cout: 1200,   prod: 8,    txt: "À ne retirer que pour un combat décisif."},
+  {id: "sensei",    nom: "Vieux maître",        ico: "🧓", cout: 13000,  prod: 50,   txt: "Il dort beaucoup, mais il voit tout."},
+  {id: "dojo",      nom: "Dojo",                ico: "🏯", cout: 140000, prod: 270,  txt: "Tout un toit pour transpirer."},
+  {id: "cascade",   nom: "Cascade glacée",      ico: "🌊", cout: 1.5e6,  prod: 1500, txt: "Méditer dessous forge l'esprit. Et le rhume."},
+  {id: "gravite",   nom: "Salle de gravité",    ico: "🌀", cout: 2.2e7,  prod: 8000, txt: "Se lever du lit devient un exploit."},
+  {id: "clones",    nom: "Clones d'ombre",      ico: "👥", cout: 3.5e8,  prod: 45000, txt: "Ils s'entraînent, tu récupères leur progrès."},
+  {id: "montagne",  nom: "Montagne sacrée",     ico: "🏔️", cout: 5e9,    prod: 2.6e5, txt: "Le sommet est plus haut à chaque ascension."},
+  {id: "temps",     nom: "Faille temporelle",   ico: "⏳", cout: 8e10,   prod: 1.6e6, txt: "Une année dedans, une minute dehors."},
+  {id: "dimension", nom: "Dimension parallèle", ico: "🌌", cout: 1.2e12, prod: 1e7,  txt: "Tes autres toi s'entraînent aussi."},
+  {id: "etoiles",   nom: "Forge d'étoiles",     ico: "☄️", cout: 2e13,   prod: 7e7,  txt: "Soulever un soleil, ça travaille le dos."}
+];
+const RANGS = [
+  {seuil: 0,    nom: "Novice du village", ico: "🧒", aura: "#d9822b"},
+  {seuil: 500,  nom: "Apprenti",          ico: "🥋", aura: "#e4572e"},
+  {seuil: 1e4,  nom: "Combattant",        ico: "👊", aura: "#d63d3d"},
+  {seuil: 2e5,  nom: "Vétéran",           ico: "⚔️", aura: "#2a9d8f"},
+  {seuil: 5e6,  nom: "Élite",             ico: "🛡️", aura: "#3b82d6"},
+  {seuil: 1e8,  nom: "Héros",             ico: "🔥", aura: "#ee7a14"},
+  {seuil: 5e9,  nom: "Légende",           ico: "⚡", aura: "#d9a406"},
+  {seuil: 2e11, nom: "Demi-dieu",         ico: "🌟", aura: "#c9a227"},
+  {seuil: 1e13, nom: "Divinité",          ico: "🌠", aura: "#8b5cf6"},
+  {seuil: 1e15, nom: "Au-delà des limites", ico: "♾️", aura: "#d6417d"}
+];
+const PALIERS = [
+  {seuil: 1,   mult: 8,    nom: "Bonne posture"},
+  {seuil: 10,  mult: 40,   nom: "Cadence soutenue"},
+  {seuil: 25,  mult: 300,  nom: "Souffle maîtrisé"},
+  {seuil: 50,  mult: 8e3,  nom: "Volonté de fer"},
+  {seuil: 100, mult: 8e6,  nom: "Mental d'acier"},
+  {seuil: 150, mult: 8e9,  nom: "Limite franchie"},
+  {seuil: 200, mult: 8e12, nom: "Maîtrise absolue"}
+];
+const TECHNIQUES = [];
+ENTRAINEMENTS.forEach(e => PALIERS.forEach((p, i) => TECHNIQUES.push({
+  id: e.id + "_" + i, type: "entrainement", cible: e.id, seuil: p.seuil,
+  nom: p.nom, ico: e.ico, cout: e.cout * p.mult, effet: e.nom + " : gains × 2"
+})));
+[["Poings bandés", 100], ["Coup sec", 1000], ["Coup de pied retourné", 2e4], ["Poing d'acier", 5e5],
+ ["Mille poings", 1e7], ["Frappe sismique", 5e8], ["Poing qui fend le ciel", 5e10], ["Frappe de l'origine", 5e12]]
+  .forEach(([nom, cout], i) => TECHNIQUES.push({id: "clic_" + i, type: "clic", nom, ico: "👊", cout, effet: "Frappes 2 fois plus fortes"}));
+[["Aura au poing", 5e4, 1], ["Aura concentrée", 5e6, 1], ["Aura explosive", 5e8, 2], ["Aura divine", 5e10, 3], ["Aura sans limite", 5e12, 4]]
+  .forEach(([nom, cout, pc], i) => TECHNIQUES.push({id: "aura_" + i, type: "aura", pc, nom, ico: "✊", cout, effet: "Chaque frappe gagne " + pc + " % de ta production par seconde"}));
+[["Petit-déjeuner de champion", 5e3, 1.05], ["Bandeau de détermination", 5e5, 1.1], ["Serment au coucher du soleil", 5e7, 1.1],
+ ["Discours sur l'amitié", 5e9, 1.15], ["Cri de transformation", 5e11, 1.2], ["Flashback décisif", 5e13, 1.25]]
+  .forEach(([nom, cout, mult], i) => TECHNIQUES.push({id: "global_" + i, type: "global", mult, nom, ico: "🔥", cout, effet: "Toute la production +" + Math.round((mult - 1) * 100) + " %"}));
+TECHNIQUES.push(
+  {id: "rival_0", type: "rivalite", nom: "Mauvaise réputation", ico: "👹", cout: 2e4, effet: "Les rivaux viennent 30 % plus souvent"},
+  {id: "rival_1", type: "rivalite", nom: "Ennemi juré", ico: "👹", cout: 2e7, effet: "Les rivaux viennent 30 % plus souvent"},
+  {id: "instinct_0", type: "instinct", nom: "Instinct de combat", ico: "👹", cout: 2e5, effet: "Les bonus de victoire durent 50 % de plus"},
+  {id: "instinct_1", type: "instinct", nom: "Second souffle", ico: "👹", cout: 2e8, effet: "Les bonus de victoire durent 50 % de plus"}
+);
+TECHNIQUES.sort((a, b) => a.cout - b.cout);
+const TECH_PAR_ID = Object.fromEntries(TECHNIQUES.map(t => [t.id, t]));
+
+const HAUSSE = 1.15;
+const SEUIL_SCEAU = 1e9;
+const BONUS_SCEAU = 0.05;
+const ABSENCE_MAX = 8 * 3600;
+const ABSENCE_TAUX = 0.5;
+
+/* ---------- État ---------- */
+const num = x => Number.isFinite(x) && x >= 0 ? x : 0;
+let J = charger();
+let effets = {rage: 0, rafale: 0};
+let prochainRival = Date.now() + hasard(45, 90) * 1000;
+let mode = 1;
+let toutVoir = false;
+let dernier = Date.now();
+let rangActuel = rangDe(J.totalTout);
+let clefTech = "";
+
+function charger(){
+  const s = stock.lire("partie", null) || {};
+  const bats = {};
+  ENTRAINEMENTS.forEach(e => bats[e.id] = Math.floor(num(s.bats && s.bats[e.id])));
+  return {
+    puissance: num(s.puissance), totalManche: num(s.totalManche), totalTout: num(s.totalTout),
+    clics: num(s.clics), sceaux: Math.floor(num(s.sceaux)), bats,
+    techs: Array.isArray(s.techs) ? s.techs.filter(id => TECH_PAR_ID[id]) : [],
+    vu: num(s.vu)
+  };
+}
+function sauver(){
+  J.vu = Date.now();
+  stock.ecrire("partie", J);
+  if(J.totalTout >= 1) Base.record("eveil", J.totalTout, {mieux: "haut", texte: fmt(J.totalTout) + " ⚡"});
+}
+function hasard(a, b){ return a + Math.random() * (b - a); }
+
+/* ---------- Calculs ---------- */
+const possede = id => J.techs.includes(id);
+const techsDe = type => J.techs.map(id => TECH_PAR_ID[id]).filter(t => t.type === type);
+const bonusSceaux = () => 1 + J.sceaux * BONUS_SCEAU;
+const multGlobal = () => techsDe("global").reduce((m, t) => m * t.mult, bonusSceaux());
+
+function prodEntrainement(e){
+  const paliers = techsDe("entrainement").filter(t => t.cible === e.id).length;
+  return e.prod * Math.pow(2, paliers) * multGlobal();
+}
+function prodBase(){ return ENTRAINEMENTS.reduce((s, e) => s + J.bats[e.id] * prodEntrainement(e), 0); }
+const enRage = () => effets.rage > Date.now();
+const enRafale = () => effets.rafale > Date.now();
+const prod = () => prodBase() * (enRage() ? 7 : 1);
+function forceClic(){
+  const pc = techsDe("aura").reduce((s, t) => s + t.pc, 0);
+  const base = Math.pow(2, techsDe("clic").length) * bonusSceaux() + prodBase() * pc / 100;
+  return base * (enRafale() ? 50 : 1);
+}
+function coutDe(e, n){
+  const debut = e.cout * Math.pow(HAUSSE, J.bats[e.id]);
+  return Math.ceil(debut * (Math.pow(HAUSSE, n) - 1) / (HAUSSE - 1));
+}
+function maxAchetable(e){
+  const debut = e.cout * Math.pow(HAUSSE, J.bats[e.id]);
+  let n = Math.floor(Math.log(1 + J.puissance * (HAUSSE - 1) / debut) / Math.log(HAUSSE));
+  while(n > 0 && coutDe(e, n) > J.puissance) n--;
+  return n;
+}
+const quantite = e => mode === "max" ? Math.max(1, maxAchetable(e)) : mode;
+function rangDe(total){
+  let i = 0;
+  RANGS.forEach((r, k) => { if(total >= r.seuil) i = k; });
+  return i;
+}
+const sceauxPossibles = () => Math.max(0, Math.floor(Math.cbrt(J.totalTout / SEUIL_SCEAU)) - J.sceaux);
+const debloquee = t => t.type !== "entrainement" ? J.totalManche >= t.cout * 0.4 : J.bats[t.cible] >= t.seuil;
+
+/* ---------- Affichage des nombres ---------- */
+const UNITES = [[1e33, "quintilliard"], [1e30, "quintillion"], [1e27, "quadrilliard"], [1e24, "quadrillion"], [1e21, "trilliard"], [1e18, "trillion"], [1e15, "billiard"], [1e12, "billion"], [1e9, "milliard"], [1e6, "million"]];
+function fmt(n){
+  if(n < 10 && n % 1 > 0.0001) return n.toFixed(1).replace(".", ",");
+  if(n < 1e6) return Math.floor(n).toLocaleString("fr-FR");
+  if(n >= 1e36) return n.toExponential(2).replace(".", ",").replace("e+", " × 10^");
+  const u = UNITES.find(x => n >= x[0]);
+  const v = n / u[0];
+  return v.toFixed(2).replace(".", ",") + " " + u[1] + (v >= 2 ? "s" : "");
+}
+function dureeTexte(s){
+  if(s < 60) return Math.round(s) + " s";
+  if(s < 3600) return Math.round(s / 60) + " min";
+  return Math.floor(s / 3600) + " h " + String(Math.round(s % 3600 / 60)).padStart(2, "0");
+}
+
+/* ---------- Actions ---------- */
+function gagner(n){ J.puissance += n; J.totalManche += n; J.totalTout += n; }
+
+function frapper(x, y){
+  const f = forceClic();
+  gagner(f); J.clics++;
+  const b = $("frappe");
+  b.classList.add("tape");
+  setTimeout(() => b.classList.remove("tape"), 70);
+  volant("+" + fmt(f), x, y);
+  afficher();
+}
+function volant(t, x, y){
+  if(document.querySelectorAll(".volant").length > 25) return;
+  const n = Base.el("span", t, "volant");
+  n.style.left = x + hasard(-22, 22) + "px";
+  n.style.top = y + hasard(-14, 6) + "px";
+  n.addEventListener("animationend", () => n.remove());
+  document.body.appendChild(n);
+}
+function acheter(e){
+  const n = quantite(e), c = coutDe(e, n);
+  if(c > J.puissance) return;
+  J.puissance -= c; J.bats[e.id] += n;
+  afficher();
+}
+function apprendre(t){
+  if(possede(t.id) || t.cout > J.puissance) return;
+  J.puissance -= t.cout; J.techs.push(t.id);
+  Base.toast("📜 " + t.nom + " : " + t.effet);
+  afficher();
+}
+
+/* ---------- Rival (bonus à attraper) ---------- */
+const DEFIS = ["« Tu oses te mesurer à moi ? »", "« Ton niveau est risible. »", "« Encore toi ? »", "« Je t'attendais. »"];
+function apparaitreRival(){
+  const r = Base.el("button", "👹", "rival");
+  r.setAttribute("aria-label", "Défier le rival");
+  r.title = DEFIS[Math.floor(Math.random() * DEFIS.length)];
+  r.style.left = hasard(10, Math.max(20, innerWidth - 90)) + "px";
+  r.style.top = hasard(70, Math.max(80, innerHeight - 90)) + "px";
+  const fuite = setTimeout(() => r.remove(), 12000);
+  r.addEventListener("pointerdown", e => { e.preventDefault(); clearTimeout(fuite); r.remove(); vaincreRival(); });
+  r.addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); clearTimeout(fuite); r.remove(); vaincreRival(); } });
+  document.body.appendChild(r);
+}
+function vaincreRival(){
+  const duree = Math.pow(1.5, techsDe("instinct").length);
+  const t = Math.random();
+  if(t < 0.45){
+    const g = Math.max(20, forceClic() * 10, Math.min(prodBase() * 600, J.puissance * 0.2));
+    gagner(g);
+    Base.toast("👹 Rival vaincu ! +" + fmt(g) + " ⚡");
+  }else if(t < 0.8){
+    effets.rage = Date.now() + 30000 * duree;
+    Base.toast("😡 Rage de vaincre : production × 7 !");
+  }else{
+    effets.rafale = Date.now() + 12000 * duree;
+    Base.toast("👊 Rafale : frappes × 50, vite !");
+  }
+  afficher();
+}
+function planifierRival(){
+  const m = Math.pow(0.7, techsDe("rivalite").length);
+  prochainRival = Date.now() + hasard(60, 150) * m * 1000;
+}
+
+/* ---------- Transcendance ---------- */
+function transcender(){
+  const n = sceauxPossibles();
+  if(n < 1) return;
+  const corps = Base.el("div");
+  corps.appendChild(Base.el("p", "Tu repars de zéro : ta puissance, tes entraînements et tes techniques disparaissent. Ton rang reste acquis."));
+  corps.appendChild(Base.el("p", `En échange : ${n} sceau${n > 1 ? "x" : ""} brisé${n > 1 ? "s" : ""}, soit +${n * BONUS_SCEAU * 100} % de production et de force de frappe pour toujours.`));
+  const oui = Base.el("button", "🌌 Transcender", "btn");
+  corps.appendChild(oui);
+  const f = Base.fenetre("Transcender ?", corps, {bouton: "Pas maintenant"});
+  oui.onclick = () => {
+    J.sceaux += sceauxPossibles();
+    J.puissance = 0; J.totalManche = 0; J.techs = [];
+    ENTRAINEMENTS.forEach(e => J.bats[e.id] = 0);
+    effets = {rage: 0, rafale: 0};
+    sauver(); clefTech = ""; f.close(); afficher();
+    Base.toast("🌌 Une nouvelle vie commence, plus forte.");
+  };
+}
+
+/* ---------- Absence ---------- */
+function rattraper(secondes){
+  const s = Math.min(secondes, ABSENCE_MAX);
+  const g = prodBase() * s * ABSENCE_TAUX;
+  if(g > 0) gagner(g);
+  return g;
+}
+
+/* ---------- Interface ---------- */
+function ecrire(el, t){ if(el.textContent !== t) el.textContent = t; }
+
+const lignes = {};
+function construire(){
+  [[1, "×1"], [10, "×10"], [100, "×100"], ["max", "Max"]].forEach(([v, t]) => {
+    const b = Base.el("button", t);
+    b.classList.toggle("on", v === mode);
+    b.onclick = () => {
+      mode = v;
+      $("modes").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      afficher();
+    };
+    $("modes").appendChild(b);
+  });
+  ENTRAINEMENTS.forEach(e => {
+    const b = Base.el("button", null, "ligne");
+    const ico = Base.el("span", e.ico, "ico");
+    const txt = Base.el("span", null, "txt");
+    const nom = Base.el("b", e.nom), det = Base.el("small", e.txt), prix = Base.el("span", "", "prix");
+    txt.append(nom, det, prix);
+    const nb = Base.el("span", "0", "nb");
+    b.append(ico, txt, nb);
+    b.onclick = () => acheter(e);
+    $("entrainements").appendChild(b);
+    lignes[e.id] = {b, ico, nom, det, prix, nb};
+  });
+  const f = $("frappe");
+  f.addEventListener("pointerdown", e => { e.preventDefault(); frapper(e.clientX, e.clientY); });
+  f.addEventListener("keydown", e => {
+    if((e.key === "Enter" || e.key === " ") && !e.repeat){
+      e.preventDefault();
+      const r = f.getBoundingClientRect();
+      frapper(r.left + r.width / 2, r.top + r.height / 2);
+    }
+  });
+  f.addEventListener("contextmenu", e => e.preventDefault());
+  $("transcender").onclick = transcender;
+  $("voirTech").onclick = () => { toutVoir = !toutVoir; clefTech = ""; afficher(); };
+}
+
+function afficherTechniques(){
+  const dispo = TECHNIQUES.filter(t => !possede(t.id) && debloquee(t));
+  const montrees = toutVoir ? dispo : dispo.slice(0, 3);
+  const clef = montrees.map(t => t.id).join() + "|" + dispo.length;
+  $("carteTech").classList.toggle("cache", !dispo.length);
+  if(clef !== clefTech){
+    clefTech = clef;
+    const l = $("techniques"); l.textContent = "";
+    montrees.forEach(t => {
+      const b = Base.el("button", null, "ligne");
+      b.dataset.cout = t.cout;
+      const txt = Base.el("span", null, "txt");
+      txt.append(Base.el("b", t.nom), Base.el("small", t.effet), Base.el("span", fmt(t.cout) + " ⚡", "prix"));
+      b.append(Base.el("span", t.ico, "ico"), txt);
+      b.onclick = () => apprendre(t);
+      l.appendChild(b);
+    });
+    const v = $("voirTech");
+    v.classList.toggle("cache", dispo.length <= 3);
+    ecrire(v, toutVoir ? "Réduire" : `Voir les ${dispo.length} techniques`);
+  }
+  $("techniques").querySelectorAll("button").forEach(b => { b.disabled = Number(b.dataset.cout) > J.puissance; });
+}
+
+function afficherEntrainements(){
+  let mystere = false;
+  ENTRAINEMENTS.forEach((e, i) => {
+    const l = lignes[e.id];
+    const connu = i === 0 || J.bats[e.id] > 0 || J.totalManche >= e.cout * 0.4;
+    const montrer = connu || !mystere;
+    if(!connu) mystere = true;
+    l.b.classList.toggle("cache", !montrer);
+    l.b.classList.toggle("mystere", !connu);
+    ecrire(l.ico, connu ? e.ico : "❔");
+    ecrire(l.nom, connu ? e.nom : "???");
+    ecrire(l.det, connu ? `${e.txt} · +${fmt(prodEntrainement(e))}/s` : "Continue de t'entraîner…");
+    const n = quantite(e), c = coutDe(e, n);
+    ecrire(l.prix, (n > 1 ? "×" + n + " : " : "") + fmt(c) + " ⚡");
+    ecrire(l.nb, String(J.bats[e.id]));
+    l.b.disabled = c > J.puissance;
+  });
+}
+
+function afficherRang(){
+  const i = rangDe(J.totalTout), r = RANGS[i], suivant = RANGS[i + 1];
+  if(i !== rangActuel){
+    rangActuel = i;
+    Base.toast(`${r.ico} Nouveau rang : ${r.nom} !`, 3500);
+  }
+  ecrire($("rang"), r.nom);
+  ecrire($("frappe"), r.ico);
+  document.documentElement.style.setProperty("--aura", r.aura);
+  $("jauge").style.width = (suivant ? Math.min(100, (J.totalTout - r.seuil) / (suivant.seuil - r.seuil) * 100) : 100) + "%";
+}
+
+function afficherSceaux(){
+  const montrer = J.sceaux > 0 || J.totalTout >= SEUIL_SCEAU / 100;
+  $("carteSceaux").classList.toggle("cache", !montrer);
+  if(!montrer) return;
+  const n = sceauxPossibles();
+  const prochain = Math.pow(J.sceaux + n + 1, 3) * SEUIL_SCEAU;
+  ecrire($("texteSceaux"), `Sceaux brisés : ${J.sceaux} (+${J.sceaux * BONUS_SCEAU * 100} %). Prochain sceau à ${fmt(prochain)} ⚡ cumulés.`);
+  ecrire($("transcender"), n ? `Transcender : +${n} sceau${n > 1 ? "x" : ""}` : "Pas encore prêt");
+  $("transcender").disabled = !n;
+}
+
+function afficherEffets(){
+  const l = [];
+  const reste = t => Math.ceil((t - Date.now()) / 1000) + " s";
+  if(enRage()) l.push("😡 Production × 7 · " + reste(effets.rage));
+  if(enRafale()) l.push("👊 Frappes × 50 · " + reste(effets.rafale));
+  const clef = l.join("|"), box = $("effets");
+  if(box.dataset.clef === clef) return;
+  box.dataset.clef = clef;
+  box.textContent = "";
+  l.forEach(t => box.appendChild(Base.el("span", t)));
+}
+
+function afficher(){
+  ecrire($("puissance"), fmt(J.puissance));
+  ecrire($("parsec"), fmt(prod()));
+  ecrire($("parclic"), fmt(forceClic()));
+  afficherRang();
+  afficherEffets();
+  afficherTechniques();
+  afficherEntrainements();
+  afficherSceaux();
+}
+
+function ouvrirStats(){
+  const corps = Base.el("div");
+  [["Puissance cumulée", fmt(J.totalTout) + " ⚡"], ["Depuis la dernière transcendance", fmt(J.totalManche) + " ⚡"],
+   ["Frappes", fmt(J.clics)], ["Sceaux brisés", String(J.sceaux)],
+   ["Entraînements", fmt(ENTRAINEMENTS.reduce((s, e) => s + J.bats[e.id], 0))],
+   ["Techniques", J.techs.length + " / " + TECHNIQUES.length]]
+    .forEach(([a, b]) => {
+      const p = Base.el("p"); p.style.margin = "5px 0";
+      p.append(Base.el("b", a + " : "), document.createTextNode(b));
+      corps.appendChild(p);
+    });
+  const effacer = Base.el("button", "🗑️ Effacer ma progression", "btn ghost petit");
+  effacer.style.marginTop = "10px";
+  corps.appendChild(effacer);
+  const f = Base.fenetre("📊 Statistiques", corps, {bouton: "Fermer"});
+  effacer.onclick = () => {
+    if(effacer.dataset.sur){
+      J = charger.vide();
+      effets = {rage: 0, rafale: 0}; clefTech = ""; rangActuel = 0;
+      sauver(); f.close(); afficher();
+      return;
+    }
+    effacer.dataset.sur = "1";
+    effacer.textContent = "Sûr ? Appuie encore pour tout effacer";
+  };
+}
+charger.vide = () => {
+  const bats = {};
+  ENTRAINEMENTS.forEach(e => bats[e.id] = 0);
+  return {puissance: 0, totalManche: 0, totalTout: 0, clics: 0, sceaux: 0, bats, techs: [], vu: 0};
+};
+
+/* ---------- Démarrage ---------- */
+const boutonStats = Base.el("button", "📊", "b-ico");
+boutonStats.title = "Statistiques";
+boutonStats.onclick = ouvrirStats;
+Base.entete({
+  titre: "Éveil",
+  emoji: "👊",
+  boutons: [boutonStats],
+  aide: `<p>Pars de rien et deviens le combattant le plus puissant de l'univers !</p>
+    <ul>
+      <li><b>Frappe</b> le bouton rond pour gagner de la puissance ⚡ (plusieurs doigts à la fois, ça marche).</li>
+      <li>Achète des <b>entraînements</b> : ils produisent de la puissance tout seuls, même page fermée (à 50 %, jusqu'à 8 h).</li>
+      <li>Apprends des <b>techniques</b> pour doubler tes gains.</li>
+      <li>Un <b>rival</b> 👹 surgit parfois : attrape-le vite pour gagner un gros bonus.</li>
+      <li>Une fois très fort, <b>transcende</b> : tu repars de zéro avec un bonus permanent.</li>
+    </ul>`
+});
+construire();
+
+const absence = J.vu ? (Date.now() - J.vu) / 1000 : 0;
+if(absence > 60){
+  const g = rattraper(absence);
+  if(g > 0) Base.fenetre("🌙 Pendant ton absence…", `Tes entraînements ont continué pendant ${dureeTexte(Math.min(absence, ABSENCE_MAX))} : +${fmt(g)} ⚡`, {bouton: "Reprendre"});
+}
+rangActuel = rangDe(J.totalTout);
+afficher();
+
+setInterval(() => {
+  const now = Date.now();
+  const dt = (now - dernier) / 1000;
+  dernier = now;
+  // Onglet longtemps en veille : mêmes règles qu'une absence
+  if(dt > 10) rattraper(dt);
+  else gagner(prod() * Math.max(0, dt));
+  if(now >= prochainRival && !document.hidden){
+    planifierRival();
+    apparaitreRival();
+  }
+  afficher();
+}, 100);
+setInterval(() => { document.title = fmt(J.puissance) + " ⚡ · Éveil"; }, 1000);
+setInterval(sauver, 5000);
+document.addEventListener("visibilitychange", () => { if(document.hidden) sauver(); });
+window.addEventListener("pagehide", sauver);
+</script>
+</body>
+</html>

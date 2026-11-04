@@ -84,6 +84,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "eveil",
+    title: "Éveil",
+    emoji: "👊",
+    desc: "Frappe, entraîne-toi et grimpe de Novice du village à Au-delà des limites : pompes, vieux maître, salle de gravité, clones d'ombre… Ta puissance continue de monter même page fermée. Attrape les rivaux et transcende pour repartir plus fort !",
+    tags: ["Clicker", "Solo", "Animé"],
+    colors: ["#e4572e", "#f2c14e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "categorie",
     title: "Devine ta Catégorie",
     emoji: "🏷️",
