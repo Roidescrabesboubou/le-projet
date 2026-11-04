@@ -161,6 +161,16 @@ window.SALLE_CATALOGUE = [
     etat: "dispo",
   },
   {
+    slug: "motscroises",
+    title: "Mots croisés",
+    emoji: "✏️",
+    desc: "Remplis la grille à l'aide des définitions, au clavier ou au doigt. Une nouvelle grille chaque jour à minuit, plus des grilles au hasard à volonté.",
+    tags: ["Mots", "Quotidien", "Solo"],
+    colors: ["#5bb5ad", "#f2be5c"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "connexions",
     title: "Connexions",
     emoji: "🔗",
