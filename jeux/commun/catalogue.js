@@ -94,6 +94,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "eveil",
+    title: "Éveil",
+    emoji: "👊",
+    desc: "Frappe, entraîne-toi et grimpe de Novice du village à Au-delà des limites : pompes, vieux maître, salle de gravité, clones d'ombre… Ta puissance continue de monter même page fermée. Attrape les rivaux et transcende pour repartir plus fort !",
+    tags: ["Clicker", "Solo", "Animé"],
+    colors: ["#e4572e", "#f2c14e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "categorie",
     title: "Devine ta Catégorie",
     emoji: "🏷️",
@@ -171,6 +181,26 @@ window.SALLE_CATALOGUE = [
     etat: "dispo",
   },
   {
+    slug: "motscroises",
+    title: "Mots croisés",
+    emoji: "✏️",
+    desc: "Remplis la grille à l'aide des définitions, au clavier ou au doigt. Une nouvelle grille chaque jour à minuit, plus des grilles au hasard à volonté.",
+    tags: ["Mots", "Quotidien", "Solo"],
+    colors: ["#5bb5ad", "#f2be5c"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "sudoku",
+    title: "Sudoku du jour",
+    emoji: "🔢",
+    desc: "Une grille de sudoku par jour, la même pour tout le monde : facile en début de semaine, difficile le week-end. Notes, indices, chrono et séries de jours. Plus des grilles libres à volonté en 3 niveaux.",
+    tags: ["Réflexion", "Quotidien", "Solo"],
+    colors: ["#7fa3f0", "#f2a55a"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "connexions",
     title: "Connexions",
     emoji: "🔗",
@@ -196,6 +226,16 @@ window.SALLE_CATALOGUE = [
     desc: "Mange toutes les miettes du labyrinthe en échappant aux chats. Un morceau de fromage et c'est toi qui les chasses ! Niveaux de plus en plus rapides et top 10.",
     tags: ["Arcade", "Solo"],
     colors: ["#f2d36b", "#2c2350"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "shikaku",
+    title: "Shikaku",
+    emoji: "📐",
+    desc: "Découpe la grille en rectangles : chacun contient un seul nombre, égal à son nombre de cases. Une grille 7×7 par jour, 11×11 par semaine, 25×25 par mois, et du 5×5 au 25×25 en partie libre, avec classement au temps partout.",
+    tags: ["Réflexion", "Quotidien", "Solo"],
+    colors: ["#f0a36b", "#5b6bd0"],
     etat: "dispo",
     badge: "Nouveau"
   },

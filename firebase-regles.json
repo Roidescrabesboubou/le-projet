@@ -41,13 +41,13 @@
     },
     "series": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/)",
+        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/)",
         ".indexOn": [
           "s",
           "b"
         ],
         "$id": {
-          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists()",
+          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists()",
           ".validate": "newData.hasChildren(['n', 's', 'b', 'j', 'd']) && newData.child('s').val() <= newData.child('j').val() + 1 && newData.child('b').val() >= newData.child('s').val() && newData.child('b').val() <= newData.child('j').val() + 1 && (!data.exists() || (newData.child('j').val() == data.child('j').val() && newData.child('s').val() <= data.child('s').val() && newData.child('b').val() <= data.child('b').val()) || (newData.child('j').val() == data.child('j').val() + 1 && newData.child('s').val() <= data.child('s').val() + 1 && (newData.child('b').val() <= data.child('b').val() || newData.child('b').val() == newData.child('s').val())) || (newData.child('j').val() > data.child('j').val() + 1 && newData.child('s').val() <= 1 && (newData.child('b').val() <= data.child('b').val() || newData.child('b').val() == newData.child('s').val())))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
@@ -70,14 +70,47 @@
         }
       }
     },
+    "eveil": {
+      ".read": true,
+      ".indexOn": [
+        "p",
+        "t",
+        "r"
+      ],
+      "$id": {
+        ".write": "$id.matches(/^[a-z0-9]{20}$/) && newData.exists()",
+        ".validate": "newData.hasChildren(['n', 'p', 't', 'r', 'dr', 'd']) && (!data.exists() || (newData.child('p').val() >= data.child('p').val() && newData.child('t').val() >= data.child('t').val() && newData.child('r').val() >= data.child('r').val()))",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "p": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "r": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9"
+        },
+        "dr": {
+          ".validate": "(!data.exists() || newData.parent().child('r').val() > data.parent().child('r').val()) ? newData.val() == now : newData.val() == data.val()"
+        },
+        "d": {
+          ".validate": "newData.val() == now"
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
+    },
     "resultats": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/)",
+        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/)",
         ".indexOn": [
           "j"
         ],
         "$id": {
-          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && (!data.exists() || newData.child('j').val() > data.child('j').val())",
+          ".write": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && (!data.exists() || newData.child('j').val() > data.child('j').val())",
           ".validate": "newData.hasChildren(['j', 'e', 'g', 'd'])",
           "j": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + newData.val() * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() + 1) * 86400000"
@@ -125,6 +158,30 @@
             "$autre": {
               ".validate": false
             }
+          }
+        }
+      }
+    },
+    "shikaku": {
+      "$tab": {
+        ".read": "$tab.matches(/^(j[0-9]{1,6}|s[0-9]{1,6}|m[0-9]{6}|l(5|7|9|11|15|20|25))$/)",
+        ".indexOn": [
+          "t"
+        ],
+        "$id": {
+          ".write": "$tab.matches(/^(j[0-9]{1,6}|s[0-9]{1,6}|m[0-9]{6}|l(5|7|9|11|15|20|25))$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && (!data.exists() || newData.child('t').val() < data.child('t').val())",
+          ".validate": "newData.hasChildren(['n', 't', 'd'])",
+          "n": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 2592000"
+          },
+          "d": {
+            ".validate": "newData.val() == now"
+          },
+          "$autre": {
+            ".validate": false
           }
         }
       }
