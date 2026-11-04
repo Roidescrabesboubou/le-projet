@@ -70,6 +70,39 @@
         }
       }
     },
+    "eveil": {
+      ".read": true,
+      ".indexOn": [
+        "p",
+        "t",
+        "r"
+      ],
+      "$id": {
+        ".write": "$id.matches(/^[a-z0-9]{20}$/) && newData.exists()",
+        ".validate": "newData.hasChildren(['n', 'p', 't', 'r', 'dr', 'd']) && (!data.exists() || (newData.child('p').val() >= data.child('p').val() && newData.child('t').val() >= data.child('t').val() && newData.child('r').val() >= data.child('r').val()))",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "p": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "r": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9"
+        },
+        "dr": {
+          ".validate": "(!data.exists() || newData.parent().child('r').val() > data.parent().child('r').val()) ? newData.val() == now : newData.val() == data.val()"
+        },
+        "d": {
+          ".validate": "newData.val() == now"
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
+    },
     "resultats": {
       "$jeu": {
         ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle)$/)",

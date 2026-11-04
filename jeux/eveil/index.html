@@ -114,6 +114,8 @@
 
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const stock = Base.stock("eveil_");
@@ -199,7 +201,7 @@ function charger(){
   ENTRAINEMENTS.forEach(e => bats[e.id] = Math.floor(num(s.bats && s.bats[e.id])));
   return {
     puissance: num(s.puissance), totalManche: num(s.totalManche), totalTout: num(s.totalTout),
-    clics: num(s.clics), sceaux: Math.floor(num(s.sceaux)), bats,
+    clics: num(s.clics), sceaux: Math.floor(num(s.sceaux)), meilleureProd: num(s.meilleureProd), bats,
     techs: Array.isArray(s.techs) ? s.techs.filter(id => TECH_PAR_ID[id]) : [],
     vu: num(s.vu)
   };
@@ -449,6 +451,7 @@ function afficherRang(){
   if(i !== rangActuel){
     rangActuel = i;
     Base.toast(`${r.ico} Nouveau rang : ${r.nom} !`, 3500);
+    envoyerClassement();
   }
   ecrire($("rang"), r.nom);
   ecrire($("frappe"), r.ico);
@@ -490,6 +493,121 @@ function afficher(){
   afficherSceaux();
 }
 
+/* ---------- Classements en ligne ----------
+   eveil/<id joueur> = {n: pseudo, p: meilleur par seconde, t: total, r: rang, dr: date d'arrivée au rang}
+   Seuls les meilleurs résultats comptent : effacer sa partie ne fait pas reculer. */
+const URL_CLASSEMENT = (typeof CLASSEMENT_URL === "string" ? CLASSEMENT_URL : "").trim().replace(/\/+$/, "");
+const urlJoueur = () => `${URL_CLASSEMENT}/eveil/${Series.idJoueur()}.json`;
+const requete = (url, o) => fetch(url, {...o, signal: AbortSignal.timeout(8000)});
+let envoiEnCours = false;
+
+async function envoyerClassement(){
+  const n = Base.joueur.pseudo().trim().slice(0, 16);
+  if(!Series.enLigne || !n || envoiEnCours || J.totalTout < 1) return false;
+  envoiEnCours = true;
+  try{
+    const E = stock.lire("envoi", null) || {};
+    const r = Math.max(rangDe(J.totalTout), num(E.r));
+    const p = Math.max(J.meilleureProd, num(E.p)), t = Math.max(J.totalTout, num(E.t));
+    const nouveauRang = !E.dr || r > E.r;
+    const corps = {n, p, t, r, dr: nouveauRang ? {".sv": "timestamp"} : E.dr, d: {".sv": "timestamp"}};
+    const rep = await requete(urlJoueur(), {method: "PUT", body: JSON.stringify(corps)});
+    if(rep.ok){
+      const v = await rep.json();
+      stock.ecrire("envoi", {p, t, r, dr: v.dr});
+      return true;
+    }
+    // Refusé : la base a peut-être reçu un envoi dont la réponse s'est perdue, on se recale dessus
+    const lu = await requete(urlJoueur());
+    const srv = lu.ok ? await lu.json() : null;
+    if(srv && typeof srv.dr === "number") stock.ecrire("envoi", {p: srv.p, t: srv.t, r: srv.r, dr: srv.dr});
+    return false;
+  }catch(e){
+    return false;
+  }finally{
+    envoiEnCours = false;
+  }
+}
+
+const CLASSEMENTS = {
+  r: {titre: "🎖️ Rang", valeur: e => `${RANGS[e.r].ico} ${RANGS[e.r].nom}`, limite: 200},
+  p: {titre: "⚡ Par seconde", valeur: e => fmt(e.p) + "/s", limite: 50},
+  t: {titre: "🌍 Total", valeur: e => fmt(e.t) + " ⚡", limite: 50}
+};
+async function lireClassement(champ){
+  const q = `orderBy=${encodeURIComponent('"' + champ + '"')}&limitToLast=${CLASSEMENTS[champ].limite}`;
+  const rep = await requete(`${URL_CLASSEMENT}/eveil.json?${q}`);
+  if(!rep.ok) throw new Error("HTTP " + rep.status);
+  return Object.entries((await rep.json()) || {}).map(([id, e]) => ({...e, id}))
+    .filter(e => typeof e.n === "string" && Number.isFinite(e.p) && Number.isFinite(e.t) && Number.isFinite(e.dr) && RANGS[e.r])
+    // À égalité, le premier arrivé passe devant
+    .sort((a, b) => b[champ] - a[champ] || a.dr - b.dr)
+    .slice(0, 50);
+}
+
+function ouvrirClassement(){
+  const box = Base.el("div", null, "sr");
+  box.style.cssText = "margin:0;border:0;padding:0";
+  const tabs = Base.el("div", null, "sr-tabs"), liste = Base.el("div"), moi = Base.el("p", null, "moiligne"), zonePseudo = Base.el("div");
+  let onglet = "r", jeton = 0;
+  Object.entries(CLASSEMENTS).forEach(([k, c]) => {
+    const b = Base.el("button", c.titre);
+    if(k === onglet) b.className = "on";
+    b.onclick = () => { onglet = k; [...tabs.children].forEach(x => x.className = x === b ? "on" : ""); dessiner(); };
+    tabs.appendChild(b);
+  });
+  box.append(tabs, liste, moi, zonePseudo, Base.el("p", "À rang égal, le premier arrivé passe devant.", "note"));
+
+  async function dessiner(){
+    const j = ++jeton;
+    liste.textContent = "";
+    liste.appendChild(Base.el("p", "Chargement…", "note"));
+    moi.textContent = "";
+    try{
+      const l = await lireClassement(onglet);
+      if(j !== jeton) return;
+      liste.textContent = "";
+      if(!l.length){ liste.appendChild(Base.el("p", "Personne n'est encore classé. À toi de prendre la tête !", "note")); return; }
+      const ol = Base.el("ol"), id = Series.idJoueur();
+      l.forEach((e, i) => {
+        const li = Base.el("li", null, e.id === id ? "moi" : "");
+        li.append(Base.el("span", ["🥇", "🥈", "🥉"][i] || String(i + 1), "r"), Base.el("span", e.n, "n"), Base.el("span", CLASSEMENTS[onglet].valeur(e), "v"));
+        ol.appendChild(li);
+      });
+      liste.appendChild(ol);
+      const place = l.findIndex(e => e.id === id);
+      if(Base.joueur.pseudo()) moi.textContent = place >= 0 ? `Tu es ${place + 1}${place ? "e" : "er"} !` : "Tu n'es pas encore dans le top 50.";
+    }catch(e){
+      if(j !== jeton) return;
+      liste.textContent = "";
+      liste.appendChild(Base.el("p", "Classement indisponible pour le moment (connexion ?).", "note"));
+    }
+  }
+  function formPseudo(){
+    zonePseudo.textContent = "";
+    if(Base.joueur.pseudo()) return;
+    zonePseudo.appendChild(Base.el("p", "Indique ton prénom pour apparaître dans les classements :", "note"));
+    const row = Base.el("div", null, "pseudo");
+    const inp = Base.el("input"); inp.maxLength = 16; inp.placeholder = "Ton prénom";
+    const ok = Base.el("button", "OK");
+    const valider = async () => {
+      const n = inp.value.trim();
+      if(!n) return inp.focus();
+      Base.joueur.changerPseudo(n);
+      ok.disabled = true;
+      await envoyerClassement();
+      formPseudo(); dessiner();
+    };
+    ok.onclick = valider;
+    inp.onkeydown = e => { if(e.key === "Enter") valider(); };
+    row.append(inp, ok);
+    zonePseudo.appendChild(row);
+  }
+  Base.fenetre("🏆 Classements", box, {bouton: "Fermer"});
+  formPseudo();
+  envoyerClassement().finally(dessiner);
+}
+
 function ouvrirStats(){
   const corps = Base.el("div");
   [["Puissance cumulée", fmt(J.totalTout) + " ⚡"], ["Depuis la dernière transcendance", fmt(J.totalManche) + " ⚡"],
@@ -510,6 +628,7 @@ function ouvrirStats(){
       J = charger.vide();
       effets = {rage: 0, rafale: 0}; clefTech = ""; rangActuel = 0;
       sauver(); f.close(); afficher();
+      Base.toast("Progression effacée. Tes records restent dans les classements.");
       return;
     }
     effacer.dataset.sur = "1";
@@ -519,17 +638,20 @@ function ouvrirStats(){
 charger.vide = () => {
   const bats = {};
   ENTRAINEMENTS.forEach(e => bats[e.id] = 0);
-  return {puissance: 0, totalManche: 0, totalTout: 0, clics: 0, sceaux: 0, bats, techs: [], vu: 0};
+  return {puissance: 0, totalManche: 0, totalTout: 0, clics: 0, sceaux: 0, meilleureProd: 0, bats, techs: [], vu: 0};
 };
 
 /* ---------- Démarrage ---------- */
 const boutonStats = Base.el("button", "📊", "b-ico");
 boutonStats.title = "Statistiques";
 boutonStats.onclick = ouvrirStats;
+const boutonClassement = Base.el("button", "🏆", "b-ico");
+boutonClassement.title = "Classements";
+boutonClassement.onclick = ouvrirClassement;
 Base.entete({
   titre: "Éveil",
   emoji: "👊",
-  boutons: [boutonStats],
+  boutons: [boutonClassement, boutonStats],
   aide: `<p>Pars de rien et deviens le combattant le plus puissant de l'univers !</p>
     <ul>
       <li><b>Frappe</b> le bouton rond pour gagner de la puissance ⚡ (plusieurs doigts à la fois, ça marche).</li>
@@ -537,6 +659,7 @@ Base.entete({
       <li>Apprends des <b>techniques</b> pour doubler tes gains.</li>
       <li>Un <b>rival</b> 👹 surgit parfois : attrape-le vite pour gagner un gros bonus.</li>
       <li>Une fois très fort, <b>transcende</b> : tu repars de zéro avec un bonus permanent.</li>
+      <li>Compare-toi aux autres joueurs dans les <b>classements</b> 🏆 : rang, puissance par seconde et total.</li>
     </ul>`
 });
 construire();
@@ -556,6 +679,8 @@ setInterval(() => {
   // Onglet longtemps en veille : mêmes règles qu'une absence
   if(dt > 10) rattraper(dt);
   else gagner(prod() * Math.max(0, dt));
+  // Sans les bonus temporaires du rival, pour que le classement reste comparable
+  J.meilleureProd = Math.max(J.meilleureProd, prodBase());
   if(now >= prochainRival && !document.hidden){
     planifierRival();
     apparaitreRival();
@@ -564,7 +689,9 @@ setInterval(() => {
 }, 100);
 setInterval(() => { document.title = fmt(J.puissance) + " ⚡ · Éveil"; }, 1000);
 setInterval(sauver, 5000);
-document.addEventListener("visibilitychange", () => { if(document.hidden) sauver(); });
+setInterval(() => { if(!document.hidden) envoyerClassement(); }, 60000);
+setTimeout(envoyerClassement, 3000);
+document.addEventListener("visibilitychange", () => { if(document.hidden){ sauver(); envoyerClassement(); } });
 window.addEventListener("pagehide", sauver);
 </script>
 </body>
