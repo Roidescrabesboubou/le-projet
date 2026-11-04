@@ -280,6 +280,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "sentiers",
+    title: "Sentiers",
+    emoji: "🐾",
+    desc: "Trace des sentiers dans la forêt pour relier les terriers aux arbres fruitiers de leur couleur, avant qu'un arbre ne déborde. Plus la partie avance, plus ça bouchonne !",
+    tags: ["Réflexion", "Solo"],
+    colors: ["#7fb85a", "#c9853e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "demineur",
     title: "Démineur",
     emoji: "💣",
