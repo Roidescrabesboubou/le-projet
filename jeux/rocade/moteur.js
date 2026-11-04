@@ -245,7 +245,7 @@
 
     /* ---------- Trajets ---------- */
     const estJonction = c => !J.batiments.has(c)&&(J.jonctions.has(c)||(J.liens.get(c)&&J.liens.get(c).size>=3));
-    /* Dijkstra depuis "de" : on ne traverse jamais un bâtiment.
+    /* Dijkstra depuis "de" : on ne traverse jamais une destination.
        Les carrefours et les routes chargées comptent comme du temps perdu. */
     function plusCourt(de, arret){
       const dist = new Map([[de,0]]), avant = new Map(), tas = [[0,de]];
@@ -254,7 +254,11 @@
       while(tas.length){
         const [d,c] = sortir();
         if(d>dist.get(c)) continue;
-        if(c!==de&&J.batiments.has(c)){ if(arret&&arret(c)) return {dist,avant,fin:c}; continue; }
+        if(c!==de&&J.batiments.has(c)){
+          if(arret&&arret(c)) return {dist,avant,fin:c};
+          // une route tracée par-dessus une maison reste une route
+          if(J.batiments.get(c).type==="dest") continue;
+        }
         const l = J.liens.get(c);
         if(!l) continue;
         for(const [v,t] of l){

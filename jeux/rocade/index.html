@@ -238,21 +238,50 @@ function lier(a,b){
   }
   return r;
 }
+/* Plus court passage entre deux cases quand un bâtiment barre la ligne droite */
+function contourner(de,vers){
+  if(J.empreinte.has(vers))return null;
+  const av=new Map([[de,-1]]),f=[de];
+  for(let i=0;i<f.length;i++){
+    const c=f[i];
+    if(c===vers){const p=[];let k=c;while(k!==-1){p.push(k);k=av.get(k)}return p.reverse()}
+    for(const[dx,dy]of J.DIRS){
+      const x=X(c)+dx,y=Y(c)+dy;
+      if(x<0||y<0||x>=L||y>=H)continue;
+      const v=idCase(x,y);
+      if(av.has(v)||!J.dansZone(v)||J.empreinte.has(v))continue;
+      if((J.sol[v]===J.EAU||J.sol[v]===J.MONT)&&!J.liens.has(v))continue;
+      av.set(v,c);f.push(v);
+    }
+  }
+  return null;
+}
 /* La route rejoint la case visée en ligne droite, depuis la dernière case posée */
 function tracerVers(c){
   const cible=J.empreinte.get(c),visees=casesDe(c);
   let cur=geste.dernier;
-  if(cible&&cible===J.empreinte.get(cur))return;
+  if(cible&&(cible===J.empreinte.get(cur)||(J.liens.get(cur)&&J.liens.get(cur).has(cible.c))))return;
   for(;;){
     const depuis=casesDe(cur);
     if(depuis.some(a=>visees.some(b=>cheb(a,b)===1))){
       const r=lier(cur,cible?cible.c:c);
-      if(r===true)cur=cible?cible.c:c;else refus(r);
+      // une fois une destination atteinte, le geste repart de la route qui y mène
+      if(r===true){if(!cible)cur=c;else if(cible.type!=="dest")cur=cible.c}
+      else refus(r);
       break;
     }
     const base=depuis.reduce((m,a)=>cheb(a,c)<cheb(m,c)?a:m);
     const s=idCase(X(base)+Math.sign(X(c)-X(base)),Y(base)+Math.sign(Y(c)-Y(base)));
-    if(J.empreinte.has(s))break;
+    if(J.empreinte.has(s)){
+      const p=contourner(cur,c);
+      if(!p)break;
+      let ok=true;
+      for(let i=1;i<p.length&&ok;i++){
+        const r=lier(p[i-1],p[i]);
+        if(r===true)cur=p[i];else{refus(r);ok=false}
+      }
+      break;
+    }
     const r=lier(cur,s);
     if(r!==true){refus(r);break}
     cur=s;
