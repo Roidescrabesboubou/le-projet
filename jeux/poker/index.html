@@ -638,6 +638,7 @@ function majSalle(){
 }
 $("creer").onclick = async () => {
   if(!pseudoOK()) return;
+  mode = "ligne";
   $("msgLigne").textContent = "Création de la table…";
   try{
     salle = await Reseau.creer("poker", {
@@ -666,6 +667,8 @@ $("creer").onclick = async () => {
 };
 $("goLigne").onclick = () => lancerLigne();
 function lancerLigne(){
+  if(!salle || !salle.hote) return;
+  mode = "ligne";
   const humains = salle.joueurs.map(j => ({id: j.id, nom: j.pseudo, avatar: j.avatar, type: "ligne"}));
   creerPartie(Cartes.melanger([...humains, ...botsDe(reg.botsL)]), reg);
   vue = G.joueurs.findIndex(j => j.id === salle.moi);
@@ -675,6 +678,7 @@ $("rejoindre").onclick = () => rejoindre($("codeIn").value);
 $("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("rejoindre").click(); });
 async function rejoindre(code){
   if(!pseudoOK()) return;
+  mode = "ligne";
   $("msgLigne").textContent = "Connexion à la table…";
   try{
     salle = await Reseau.rejoindre("poker", code, {
