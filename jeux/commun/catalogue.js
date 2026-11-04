@@ -25,6 +25,16 @@
    ============================================================ */
 window.SALLE_CATALOGUE = [
   {
+    slug: "laser",
+    title: "Bataille Laser",
+    emoji: "🔦",
+    desc: "Une bataille navale à coups de laser : cache tes miroirs, blocs et filtres colorés, puis tire des rayons chez l'adversaire. Où ressort le laser, et de quelle couleur ? Déduis où sont ses formes avant qu'il trouve les tiennes. Contre l'ordi, à deux ou en ligne.",
+    tags: ["Réflexion", "Stratégie", "Multijoueur", "Solo"],
+    colors: ["#7b4fe0", "#1d1a3a"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "quintuplees",
     title: "Les Quintuplées",
     emoji: "💞",
