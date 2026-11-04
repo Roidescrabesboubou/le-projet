@@ -126,6 +126,9 @@
         "d": {
           ".validate": "newData.val() == now"
         },
+        "b": {
+          ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() * 86400000 <= now + 50400000"
+        },
         "$autre": {
           ".validate": false
         }
@@ -153,6 +156,9 @@
         },
         "d": {
           ".validate": "newData.val() == now"
+        },
+        "b": {
+          ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() * 86400000 <= now + 50400000"
         },
         "$autre": {
           ".validate": false

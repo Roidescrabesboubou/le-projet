@@ -100,6 +100,7 @@
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
 <script src="../commun/cartes.js"></script>
+<script src="../commun/jetons.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -107,7 +108,6 @@ const fmt = n => Number(n || 0).toLocaleString("fr-FR");
 const S = Base.stock("blackjack_");
 
 /* ---------- Réglages du jeu ---------- */
-const JOURNALIER = 1000;       // jetons offerts chaque jour
 const MISE_MIN = 10;
 const NB_JEUX = 6;             // jeux de 52 cartes dans le sabot
 const JETONS = [[10, "#3b6fd6"], [25, "#2c9a62"], [100, "#2b2b2b"], [500, "#8a4fd0"], [1000, "#c99a1e"]];
@@ -117,7 +117,7 @@ Base.entete({
   emoji: "🂡",
   aide: `<p>Approche-toi le plus possible de <b>21</b> sans le dépasser, et fais mieux que le croupier.</p>
   <ul>
-    <li><b>Chaque jour, tu reçois ${fmt(JOURNALIER)} jetons</b> (bouton 🎁). Il n'y a <b>aucun autre moyen</b> d'en gagner que de jouer : si tu perds tout, rendez-vous demain !</li>
+    <li>${Jetons.regle()}</li>
     <li>Les figures valent 10, l'As vaut 1 ou 11. <b>Blackjack</b> = As + carte à 10 dès le départ : payé 3 pour 2.</li>
     <li><b>Tirer</b> : une carte de plus. <b>Rester</b> : tu t'arrêtes. <b>Doubler</b> : tu doubles ta mise et reçois une seule carte. <b>Séparer</b> : deux cartes de même valeur → deux mains (jusqu'à 4).</li>
     <li>Le croupier tire jusqu'à 16 et s'arrête à 17. S'il montre un As, tu peux prendre une <b>assurance</b> (moitié de ta mise, payée 2 pour 1 s'il a blackjack).</li>
@@ -131,7 +131,6 @@ Base.entete({
    ============================================================ */
 let uid = "invite", porte = null, P = null, syncEtat = "local", attenteSync = null;
 const vide = () => ({s: 0, j: -1, m: 0, t: 0, st: {mains: 0, gagnees: 0, bj: 0, gros: 0, perdues: 0}});
-const jourLocal = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
 function nouvellePartie(){ return {sabot: [], mains: [], croupier: [], phase: "mise", cour: 0, assurance: 0, enCours: 0, derniere: MISE_MIN, annonce: "", revele: false}; }
 
 function charger(){
@@ -140,6 +139,7 @@ function charger(){
   P = Object.assign(nouvellePartie(), S.lire("partie_" + uid, {}));
 }
 function sauver(distant){
+  Jetons.examiner(porte, enJeu());
   porte.t = Date.now();
   if(porte.s > porte.m) porte.m = porte.s;
   S.ecrire("porte_" + uid, porte);
@@ -157,18 +157,20 @@ async function syncLire(){
     if(r && typeof r.s === "number"){
       porte.j = Math.max(porte.j, r.j == null ? -1 : r.j);
       porte.m = Math.max(porte.m || 0, r.m || 0);
-      if((r.d || 0) > (porte.t || 0) && P.phase === "mise"){ porte.s = r.s; porte.t = r.d; S.ecrire("porte_" + uid, porte); }
+      if((r.d || 0) > (porte.t || 0) && P.phase === "mise"){ porte.s = r.s; porte.t = r.d; if(typeof r.b === "number") porte.b = r.b; S.ecrire("porte_" + uid, porte); }
       else if((r.d || 0) < (porte.t || 0) || r.s !== porte.s) await syncEcrire();
     }else await syncEcrire();
     syncEtat = "ok";
+    pret = true;
   }catch(e){ syncEtat = "ko"; }
   dessiner();
+  verifierDon();
 }
 async function syncEcrire(){
   if(uid === "invite") return;
   const s = session();
   try{
-    await Compte.db("blackjack/" + uid, {method: "PUT", body: {n: (s && s.pseudo || Base.joueur.pseudo() || "Joueur").slice(0, 16), s: porte.s, j: Math.max(0, porte.j), m: Math.max(porte.m, porte.s), d: {".sv": "timestamp"}}});
+    await Compte.db("blackjack/" + uid, {method: "PUT", body: {n: (s && s.pseudo || Base.joueur.pseudo() || "Joueur").slice(0, 16), s: porte.s, j: Math.max(0, porte.j), b: typeof porte.b === "number" ? porte.b : -1, m: Math.max(porte.m, porte.s), d: {".sv": "timestamp"}}});
     syncEtat = "ok";
   }catch(e){ syncEtat = "ko"; }
   dessinerPorte();
@@ -193,25 +195,32 @@ function changerCompte(){
   const s = session();
   const nouveau = s && s.uid ? s.uid : "invite";
   if(nouveau === uid && porte) return;
-  uid = nouveau; charger(); dessiner();
+  uid = nouveau; pret = uid === "invite"; charger(); dessiner();
   if(uid !== "invite") syncLire();
   if(P.phase === "croupier") setTimeout(tourCroupier, 600);
 }
 
-/* ---------- Allocation quotidienne ---------- */
-function recuperer(){
-  if(porte.j >= jourLocal()) return;
-  porte.j = jourLocal(); porte.s += JOURNALIER;
+/* ---------- Dons de jetons (règle commune : ../commun/jetons.js) ---------- */
+let pret = false;          // portefeuille chargé (et synchronisé si connecté) : on peut verser un don
+function verifierDon(){
+  if(!pret || !porte) return;
+  const avant = porte.b;
+  const d = Jetons.examiner(porte, enJeu());
+  if(!d || d.type === "attente"){ if(porte.b !== avant) sauver(); return; }
+  Jetons.verser(porte, d);
   sauver();
-  Base.toast(`🎁 +${fmt(JOURNALIER)} jetons ! Bonne chance.`);
+  Base.toast(d.type === "bienvenue" ? `🎁 Bienvenue ! ${fmt(d.n)} jetons pour commencer.` : `🎁 +${fmt(d.n)} jetons pour te refaire. Bonne chance !`, 4000);
   dessiner();
 }
-function avantDemain(){
-  const d = new Date(); const m = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-  const s = Math.max(0, Math.floor((m - d) / 1000));
-  const h = Math.floor(s / 3600), mn = Math.floor(s % 3600 / 60);
-  return h ? `${h} h ${String(mn).padStart(2, "0")}` : `${mn} min ${String(s % 60).padStart(2, "0")} s`;
+function texteCadeau(){
+  const d = porte && Jetons.examiner({...porte}, enJeu());   // copie : l'affichage ne modifie rien
+  if(d && d.type === "attente") return `🎁 Sous ${fmt(Jetons.SEUIL)} jetons : ${fmt(Jetons.RECHARGE)} jetons offerts dans ${Jetons.avantDemain()}`;
+  if(d && d.type === "bienvenue") return `🎁 ${fmt(Jetons.BIENVENUE)} jetons de bienvenue…`;
+  return `🎁 Sous ${fmt(Jetons.SEUIL)} jetons, tu en reçois ${fmt(Jetons.RECHARGE)} le lendemain`;
 }
+const PLUS_DE_JETONS = () => `Plus assez de jetons 😢<br><span class="muted">Reviens dans ${Jetons.avantDemain()} : tu recevras ${fmt(Jetons.RECHARGE)} jetons pour te refaire.`;
+/* jetons posés dans la main en cours (pas encore réglés) */
+const enJeu = () => P && ["assurance", "joueur", "croupier"].includes(P.phase) ? P.mains.reduce((a, m) => a + m.mise, 0) + P.assurance : 0;
 
 /* ============================================================
    RÈGLES DU BLACKJACK
@@ -376,14 +385,9 @@ function rangee(z, cartes, cle, cacheIdx){
 function dessinerPorte(){
   $("solde").textContent = fmt(porte.s);
   const cad = $("cadeau"); cad.innerHTML = "";
-  if(porte.j < jourLocal()){
-    const b = document.createElement("button"); b.className = "btn or"; b.textContent = `🎁 Récupérer mes ${fmt(JOURNALIER)} jetons du jour`;
-    b.onclick = recuperer; cad.appendChild(b);
-  }else{
-    const p = document.createElement("span"); p.className = "muted";
-    p.textContent = `🎁 Jetons du jour récupérés · prochains dans ${avantDemain()}`;
-    cad.appendChild(p);
-  }
+  const p = document.createElement("span"); p.className = "muted";
+  p.textContent = texteCadeau();
+  cad.appendChild(p);
   const sy = $("sync"); sy.innerHTML = "";
   if(uid === "invite"){
     sy.appendChild(document.createTextNode(window.Compte && Compte.pret ? "👤 Jetons gardés sur cet appareil seulement. Connecte-toi pour les retrouver partout et entrer au classement." : "Jetons gardés sur cet appareil."));
@@ -434,8 +438,7 @@ function dessinerCommandes(){
   if(P.phase === "mise"){
     if(porte.s < MISE_MIN){
       const p = document.createElement("p"); p.style.textAlign = "center"; p.style.margin = "0";
-      p.innerHTML = porte.j < jourLocal() ? "Tu n'as plus de jetons… mais ton cadeau du jour t'attend en haut ! 🎁"
-        : `Plus de jetons pour aujourd'hui 😢<br><span class="muted">Reviens dans ${avantDemain()} pour recevoir ${fmt(JOURNALIER)} nouveaux jetons.</span>`;
+      p.innerHTML = PLUS_DE_JETONS() + "</span>";
       z.appendChild(p);
       return;
     }
@@ -497,15 +500,18 @@ document.addEventListener("keydown", e => {
 /* ---------- Démarrage ---------- */
 charger(); dessiner();
 if(P.phase === "croupier") setTimeout(tourCroupier, 600);
-setInterval(dessinerPorte, 30000);
+setInterval(() => { verifierDon(); dessinerPorte(); }, 30000);
 (function attendreCompte(n){
   if(window.Compte){
     changerCompte();
     Compte.surChangement(() => changerCompte());
     chargerTop();
+    if(uid === "invite") pret = true;
+    verifierDon();
     return;
   }
   if(n < 60) setTimeout(() => attendreCompte(n + 1), 100);
+  else { pret = true; verifierDon(); }
 })(0);
 </script>
 </body>
