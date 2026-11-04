@@ -104,6 +104,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "mainmise",
+    title: "Mainmise",
+    emoji: "🌆",
+    desc: "Prends le contrôle de Cité Néon : achète des quartiers, construis jusqu'à la tour, négocie avec tes rivaux et ruine-les à coups de loyers. De 2 à 6 joueurs, contre l'ordi, sur un seul écran ou en ligne.",
+    tags: ["Plateau", "Stratégie", "Multijoueur", "Solo"],
+    colors: ["#ff2e93", "#19e3ff"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "categorie",
     title: "Devine ta Catégorie",
     emoji: "🏷️",
@@ -187,6 +197,16 @@ window.SALLE_CATALOGUE = [
     desc: "Remplis la grille à l'aide des définitions, au clavier ou au doigt. Une nouvelle grille chaque jour à minuit, plus des grilles au hasard à volonté.",
     tags: ["Mots", "Quotidien", "Solo"],
     colors: ["#5bb5ad", "#f2be5c"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "motsfleches",
+    title: "Mots fléchés",
+    emoji: "🏹",
+    desc: "Les définitions sont directement dans la grille : suis les flèches et remplis les mots. Une nouvelle grille chaque jour à minuit, plus des grilles au hasard à volonté.",
+    tags: ["Mots", "Quotidien", "Solo"],
+    colors: ["#e0955a", "#5b6bd0"],
     etat: "dispo",
     badge: "Nouveau"
   },

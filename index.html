@@ -39,6 +39,13 @@ a.card:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.12)}
 .topbar{position:absolute;top:14px;right:16px;z-index:10;display:flex;align-items:center;gap:8px}
 .reglages{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);text-decoration:none;font-size:1.15rem}
 .reglages:hover{transform:rotate(30deg)}
+.jour{position:absolute;top:10px;left:10px;font-size:.72rem;font-weight:800;padding:4px 10px;border-radius:999px;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.jour.fait{background:#2f9b62}.jour.afaire{background:#e08a1e}
+.defis{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin:-12px 0 22px;font-weight:700;font-size:.92rem}
+.defis[hidden]{display:none}
+.defis .barre{width:140px;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.defis .barre i{display:block;height:100%;background:#2f9b62;border-radius:99px}
+.defis button{font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:4px 12px}
 .record{font-size:.82rem;font-weight:700;color:var(--text);background:var(--bg);border-radius:10px;padding:5px 9px;align-self:flex-start}
 .annonce{margin:0 auto 24px;max-width:720px;padding:12px 18px;border-radius:14px;background:var(--card);border:2px dashed var(--accent);text-align:center;font-weight:700;white-space:pre-wrap}
 .card.hidden-admin{opacity:.6;outline:2px dashed var(--muted)}
@@ -56,6 +63,7 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
   </section>
 
   <nav class="filters" id="filters"></nav>
+  <div class="defis" id="defis" hidden></div>
   <section class="grid" id="grid"></section>
 
   <footer><span id="count"></span></footer>
@@ -96,6 +104,7 @@ function render(){
     const badge = cache ? "🙈 Caché (visible car admin)" : ready ? (g.badge || "") : "Bientôt";
     el.innerHTML = `
       ${badge ? `<span class="badge"></span>` : ""}
+      ${ready && etatJour(g.slug) ? `<span class="jour"></span>` : ""}
       <div class="cover"></div>
       <div class="body">
         <h2></h2><p></p>
@@ -107,6 +116,9 @@ function render(){
     el.querySelector(".cover").textContent = g.emoji || "🎲";
     el.querySelector("h2").textContent = g.title;
     el.querySelector("p").textContent = g.desc || "";
+    const ej = el.querySelector(".jour");
+    if(ej){ const e = etatJour(g.slug); ej.className = "jour " + (e.fait ? "fait" : "afaire");
+      ej.textContent = e.fait ? "✅ Fait aujourd'hui" : e.serie ? `⏳ À faire · 🔥 ${e.serie} en jeu` : "⏳ À faire aujourd'hui"; }
     const rec = el.querySelector(".record");
     if(rec) rec.textContent = recordDe(g.slug);
     const t = el.querySelector(".tags");
@@ -118,14 +130,46 @@ function render(){
 /* Record du joueur sur cet appareil, affiché sur la carte du jeu.
    Les nouveaux jeux passent par Base.record() ; les anciens sont lus ici. */
 function lireLS(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } }
-const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions", "anidle", "motscroises", "sudoku", "shikaku"];
+const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions", "anidle", "motscroises", "sudoku", "shikaku", "motsfleches"];
+/* Défi du jour : fait ou pas aujourd'hui ?
+   Chaque jeu numérote ses jours depuis sa date de lancement (START dans le jeu) :
+   indique-la ici si elle n'est pas le 1er novembre 2026. */
+const DEBUT_DLE = {anidle: [2026, 10, 3], motscroises: [2026, 10, 4], shikaku: [2026, 10, 4], motsfleches: [2026, 10, 4]};
+function jourParis(slug){
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date()).split("-").map(Number);
+  const [sy, sm, sd] = DEBUT_DLE[slug] || [2026, 10, 1];
+  return Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(sy, sm, sd)) / 864e5);
+}
+function etatJour(slug){
+  if(!DLE.includes(slug)) return null;
+  const j = jourParis(slug), s = lireLS(slug + "_statsDaily", null) || {};
+  const dernier = s.lastWin != null ? s.lastWin : s.last;
+  return {fait: s.last === j, serie: s.streak && dernier != null && dernier >= j - 1 ? s.streak : 0};
+}
+function renderDefis(){
+  const z = document.getElementById("defis");
+  const l = visibles().filter(g => g.etat !== "bientot" && !g.sansPage && DLE.includes(g.slug));
+  if(!l.length){ z.hidden = true; return; }
+  const n = l.filter(g => etatJour(g.slug).fait).length;
+  z.hidden = false; z.innerHTML = "";
+  const t = document.createElement("span");
+  t.textContent = n === l.length ? `🎉 Tous les défis du jour sont faits (${n}/${l.length}) !` : `📅 Défis du jour : ${n} / ${l.length} faits`;
+  const b = document.createElement("div"); b.className = "barre";
+  const i = document.createElement("i"); i.style.width = (n / l.length * 100) + "%"; b.appendChild(i);
+  z.append(t, b);
+  if(n < l.length && active !== "Quotidien" && (filters.textContent || "").includes("Quotidien")){
+    const bt = document.createElement("button"); bt.textContent = "Voir les jeux quotidiens";
+    bt.onclick = () => { active = "Quotidien"; renderFilters(); render(); renderDefis(); };
+    z.appendChild(bt);
+  }
+}
 function recordDe(slug){
   try{
     const r = Base.records()[slug];
     if(r && r.texte) return "🏆 " + r.texte;
     if(DLE.includes(slug)){
-      const s = lireLS(slug + "_statsDaily", null);
-      if(s && (s.best || s.streak)) return `🔥 Série ${s.streak || 0} · record ${s.best || 0}`;
+      const s = lireLS(slug + "_statsDaily", null), e = etatJour(slug);
+      if(s && (s.best || s.streak)) return `🔥 Série ${e ? e.serie : s.streak || 0} · record ${s.best || 0}`;
     }
     if(slug === "blocs" || slug === "labyrinthe"){
       const l = lireLS(slug + "_scores", []);
@@ -152,7 +196,7 @@ function renderFilters(){
     const b = document.createElement("button");
     b.textContent = t;
     if(t === active) b.className = "on";
-    b.onclick = () => { active = t; renderFilters(); render(); };
+    b.onclick = () => { active = t; renderFilters(); render(); renderDefis(); };
     filters.appendChild(b);
   }
 }
@@ -166,7 +210,7 @@ function renderAnnonce(){
 function tout(){
   const n = visibles().filter(g => g.etat === "dispo" && !g.sansPage).length;
   document.getElementById("count").textContent = `${n} jeu${n > 1 ? "x" : ""} disponible${n > 1 ? "s" : ""} · d'autres arrivent bientôt`;
-  renderAnnonce(); renderFilters(); render();
+  renderAnnonce(); renderFilters(); render(); renderDefis();
 }
 
 /* On attend les réglages (max ~3 s) pour ne pas montrer un jeu caché par erreur */
@@ -174,6 +218,10 @@ grid.innerHTML = '<p class="empty">Chargement des jeux…</p>';
 Promise.race([Compte.reglages(), new Promise(r => setTimeout(() => r({}), 3000))])
   .then(r => { regl = r || {}; tout(); });
 Compte.reglages().then(r => { if(JSON.stringify(r) !== JSON.stringify(regl)){ regl = r || {}; tout(); } });
+/* Retour sur l'accueil (bouton précédent) ou passage de minuit : statuts du jour à jour */
+addEventListener("pageshow", e => { if(e.persisted){ render(); renderDefis(); } });
+let jourVu = jourParis("wordle");
+setInterval(() => { const j = jourParis("wordle"); if(j !== jourVu){ jourVu = j; render(); renderDefis(); } }, 60000);
 Compte.surChangement(() => tout());
 </script>
 </body>
