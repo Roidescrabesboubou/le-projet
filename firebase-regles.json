@@ -131,6 +131,34 @@
         }
       }
     },
+    "roulette": {
+      ".read": true,
+      ".indexOn": [
+        "s"
+      ],
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['n', 's', 'j', 'm', 'd'])",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "s": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+        },
+        "j": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() * 86400000 <= now + 50400000 && (!data.exists() || newData.val() >= data.val())"
+        },
+        "m": {
+          ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('s').val() && (!data.exists() || newData.val() >= data.val())"
+        },
+        "d": {
+          ".validate": "newData.val() == now"
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
+    },
     "resultats": {
       "$jeu": {
         ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/)",

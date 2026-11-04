@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Roulette</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#b8323f;--fond1:rgba(184,50,63,.13);--fond2:rgba(31,138,91,.13);--or:#e2b93b;--tapis1:#1f7d52;--tapis2:#0e4630;--bois:#5e3a20;--rouge:#c0303c;--noir:#1c1c22;--vert:#1f9d62}
+.porte{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.solde{font-family:Fredoka,sans-serif;font-size:2rem;line-height:1}
+.solde small{display:block;font-family:Nunito,sans-serif;font-size:.8rem;color:var(--muted);font-weight:700;margin-bottom:4px}
+.cadeau{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
+.cadeau .muted{font-size:.85rem}
+.btn.or{background:var(--or);color:#22192b}
+.btn.vert{background:#2c9a62}
+.sync{font-size:.8rem;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.tapis{width:100%;border-radius:28px;padding:18px 14px 22px;background:radial-gradient(ellipse at 50% 0%,var(--tapis1),var(--tapis2) 80%);
+  border:10px solid var(--bois);box-shadow:inset 0 0 40px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.25);color:#fff;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:center}
+.gauche{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0}
+.annonce{font-family:Fredoka,sans-serif;font-size:1.25rem;text-align:center;min-height:1.5em;color:#ffe9a8;text-shadow:0 2px 6px rgba(0,0,0,.4)}
+.regle{font-size:.78rem;color:rgba(255,255,255,.65);text-align:center;border-top:1px dashed rgba(255,255,255,.25);border-bottom:1px dashed rgba(255,255,255,.25);padding:4px 16px}
+
+/* ---------- Cylindre ---------- */
+.cylindre{position:relative;width:min(100%,340px);aspect-ratio:1}
+.roue{position:absolute;inset:0;transition:transform 5s cubic-bezier(.12,.62,.2,1)}
+.roue svg{display:block;width:100%;height:100%}
+.orbite{position:absolute;inset:0;transition:transform 5s cubic-bezier(.12,.62,.2,1);pointer-events:none}
+.bille{position:absolute;left:50%;top:.5%;width:4.6%;aspect-ratio:1;margin-left:-2.3%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#c9ccd6);box-shadow:0 1px 3px rgba(0,0,0,.6);transition:top .9s ease-in}
+.orbite.posee .bille{top:14%}
+.moyeu{position:absolute;left:50%;top:50%;width:30%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Fredoka,sans-serif;font-size:clamp(1.3rem,5vw,2rem);color:#fff;background:radial-gradient(circle at 40% 35%,#8a5a33,var(--bois));box-shadow:0 2px 8px rgba(0,0,0,.5);transition:background .3s}
+.moyeu.rouge{background:var(--rouge)}
+.moyeu.noir{background:var(--noir)}
+.moyeu.vert{background:var(--vert)}
+.histo{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;min-height:26px}
+.histo span{min-width:26px;height:26px;padding:0 4px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:800}
+
+/* ---------- Table des mises ---------- */
+.table{display:grid;grid-template-columns:1fr 1fr repeat(3,1.15fr);grid-template-rows:repeat(14,minmax(30px,1fr));gap:2px;width:100%;max-width:400px;margin:0 auto}
+.table button{position:relative;border:1px solid rgba(255,255,255,.45);background:transparent;color:#fff;font-weight:800;font-size:.9rem;padding:0;border-radius:4px;min-width:0;line-height:1.05;transition:filter .12s}
+.table button:hover:not(:disabled){filter:brightness(1.3);background-color:rgba(255,255,255,.08)}
+.table button.rouge{background:var(--rouge)}
+.table button.noir{background:var(--noir)}
+.table button.vert{background:var(--vert)}
+.table button.petit{font-size:.74rem}
+.table button.gagne{outline:3px solid var(--or);outline-offset:-1px;z-index:1;animation:brille 1s ease-in-out 3}
+.table button:disabled{cursor:default}
+@keyframes brille{50%{filter:brightness(1.7)}}
+.pose{position:absolute;right:-2px;top:1px;min-width:24px;height:24px;padding:0 3px;border-radius:999px;background:var(--or);color:#22192b;border:2px dashed #fff;font-size:.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none}
+
+.commandes{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.jetons{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.jt{--c:#3b6fd6;width:58px;height:58px;border-radius:50%;border:0;color:#fff;font-weight:800;font-size:.9rem;
+  background:radial-gradient(circle,var(--c) 52%,transparent 53%),repeating-conic-gradient(var(--c) 0 20deg,#fff 20deg 40deg);
+  box-shadow:0 3px 8px rgba(0,0,0,.3),inset 0 0 0 3px rgba(255,255,255,.25);transition:transform .1s}
+.jt:hover{transform:translateY(-3px)}
+.jt.on{transform:translateY(-3px) scale(1.08);outline:3px solid var(--or);outline-offset:2px}
+.jt:disabled{opacity:.35;transform:none;cursor:default;outline:0}
+.miseEnCours{font-family:Fredoka,sans-serif;font-size:1.5rem;text-align:center}
+.boutons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.boutons .btn{min-width:110px}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;text-align:center}
+.stats div{background:var(--soft);border-radius:12px;padding:8px}
+.stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.3rem}
+.stats span{font-size:.78rem;color:var(--muted);font-weight:700}
+.top{list-style:none;padding:0;margin:8px 0 0}
+.top li{display:flex;justify-content:space-between;padding:6px 10px;border-radius:10px}
+.top li:nth-child(odd){background:var(--soft)}
+.top li.moi{outline:2px solid var(--accent)}
+
+@media (max-width:760px){
+  .tapis{grid-template-columns:minmax(0,1fr);padding:14px 8px 18px;border-width:7px}
+  .cylindre{width:min(100%,280px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .roue,.orbite{transition-duration:.01s}
+  .bille{transition:none}
+}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <section class="b-carte">
+    <div class="porte">
+      <div class="solde"><small>💰 Tes jetons</small><span id="solde">—</span></div>
+      <div class="cadeau" id="cadeau"></div>
+    </div>
+    <div class="sync" id="sync"></div>
+  </section>
+
+  <section class="tapis" id="tapis">
+    <div class="gauche">
+      <div class="cylindre">
+        <div class="roue" id="roue"></div>
+        <div class="orbite" id="orbite"><div class="bille"></div></div>
+        <div class="moyeu" id="moyeu"></div>
+      </div>
+      <div class="annonce" id="annonce"></div>
+      <div class="histo" id="histo"></div>
+      <div class="regle">Numéro plein 35 pour 1 · Douzaine et colonne 2 pour 1 · Chances simples 1 pour 1</div>
+    </div>
+    <div class="table" id="table"></div>
+  </section>
+
+  <section class="b-carte commandes" id="commandes"></section>
+
+  <section class="b-carte">
+    <h3 style="margin:0 0 10px">📊 Tes statistiques</h3>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="b-carte cache" id="carteTop">
+    <h3 style="margin:0">🏆 Les plus riches</h3>
+    <ol class="top" id="top"></ol>
+  </section>
+
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => Number(n || 0).toLocaleString("fr-FR");
+const court = n => n >= 1000000 ? +(n / 1000000).toFixed(1) + "M" : n >= 1000 ? +(n / 1000).toFixed(1) + "k" : String(n);
+const S = Base.stock("roulette_");
+
+/* ---------- Réglages du jeu ---------- */
+const JOURNALIER = 1000;       // jetons offerts chaque jour
+const JETONS = [[10, "#3b6fd6"], [25, "#2c9a62"], [100, "#2b2b2b"], [500, "#8a4fd0"], [1000, "#c99a1e"]];
+const DUREE = 5200;            // durée du lancer (ms), un peu plus que l'animation
+const CYLINDRE = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const ROUGES = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+const couleur = n => n === 0 ? "vert" : ROUGES.includes(n) ? "rouge" : "noir";
+
+Base.entete({
+  titre: "Roulette",
+  emoji: "🎡",
+  aide: `<p>Pose tes jetons sur la table, lance la bille et croise les doigts. Roulette européenne : un seul zéro, 37 numéros.</p>
+  <ul>
+    <li><b>Chaque jour, tu reçois ${fmt(JOURNALIER)} jetons</b> (bouton 🎁). Il n'y a <b>aucun autre moyen</b> d'en gagner que de jouer : si tu perds tout, rendez-vous demain !</li>
+    <li>Choisis un jeton, puis touche la table pour le poser. Tu peux miser à plusieurs endroits à la fois.</li>
+    <li><b>Numéro plein</b> : payé 35 pour 1.</li>
+    <li><b>Douzaine</b> ou <b>colonne</b> : payée 2 pour 1.</li>
+    <li><b>Chances simples</b> (rouge/noir, pair/impair, 1-18/19-36) : payées 1 pour 1. Le 0 les fait toutes perdre.</li>
+    <li>Tes mises sont retirées au lancer : quitter pendant que la bille tourne ne les rend pas, le résultat est déjà joué.</li>
+    <li>Connecte-toi pour retrouver tes jetons sur tous tes appareils et apparaître au classement des plus riches.</li>
+  </ul>`
+});
+
+/* ============================================================
+   PORTEFEUILLE (local + compte en ligne)
+   ============================================================ */
+let uid = "invite", porte = null, P = null, syncEtat = "local", attenteSync = null;
+const vide = () => ({s: 0, j: -1, m: 0, t: 0, st: {tours: 0, gagnes: 0, pleins: 0, gros: 0}});
+const jourLocal = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
+const nouvellePartie = () => ({mises: {}, pile: [], dernieres: {}, tirage: null, gagnant: null, hist: [], annonce: "", jeton: 10});
+
+function charger(){
+  porte = Object.assign(vide(), S.lire("porte_" + uid, {}));
+  porte.st = Object.assign(vide().st, porte.st || {});
+  P = Object.assign(nouvellePartie(), S.lire("partie_" + uid, {}));
+}
+function sauver(distant){
+  porte.t = Date.now();
+  if(porte.s > porte.m) porte.m = porte.s;
+  S.ecrire("porte_" + uid, porte);
+  S.ecrire("partie_" + uid, P);
+  if(porte.m > 0) Base.record("roulette", porte.m, {texte: fmt(porte.m) + " jetons"});
+  if(distant !== false) syncPlus_tard();
+}
+
+const session = () => window.Compte && Compte.pret && Compte.session && Compte.session();
+async function syncLire(){
+  if(uid === "invite") return;
+  syncEtat = "…"; dessinerPorte();
+  try{
+    const r = await Compte.db("roulette/" + uid);
+    if(r && typeof r.s === "number"){
+      porte.j = Math.max(porte.j, r.j == null ? -1 : r.j);
+      porte.m = Math.max(porte.m || 0, r.m || 0);
+      if((r.d || 0) > (porte.t || 0) && !P.tirage){ porte.s = r.s; porte.t = r.d; S.ecrire("porte_" + uid, porte); }
+      else if((r.d || 0) < (porte.t || 0) || r.s !== porte.s) await syncEcrire();
+    }else await syncEcrire();
+    syncEtat = "ok";
+  }catch(e){ syncEtat = "ko"; }
+  dessiner();
+}
+async function syncEcrire(){
+  if(uid === "invite") return;
+  const s = session();
+  try{
+    await Compte.db("roulette/" + uid, {method: "PUT", body: {n: (s && s.pseudo || Base.joueur.pseudo() || "Joueur").slice(0, 16), s: porte.s, j: Math.max(0, porte.j), m: Math.max(porte.m, porte.s), d: {".sv": "timestamp"}}});
+    syncEtat = "ok";
+  }catch(e){ syncEtat = "ko"; }
+  dessinerPorte();
+}
+function syncPlus_tard(){
+  if(uid === "invite") return;
+  clearTimeout(attenteSync);
+  attenteSync = setTimeout(() => syncEcrire().then(chargerTop), 1200);
+}
+async function chargerTop(){
+  if(!window.Compte || !Compte.pret) return;
+  try{
+    const r = await Compte.db("roulette", {auth: false, query: 'orderBy="s"&limitToLast=10'});
+    const l = Object.entries(r || {}).map(([id, v]) => ({id, ...v})).filter(x => typeof x.s === "number").sort((a, b) => b.s - a.s);
+    if(!l.length){ $("carteTop").classList.add("cache"); return; }
+    $("top").innerHTML = l.map((x, k) => `<li class="${x.id === uid ? "moi" : ""}"><span>${["🥇","🥈","🥉"][k] || (k + 1) + "."} ${esc(x.n)}</span><b>${fmt(x.s)}</b></li>`).join("");
+    $("carteTop").classList.remove("cache");
+  }catch(e){ $("carteTop").classList.add("cache"); }
+}
+
+function changerCompte(){
+  const s = session();
+  const nouveau = s && s.uid ? s.uid : "invite";
+  if(nouveau === uid && porte) return;
+  clearTimeout(attenteTirage);
+  uid = nouveau; charger(); reprendre(); dessiner();
+  if(uid !== "invite") syncLire();
+}
+
+/* ---------- Allocation quotidienne ---------- */
+function recuperer(){
+  if(porte.j >= jourLocal()) return;
+  porte.j = jourLocal(); porte.s += JOURNALIER;
+  sauver();
+  Base.toast(`🎁 +${fmt(JOURNALIER)} jetons ! Bonne chance.`);
+  dessiner();
+}
+function avantDemain(){
+  const d = new Date(); const m = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  const s = Math.max(0, Math.floor((m - d) / 1000));
+  const h = Math.floor(s / 3600), mn = Math.floor(s % 3600 / 60);
+  return h ? `${h} h ${String(mn).padStart(2, "0")}` : `${mn} min ${String(s % 60).padStart(2, "0")} s`;
+}
+
+/* ============================================================
+   RÈGLES DE LA ROULETTE
+   ============================================================ */
+/* Une mise = une clé : "n17", "d1"-"d3" (douzaines), "c1"-"c3" (colonnes), ou une chance simple */
+const SIMPLES = {
+  manque: n => n >= 1 && n <= 18, passe: n => n >= 19,
+  pair: n => n > 0 && n % 2 === 0, impair: n => n % 2 === 1,
+  rouge: n => couleur(n) === "rouge", noir: n => couleur(n) === "noir"
+};
+function gainDe(cle, mise, n){
+  if(/^n\d+$/.test(cle)) return +cle.slice(1) === n ? mise * 36 : 0;
+  if(/^d\d$/.test(cle)) return n > 0 && Math.ceil(n / 12) === +cle[1] ? mise * 3 : 0;
+  if(/^c\d$/.test(cle)) return n > 0 && (n - 1) % 3 + 1 === +cle[1] ? mise * 3 : 0;
+  return SIMPLES[cle](n) ? mise * 2 : 0;
+}
+const totalDe = mises => Object.values(mises).reduce((a, b) => a + b, 0);
+const miseEnCours = () => totalDe(P.mises);
+
+function poser(cle){
+  if(P.tirage) return;
+  const v = P.jeton;
+  if(miseEnCours() + v > porte.s){ Base.toast("Pas assez de jetons pour cette mise."); return; }
+  if(P.gagnant !== null){ P.gagnant = null; P.annonce = ""; }
+  P.mises[cle] = (P.mises[cle] || 0) + v;
+  P.pile.push([cle, v]);
+  sauver(false); dessiner();
+}
+function retirerDernier(){
+  const d = P.pile.pop();
+  if(!d) return;
+  P.mises[d[0]] -= d[1];
+  if(P.mises[d[0]] <= 0) delete P.mises[d[0]];
+  sauver(false); dessiner();
+}
+function effacer(){ P.mises = {}; P.pile = []; sauver(false); dessiner(); }
+function remiser(){
+  if(totalDe(P.dernieres) > porte.s) return;
+  P.mises = Object.assign({}, P.dernieres);
+  P.pile = Object.entries(P.mises);
+  P.gagnant = null; P.annonce = "";
+  sauver(false); dessiner();
+}
+
+let attenteTirage = null;
+function lancer(){
+  const total = miseEnCours();
+  if(P.tirage || total <= 0 || total > porte.s) return;
+  const n = Math.floor(Math.random() * 37);
+  porte.s -= total; porte.st.tours++;
+  P.tirage = {n, mises: P.mises, total};
+  P.dernieres = P.mises; P.mises = {}; P.pile = [];
+  P.gagnant = null; P.annonce = "Les jeux sont faits, rien ne va plus…";
+  sauver(); dessiner();
+  if(innerWidth <= 760) $("tapis").scrollIntoView({behavior: "smooth", block: "start"});   // sur téléphone, le cylindre est hors de l'écran
+  tourner(n);
+  attenteTirage = setTimeout(regler, DUREE);
+}
+function regler(){
+  const t = P.tirage;
+  if(!t) return;
+  const gain = Object.entries(t.mises).reduce((a, [c, m]) => a + gainDe(c, m, t.n), 0);
+  const net = gain - t.total;
+  porte.s += gain;
+  if(gain > 0) porte.st.gagnes++;
+  if(t.mises["n" + t.n]) porte.st.pleins++;
+  if(net > porte.st.gros) porte.st.gros = net;
+  P.tirage = null; P.gagnant = t.n;
+  P.hist = [t.n, ...P.hist].slice(0, 12);
+  const nom = t.n === 0 ? "0 vert" : `${t.n} ${couleur(t.n)}`;
+  P.annonce = `${nom} · ` + (net > 0 ? `+${fmt(net)} jetons 🎉` : net < 0 ? `−${fmt(-net)} jetons` : "Mise récupérée");
+  sauver(); dessiner();
+}
+/* Une page rechargée pendant un lancer : le résultat était déjà tiré, on le règle */
+function reprendre(){
+  if(P.tirage) regler();
+  if(P.gagnant !== null) poserBille(P.gagnant);
+}
+
+/* ============================================================
+   CYLINDRE
+   ============================================================ */
+const PAS = 360 / 37;
+let angleRoue = 0, angleBille = 0;
+function construireRoue(){
+  const pt = (r, a) => [110 + r * Math.sin(a * Math.PI / 180), 110 - r * Math.cos(a * Math.PI / 180)].map(v => v.toFixed(2)).join(" ");
+  const fonds = {rouge: "#c0303c", noir: "#1c1c22", vert: "#1f9d62"};
+  const parts = CYLINDRE.map((n, i) => {
+    const a = i * PAS - PAS / 2, b = a + PAS, m = i * PAS;
+    return `<path d="M${pt(100, a)} A100 100 0 0 1 ${pt(100, b)} L${pt(66, b)} A66 66 0 0 0 ${pt(66, a)} Z" fill="${fonds[couleur(n)]}" stroke="#d9c79a" stroke-width=".5"/>`
+      + `<text x="0" y="0" transform="translate(${pt(91, m)}) rotate(${m})" fill="#fff" font-size="8" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="Nunito,sans-serif">${n}</text>`;
+  }).join("");
+  $("roue").innerHTML = `<svg viewBox="0 0 220 220" role="img" aria-label="Cylindre de roulette"><circle cx="110" cy="110" r="109" fill="#3f2614"/><circle cx="110" cy="110" r="102" fill="#5e3a20"/>${parts}<circle cx="110" cy="110" r="66" fill="#3f2614"/><circle cx="110" cy="110" r="52" fill="#5e3a20" stroke="#d9c79a" stroke-width="1"/></svg>`;
+}
+/* Angle de la case n une fois la roue à sa position */
+const anglePoche = n => angleRoue + CYLINDRE.indexOf(n) * PAS;
+function tourner(n){
+  $("moyeu").textContent = ""; $("moyeu").className = "moyeu";
+  $("orbite").classList.remove("posee");
+  angleRoue += 360 * 3 + Math.random() * 360;
+  const cible = ((anglePoche(n) % 360) + 360) % 360;
+  angleBille = angleBille - 360 * 6 - (((angleBille - cible) % 360) + 360) % 360;
+  $("roue").style.transform = `rotate(${angleRoue}deg)`;
+  $("orbite").style.transform = `rotate(${angleBille}deg)`;
+  setTimeout(() => $("orbite").classList.add("posee"), DUREE - 1500);
+}
+function poserBille(n){
+  angleBille = anglePoche(n);
+  $("orbite").style.transition = "none";
+  $("orbite").style.transform = `rotate(${angleBille}deg)`;
+  $("orbite").classList.add("posee");
+  void $("orbite").offsetWidth;
+  $("orbite").style.transition = "";
+}
+
+/* ============================================================
+   AFFICHAGE
+   ============================================================ */
+function construireTable(){
+  const t = $("table");
+  const ajoute = (cle, txt, cls, col, lig, nbCol, nbLig) => {
+    const b = document.createElement("button");
+    b.dataset.cle = cle; b.className = cls || ""; b.textContent = txt;
+    b.style.gridColumn = `${col} / span ${nbCol || 1}`; b.style.gridRow = `${lig} / span ${nbLig || 1}`;
+    b.onclick = () => poser(cle);
+    t.appendChild(b);
+  };
+  ajoute("n0", "0", "vert", 3, 1, 3);
+  for(let n = 1; n <= 36; n++) ajoute("n" + n, n, couleur(n), 3 + (n - 1) % 3, 2 + Math.floor((n - 1) / 3));
+  [["1re", 1], ["2e", 2], ["3e", 3]].forEach(([x, k]) => ajoute("d" + k, x + " 12", "petit", 2, 2 + (k - 1) * 4, 1, 4));
+  [["1-18", "manque"], ["Pair", "pair"], ["Rouge", "rouge"], ["Noir", "noir"], ["Impair", "impair"], ["19-36", "passe"]].forEach(([x, c], k) =>
+    ajoute(c, x, "petit" + (c === "rouge" || c === "noir" ? " " + c : ""), 1, 2 + k * 2, 1, 2));
+  [1, 2, 3].forEach(k => ajoute("c" + k, "2:1", "petit", 2 + k, 14));
+}
+function dessinerPorte(){
+  $("solde").textContent = fmt(porte.s);
+  const cad = $("cadeau"); cad.innerHTML = "";
+  if(porte.j < jourLocal()){
+    const b = document.createElement("button"); b.className = "btn or"; b.textContent = `🎁 Récupérer mes ${fmt(JOURNALIER)} jetons du jour`;
+    b.onclick = recuperer; cad.appendChild(b);
+  }else{
+    const p = document.createElement("span"); p.className = "muted";
+    p.textContent = `🎁 Jetons du jour récupérés · prochains dans ${avantDemain()}`;
+    cad.appendChild(p);
+  }
+  const sy = $("sync"); sy.innerHTML = "";
+  if(uid === "invite"){
+    sy.appendChild(document.createTextNode(window.Compte && Compte.pret ? "👤 Jetons gardés sur cet appareil seulement. Connecte-toi pour les retrouver partout et entrer au classement." : "Jetons gardés sur cet appareil."));
+    if(window.Compte && Compte.pret){ const b = document.createElement("button"); b.className = "btn ghost petit"; b.textContent = "Se connecter"; b.onclick = () => Compte.ouvrir("connexion"); sy.appendChild(b); }
+  }else{
+    sy.textContent = syncEtat === "ok" ? "☁️ Jetons liés à ton compte" : syncEtat === "ko" ? "⚠️ Sauvegarde en ligne indisponible pour l'instant (tes jetons restent sur cet appareil)" : "☁️ Synchronisation…";
+  }
+}
+function dessinerTable(){
+  const mises = P.tirage ? P.tirage.mises : P.gagnant !== null && !miseEnCours() ? P.dernieres : P.mises;
+  const n = P.gagnant;
+  document.querySelectorAll("#table button").forEach(b => {
+    const cle = b.dataset.cle;
+    b.disabled = !!P.tirage;
+    b.querySelectorAll(".pose").forEach(e => e.remove());
+    if(mises[cle]){ const p = document.createElement("span"); p.className = "pose"; p.textContent = court(mises[cle]); b.appendChild(p); }
+    b.classList.toggle("gagne", n !== null && gainDe(cle, 1, n) > 0);
+  });
+}
+function dessinerMoyeu(){
+  if(P.tirage) return;
+  const n = P.gagnant;
+  $("moyeu").textContent = n === null ? "" : n;
+  $("moyeu").className = "moyeu" + (n === null ? "" : " " + couleur(n));
+}
+function dessinerCommandes(){
+  const z = $("commandes"); z.innerHTML = "";
+  if(P.tirage){ z.innerHTML = "<span class='muted'>La bille tourne…</span>"; return; }
+  const total = miseEnCours();
+  if(porte.s < JETONS[0][0] && !total){
+    const p = document.createElement("p"); p.style.textAlign = "center"; p.style.margin = "0";
+    p.innerHTML = porte.j < jourLocal() ? "Tu n'as plus de jetons… mais ton cadeau du jour t'attend en haut ! 🎁"
+      : `Plus de jetons pour aujourd'hui 😢<br><span class="muted">Reviens dans ${avantDemain()} pour recevoir ${fmt(JOURNALIER)} nouveaux jetons.</span>`;
+    z.appendChild(p);
+    return;
+  }
+  const me = document.createElement("div"); me.className = "miseEnCours";
+  me.textContent = "Mise : " + fmt(total);
+  const j = document.createElement("div"); j.className = "jetons";
+  JETONS.forEach(([v, c]) => {
+    const b = document.createElement("button"); b.className = "jt" + (P.jeton === v ? " on" : ""); b.style.setProperty("--c", c); b.textContent = v >= 1000 ? v / 1000 + "k" : v;
+    b.title = "Poser des jetons de " + fmt(v); b.disabled = v > porte.s;
+    b.onclick = () => { P.jeton = v; sauver(false); dessinerCommandes(); };
+    j.appendChild(b);
+  });
+  const bs = document.createElement("div"); bs.className = "boutons";
+  const btn = (t, cls, f, off) => { const b = document.createElement("button"); b.className = "btn " + cls; b.textContent = t; b.onclick = f; b.disabled = !!off; return b; };
+  bs.append(btn("Annuler", "ghost", retirerDernier, !P.pile.length), btn("Effacer", "ghost", effacer, !total));
+  const avant = totalDe(P.dernieres);
+  if(!total && avant) bs.append(btn(`🔁 Même mise (${fmt(avant)})`, "or", remiser, avant > porte.s));
+  bs.append(btn("🎡 Lancer", "vert", lancer, !total || total > porte.s));
+  z.append(me, j, bs);
+}
+function dessinerStats(){
+  const s = porte.st;
+  const taux = s.tours ? Math.round(s.gagnes / s.tours * 100) + " %" : "—";
+  $("stats").innerHTML = [
+    [fmt(s.tours), "lancers"], [taux, "lancers gagnants"], [fmt(s.pleins), "numéros pleins"],
+    [fmt(s.gros), "plus gros gain"], [fmt(porte.m), "record de jetons"]
+  ].map(([v, t]) => `<div><b>${v}</b><span>${t}</span></div>`).join("");
+}
+function dessiner(){
+  if(!porte) return;
+  dessinerPorte(); dessinerTable(); dessinerMoyeu(); dessinerCommandes(); dessinerStats();
+  $("annonce").textContent = P.annonce || (porte.s > 0 ? "Faites vos jeux" : "");
+  $("histo").innerHTML = P.hist.map(n => `<span style="background:var(--${couleur(n)})">${n}</span>`).join("");
+}
+
+/* ---------- Démarrage ---------- */
+construireRoue(); construireTable();
+charger(); reprendre(); dessiner();
+setInterval(dessinerPorte, 30000);
+(function attendreCompte(n){
+  if(window.Compte){
+    changerCompte();
+    Compte.surChangement(() => changerCompte());
+    chargerTop();
+    return;
+  }
+  if(n < 60) setTimeout(() => attendreCompte(n + 1), 100);
+})(0);
+</script>
+</body>
+</html>

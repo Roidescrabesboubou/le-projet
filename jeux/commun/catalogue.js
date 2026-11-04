@@ -55,6 +55,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "roulette",
+    title: "Roulette",
+    emoji: "🎡",
+    desc: "Pose tes jetons sur la table et lance la bille : numéro plein, douzaine, rouge ou noir… Tu reçois 1 000 jetons chaque jour, et c'est tout : aucun autre moyen d'en gagner que de jouer. Grimpe au classement des plus riches !",
+    tags: ["Casino", "Quotidien", "Solo"],
+    colors: ["#c0303c", "#1f7d52"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "coupdefeu",
     title: "Coup de Feu",
     emoji: "🔥",
