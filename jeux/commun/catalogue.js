@@ -58,8 +58,8 @@ window.SALLE_CATALOGUE = [
     slug: "roulette",
     title: "Roulette",
     emoji: "🎡",
-    desc: "Pose tes jetons sur la table et lance la bille : numéro plein, douzaine, rouge ou noir… Tu reçois 1 000 jetons chaque jour, et c'est tout : aucun autre moyen d'en gagner que de jouer. Grimpe au classement des plus riches !",
-    tags: ["Casino", "Quotidien", "Solo"],
+    desc: "Une seule roulette pour tout le site : la roue tourne en boucle, tu vas et viens quand tu veux et tu vois les mises des autres en direct. 1 000 jetons chaque jour, et c'est tout : aucun autre moyen d'en gagner que de jouer. Grimpe au classement des plus riches !",
+    tags: ["Casino", "Quotidien", "Multijoueur"],
     colors: ["#c0303c", "#1f7d52"],
     etat: "dispo",
     badge: "Nouveau"
