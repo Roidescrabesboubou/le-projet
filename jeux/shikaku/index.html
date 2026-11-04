@@ -8,41 +8,60 @@
 <style>
 :root{--accent:#d9743f;--fond1:rgba(217,116,63,.14);--fond2:rgba(91,107,208,.12);--trait:#d8cdbf;--case:#fff}
 @media (prefers-color-scheme:dark){:root{--trait:#44394f;--case:#231d2b}}
-.barre{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;max-width:520px;flex-wrap:wrap}
+.barre{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;max-width:640px;flex-wrap:wrap}
 .chrono{font-family:Fredoka,sans-serif;font-size:1.25rem;font-variant-numeric:tabular-nums}
-#tailles{width:100%;max-width:520px}
-#plateau{position:relative;width:100%;max-width:520px;aspect-ratio:1;background:var(--case);border:2px solid var(--text);border-radius:8px;overflow:hidden;
+.sous{margin:0;text-align:center;font-weight:700;color:var(--muted);font-size:.9rem}
+#cadre{width:100%;overflow:auto}
+#plateau{position:relative;margin:0 auto;background:var(--case);border:2px solid var(--text);border-radius:8px;overflow:hidden;box-sizing:border-box;
   touch-action:none;user-select:none;-webkit-user-select:none;cursor:crosshair}
-.fini#plateau{cursor:default}
+#plateau.fini{cursor:default}
+#plateau.deplacer{touch-action:auto;cursor:grab}
 #cases{position:absolute;inset:0;display:grid;z-index:2;pointer-events:none}
 #cases div{border:.5px solid var(--trait);display:flex;align-items:center;justify-content:center;
-  font-family:Fredoka,sans-serif;font-weight:700;font-size:var(--taille,1.3rem);color:var(--text)}
+  font-family:Fredoka,sans-serif;font-weight:700;font-size:var(--taille,1.3rem);line-height:1;color:var(--text)}
 #zones{position:absolute;inset:0;z-index:1;pointer-events:none}
 .z{position:absolute;box-sizing:border-box;border:2px solid;border-radius:6px;background:var(--fond);border-color:var(--bord)}
 .z.mauvais{--fond:rgba(232,96,122,.14);--bord:var(--ko);border-style:dashed}
 .z.apercu{--fond:rgba(91,107,208,.22);--bord:#5b6bd0;z-index:3;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 4px;font:800 .8rem Nunito,sans-serif;color:#3a46a8}
 .actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+/* Toujours à portée : quand on trace, le doigt sur la grille ne fait plus défiler la page */
+#bDeplacer{position:fixed;right:14px;bottom:14px;z-index:6;background:var(--card);box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .etat{font-weight:700;text-align:center;margin:0;min-height:1.4em}
 .recap{text-align:center}
 .recap .gros{font-family:Fredoka,sans-serif;font-size:2.2rem;margin:0}
-.recap .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0}
+.recap .stats{display:flex;justify-content:center;gap:22px;margin:12px 0}
 .recap .stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.4rem}
 .recap .stats small{color:var(--muted);font-size:.72rem}
+.lb{list-style:none;margin:8px 0 0;padding:0;text-align:left;font-size:.92rem;display:flex;flex-direction:column;gap:3px}
+.lb li{display:flex;gap:8px;padding:5px 10px;border-radius:9px;background:var(--soft);font-weight:700}
+.lb li.moi{outline:2px solid var(--accent)}
+.lb .r{width:26px;flex:none;text-align:center}
+.lb .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .v{font-family:Fredoka,sans-serif;font-variant-numeric:tabular-nums}
+.note{font-size:.85rem;color:var(--muted);text-align:center;margin:8px 0 0}
+.pseudo{display:flex;gap:6px;margin-top:10px}
+.pseudo input{flex:1;min-width:0}
+.onglets{margin-bottom:6px}
+.onglets button{padding:5px 11px;font-size:.82rem}
 </style>
 </head>
 <body>
 <main class="b-page">
   <div class="barre">
     <div class="pilules">
-      <button id="mJour">📅 Grille du jour</button>
-      <button id="mLibre">♾️ Partie libre</button>
+      <button id="m_jour">📅 Jour</button>
+      <button id="m_semaine">🗓️ Semaine</button>
+      <button id="m_mois">🌙 Mois</button>
+      <button id="m_libre">♾️ Libre</button>
     </div>
     <span class="chrono" id="chrono">0:00</span>
   </div>
+  <p class="sous" id="sous"></p>
   <div class="pilules" id="tailles"></div>
-  <div id="plateau"><div id="zones"></div><div id="cases"></div></div>
+  <div id="cadre"><div id="plateau"><div id="zones"></div><div id="cases"></div></div></div>
   <p class="etat" id="etat"></p>
   <div class="actions">
+    <button class="btn ghost petit cache" id="bDeplacer">✋ Déplacer</button>
     <button class="btn ghost petit" id="bAnnuler">↩️ Annuler</button>
     <button class="btn ghost petit" id="bEffacer">🧹 Tout effacer</button>
     <button class="btn ghost petit" id="bIndice">💡 Un rectangle</button>
@@ -53,136 +72,92 @@
 
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
+<script src="generateur.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const store=Base.stock("shikaku_");
+const{generer,TAILLES}=window.ShikakuGen;
 
-Base.entete({titre:"Shikaku",emoji:"📐",
+const bTop=Base.el("button","🏆","b-ico");bTop.title="Classements";
+Base.entete({titre:"Shikaku",emoji:"📐",boutons:[bTop],
   aide:`<p>Découpe toute la grille en rectangles. Chaque rectangle contient <b>un seul nombre</b>, égal à son <b>nombre de cases</b>.</p>
   <ul>
     <li>Fais glisser le doigt ou la souris d'un coin à l'autre pour tracer un rectangle.</li>
     <li>Touche un rectangle pour l'effacer. Pour un 1, touche simplement sa case.</li>
     <li>Un rectangle en pointillés rouges ne respecte pas la règle.</li>
-    <li>📅 Même grille pour tout le monde, nouvelle chaque jour à minuit. ♾️ La partie libre propose trois tailles.</li>
+    <li>📅 Une grille 7×7 par jour, 🗓️ une 11×11 par semaine, 🌙 une 25×25 par mois : la même pour tout le monde.</li>
+    <li>♾️ En partie libre, choisis ta taille, du 5×5 au 25×25.</li>
+    <li>🏆 Chaque mode a son classement au temps. Une grille finie avec un rectangle révélé n'y compte pas.</li>
+    <li>Sur les très grandes grilles, <b>✋ Déplacer</b> permet de faire défiler la grille au doigt.</li>
   </ul>`});
 
-/* ---------- Générateur : découpe au hasard, puis nombres placés pour n'avoir qu'une solution ---------- */
-const TAILLE_JOUR=8,TAILLES=[5,7,10];
-const AIRE_MAX={5:8,7:12,8:12,10:16};
-function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-
-function decouper(n,r){
-  const pris=new Uint8Array(n*n),rects=[],max=AIRE_MAX[n];
-  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
-    if(pris[y*n+x])continue;
-    const options=[];
-    for(let h=1;y+h<=n;h++){
-      for(let w=1;x+w<=n&&w*h<=max;w++){
-        let libre=true;
-        for(let j=0;j<h&&libre;j++)if(pris[(y+j)*n+x+w-1])libre=false;
-        if(!libre)break;
-        // les grands rectangles sont plus souvent choisis, les cases seules restent rares
-        if(w*h>1)for(let p=0;p<w*h;p++)options.push([w,h]);
-      }
-    }
-    const[w,h]=options.length?options[r()*options.length|0]:[1,1];
-    for(let j=0;j<h;j++)for(let i=0;i<w;i++)pris[(y+j)*n+x+i]=1;
-    rects.push({x,y,w,h});
-  }
-  return rects;
-}
-/* Toutes les places possibles de chaque nombre, sans toucher un autre nombre */
-function placesDe(n,indices){
-  const estIndice=new Uint8Array(n*n);
-  indices.forEach(c=>estIndice[c.y*n+c.x]=1);
-  return indices.map(c=>{
-    const liste=[];
-    for(let h=1;h<=c.a&&h<=n;h++){
-      if(c.a%h)continue;
-      const w=c.a/h;if(w>n)continue;
-      for(let y=Math.max(0,c.y-h+1);y<=c.y&&y+h<=n;y++)for(let x=Math.max(0,c.x-w+1);x<=c.x&&x+w<=n;x++){
-        const cs=[];let ok=true;
-        for(let j=0;j<h&&ok;j++)for(let i=0;i<w;i++){
-          const k=(y+j)*n+x+i;
-          if(estIndice[k]&&!(x+i===c.x&&y+j===c.y)){ok=false;break}
-          cs.push(k);
-        }
-        if(ok)liste.push(cs);
-      }
-    }
-    return liste;
-  });
-}
-/* Compte les solutions, en s'arrêtant à 2 : le nombre le plus contraint d'abord */
-function compterSolutions(n,indices){
-  const places=placesDe(n,indices),occupe=new Uint8Array(n*n),reste=new Set(indices.keys());
-  let total=0;
-  function suite(){
-    if(!reste.size){total++;return}
-    let choix=-1,mieux=null;
-    for(const i of reste){
-      const dispo=places[i].filter(cs=>cs.every(k=>!occupe[k]));
-      if(!dispo.length)return;
-      if(!mieux||dispo.length<mieux.length){mieux=dispo;choix=i;if(dispo.length===1)break}
-    }
-    reste.delete(choix);
-    for(const cs of mieux){
-      cs.forEach(k=>occupe[k]=1);
-      suite();
-      cs.forEach(k=>occupe[k]=0);
-      if(total>1)break;
-    }
-    reste.add(choix);
-  }
-  suite();
-  return total;
-}
-function generer(n,seed){
-  const r=rng(seed);
-  for(;;){
-    const rects=decouper(n,r);
-    for(let e=0;e<6;e++){
-      const indices=rects.map(q=>({x:q.x+(r()*q.w|0),y:q.y+(r()*q.h|0),a:q.w*q.h}));
-      if(compterSolutions(n,indices)===1)return{n,indices,solution:rects};
-    }
-  }
-}
+/* ---------- Modes et périodes ---------- */
+const MODES={
+  jour:{taille:7,nom:"Grille du jour",suivante:"Nouvelle grille à minuit."},
+  semaine:{taille:11,nom:"Grille de la semaine",suivante:"Nouvelle grille lundi."},
+  mois:{taille:25,nom:"Grille du mois",suivante:"Nouvelle grille le 1er du mois."},
+  libre:{nom:"Partie libre"}
+};
+const VERSION=2,START=Date.UTC(2026,10,4);
+function aParis(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number)}
+function parisDay(){const[y,m,d]=aParis();return Math.floor((Date.UTC(y,m-1,d)-START)/864e5)}
+/* Le 4 novembre 2026 est un mercredi : +2 pour que les semaines commencent le lundi */
+const semaine=()=>Math.floor((parisDay()+2)/7);
+const moisEnCours=()=>{const[y,m]=aParis();return y*100+m};
+function graine(m){return m==="jour"?parisDay()*7919+17:m==="semaine"?semaine()*104729+31:moisEnCours()*15485+37}
+function tableau(m,n){return m==="jour"?"j"+parisDay():m==="semaine"?"s"+semaine():m==="mois"?"m"+moisEnCours():"l"+n}
 
 /* ---------- Partie ---------- */
-const START=Date.UTC(2026,10,4);
-function parisDay(){
-  const[y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);
-  return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);
-}
 const defStats=()=>({played:0,wins:0,streak:0,best:0,lastWin:null,last:null,temps:{}});
-let mode="jour",G=null,seed=0,taille=TAILLE_JOUR,rects=[],histo=[],secondes=0,aides=0,fini=false,gagne=false;
+let mode="jour",G=null,seed=0,taille=7,tailleLibre=7,rects=[],histo=[],secondes=0,aides=0,fini=false,gagne=false,deplacer=false;
 
-function sauver(){store.ecrire(mode,{seed,taille,rects,secondes,aides,fini,gagne})}
+function sauver(){store.ecrire(mode,{v:VERSION,seed,taille,rects,secondes,aides,fini,gagne})}
 function charger(m){
-  mode=m;$("mJour").classList.toggle("on",m==="jour");$("mLibre").classList.toggle("on",m==="libre");
-  const sv=store.lire(m,null);
-  if(m==="jour"){seed=parisDay()*7919+17;taille=TAILLE_JOUR}
-  else if(sv){seed=sv.seed;taille=sv.taille}
-  else{seed=Math.random()*2147483647|0;taille=taille===TAILLE_JOUR?TAILLES[1]:taille}
+  mode=m;
+  for(const k in MODES)$("m_"+k).classList.toggle("on",k===m);
+  const sv=store.lire(m,null),lisible=sv&&sv.v===VERSION&&TAILLES.includes(sv.taille);
+  if(m==="libre"){
+    if(lisible){seed=sv.seed;tailleLibre=sv.taille}else seed=Math.random()*2147483647|0;
+    taille=tailleLibre;
+  }else{seed=graine(m);taille=MODES[m].taille}
   G=generer(taille,seed);
-  const ok=sv&&sv.seed===seed&&sv.taille===taille;
+  const ok=lisible&&sv.seed===seed&&sv.taille===taille;
   rects=ok?sv.rects:[];secondes=ok?sv.secondes:0;aides=ok?sv.aides:0;fini=ok&&sv.fini;gagne=ok&&sv.gagne;histo=[];
+  deplacer=false;
   construire();rafraichir();
 }
-function nouvelleLibre(n){taille=n||taille;store.ecrire("libre",null);charger("libre")}
+function nouvelleLibre(n){if(n)tailleLibre=n;store.ecrire("libre",null);charger("libre")}
 
 /* ---------- Affichage ---------- */
 function construire(){
   const c=$("cases");c.innerHTML="";
   c.style.gridTemplateColumns=`repeat(${G.n},1fr)`;c.style.gridTemplateRows=`repeat(${G.n},1fr)`;
-  $("plateau").style.setProperty("--taille",`clamp(.85rem,${(50/G.n).toFixed(1)}vw,${(10/G.n+.2).toFixed(2)}rem)`);
-  for(let y=0;y<G.n;y++)for(let x=0;x<G.n;x++){
-    const d=document.createElement("div"),i=G.indices.find(q=>q.x===x&&q.y===y);
-    if(i)d.textContent=i.a;
-    c.appendChild(d);
-  }
+  const nombres=new Map(G.indices.map(i=>[i.y*G.n+i.x,i.a]));
+  for(let k=0;k<G.n*G.n;k++){const d=document.createElement("div");if(nombres.has(k))d.textContent=nombres.get(k);c.appendChild(d)}
   const t=$("tailles");t.innerHTML="";t.classList.toggle("cache",mode!=="libre");
   TAILLES.forEach(n=>{const b=document.createElement("button");b.textContent=n+"×"+n;b.classList.toggle("on",n===G.n);b.onclick=()=>nouvelleLibre(n);t.appendChild(b)});
+  $("sous").textContent=mode==="libre"?"":MODES[mode].nom+" · "+G.n+"×"+G.n;
+  $("sous").classList.toggle("cache",mode==="libre");
+  dimensionner();
+}
+/* Au doigt, une case ne descend pas sous 26 px : les grandes grilles défilent alors dans leur cadre */
+function dimensionner(){
+  if(!G)return;
+  const dispo=$("cadre").clientWidth,doigt=matchMedia("(pointer:coarse)").matches;
+  const plafond=G.n<=11?520:Math.max(520,Math.min(dispo,innerHeight-120));
+  const px=Math.max(G.n*(doigt?26:18),Math.min(dispo,plafond));
+  const p=$("plateau");p.style.width=p.style.height=px+"px";
+  p.style.setProperty("--taille",Math.max(11,px/G.n*.55).toFixed(1)+"px");
+  const deborde=px>dispo;
+  if(!deborde)deplacer=false;
+  $("bDeplacer").classList.toggle("cache",!deborde||fini);
+  majDeplacer();
+}
+function majDeplacer(){
+  $("plateau").classList.toggle("deplacer",deplacer);
+  $("bDeplacer").textContent=deplacer?"✏️ Tracer":"✋ Déplacer";
 }
 const dans=(q,x,y)=>x>=q.x&&x<q.x+q.w&&y>=q.y&&y<q.y+q.h;
 const se_touchent=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
@@ -196,7 +171,7 @@ function poserZone(q,cls){
 }
 function couleur(q){
   // la teinte dépend du nombre contenu : elle ne change pas quand on retrace le rectangle
-  const i=indiceSeul(q),t=i?(G.indices.indexOf(i)*47)%360:0;
+  const t=(G.indices.indexOf(indiceSeul(q))*47)%360;
   return[`hsla(${t},70%,60%,.28)`,`hsl(${t},55%,45%)`];
 }
 function rafraichir(){
@@ -207,33 +182,37 @@ function rafraichir(){
     z.appendChild(d);
   });
   const couvertes=rects.reduce((s,q)=>s+q.w*q.h,0),total=G.n*G.n;
-  $("etat").textContent=fini?(gagne?"🎉 Grille terminée !":"🏳️ Voici la solution."):`${couvertes} / ${total} cases`;
+  $("etat").textContent=fini?(gagne?"🎉 Grille terminée !":"🏳️ Voici la solution."):`${couvertes} / ${total} cases`+(aides?" · hors classement (aide utilisée)":"");
   $("plateau").classList.toggle("fini",fini);
   $("bAnnuler").disabled=!histo.length;
   for(const b of["bAnnuler","bEffacer","bIndice","bSol"])$(b).classList.toggle("cache",fini);
+  $("bDeplacer").classList.toggle("cache",fini||$("plateau").clientWidth<=$("cadre").clientWidth);
   $("bNouvelle").classList.toggle("cache",mode!=="libre");
   $("chrono").textContent=formatTemps(secondes);
 }
-const formatTemps=s=>Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+function formatTemps(s){
+  const h=Math.floor(s/3600),m=Math.floor(s/60)%60,z=String(s%60).padStart(2,"0");
+  return h?h+":"+String(m).padStart(2,"0")+":"+z:m+":"+z;
+}
 
 /* ---------- Tracé au doigt ou à la souris ---------- */
 let trace=null;
+const plateau=$("plateau");
 function caseSous(e){
-  const b=$("plateau").getBoundingClientRect(),c=v=>Math.max(0,Math.min(G.n-1,v));
-  return{x:c(Math.floor((e.clientX-b.left-$("plateau").clientLeft)/$("plateau").clientWidth*G.n)),
-         y:c(Math.floor((e.clientY-b.top-$("plateau").clientTop)/$("plateau").clientHeight*G.n))};
+  const b=plateau.getBoundingClientRect(),c=v=>Math.max(0,Math.min(G.n-1,v));
+  return{x:c(Math.floor((e.clientX-b.left-plateau.clientLeft)/plateau.clientWidth*G.n)),
+         y:c(Math.floor((e.clientY-b.top-plateau.clientTop)/plateau.clientHeight*G.n))};
 }
 const entre=(a,b)=>({x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Math.abs(a.x-b.x)+1,h:Math.abs(a.y-b.y)+1});
 function majApercu(){
-  $("plateau").querySelector(".apercu")?.remove();
+  plateau.querySelector(".apercu")?.remove();
   if(!trace)return;
   const q=entre(trace.depart,trace.fin),d=poserZone(q,"apercu");
   d.textContent=q.w*q.h;
-  $("plateau").appendChild(d);
+  plateau.appendChild(d);
 }
-const plateau=$("plateau");
 plateau.addEventListener("pointerdown",e=>{
-  if(fini||e.button>0)return;
+  if(fini||deplacer||e.button>0)return;
   e.preventDefault();plateau.setPointerCapture(e.pointerId);
   const c=caseSous(e);trace={depart:c,fin:c,bouge:false};majApercu();
 });
@@ -270,8 +249,70 @@ function abandonner(){
   rects=G.solution.map(s=>({...s}));terminer(false);sauver();rafraichir();
 }
 
+/* ---------- Classements en ligne : shikaku/<tableau>/<joueur> = {n, t, d}
+   Les temps à envoyer attendent dans le navigateur : rien n'est perdu sans connexion ou sans pseudo. */
+const urlTableau=tab=>`${CLASSEMENT_URL}/shikaku/${tab}`;
+function noterTemps(tab,t){
+  const mieux=store.lire("meilleurs",{});
+  if(mieux[tab]!=null&&mieux[tab]<=t)return;
+  mieux[tab]=t;store.ecrire("meilleurs",mieux);
+  const att=store.lire("envois",{});att[tab]=t;store.ecrire("envois",att);
+}
+async function envoyerTemps(){
+  const n=Base.joueur.pseudo(),att=store.lire("envois",{});
+  if(!n)return;
+  const moi=Series.idJoueur();
+  for(const tab of Object.keys(att)){
+    try{
+      const r=await fetch(`${urlTableau(tab)}/${moi}.json`,{method:"PUT",body:JSON.stringify({n,t:att[tab],d:{".sv":"timestamp"}})});
+      let envoye=r.ok;
+      if(!envoye){ // refusé : c'est normal si un meilleur temps y est déjà, depuis un autre appareil
+        const l=await fetch(`${urlTableau(tab)}/${moi}.json`);
+        const e=l.ok?await l.json():null;
+        envoye=!!e&&e.t<=att[tab];
+      }
+      if(envoye){const a=store.lire("envois",{});delete a[tab];store.ecrire("envois",a)}
+    }catch(e){return}
+  }
+}
+async function afficherClassement(zone,tab){
+  zone.innerHTML="";
+  const note=Base.el("p","Chargement du classement…","note");zone.appendChild(note);
+  try{
+    const r=await fetch(`${urlTableau(tab)}.json?orderBy=${encodeURIComponent('"t"')}&limitToFirst=20`);
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const moi=Series.idJoueur();
+    const l=Object.entries(await r.json()||{}).map(([id,e])=>({...e,id})).filter(e=>typeof e.t==="number"&&typeof e.n==="string")
+      .sort((a,b)=>a.t-b.t||a.d-b.d);
+    zone.innerHTML="";
+    if(!l.length){zone.appendChild(Base.el("p","Personne encore : à toi de prendre la tête !","note"));return}
+    const ol=Base.el("ol",null,"lb");
+    l.forEach((e,i)=>{
+      const li=Base.el("li",null,e.id===moi?"moi":"");
+      li.append(Base.el("span",["🥇","🥈","🥉"][i]||i+1,"r"),Base.el("span",e.n,"n"),Base.el("span",formatTemps(e.t),"v"));
+      ol.appendChild(li);
+    });
+    zone.appendChild(ol);
+  }catch(e){note.textContent="Classement indisponible pour le moment."}
+}
+function ouvrirClassements(){
+  const box=document.createElement("div"),onglets=Base.el("div",null,"pilules onglets"),liste=document.createElement("div");
+  const choix=[["j","📅 Jour",tableau("jour")],["s","🗓️ Semaine",tableau("semaine")],["m","🌙 Mois",tableau("mois")],
+    ...TAILLES.map(n=>["l"+n,n+"×"+n,"l"+n])];
+  let actif=tableau(mode,G.n);
+  const dessiner=()=>{
+    onglets.innerHTML="";
+    choix.forEach(([,txt,tab])=>{const b=Base.el("button",txt);b.classList.toggle("on",tab===actif);b.onclick=()=>{actif=tab;dessiner()};onglets.appendChild(b)});
+    afficherClassement(liste,actif);
+  };
+  box.append(onglets,liste);dessiner();
+  Base.fenetre("🏆 Meilleurs temps",box,{bouton:"Fermer"});
+  envoyerTemps();
+}
+
 /* ---------- Fin de partie ---------- */
 function compter(ok){
+  if(mode==="semaine"||mode==="mois")return null;
   const cle=mode==="jour"?"statsDaily":"statsFree",s=store.lire(cle,defStats());
   if(mode==="jour"){const d=parisDay();if(s.last===d)return s;s.last=d;
     if(ok){s.streak=s.lastWin===d-1?s.streak+1:1;s.lastWin=d}else s.streak=0}
@@ -284,34 +325,52 @@ function compter(ok){
 }
 function terminer(ok){
   fini=true;gagne=ok;
-  const s=compter(ok);
+  const s=compter(ok),tab=tableau(mode,G.n);
+  if(ok&&!aides)noterTemps(tab,Math.max(1,secondes));
   sauver();rafraichir();
-  if(ok)setTimeout(()=>fenetreFin(s),300);
+  if(ok)setTimeout(()=>fenetreFin(s,tab),300);
 }
-function fenetreFin(s){
-  const r=document.createElement("div"),rec=s.temps[G.n];r.className="recap";
-  r.innerHTML=`<p class="gros">${formatTemps(secondes)}</p><p class="muted">${aides?aides+" rectangle"+(aides>1?"s":"")+" révélé"+(aides>1?"s":""):"Sans aucune aide !"}</p>
-    <div class="stats"><div><b>${s.streak}</b><small>${mode==="jour"?"jours de suite":"grilles de suite"}</small></div>
-    <div><b>${s.best}</b><small>meilleure série</small></div>
-    <div><b>${rec==null?"–":formatTemps(rec)}</b><small>record ${G.n}×${G.n} sans aide</small></div></div>`;
+function fenetreFin(s,tab){
+  const r=Base.el("div",null,"recap"),zone=document.createElement("div");
+  r.innerHTML=`<p class="gros">${formatTemps(secondes)}</p><p class="muted">${aides?aides+" rectangle"+(aides>1?"s":"")+" révélé"+(aides>1?"s":"")+" : ce temps ne compte pas au classement":"Sans aucune aide !"}</p>`;
+  if(s){
+    const st=Base.el("div",null,"stats"),rec=s.temps[G.n];
+    const bloc=(v,t)=>{const d=document.createElement("div");d.append(Base.el("b",v),Base.el("small",t));st.appendChild(d)};
+    if(mode==="jour"){bloc(s.streak,"jours de suite");bloc(s.best,"meilleure série")}
+    bloc(rec==null?"–":formatTemps(rec),`record ${G.n}×${G.n}`);
+    r.appendChild(st);
+  }
+  if(mode!=="libre")r.appendChild(Base.el("p",MODES[mode].suivante,"note"));
   if(mode==="jour"){
-    const n=document.createElement("p");n.className="muted";n.style.margin="0 0 10px";n.textContent="Nouvelle grille à minuit.";r.appendChild(n);
-    const p=document.createElement("button");p.className="btn ghost petit";p.textContent="📋 Partager";
+    const p=Base.el("button","📋 Partager","btn ghost petit");p.style.marginTop="8px";
     p.onclick=async()=>{const t=`📐 Shikaku du jour\n⏱️ ${formatTemps(secondes)}${aides?` · 💡 ${aides}`:""}`;
       try{await navigator.clipboard.writeText(t);Base.toast("Résultat copié !")}catch(e){Base.toast(t)}};
     r.appendChild(p);
   }
+  r.appendChild(zone);
+  const montrer=async()=>{await envoyerTemps();afficherClassement(zone,tab)};
+  if(!aides&&!Base.joueur.pseudo()){
+    // sans pseudo, on le demande avant d'envoyer le temps
+    const f=Base.el("div",null,"pseudo"),inp=Base.el("input",null,"champ"),ok=Base.el("button","OK","btn petit");
+    inp.maxLength=16;inp.placeholder="Ton pseudo pour le classement";
+    ok.onclick=()=>{const n=inp.value.trim();if(!n){inp.focus();return}Base.joueur.changerPseudo(n);f.remove();montrer()};
+    f.append(inp,ok);r.insertBefore(f,zone);
+    afficherClassement(zone,tab);
+  }else montrer();
   Base.fenetre("🎉 Bravo !",r,{bouton:"Fermer"});
 }
 
 /* ---------- Contrôles ---------- */
 $("bAnnuler").onclick=annuler;$("bEffacer").onclick=effacer;$("bIndice").onclick=indice;$("bSol").onclick=abandonner;
 $("bNouvelle").onclick=()=>nouvelleLibre();
-$("mJour").onclick=()=>charger("jour");
-$("mLibre").onclick=()=>charger("libre");
+$("bDeplacer").onclick=()=>{deplacer=!deplacer;majDeplacer()};
+bTop.onclick=ouvrirClassements;
+for(const k in MODES)$("m_"+k).onclick=()=>charger(k);
+addEventListener("resize",()=>{dimensionner();rafraichir()});
 setInterval(()=>{if(G&&!fini&&!document.hidden&&!document.querySelector("dialog[open]")){secondes++;$("chrono").textContent=formatTemps(secondes);if(secondes%10===0)sauver()}},1000);
 
 charger("jour");
+envoyerTemps();
 </script>
 </body>
 </html>
