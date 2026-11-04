@@ -220,6 +220,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "shikaku",
+    title: "Shikaku",
+    emoji: "📐",
+    desc: "Découpe la grille en rectangles : chacun contient un seul nombre, égal à son nombre de cases. Une nouvelle grille chaque jour, plus des grilles au hasard en trois tailles.",
+    tags: ["Réflexion", "Quotidien", "Solo"],
+    colors: ["#f0a36b", "#5b6bd0"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "demineur",
     title: "Démineur",
     emoji: "💣",

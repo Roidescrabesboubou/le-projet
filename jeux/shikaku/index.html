@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Shikaku</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#d9743f;--fond1:rgba(217,116,63,.14);--fond2:rgba(91,107,208,.12);--trait:#d8cdbf;--case:#fff}
+@media (prefers-color-scheme:dark){:root{--trait:#44394f;--case:#231d2b}}
+.barre{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;max-width:520px;flex-wrap:wrap}
+.chrono{font-family:Fredoka,sans-serif;font-size:1.25rem;font-variant-numeric:tabular-nums}
+#tailles{width:100%;max-width:520px}
+#plateau{position:relative;width:100%;max-width:520px;aspect-ratio:1;background:var(--case);border:2px solid var(--text);border-radius:8px;overflow:hidden;
+  touch-action:none;user-select:none;-webkit-user-select:none;cursor:crosshair}
+.fini#plateau{cursor:default}
+#cases{position:absolute;inset:0;display:grid;z-index:2;pointer-events:none}
+#cases div{border:.5px solid var(--trait);display:flex;align-items:center;justify-content:center;
+  font-family:Fredoka,sans-serif;font-weight:700;font-size:var(--taille,1.3rem);color:var(--text)}
+#zones{position:absolute;inset:0;z-index:1;pointer-events:none}
+.z{position:absolute;box-sizing:border-box;border:2px solid;border-radius:6px;background:var(--fond);border-color:var(--bord)}
+.z.mauvais{--fond:rgba(232,96,122,.14);--bord:var(--ko);border-style:dashed}
+.z.apercu{--fond:rgba(91,107,208,.22);--bord:#5b6bd0;z-index:3;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 4px;font:800 .8rem Nunito,sans-serif;color:#3a46a8}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.etat{font-weight:700;text-align:center;margin:0;min-height:1.4em}
+.recap{text-align:center}
+.recap .gros{font-family:Fredoka,sans-serif;font-size:2.2rem;margin:0}
+.recap .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0}
+.recap .stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.4rem}
+.recap .stats small{color:var(--muted);font-size:.72rem}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="barre">
+    <div class="pilules">
+      <button id="mJour">📅 Grille du jour</button>
+      <button id="mLibre">♾️ Partie libre</button>
+    </div>
+    <span class="chrono" id="chrono">0:00</span>
+  </div>
+  <div class="pilules" id="tailles"></div>
+  <div id="plateau"><div id="zones"></div><div id="cases"></div></div>
+  <p class="etat" id="etat"></p>
+  <div class="actions">
+    <button class="btn ghost petit" id="bAnnuler">↩️ Annuler</button>
+    <button class="btn ghost petit" id="bEffacer">🧹 Tout effacer</button>
+    <button class="btn ghost petit" id="bIndice">💡 Un rectangle</button>
+    <button class="btn ghost petit" id="bSol">🏳️ Solution</button>
+    <button class="btn petit" id="bNouvelle">🔄 Nouvelle grille</button>
+  </div>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const store=Base.stock("shikaku_");
+
+Base.entete({titre:"Shikaku",emoji:"📐",
+  aide:`<p>Découpe toute la grille en rectangles. Chaque rectangle contient <b>un seul nombre</b>, égal à son <b>nombre de cases</b>.</p>
+  <ul>
+    <li>Fais glisser le doigt ou la souris d'un coin à l'autre pour tracer un rectangle.</li>
+    <li>Touche un rectangle pour l'effacer. Pour un 1, touche simplement sa case.</li>
+    <li>Un rectangle en pointillés rouges ne respecte pas la règle.</li>
+    <li>📅 Même grille pour tout le monde, nouvelle chaque jour à minuit. ♾️ La partie libre propose trois tailles.</li>
+  </ul>`});
+
+/* ---------- Générateur : découpe au hasard, puis nombres placés pour n'avoir qu'une solution ---------- */
+const TAILLE_JOUR=8,TAILLES=[5,7,10];
+const AIRE_MAX={5:8,7:12,8:12,10:16};
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function decouper(n,r){
+  const pris=new Uint8Array(n*n),rects=[],max=AIRE_MAX[n];
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    if(pris[y*n+x])continue;
+    const options=[];
+    for(let h=1;y+h<=n;h++){
+      for(let w=1;x+w<=n&&w*h<=max;w++){
+        let libre=true;
+        for(let j=0;j<h&&libre;j++)if(pris[(y+j)*n+x+w-1])libre=false;
+        if(!libre)break;
+        // les grands rectangles sont plus souvent choisis, les cases seules restent rares
+        if(w*h>1)for(let p=0;p<w*h;p++)options.push([w,h]);
+      }
+    }
+    const[w,h]=options.length?options[r()*options.length|0]:[1,1];
+    for(let j=0;j<h;j++)for(let i=0;i<w;i++)pris[(y+j)*n+x+i]=1;
+    rects.push({x,y,w,h});
+  }
+  return rects;
+}
+/* Toutes les places possibles de chaque nombre, sans toucher un autre nombre */
+function placesDe(n,indices){
+  const estIndice=new Uint8Array(n*n);
+  indices.forEach(c=>estIndice[c.y*n+c.x]=1);
+  return indices.map(c=>{
+    const liste=[];
+    for(let h=1;h<=c.a&&h<=n;h++){
+      if(c.a%h)continue;
+      const w=c.a/h;if(w>n)continue;
+      for(let y=Math.max(0,c.y-h+1);y<=c.y&&y+h<=n;y++)for(let x=Math.max(0,c.x-w+1);x<=c.x&&x+w<=n;x++){
+        const cs=[];let ok=true;
+        for(let j=0;j<h&&ok;j++)for(let i=0;i<w;i++){
+          const k=(y+j)*n+x+i;
+          if(estIndice[k]&&!(x+i===c.x&&y+j===c.y)){ok=false;break}
+          cs.push(k);
+        }
+        if(ok)liste.push(cs);
+      }
+    }
+    return liste;
+  });
+}
+/* Compte les solutions, en s'arrêtant à 2 : le nombre le plus contraint d'abord */
+function compterSolutions(n,indices){
+  const places=placesDe(n,indices),occupe=new Uint8Array(n*n),reste=new Set(indices.keys());
+  let total=0;
+  function suite(){
+    if(!reste.size){total++;return}
+    let choix=-1,mieux=null;
+    for(const i of reste){
+      const dispo=places[i].filter(cs=>cs.every(k=>!occupe[k]));
+      if(!dispo.length)return;
+      if(!mieux||dispo.length<mieux.length){mieux=dispo;choix=i;if(dispo.length===1)break}
+    }
+    reste.delete(choix);
+    for(const cs of mieux){
+      cs.forEach(k=>occupe[k]=1);
+      suite();
+      cs.forEach(k=>occupe[k]=0);
+      if(total>1)break;
+    }
+    reste.add(choix);
+  }
+  suite();
+  return total;
+}
+function generer(n,seed){
+  const r=rng(seed);
+  for(;;){
+    const rects=decouper(n,r);
+    for(let e=0;e<6;e++){
+      const indices=rects.map(q=>({x:q.x+(r()*q.w|0),y:q.y+(r()*q.h|0),a:q.w*q.h}));
+      if(compterSolutions(n,indices)===1)return{n,indices,solution:rects};
+    }
+  }
+}
+
+/* ---------- Partie ---------- */
+const START=Date.UTC(2026,10,4);
+function parisDay(){
+  const[y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);
+  return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);
+}
+const defStats=()=>({played:0,wins:0,streak:0,best:0,lastWin:null,last:null,temps:{}});
+let mode="jour",G=null,seed=0,taille=TAILLE_JOUR,rects=[],histo=[],secondes=0,aides=0,fini=false,gagne=false;
+
+function sauver(){store.ecrire(mode,{seed,taille,rects,secondes,aides,fini,gagne})}
+function charger(m){
+  mode=m;$("mJour").classList.toggle("on",m==="jour");$("mLibre").classList.toggle("on",m==="libre");
+  const sv=store.lire(m,null);
+  if(m==="jour"){seed=parisDay()*7919+17;taille=TAILLE_JOUR}
+  else if(sv){seed=sv.seed;taille=sv.taille}
+  else{seed=Math.random()*2147483647|0;taille=taille===TAILLE_JOUR?TAILLES[1]:taille}
+  G=generer(taille,seed);
+  const ok=sv&&sv.seed===seed&&sv.taille===taille;
+  rects=ok?sv.rects:[];secondes=ok?sv.secondes:0;aides=ok?sv.aides:0;fini=ok&&sv.fini;gagne=ok&&sv.gagne;histo=[];
+  construire();rafraichir();
+}
+function nouvelleLibre(n){taille=n||taille;store.ecrire("libre",null);charger("libre")}
+
+/* ---------- Affichage ---------- */
+function construire(){
+  const c=$("cases");c.innerHTML="";
+  c.style.gridTemplateColumns=`repeat(${G.n},1fr)`;c.style.gridTemplateRows=`repeat(${G.n},1fr)`;
+  $("plateau").style.setProperty("--taille",`clamp(.85rem,${(50/G.n).toFixed(1)}vw,${(10/G.n+.2).toFixed(2)}rem)`);
+  for(let y=0;y<G.n;y++)for(let x=0;x<G.n;x++){
+    const d=document.createElement("div"),i=G.indices.find(q=>q.x===x&&q.y===y);
+    if(i)d.textContent=i.a;
+    c.appendChild(d);
+  }
+  const t=$("tailles");t.innerHTML="";t.classList.toggle("cache",mode!=="libre");
+  TAILLES.forEach(n=>{const b=document.createElement("button");b.textContent=n+"×"+n;b.classList.toggle("on",n===G.n);b.onclick=()=>nouvelleLibre(n);t.appendChild(b)});
+}
+const dans=(q,x,y)=>x>=q.x&&x<q.x+q.w&&y>=q.y&&y<q.y+q.h;
+const se_touchent=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+function indiceSeul(q){const l=G.indices.filter(i=>dans(q,i.x,i.y));return l.length===1?l[0]:null}
+function valide(q){const i=indiceSeul(q);return!!i&&i.a===q.w*q.h}
+function poserZone(q,cls){
+  const d=document.createElement("div"),n=100/G.n;
+  d.className="z"+(cls?" "+cls:"");
+  d.style.cssText=`left:${q.x*n}%;top:${q.y*n}%;width:${q.w*n}%;height:${q.h*n}%`;
+  return d;
+}
+function couleur(q){
+  // la teinte dépend du nombre contenu : elle ne change pas quand on retrace le rectangle
+  const i=indiceSeul(q),t=i?(G.indices.indexOf(i)*47)%360:0;
+  return[`hsla(${t},70%,60%,.28)`,`hsl(${t},55%,45%)`];
+}
+function rafraichir(){
+  const z=$("zones");z.innerHTML="";
+  rects.forEach(q=>{
+    const ok=valide(q),d=poserZone(q,ok?"":"mauvais");
+    if(ok){const[f,b]=couleur(q);d.style.setProperty("--fond",f);d.style.setProperty("--bord",b)}
+    z.appendChild(d);
+  });
+  const couvertes=rects.reduce((s,q)=>s+q.w*q.h,0),total=G.n*G.n;
+  $("etat").textContent=fini?(gagne?"🎉 Grille terminée !":"🏳️ Voici la solution."):`${couvertes} / ${total} cases`;
+  $("plateau").classList.toggle("fini",fini);
+  $("bAnnuler").disabled=!histo.length;
+  for(const b of["bAnnuler","bEffacer","bIndice","bSol"])$(b).classList.toggle("cache",fini);
+  $("bNouvelle").classList.toggle("cache",mode!=="libre");
+  $("chrono").textContent=formatTemps(secondes);
+}
+const formatTemps=s=>Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+
+/* ---------- Tracé au doigt ou à la souris ---------- */
+let trace=null;
+function caseSous(e){
+  const b=$("plateau").getBoundingClientRect(),c=v=>Math.max(0,Math.min(G.n-1,v));
+  return{x:c(Math.floor((e.clientX-b.left-$("plateau").clientLeft)/$("plateau").clientWidth*G.n)),
+         y:c(Math.floor((e.clientY-b.top-$("plateau").clientTop)/$("plateau").clientHeight*G.n))};
+}
+const entre=(a,b)=>({x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Math.abs(a.x-b.x)+1,h:Math.abs(a.y-b.y)+1});
+function majApercu(){
+  $("plateau").querySelector(".apercu")?.remove();
+  if(!trace)return;
+  const q=entre(trace.depart,trace.fin),d=poserZone(q,"apercu");
+  d.textContent=q.w*q.h;
+  $("plateau").appendChild(d);
+}
+const plateau=$("plateau");
+plateau.addEventListener("pointerdown",e=>{
+  if(fini||e.button>0)return;
+  e.preventDefault();plateau.setPointerCapture(e.pointerId);
+  const c=caseSous(e);trace={depart:c,fin:c,bouge:false};majApercu();
+});
+plateau.addEventListener("pointermove",e=>{
+  if(!trace)return;
+  const c=caseSous(e);
+  if(c.x!==trace.fin.x||c.y!==trace.fin.y){trace.fin=c;trace.bouge=true;majApercu()}
+});
+plateau.addEventListener("pointerup",()=>{
+  if(!trace)return;
+  const t=trace;trace=null;majApercu();
+  const q=entre(t.depart,t.fin);
+  const ici=rects.find(r=>dans(r,t.depart.x,t.depart.y));
+  if(!t.bouge&&ici)changer(rects.filter(r=>r!==ici));
+  else changer(rects.filter(r=>!se_touchent(r,q)).concat(q));
+});
+plateau.addEventListener("pointercancel",()=>{trace=null;majApercu()});
+
+function changer(liste){histo.push(rects);rects=liste;verifierFin();sauver();rafraichir()}
+function verifierFin(){
+  const couvertes=rects.reduce((s,q)=>s+q.w*q.h,0);
+  if(couvertes===G.n*G.n&&rects.every(valide))terminer(true);
+}
+function annuler(){if(fini||!histo.length)return;rects=histo.pop();sauver();rafraichir()}
+function effacer(){if(!fini&&rects.length)changer([])}
+function indice(){
+  if(fini)return;
+  const m=G.solution.find(s=>!rects.some(r=>r.x===s.x&&r.y===s.y&&r.w===s.w&&r.h===s.h));
+  if(!m)return;
+  aides++;changer(rects.filter(r=>!se_touchent(r,m)).concat({...m}));
+}
+function abandonner(){
+  if(fini||!confirm("Afficher la solution et terminer cette grille ?"))return;
+  rects=G.solution.map(s=>({...s}));terminer(false);sauver();rafraichir();
+}
+
+/* ---------- Fin de partie ---------- */
+function compter(ok){
+  const cle=mode==="jour"?"statsDaily":"statsFree",s=store.lire(cle,defStats());
+  if(mode==="jour"){const d=parisDay();if(s.last===d)return s;s.last=d;
+    if(ok){s.streak=s.lastWin===d-1?s.streak+1:1;s.lastWin=d}else s.streak=0}
+  else s.streak=ok?s.streak+1:0;
+  s.played++;if(ok)s.wins++;
+  s.best=Math.max(s.best,s.streak);
+  if(ok&&!aides&&(s.temps[G.n]==null||secondes<s.temps[G.n]))s.temps[G.n]=secondes;
+  store.ecrire(cle,s);
+  return s;
+}
+function terminer(ok){
+  fini=true;gagne=ok;
+  const s=compter(ok);
+  sauver();rafraichir();
+  if(ok)setTimeout(()=>fenetreFin(s),300);
+}
+function fenetreFin(s){
+  const r=document.createElement("div"),rec=s.temps[G.n];r.className="recap";
+  r.innerHTML=`<p class="gros">${formatTemps(secondes)}</p><p class="muted">${aides?aides+" rectangle"+(aides>1?"s":"")+" révélé"+(aides>1?"s":""):"Sans aucune aide !"}</p>
+    <div class="stats"><div><b>${s.streak}</b><small>${mode==="jour"?"jours de suite":"grilles de suite"}</small></div>
+    <div><b>${s.best}</b><small>meilleure série</small></div>
+    <div><b>${rec==null?"–":formatTemps(rec)}</b><small>record ${G.n}×${G.n} sans aide</small></div></div>`;
+  if(mode==="jour"){
+    const n=document.createElement("p");n.className="muted";n.style.margin="0 0 10px";n.textContent="Nouvelle grille à minuit.";r.appendChild(n);
+    const p=document.createElement("button");p.className="btn ghost petit";p.textContent="📋 Partager";
+    p.onclick=async()=>{const t=`📐 Shikaku du jour\n⏱️ ${formatTemps(secondes)}${aides?` · 💡 ${aides}`:""}`;
+      try{await navigator.clipboard.writeText(t);Base.toast("Résultat copié !")}catch(e){Base.toast(t)}};
+    r.appendChild(p);
+  }
+  Base.fenetre("🎉 Bravo !",r,{bouton:"Fermer"});
+}
+
+/* ---------- Contrôles ---------- */
+$("bAnnuler").onclick=annuler;$("bEffacer").onclick=effacer;$("bIndice").onclick=indice;$("bSol").onclick=abandonner;
+$("bNouvelle").onclick=()=>nouvelleLibre();
+$("mJour").onclick=()=>charger("jour");
+$("mLibre").onclick=()=>charger("libre");
+setInterval(()=>{if(G&&!fini&&!document.hidden&&!document.querySelector("dialog[open]")){secondes++;$("chrono").textContent=formatTemps(secondes);if(secondes%10===0)sauver()}},1000);
+
+charger("jour");
+</script>
+</body>
+</html>
