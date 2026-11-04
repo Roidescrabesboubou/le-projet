@@ -2,7 +2,7 @@
   "rules": {
     "scores": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat)$/)",
+        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense)$/)",
         ".indexOn": [
           "s",
           "t",
@@ -10,7 +10,7 @@
           "d"
         ],
         "$id": {
-          ".write": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat)$/) && !data.exists() && newData.exists()",
+          ".write": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense)$/) && !data.exists() && newData.exists()",
           ".validate": "newData.hasChildren(['n', 'd']) && ($jeu.beginsWith('demineur_') ? newData.hasChildren(['t']) : $jeu === 'coupdefeu' ? newData.hasChildren(['s', 'lv', 'k']) : newData.hasChildren(['s', 'lv']))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
@@ -162,6 +162,30 @@
         }
       }
     },
+    "shikaku": {
+      "$tab": {
+        ".read": "$tab.matches(/^(j[0-9]{1,6}|s[0-9]{1,6}|m[0-9]{6}|l(5|7|9|11|15|20|25))$/)",
+        ".indexOn": [
+          "t"
+        ],
+        "$id": {
+          ".write": "$tab.matches(/^(j[0-9]{1,6}|s[0-9]{1,6}|m[0-9]{6}|l(5|7|9|11|15|20|25))$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && (!data.exists() || newData.child('t').val() < data.child('t').val())",
+          ".validate": "newData.hasChildren(['n', 't', 'd'])",
+          "n": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 2592000"
+          },
+          "d": {
+            ".validate": "newData.val() == now"
+          },
+          "$autre": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "admins": {
       ".read": "auth != null",
       "$uid": {
@@ -237,6 +261,22 @@
       },
       "$autre": {
         ".validate": false
+      }
+    },
+    "defense_sauvegardes": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['json', 't'])",
+        "json": {
+          ".validate": "newData.isString() && newData.val().length <= 200000"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "$autre": {
+          ".validate": false
+        }
       }
     },
     "profils": {

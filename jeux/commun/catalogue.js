@@ -45,6 +45,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "defense",
+    title: "Défense du Château",
+    emoji: "🏰",
+    desc: "Tower defense à construire toi-même : place tes camps, trace les chemins jusqu'au château et poste tes tours. Chaque boss tué fait un tirage pour une nouvelle tour ou un nouveau chemin, du commun au secret. Dépense ton or dans l'arbre d'améliorations pour aller toujours plus loin.",
+    tags: ["Stratégie", "Collection", "Solo"],
+    colors: ["#7cc35a", "#8a5a2b"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "blindtest",
     title: "Blind Test",
     emoji: "🎧",
@@ -191,6 +201,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "motsfleches",
+    title: "Mots fléchés",
+    emoji: "🏹",
+    desc: "Les définitions sont directement dans la grille : suis les flèches et remplis les mots. Une nouvelle grille chaque jour à minuit, plus des grilles au hasard à volonté.",
+    tags: ["Mots", "Quotidien", "Solo"],
+    colors: ["#e0955a", "#5b6bd0"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "sudoku",
     title: "Sudoku du jour",
     emoji: "🔢",
@@ -226,6 +246,16 @@ window.SALLE_CATALOGUE = [
     desc: "Mange toutes les miettes du labyrinthe en échappant aux chats. Un morceau de fromage et c'est toi qui les chasses ! Niveaux de plus en plus rapides et top 10.",
     tags: ["Arcade", "Solo"],
     colors: ["#f2d36b", "#2c2350"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "shikaku",
+    title: "Shikaku",
+    emoji: "📐",
+    desc: "Découpe la grille en rectangles : chacun contient un seul nombre, égal à son nombre de cases. Une grille 7×7 par jour, 11×11 par semaine, 25×25 par mois, et du 5×5 au 25×25 en partie libre, avec classement au temps partout.",
+    tags: ["Réflexion", "Quotidien", "Solo"],
+    colors: ["#f0a36b", "#5b6bd0"],
     etat: "dispo",
     badge: "Nouveau"
   },

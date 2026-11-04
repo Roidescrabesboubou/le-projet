@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mots fléchés</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#c9743b;--fond1:rgba(201,116,59,.14);--fond2:rgba(91,107,208,.1);--mot:#f7dfc7;--sel:#f2c14e;--case:#fff;--def:#e9e2d4;--vide:#cfc7b8;--defOn:#f2c14e}
+@media (prefers-color-scheme:dark){:root{--mot:#5a3c25;--sel:#a97f1c;--case:#2c2536;--def:#3a3345;--vide:#1d1825;--defOn:#a97f1c}}
+.barre{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;max-width:640px;flex-wrap:wrap}
+.chrono{font-family:Fredoka,sans-serif;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.jeu{width:100%;max-width:640px;display:flex;flex-direction:column;gap:10px}
+#grille{display:grid;gap:2px;width:100%;user-select:none;-webkit-user-select:none;touch-action:manipulation;background:var(--text);padding:2px;border-radius:6px}
+.c{position:relative;aspect-ratio:1;min-width:0;min-height:0;overflow:hidden}
+.c.v{background:var(--vide)}
+.c.l{background:var(--case);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-family:Fredoka,sans-serif;font-weight:700;font-size:var(--taille,1.5rem);color:var(--text)}
+.c.mot{background:var(--mot)}
+.c.sel{background:var(--sel)}
+.c.faux{color:var(--ko);text-decoration:line-through}
+.c.revele{color:var(--accent)}
+.c.d{background:var(--def);display:flex;flex-direction:column;gap:1px}
+.def{position:relative;flex:1 1 0;min-height:0;overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  padding:1px 2px;text-align:center;line-height:1.05;font-weight:700}
+.def+.def{border-top:1px solid var(--text)}
+.def.on{background:var(--defOn)}
+.def.ok{color:var(--muted)}
+.def em{position:absolute;right:1px;bottom:1px;font-style:normal;font-size:max(.95em,8px);line-height:1;color:var(--accent);font-weight:900}
+.fini .c.l,.fini .def{cursor:default}
+.defActive{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-weight:700;min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.defActive b{font-family:Fredoka,sans-serif;color:var(--accent);white-space:nowrap}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.clavier{display:none;flex-direction:column;gap:5px;user-select:none;-webkit-user-select:none}
+.clavier div{display:flex;justify-content:center;gap:4px}
+.clavier button{flex:1;max-width:38px;height:44px;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font-weight:800;font-size:1rem;touch-action:manipulation}
+.clavier button.large{max-width:58px;flex:1.5}
+.clavier button:active{background:var(--soft)}
+.bas{display:flex;flex-direction:column;gap:6px}
+.recap{text-align:center}
+.recap .gros{font-family:Fredoka,sans-serif;font-size:2.2rem;margin:0}
+.recap .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0}
+.recap .stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.4rem}
+.recap .stats small{color:var(--muted);font-size:.72rem}
+.help{color:var(--muted);font-size:.8rem;text-align:center;margin:0}
+@media (pointer:coarse){
+  .clavier{display:flex}.help{display:none}
+  .bas{position:sticky;bottom:0;z-index:5;background:var(--bg);padding:6px 0 8px}
+}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="barre">
+    <div class="pilules">
+      <button id="mJour">📅 Grille du jour</button>
+      <button id="mLibre">♾️ Partie libre</button>
+    </div>
+    <span class="chrono" id="chrono">0:00</span>
+  </div>
+  <div class="jeu">
+    <div id="grille"></div>
+    <div class="bas">
+      <div class="defActive" id="defActive" title="Changer de sens"></div>
+      <div class="clavier" id="clavier"></div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost petit" id="bVerif">✔️ Vérifier</button>
+      <button class="btn ghost petit" id="bIndice">💡 Une lettre</button>
+      <button class="btn ghost petit" id="bSol">🏳️ Solution</button>
+      <button class="btn petit cache" id="bNouvelle">🔄 Nouvelle grille</button>
+    </div>
+    <p class="help">Clique sur une case ou une définition et tape au clavier · Clique à nouveau ou Espace : changer de sens · Tab : mot suivant</p>
+  </div>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../motscroises/mots.js"></script>
+<script src="courts.js"></script>
+<script src="generateur.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const store=Base.stock("motsfleches_");
+
+Base.entete({titre:"Mots fléchés",emoji:"🏹",
+  aide:`<p>Les définitions sont dans la grille : chaque flèche montre où commence le mot et dans quel sens il s'écrit. Les accents ne comptent pas : É s'écrit E.</p>
+  <ul>
+    <li><b>▶</b> et <b>▼</b> : le mot commence dans la case voisine. <b>↴</b> et <b>↳</b> : il commence dans la case voisine, puis tourne.</li>
+    <li>Touche une case ou une définition pour la choisir, touche la case encore pour changer de sens. La définition en entier s'affiche sous la grille.</li>
+    <li><b>Vérifier</b> barre les lettres fausses, <b>Une lettre</b> révèle la case choisie.</li>
+    <li>📅 Même grille pour tout le monde, nouvelle chaque jour à minuit. ♾️ La partie libre donne une grille au hasard.</li>
+  </ul>`});
+
+const COTE=8,DIR={H:[1,0],V:[0,1]};
+const cle=(x,y)=>x+","+y;
+/* La flèche dépend de la place de la définition par rapport à la première lettre */
+const fleche=m=>m.d==="H"?(m.coude?"↳":"▶"):(m.coude?"↴":"▼");
+
+function generer(seed){
+  const g=FlechesGen.generer(COTE,COTE,seed,window.MC_MOTS,window.MF_COURTS);
+  const mots=[...g.mots].sort((a,b)=>a.y*100+a.x-b.y*100-b.x||(a.d<b.d?-1:1));
+  const cases=new Map(),defs=new Map();
+  mots.forEach((m,i)=>{const[dx,dy]=DIR[m.d];
+    for(let p=0;p<m.mot.length;p++){const k=cle(m.x+dx*p,m.y+dy*p),c=cases.get(k)||{l:m.mot[p]};c[m.d]=i;cases.set(k,c)}
+    const k=cle(m.cx,m.cy);if(!defs.has(k))defs.set(k,[]);defs.get(k).push(i)});
+  return{mots,cases,defs,cols:COTE,rows:COTE};
+}
+
+/* ---------- Partie ---------- */
+const START=Date.UTC(2026,10,4);
+function parisDay(){
+  const[y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);
+  return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);
+}
+const defStats=()=>({played:0,wins:0,streak:0,best:0,lastWin:null,last:null,temps:null});
+let mode="jour",G=null,seed=0,lettres={},reveles={},faux={},secondes=0,indices=0,fini=false,gagne=false,sel=null,dirSel="H",plein=false;
+const signature=()=>G.mots.map(m=>m.mot).join();
+
+function sauver(){store.ecrire(mode,{seed,sig:signature(),jour:parisDay(),lettres,reveles,faux,secondes,indices,fini,gagne})}
+function charger(m){
+  mode=m;$("mJour").classList.toggle("on",m==="jour");$("mLibre").classList.toggle("on",m==="libre");
+  const sv=store.lire(m,null);
+  if(m==="jour"){seed=parisDay()*7919+13}
+  else seed=sv&&sv.seed!=null?sv.seed:Math.random()*2147483647|0;
+  G=generer(seed);
+  // une partie sauvegardée n'est reprise que si c'est bien la même grille
+  const ok=sv&&sv.seed===seed&&sv.sig===signature();
+  lettres=ok?sv.lettres:{};reveles=ok?sv.reveles:{};faux=ok?sv.faux:{};
+  secondes=ok?sv.secondes:0;indices=ok?sv.indices:0;fini=ok&&sv.fini;gagne=ok&&sv.gagne;plein=false;
+  const m0=G.mots[0];sel={x:m0.x,y:m0.y};dirSel=m0.d;
+  construireGrille();rafraichir();ajuster();
+}
+function nouvelleLibre(){store.ecrire("libre",null);charger("libre")}
+
+/* ---------- Affichage ---------- */
+function construireGrille(){
+  const g=$("grille");g.innerHTML="";
+  g.style.gridTemplateColumns=`repeat(${G.cols},minmax(0,1fr))`;
+  for(let y=0;y<G.rows;y++)for(let x=0;x<G.cols;x++){
+    const k=cle(x,y),c=G.cases.get(k),ds=G.defs.get(k),d=document.createElement("div");
+    d.className="c "+(c?"l":ds?"d":"v");
+    if(c){
+      d.dataset.k=k;
+      d.onclick=()=>choisirCase(x,y);
+      d.appendChild(document.createElement("span"));
+    }else if(ds)ds.forEach(i=>{
+      const b=document.createElement("div");b.className="def";b.dataset.i=i;
+      const m=G.mots[i],f=document.createElement("em");f.textContent=fleche(m);
+      b.append(document.createTextNode(m.def),f);
+      b.onclick=()=>{if(fini)return;dirSel=m.d;sel=premiereCase(m);rafraichir()};
+      d.appendChild(b);
+    });
+    g.appendChild(d);
+  }
+}
+/* Chaque définition prend la plus grande taille de texte qui tient dans sa case */
+function ajuster(){
+  const cote=$("grille").clientWidth/G.cols;
+  $("grille").style.setProperty("--taille",(cote*.56).toFixed(1)+"px");
+  document.querySelectorAll("#grille .c.d").forEach(c=>{
+    let t=Math.min(13,cote*.2);
+    c.style.fontSize=t+"px";
+    while(t>6&&[...c.children].some(b=>b.scrollHeight>b.clientHeight||b.scrollWidth>b.clientWidth)){t-=.5;c.style.fontSize=t+"px"}
+  });
+}
+const motCourant=()=>{const c=G.cases.get(cle(sel.x,sel.y));return c[dirSel]!=null?G.mots[c[dirSel]]:null};
+const casesDe=m=>{const[dx,dy]=DIR[m.d];return[...m.mot].map((_,p)=>({x:m.x+dx*p,y:m.y+dy*p}))};
+const premiereCase=m=>casesDe(m).find(c=>!lettres[cle(c.x,c.y)])||casesDe(m)[0];
+const motRempli=m=>casesDe(m).every(c=>lettres[cle(c.x,c.y)]);
+function rafraichir(){
+  const m=motCourant(),dansMot=new Set(m&&!fini?casesDe(m).map(c=>cle(c.x,c.y)):[]);
+  document.querySelectorAll("#grille .c.l").forEach(d=>{
+    const k=d.dataset.k;
+    d.querySelector("span").textContent=lettres[k]||"";
+    d.classList.toggle("mot",dansMot.has(k));
+    d.classList.toggle("sel",!fini&&k===cle(sel.x,sel.y));
+    d.classList.toggle("faux",!!faux[k]);
+    d.classList.toggle("revele",!!reveles[k]);
+  });
+  $("grille").classList.toggle("fini",fini);
+  document.querySelectorAll("#grille .def").forEach(b=>{
+    const w=G.mots[+b.dataset.i];
+    b.classList.toggle("on",!fini&&w===m);
+    b.classList.toggle("ok",fini||motRempli(w));
+  });
+  const a=$("defActive");a.innerHTML="";
+  if(fini)a.textContent=gagne?"🎉 Grille terminée !":"🏳️ Voici la solution.";
+  else if(m){const b=document.createElement("b");b.textContent=m.d==="H"?"➡️":"⬇️";a.append(b,document.createTextNode(m.def+" ("+m.mot.length+" lettres)"))}
+  $("bVerif").classList.toggle("cache",fini);$("bIndice").classList.toggle("cache",fini);$("bSol").classList.toggle("cache",fini);
+  $("bNouvelle").classList.toggle("cache",!(fini&&mode==="libre"));
+  $("chrono").textContent=formatTemps(secondes);
+}
+const formatTemps=s=>Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+
+/* ---------- Saisie ---------- */
+function choisirCase(x,y){
+  if(fini)return;
+  const c=G.cases.get(cle(x,y));
+  if(sel.x===x&&sel.y===y){if(c.H!=null&&c.V!=null)dirSel=dirSel==="H"?"V":"H"}
+  else{sel={x,y};if(c[dirSel]==null)dirSel=dirSel==="H"?"V":"H"}
+  rafraichir();
+}
+function ecrire(l){
+  if(fini)return;
+  const k=cle(sel.x,sel.y);
+  if(!reveles[k]){lettres[k]=l;delete faux[k]}
+  avancer();verifierFin();sauver();rafraichir();
+}
+function avancer(){
+  const m=motCourant();if(!m)return;
+  const cs=casesDe(m),i=cs.findIndex(c=>c.x===sel.x&&c.y===sel.y);
+  if(i<cs.length-1){sel=cs[i+1];return}
+  // bout du mot : on saute au prochain mot pas encore rempli
+  const j=G.mots.indexOf(m);
+  for(let n=1;n<G.mots.length;n++){const w=G.mots[(j+n)%G.mots.length];
+    if(!motRempli(w)){dirSel=w.d;sel=premiereCase(w);return}}
+}
+function effacer(){
+  if(fini)return;
+  const k=cle(sel.x,sel.y);
+  if(lettres[k]&&!reveles[k]){delete lettres[k];delete faux[k]}
+  else{const m=motCourant();if(m){const cs=casesDe(m),i=cs.findIndex(c=>c.x===sel.x&&c.y===sel.y);
+    if(i>0){sel=cs[i-1];const p=cle(sel.x,sel.y);if(!reveles[p]){delete lettres[p];delete faux[p]}}}}
+  plein=false;sauver();rafraichir();
+}
+function deplacer(dx,dy){
+  dirSelon(dx?"H":"V");
+  for(let n=1;n<COTE;n++){const x=sel.x+dx*n,y=sel.y+dy*n;
+    if(G.cases.has(cle(x,y))){sel={x,y};const c=G.cases.get(cle(x,y));if(c[dirSel]==null)dirSel=dirSel==="H"?"V":"H";rafraichir();return}}
+  rafraichir();
+}
+function dirSelon(d){if(G.cases.get(cle(sel.x,sel.y))[d]!=null)dirSel=d}
+function motSuivant(sens){
+  const j=G.mots.indexOf(motCourant()),n=G.mots.length,w=G.mots[(j+sens+n)%n];
+  dirSel=w.d;sel=premiereCase(w);rafraichir();
+}
+function verifierFin(){
+  const toutes=[...G.cases.entries()];
+  if(!toutes.every(([k])=>lettres[k])){plein=false;return}
+  if(toutes.every(([k,c])=>lettres[k]===c.l)){terminer(true);return}
+  if(!plein)Base.toast("La grille est pleine, mais il reste des erreurs.");
+  plein=true;
+}
+function verifier(){
+  if(fini)return;
+  let n=0;
+  for(const[k,c]of G.cases){if(!lettres[k])continue;
+    if(lettres[k]!==c.l){faux[k]=true;n++}}
+  Base.toast(n?`${n} lettre${n>1?"s":""} fausse${n>1?"s":""}.`:"Aucune erreur pour l'instant 👍");
+  sauver();rafraichir();
+}
+function indice(){
+  if(fini)return;
+  const k=cle(sel.x,sel.y),c=G.cases.get(k);
+  if(reveles[k])return;
+  lettres[k]=c.l;reveles[k]=true;delete faux[k];indices++;
+  avancer();verifierFin();sauver();rafraichir();
+}
+function abandonner(){
+  if(fini||!confirm("Afficher la solution et terminer cette grille ?"))return;
+  for(const[k,c]of G.cases)if(lettres[k]!==c.l){lettres[k]=c.l;reveles[k]=true}
+  faux={};terminer(false);sauver();rafraichir();
+}
+
+/* ---------- Fin de partie ---------- */
+function compter(ok){
+  const cle2=mode==="jour"?"statsDaily":"statsFree",s=store.lire(cle2,defStats());
+  if(mode==="jour"){const d=parisDay();if(s.last===d)return s;s.last=d;
+    if(ok){s.streak=s.lastWin===d-1?s.streak+1:1;s.lastWin=d}else s.streak=0}
+  else s.streak=ok?s.streak+1:0;
+  s.played++;if(ok)s.wins++;
+  s.best=Math.max(s.best,s.streak);
+  if(ok&&!indices&&(s.temps==null||secondes<s.temps))s.temps=secondes;
+  store.ecrire(cle2,s);
+  return s;
+}
+function terminer(ok){
+  fini=true;gagne=ok;
+  const s=compter(ok);
+  sauver();rafraichir();
+  if(ok)setTimeout(()=>fenetreFin(s),300);
+}
+function fenetreFin(s){
+  const r=document.createElement("div");r.className="recap";
+  r.innerHTML=`<p class="gros">${formatTemps(secondes)}</p><p class="muted">${indices?indices+" lettre"+(indices>1?"s":"")+" révélée"+(indices>1?"s":""):"Sans aucune aide !"}</p>
+    <div class="stats"><div><b>${s.streak}</b><small>${mode==="jour"?"jours de suite":"grilles de suite"}</small></div>
+    <div><b>${s.best}</b><small>meilleure série</small></div>
+    <div><b>${s.temps==null?"–":formatTemps(s.temps)}</b><small>record sans aide</small></div></div>`;
+  const acts=document.createElement("div");acts.className="actions";
+  if(mode==="jour"){
+    const p=document.createElement("button");p.className="btn ghost petit";p.textContent="📋 Partager";
+    p.onclick=async()=>{const t=`🏹 Mots fléchés du jour\n⏱️ ${formatTemps(secondes)}${indices?` · 💡 ${indices}`:""}`;
+      try{await navigator.clipboard.writeText(t);Base.toast("Résultat copié !")}catch(e){Base.toast(t)}};
+    acts.appendChild(p);
+    const n=document.createElement("p");n.className="muted";n.style.margin="0 0 10px";n.textContent="Nouvelle grille à minuit.";r.appendChild(n);
+  }
+  r.appendChild(acts);
+  Base.fenetre("🎉 Bravo !",r,{bouton:"Fermer"});
+}
+
+/* ---------- Contrôles ---------- */
+document.addEventListener("keydown",e=>{
+  if(/INPUT|TEXTAREA/.test(e.target.tagName)||document.querySelector("dialog[open]")||e.ctrlKey||e.metaKey||e.altKey)return;
+  const fl={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+  if(fl){e.preventDefault();if(!fini)deplacer(fl[0],fl[1]);return}
+  if(e.key==="Tab"){e.preventDefault();if(!fini)motSuivant(e.shiftKey?-1:1);return}
+  if(e.key===" "){e.preventDefault();if(!fini)choisirCase(sel.x,sel.y);return}
+  if(e.key==="Backspace"||e.key==="Delete"){e.preventDefault();effacer();return}
+  if(e.key.length===1){
+    const l=e.key.normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
+    if(/^[A-Z]$/.test(l)){e.preventDefault();ecrire(l)}
+  }
+});
+["AZERTYUIOP","QSDFGHJKLM","WXCVBN⌫"].forEach(ligne=>{
+  const d=document.createElement("div");
+  for(const t of ligne){
+    const b=document.createElement("button");b.textContent=t;b.type="button";
+    if(t==="⌫")b.className="large";
+    // pointerdown : la saisie reste vive sur téléphone, sans délai de clic
+    b.addEventListener("pointerdown",e=>{e.preventDefault();t==="⌫"?effacer():ecrire(t)});
+    d.appendChild(b);
+  }
+  $("clavier").appendChild(d);
+});
+$("defActive").onclick=()=>{if(!fini)choisirCase(sel.x,sel.y)};
+$("bVerif").onclick=verifier;$("bIndice").onclick=indice;$("bSol").onclick=abandonner;$("bNouvelle").onclick=nouvelleLibre;
+$("mJour").onclick=()=>charger("jour");
+$("mLibre").onclick=()=>charger("libre");
+window.addEventListener("resize",ajuster);
+setInterval(()=>{if(G&&!fini&&!document.hidden&&!document.querySelector("dialog[open]")){secondes++;$("chrono").textContent=formatTemps(secondes);if(secondes%10===0)sauver()}},1000);
+
+charger("jour");
+</script>
+</body>
+</html>

@@ -182,13 +182,21 @@ const FIREBASE = {
     return cacheReglages;
   }
   /* Trie le catalogue selon l'ordre choisi dans le panel admin.
-     Les jeux absents de cet ordre (ajoutés depuis) gardent leur
-     ordre du catalogue et passent après. */
+     Les jeux absents de cet ordre (ajoutés depuis) se placent juste
+     après le jeu qui les précède dans le catalogue, au lieu de finir
+     tout en bas de la liste. */
   function trier(liste, regl){
     const ordre = Array.isArray(regl && regl.ordre) ? regl.ordre
       : (regl && regl.ordre && typeof regl.ordre === "object" ? Object.keys(regl.ordre).sort((a, b) => a - b).map(k => regl.ordre[k]) : []);
-    const rang = s => { const i = ordre.indexOf(s); return i < 0 ? 1e6 : i; };
-    return liste.map((g, i) => [g, i]).sort((a, b) => (rang(a[0].slug) - rang(b[0].slug)) || (a[1] - b[1])).map(x => x[0]);
+    if(!ordre.length) return liste.slice();
+    const rangs = [];
+    let dernier = -1;
+    liste.forEach((g, i) => {
+      const r = ordre.indexOf(g.slug);
+      if(r >= 0) dernier = r;
+      rangs[i] = r >= 0 ? r : dernier + 0.5;
+    });
+    return liste.map((g, i) => [g, i]).sort((a, b) => (rangs[a[1]] - rangs[b[1]]) || (a[1] - b[1])).map(x => x[0]);
   }
   /* Fusionne le catalogue et les réglages admin */
   function etatDe(jeu, regl){
