@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Bataille navale</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#2f7fd1;--fond1:rgba(47,127,209,.16);--fond2:rgba(28,182,170,.12);
+  --mer:#cfe7f7;--mer2:#b6d9f1;--coque:#6e7f91;--coque2:#4d5c6c;--touche:#ff5a3c;--coule:#9e2a2a;--ok:#3aa76d;--ko:#e8607a}
+@media (prefers-color-scheme:dark){:root{--mer:#1d3550;--mer2:#18304a;--coque:#8fa1b4;--coque2:#6a7c8f}}
+.b-page{max-width:980px}
+
+/* ---------- Menu ---------- */
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;width:100%}
+.mode{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 12px;transition:transform .15s,box-shadow .15s}
+.mode:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.1)}
+.mode .ic{font-size:2.2rem}
+.mode b{font-family:Fredoka,sans-serif;font-size:1.15rem}
+.mode small{color:var(--muted)}
+.panneau{max-width:560px}
+.panneau h2{margin:0 0 8px;font-size:1.2rem}
+.ligne{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ligne .champ{flex:1;min-width:140px}
+.code{font-family:Fredoka,sans-serif;font-size:2.4rem;letter-spacing:6px;text-align:center;margin:6px 0}
+.msg{min-height:1.3em;font-weight:700;font-size:.9rem;margin:8px 0 0}
+.sep{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem;margin:14px 0}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:var(--line)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.regle{margin-top:12px}
+.regle p{margin:0 0 6px;font-weight:800;font-size:.9rem}
+
+/* ---------- Grilles ---------- */
+.grille{display:grid;grid-template-columns:repeat(11,1fr);gap:2px;width:100%;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.grille .lab{display:flex;align-items:center;justify-content:center;font-size:clamp(.6rem,2.2vw,.8rem);font-weight:800;color:var(--muted);aspect-ratio:1}
+.cel{aspect-ratio:1;background:var(--mer);border-radius:4px;position:relative;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.cel:nth-child(even){background:var(--mer2)}
+.vise .cel.libre{cursor:crosshair}
+.vise .cel.libre:hover{background:color-mix(in srgb,var(--accent) 35%,var(--mer))}
+.cel.n{background:linear-gradient(var(--coque),var(--coque2))!important;border-radius:2px}
+.cel.n.nh.nd{border-radius:45% 2px 2px 45%}.cel.n.nh.nf{border-radius:2px 45% 45% 2px}
+.cel.n.nv.nd{border-radius:45% 45% 2px 2px}.cel.n.nv.nf{border-radius:2px 2px 45% 45%}
+.cel.coule{background:linear-gradient(var(--coule),#6d1a1a)!important}
+.cel.eau::after{content:"";width:26%;height:26%;border-radius:50%;background:#3d6f99;opacity:.75}
+.cel.deduit::after{content:"";width:18%;height:18%;border-radius:50%;background:#3d6f99;opacity:.3}
+.cel.touche::after{content:"";width:62%;height:62%;border-radius:50%;background:radial-gradient(circle,#ffd25e,var(--touche) 60%,#b8321c);box-shadow:0 0 8px rgba(255,90,60,.7)}
+.cel.coule::after{content:"✕";color:#ffd2c8;font-weight:900;font-size:clamp(.7rem,3vw,1.1rem)}
+.cel.dernier{outline:3px solid var(--text);outline-offset:-1px;z-index:1;animation:pulse .9s ease-out 2}
+@keyframes pulse{0%{transform:scale(1.25)}100%{transform:scale(1)}}
+.cel.fok{background:color-mix(in srgb,var(--ok) 55%,var(--mer))!important}
+.cel.fko{background:color-mix(in srgb,var(--ko) 55%,var(--mer))!important}
+.grille.bloque{opacity:.92}
+.grille.bloque .cel{cursor:default!important}
+
+/* ---------- Placement ---------- */
+#placement{width:100%;display:flex;flex-direction:column;align-items:center;gap:12px}
+.place-zone{display:flex;gap:16px;width:100%;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.place-zone .grille{max-width:440px;flex:1 1 300px}
+.quai{display:flex;flex-direction:column;gap:8px;flex:0 1 220px;min-width:200px}
+#quai button{display:flex;align-items:center;gap:8px;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:8px 10px;text-align:left}
+#quai button.sel{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+#quai button.pose{opacity:.55}
+#quai .coq{display:flex;gap:2px}
+#quai .coq i{width:12px;height:12px;border-radius:3px;background:linear-gradient(var(--coque),var(--coque2))}
+#quai .nm{flex:1;font-weight:800;font-size:.9rem}
+.consigne{font-weight:800;text-align:center;min-height:1.4em}
+
+/* ---------- Partie ---------- */
+#jeu{width:100%;display:flex;flex-direction:column;align-items:center;gap:12px}
+.joueurs{display:flex;gap:10px;width:100%;max-width:640px}
+.jr{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:8px 10px;min-width:0;transition:border-color .2s,transform .2s}
+.jr.actif{border-color:var(--accent);transform:scale(1.03)}
+.jr .nom{flex:1;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr .pts{font-family:Fredoka,sans-serif;font-size:1.4rem}
+.statut{font-weight:800;text-align:center;min-height:1.4em;font-size:1.05rem}
+.annonce{font-family:Fredoka,sans-serif;font-size:1.25rem;text-align:center;min-height:1.6em}
+.annonce.eau{color:#3d6f99}.annonce.touche{color:var(--touche)}.annonce.coule{color:var(--coule)}
+@media (prefers-color-scheme:dark){.annonce.eau{color:#8ec3ee}.annonce.coule{color:#ff8a7a}}
+.mers{display:flex;gap:18px;width:100%;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.mer{display:flex;flex-direction:column;gap:6px;align-items:center}
+.mer h3{margin:0;font-size:1rem}
+.mer.adv{flex:1 1 340px;max-width:460px}
+.mer.moi{flex:0 1 300px;max-width:320px}
+.flotteInfo{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;font-size:.78rem}
+.flotteInfo span{border:1px solid var(--line);border-radius:999px;padding:2px 8px;background:var(--card)}
+.flotteInfo span.k{text-decoration:line-through;opacity:.5}
+.stats{font-size:.82rem;color:var(--muted);text-align:center}
+.aide-clavier{font-size:.8rem;color:var(--muted);text-align:center;margin:0}
+@media (hover:none){.aide-clavier{display:none}}
+
+/* ---------- Rideau (jeu à deux sur un écran) ---------- */
+#rideau{text-align:center;max-width:460px}
+#rideau .gros{font-size:3rem;margin:4px 0}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <!-- MENU -->
+  <section id="menu" class="modes">
+    <button class="mode" data-mode="ordi"><span class="ic">🤖</span><b>Contre l'ordi</b><small>3 niveaux d'amiraux</small></button>
+    <button class="mode" data-mode="local"><span class="ic">👥</span><b>À deux</b><small>Sur le même écran, sans tricher</small></button>
+    <button class="mode" data-mode="ligne"><span class="ic">🌐</span><b>En ligne</b><small>Contre un ami, chacun chez soi</small></button>
+  </section>
+
+  <!-- ORDI -->
+  <section id="pNiveau" class="b-carte panneau cache">
+    <h2>🤖 Choisis ton adversaire</h2>
+    <div class="pilules" id="niveaux"></div>
+    <p class="msg muted" id="statsOrdi"></p>
+    <div class="regle"></div>
+    <div class="actions" style="margin-top:12px"><button class="btn" id="goOrdi">Placer ma flotte</button><button class="btn ghost retour">Retour</button></div>
+  </section>
+
+  <!-- LOCAL -->
+  <section id="pLocal" class="b-carte panneau cache">
+    <h2>👥 À deux sur le même écran</h2>
+    <p class="muted" style="margin:0 0 6px">Chacun place sa flotte en cachette, puis vous vous passez l'appareil à chaque tour.</p>
+    <div class="ligne"><input class="champ" id="nom1" maxlength="16" placeholder="Joueur 1"><input class="champ" id="nom2" maxlength="16" placeholder="Joueur 2"></div>
+    <div class="regle"></div>
+    <div class="actions" style="margin-top:12px"><button class="btn" id="goLocal">C'est parti</button><button class="btn ghost retour">Retour</button></div>
+  </section>
+
+  <!-- EN LIGNE -->
+  <section id="pLigne" class="b-carte panneau cache">
+    <h2>🌐 Jouer en ligne</h2>
+    <label class="etiquette" for="pseudo">Ton pseudo</label>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton pseudo">
+    <div class="regle"></div>
+    <div class="actions" style="margin-top:12px;justify-content:flex-start"><button class="btn" id="creer">Créer une salle</button></div>
+    <div class="sep">ou rejoindre un ami</div>
+    <div class="ligne"><input class="champ" id="codeIn" maxlength="5" placeholder="Code (ex. KXRT1)" style="text-transform:uppercase"><button class="btn" id="rejoindre">Rejoindre</button></div>
+    <p class="msg" id="msgLigne"></p>
+    <div class="actions" style="margin-top:8px;justify-content:flex-start"><button class="btn ghost petit retour">Retour</button><button class="btn ghost petit" id="tester">🩺 Tester ma connexion</button></div>
+  </section>
+
+  <!-- ATTENTE (hôte) -->
+  <section id="pAttente" class="b-carte panneau cache" style="text-align:center">
+    <h2>⏳ En attente d'un adversaire…</h2>
+    <p class="muted">Donne ce code à ton ami :</p>
+    <p class="code" id="code"></p>
+    <div class="actions"><button class="btn" id="copier">🔗 Copier le lien d'invitation</button><button class="btn ghost" id="annuler">Annuler</button></div>
+  </section>
+
+  <!-- RIDEAU -->
+  <section id="rideau" class="b-carte cache">
+    <p class="gros">🙈</p>
+    <h2 id="rTitre"></h2>
+    <p class="muted" id="rTexte"></p>
+    <button class="btn" id="rOk">C'est moi, je regarde</button>
+  </section>
+
+  <!-- PLACEMENT -->
+  <section id="placement" class="cache">
+    <div class="consigne" id="pConsigne"></div>
+    <div class="place-zone">
+      <div class="grille" id="gPlace"></div>
+      <div class="quai">
+        <div id="quai" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div class="actions" style="justify-content:flex-start">
+          <button class="btn ghost petit" id="tourner">↻ Tourner</button>
+          <button class="btn ghost petit" id="hasard">🎲 Au hasard</button>
+          <button class="btn ghost petit" id="vider">🧹 Vider</button>
+        </div>
+        <button class="btn" id="pret" disabled>⚓ Prêt !</button>
+        <p class="aide-clavier" style="text-align:left">Astuce : touche R pour tourner le navire.</p>
+      </div>
+    </div>
+    <p class="muted" style="font-size:.85rem;text-align:center;margin:0">Les navires ne peuvent pas se toucher, même en diagonale. Touche un navire posé pour le reprendre.</p>
+    <button class="btn ghost petit" id="quitterP">🏠 Menu</button>
+  </section>
+
+  <!-- PARTIE -->
+  <section id="jeu" class="cache">
+    <div class="joueurs">
+      <div class="jr" id="jr1"><span>⚓</span><span class="nom"></span><span class="pts">0</span></div>
+      <div class="jr" id="jr2"><span>⚓</span><span class="nom"></span><span class="pts">0</span></div>
+    </div>
+    <div class="statut" id="statut"></div>
+    <div class="annonce" id="annonce"></div>
+    <div class="mers">
+      <div class="mer adv">
+        <h3 id="tAdv">🎯 Eaux ennemies</h3>
+        <div class="grille" id="gAdv"></div>
+        <div class="flotteInfo" id="fAdv"></div>
+        <div class="stats" id="sAdv"></div>
+      </div>
+      <div class="mer moi">
+        <h3 id="tMoi">🛡️ Ta flotte</h3>
+        <div class="grille" id="gMoi"></div>
+        <div class="flotteInfo" id="fMoi"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn cache" id="rejouer">🔁 Revanche</button>
+      <button class="btn ghost" id="quitter">🏠 Menu</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("bataille_");
+const N = 10, LETTRES = "ABCDEFGHIJ";
+const FLOTTE = [
+  {n: "Porte-avions", t: 5},
+  {n: "Croiseur", t: 4},
+  {n: "Contre-torpilleur", t: 3},
+  {n: "Sous-marin", t: 3},
+  {n: "Torpilleur", t: 2}
+];
+
+Base.entete({
+  titre: "Bataille navale", emoji: "🚢",
+  aide: `<p>Coule les 5 navires ennemis avant qu'il ne coule les tiens !</p>
+  <ul>
+    <li><b>Placement</b> : choisis un navire, puis touche la grille pour le poser. « ↻ Tourner » change son sens. Les navires ne peuvent pas se toucher.</li>
+    <li><b>Combat</b> : touche une case des eaux ennemies pour tirer. ● = à l'eau, 🔥 = touché, ✕ = coulé.</li>
+    <li>Quand un navire coule, les cases autour sont marquées automatiquement (il ne peut rien y avoir).</li>
+    <li>Règle au choix : <b>rejouer quand on touche</b>, ou un seul tir par tour.</li>
+    <li><b>À deux</b> : passez-vous l'appareil, l'écran se cache entre les tours.</li>
+    <li><b>En ligne</b> : crée une salle et envoie le code (ou le lien) à ton ami.</li>
+  </ul>`
+});
+
+/* =================================================================
+   OUTILS DE GRILLE
+   ================================================================= */
+const rc = i => [Math.floor(i / N), i % N];
+function voisins8(i){
+  const [r, c] = rc(i), v = [];
+  for(let dr = -1; dr <= 1; dr++) for(let dc = -1; dc <= 1; dc++){
+    if(!dr && !dc) continue;
+    const rr = r + dr, cc = c + dc;
+    if(rr >= 0 && rr < N && cc >= 0 && cc < N) v.push(rr * N + cc);
+  }
+  return v;
+}
+function voisins4(i){
+  const [r, c] = rc(i), v = [];
+  if(r > 0) v.push(i - N); if(r < N - 1) v.push(i + N);
+  if(c > 0) v.push(i - 1); if(c < N - 1) v.push(i + 1);
+  return v;
+}
+function casesDe(i, t, ori){
+  const [r, c] = rc(i);
+  if(ori === "h" ? c + t > N : r + t > N) return null;
+  return Array.from({length: t}, (_, k) => ori === "h" ? i + k : i + k * N);
+}
+/* navires = liste de {cases}, on vérifie que « cases » ne chevauche ni ne touche aucun d'eux */
+function placeLibre(navires, cases){
+  const interdit = new Set();
+  for(const b of navires){ if(!b) continue; for(const c of b.cases){ interdit.add(c); voisins8(c).forEach(v => interdit.add(v)); } }
+  return cases.every(c => !interdit.has(c));
+}
+function flotteHasard(){
+  for(let essai = 0; essai < 200; essai++){
+    const res = [];
+    let ok = true;
+    for(const m of FLOTTE){
+      let pose = false;
+      for(let k = 0; k < 400 && !pose; k++){
+        const ori = Math.random() < .5 ? "h" : "v", cases = casesDe(Math.floor(Math.random() * N * N), m.t, ori);
+        if(cases && placeLibre(res, cases)){ res.push({n: m.n, t: m.t, cases, ori}); pose = true; }
+      }
+      if(!pose){ ok = false; break; }
+    }
+    if(ok) return res;
+  }
+  return null;
+}
+function flotteValide(f){
+  if(!Array.isArray(f) || f.length !== FLOTTE.length) return false;
+  const vus = [];
+  for(let k = 0; k < FLOTTE.length; k++){
+    const b = f[k];
+    if(!b || !Array.isArray(b.cases) || b.cases.length !== FLOTTE[k].t) return false;
+    if(!b.cases.every(c => Number.isInteger(c) && c >= 0 && c < N * N)) return false;
+    const ori = b.cases[1] - b.cases[0] === 1 ? "h" : "v";
+    const att = casesDe(b.cases[0], b.t || FLOTTE[k].t, ori);
+    if(!att || att.join() !== b.cases.join()) return false;
+    if(!placeLibre(vus, b.cases)) return false;
+    vus.push({cases: b.cases});
+  }
+  return true;
+}
+
+/* =================================================================
+   RÈGLES
+   tirs[p][i] : tirs DU joueur p sur la grille adverse
+     0 rien · 1 à l'eau · 2 touché · 3 coulé · 4 eau déduite (autour d'un coulé)
+   ================================================================= */
+let G = null;
+function nouvellePartie(noms, bonus){
+  G = {phase: "placement", tour: 1, premier: 1, noms: ["", ...noms], scores: [0, 0, 0], bonus: !!bonus,
+       flottes: [null, null, null], tirs: [null, [], []], nb: [0, 0, 0], pret: [false, false, false], dernier: null, gagnant: 0, n: 0, placeur: 1};
+  viderManche();
+}
+function viderManche(){
+  G.phase = "placement"; G.flottes = [null, null, null]; G.pret = [false, false, false];
+  G.tirs = [null, new Array(N * N).fill(0), new Array(N * N).fill(0)]; G.nb = [0, 0, 0];
+  G.dernier = null; G.gagnant = 0; G.tour = G.premier; G.placeur = 1;
+}
+function nouvelleManche(){ G.premier = 3 - G.premier; G.n++; viderManche(); }
+function poserFlotte(p, f){
+  G.flottes[p] = f.map((b, k) => ({n: FLOTTE[k].n, t: FLOTTE[k].t, cases: b.cases.slice(), coule: false}));
+  G.pret[p] = true;
+  if(G.pret[1] && G.pret[2]){ G.phase = "combat"; G.tour = G.premier; }
+}
+function tirer(p, i){
+  if(!G || G.phase !== "combat" || G.tour !== p) return null;
+  const o = 3 - p, T = G.tirs[p];
+  if(!(i >= 0 && i < N * N) || T[i]) return null;
+  const b = G.flottes[o].find(x => x.cases.includes(i));
+  let res = "eau";
+  if(!b) T[i] = 1;
+  else{
+    T[i] = 2; res = "touche";
+    if(b.cases.every(c => T[c] >= 2)){
+      b.coule = true; res = "coule";
+      b.cases.forEach(c => { T[c] = 3; voisins8(c).forEach(v => { if(!T[v]) T[v] = 4; }); });
+    }
+  }
+  G.nb[p]++;
+  G.dernier = {p, i, res, nom: b && b.coule ? b.n : "", k: (G.dernier ? G.dernier.k : 0) + 1};
+  if(G.flottes[o].every(x => x.coule)){ G.phase = "fin"; G.gagnant = p; G.scores[p]++; }
+  else if(res === "eau" || !G.bonus) G.tour = o;
+  return res;
+}
+/* Ce que le joueur p a le droit de voir */
+function vue(p){
+  if(!G) return null;
+  const o = 3 - p, fo = G.flottes[o] || [];
+  return {...G, moi: p,
+    flotteMoi: G.flottes[p], flotteAdv: G.phase === "fin" ? fo : fo.filter(b => b.coule),
+    restantAdv: fo.length ? fo.map(b => ({n: b.n, t: b.t, coule: b.coule})) : FLOTTE.map(m => ({...m, coule: false})),
+    tirsMoi: G.tirs[p], tirsAdv: G.tirs[o], flottes: undefined, tirs: undefined};
+}
+
+/* =================================================================
+   ORDI
+   ================================================================= */
+function coupOrdi(T, restants, niveau){
+  const libres = [];
+  for(let i = 0; i < N * N; i++) if(!T[i]) libres.push(i);
+  const hasard = l => l[Math.floor(Math.random() * l.length)];
+  const touches = [];
+  for(let i = 0; i < N * N; i++) if(T[i] === 2) touches.push(i);
+
+  function cibles(){
+    // touches alignées : on prolonge la ligne
+    for(const h of touches){
+      for(const d of [1, N]){
+        const nb = voisins4(h).filter(v => v === h + d || v === h - d);
+        if(nb.some(v => T[v] === 2)){
+          let a = h, z = h;
+          while(T[a - d] === 2 && (d === N || rc(a - d)[0] === rc(a)[0])) a -= d;
+          while(T[z + d] === 2 && (d === N || rc(z + d)[0] === rc(z)[0])) z += d;
+          const bouts = [];
+          if(a - d >= 0 && (d === N || rc(a - d)[0] === rc(a)[0]) && !T[a - d]) bouts.push(a - d);
+          if(z + d < N * N && (d === N || rc(z + d)[0] === rc(z)[0]) && !T[z + d]) bouts.push(z + d);
+          if(bouts.length) return bouts;
+        }
+      }
+    }
+    const adj = [];
+    touches.forEach(h => voisins4(h).forEach(v => { if(!T[v]) adj.push(v); }));
+    return adj;
+  }
+
+  if(niveau === "facile"){
+    if(touches.length && Math.random() < .4){ const c = cibles(); if(c.length) return hasard(c); }
+    return hasard(libres);
+  }
+  if(niveau === "moyen"){
+    if(touches.length){ const c = cibles(); if(c.length) return hasard(c); }
+    const pair = libres.filter(i => (rc(i)[0] + rc(i)[1]) % 2 === 0);
+    return hasard(pair.length ? pair : libres);
+  }
+  // difficile : carte de probabilités
+  const score = new Array(N * N).fill(0);
+  for(const b of restants){
+    if(b.coule) continue;
+    for(let i = 0; i < N * N; i++) for(const ori of ["h", "v"]){
+      const cs = casesDe(i, b.t, ori);
+      if(!cs || cs.some(c => T[c] && T[c] !== 2)) continue;
+      const h = cs.filter(c => T[c] === 2).length;
+      const w = touches.length ? (h ? 1 + h * 40 : 1) : 1;
+      cs.forEach(c => { if(!T[c]) score[c] += w; });
+    }
+  }
+  let best = -1, choix = [];
+  for(const i of libres){
+    let s = score[i];
+    if(!touches.length && (rc(i)[0] + rc(i)[1]) % 2) s *= .8;   // léger damier en chasse
+    if(s > best){ best = s; choix = [i]; } else if(s === best) choix.push(i);
+  }
+  return hasard(choix.length ? choix : libres);
+}
+
+/* =================================================================
+   CONSTRUCTION DES GRILLES
+   ================================================================= */
+function fabriquerGrille(el, surClic, surSurvol){
+  el.innerHTML = "";
+  el.appendChild(Base.el("div", "", "lab"));
+  for(let c = 0; c < N; c++) el.appendChild(Base.el("div", LETTRES[c], "lab"));
+  const cels = [];
+  for(let r = 0; r < N; r++){
+    el.appendChild(Base.el("div", String(r + 1), "lab"));
+    for(let c = 0; c < N; c++){
+      const d = Base.el("div", "", "cel"); d.dataset.i = r * N + c;
+      el.appendChild(d); cels.push(d);
+    }
+  }
+  el.addEventListener("click", e => { const k = e.target.closest(".cel"); if(k) surClic(+k.dataset.i); });
+  if(surSurvol){
+    el.addEventListener("mousemove", e => { const k = e.target.closest(".cel"); surSurvol(k ? +k.dataset.i : -1); });
+    el.addEventListener("mouseleave", () => surSurvol(-1));
+  }
+  return cels;
+}
+function classesNavires(flotte){
+  const m = {};
+  (flotte || []).forEach(b => {
+    if(!b) return;
+    const ori = b.cases.length > 1 && b.cases[1] - b.cases[0] === 1 ? "nh" : "nv";
+    b.cases.forEach((c, k) => { m[c] = ["n", ori, k === 0 ? "nd" : "", k === b.cases.length - 1 ? "nf" : ""]; });
+  });
+  return m;
+}
+const CL_TIR = ["", "eau", "touche", "coule", "deduit"];
+const nomCase = i => LETTRES[i % N] + (Math.floor(i / N) + 1);
+
+/* =================================================================
+   PLACEMENT
+   ================================================================= */
+let P = {navires: [], sel: 0, ori: "h", survol: -1};
+function reinitP(){ P = {navires: FLOTTE.map(() => null), sel: 0, ori: stock.lire("ori", "h"), survol: -1}; }
+reinitP();
+const celsPlace = fabriquerGrille($("gPlace"), clicPlace, i => { P.survol = i; dessinerPlace(); });
+
+function clicPlace(i){
+  if(attendPlacement()) return;
+  const k = P.navires.findIndex(b => b && b.cases.includes(i));
+  if(P.sel < 0){
+    if(k >= 0){ P.ori = P.navires[k].ori; P.navires[k] = null; P.sel = k; }
+    dessinerPlace(); return;
+  }
+  if(k >= 0 && k !== P.sel){
+    // reprendre un autre navire : on échange la sélection
+    P.ori = P.navires[k].ori; P.navires[k] = null; P.sel = k; dessinerPlace(); return;
+  }
+  const cs = casesDe(i, FLOTTE[P.sel].t, P.ori) || casesDe(P.ori === "h" ? i - (i % N) + N - FLOTTE[P.sel].t : (N - FLOTTE[P.sel].t) * N + (i % N), FLOTTE[P.sel].t, P.ori);
+  const autres = P.navires.filter((b, j) => b && j !== P.sel);
+  if(!cs || !placeLibre(autres, cs)){ Base.toast("Impossible ici : les navires ne peuvent pas se toucher."); return; }
+  P.navires[P.sel] = {n: FLOTTE[P.sel].n, t: FLOTTE[P.sel].t, cases: cs, ori: P.ori};
+  P.sel = P.navires.findIndex(b => !b);
+  dessinerPlace();
+}
+function tourner(){ P.ori = P.ori === "h" ? "v" : "h"; stock.ecrire("ori", P.ori); dessinerPlace(); }
+$("tourner").onclick = tourner;
+$("hasard").onclick = () => { const f = flotteHasard(); if(f){ P.navires = f; P.sel = -1; dessinerPlace(); } };
+$("vider").onclick = () => { const o = P.ori; reinitP(); P.ori = o; dessinerPlace(); };
+
+function dessinerPlace(){
+  const m = classesNavires(P.navires), fantome = {};
+  if(P.sel >= 0 && P.survol >= 0 && !attendPlacement()){
+    const t = FLOTTE[P.sel].t;
+    const cs = casesDe(P.survol, t, P.ori) || casesDe(P.ori === "h" ? P.survol - (P.survol % N) + N - t : (N - t) * N + (P.survol % N), t, P.ori);
+    if(cs){ const ok = placeLibre(P.navires.filter((b, j) => b && j !== P.sel), cs); cs.forEach(c => fantome[c] = ok ? "fok" : "fko"); }
+  }
+  celsPlace.forEach((d, i) => { d.className = ["cel", ...(m[i] || []), fantome[i] || ""].join(" ").trim(); });
+  const q = $("quai"); q.innerHTML = "";
+  FLOTTE.forEach((f, k) => {
+    const b = Base.el("button", "");
+    b.className = (k === P.sel ? "sel " : "") + (P.navires[k] ? "pose" : "");
+    b.innerHTML = `<span class="coq">${"<i></i>".repeat(f.t)}</span><span class="nm">${f.n}</span><span>${P.navires[k] ? "✅" : ""}</span>`;
+    b.onclick = () => { if(attendPlacement()) return; if(P.navires[k]){ P.ori = P.navires[k].ori; P.navires[k] = null; } P.sel = k; dessinerPlace(); };
+    q.appendChild(b);
+  });
+  const complet = P.navires.every(Boolean), att = attendPlacement();
+  $("pret").disabled = !complet || att;
+  ["tourner", "hasard", "vider"].forEach(x => $(x).disabled = att);
+  $("tourner").textContent = "↻ Tourner (" + (P.ori === "h" ? "horizontal" : "vertical") + ")";
+  let s;
+  const S = mode === "ligne" ? V : G;
+  const qui = mode === "local" ? G.noms[G.placeur] + ", place" : "Place";
+  if(att) s = "⏳ Flotte prête ! En attente de " + S.noms[3 - moiP()] + "…";
+  else if(complet) s = "Tout est en place ? Clique sur « Prêt ! »";
+  else s = `${qui} ton ${FLOTTE[P.sel].n.toLowerCase()} (${FLOTTE[P.sel].t} cases)`;
+  $("pConsigne").textContent = s;
+}
+document.addEventListener("keydown", e => {
+  if(e.target.matches("input")) return;
+  if(!$("placement").classList.contains("cache") && (e.key === "r" || e.key === "R")) tourner();
+});
+
+$("pret").onclick = () => {
+  if(!P.navires.every(Boolean)) return;
+  const f = P.navires.map(b => ({cases: b.cases}));
+  if(mode === "ordi"){
+    poserFlotte(1, f); poserFlotte(2, flotteHasard());
+    lancerCombat(); return;
+  }
+  if(mode === "local"){
+    poserFlotte(G.placeur, f);
+    if(G.placeur === 1){ G.placeur = 2; reinitP(); rideau(G.noms[2] + ", à toi de placer ta flotte", G.noms[1] + " ne doit pas regarder !", () => { ecran("placement"); dessinerPlace(); }); }
+    else rideauTour();
+    return;
+  }
+  if(mode === "ligne"){
+    if(salle.hote){ poserFlotte(1, f); diffuser(); afficher(); }
+    else { envoyeFlotte = true; salle.envoyer({t: "flotte", f}); dessinerPlace(); relanceFlotte(f); }
+  }
+};
+
+/* =================================================================
+   COMBAT : AFFICHAGE
+   ================================================================= */
+const celsAdv = fabriquerGrille($("gAdv"), clicTir), celsMoi = fabriquerGrille($("gMoi"), () => {});
+let mode = null, niveau = stock.lire("niveau", "moyen"), salle = null, moi = 1, ordiPense = false, attenteTir = false, pause = false, dernierAnnonce = 0;
+let V = null, envoyeFlotte = false, nVu = -1;
+
+function moiP(){
+  if(mode === "ligne") return moi;
+  if(mode === "local") return G.phase === "placement" ? G.placeur : G.phase === "fin" ? G.gagnant : G.tour;
+  return 1;
+}
+function attendPlacement(){
+  if(mode !== "ligne" || !V) return false;
+  return moi === 1 ? !!V.pret[1] : (envoyeFlotte || !!V.pret[2]);
+}
+function monTour(){
+  if(!V || V.phase !== "combat" || pause) return false;
+  if(mode === "local") return true;
+  if(mode === "ordi") return V.tour === 1 && !ordiPense;
+  return V.tour === moi && !attenteTir;
+}
+
+function afficher(){
+  if(mode !== "ligne") V = vue(moiP());
+  else if(salle && salle.hote) V = vue(1);
+  if(!V) return;
+  if(V.n !== nVu){ nVu = V.n; reinitP(); envoyeFlotte = false; }
+  if(V.phase === "placement"){
+    if(mode === "ligne" && moi === 2 && V.pret[2]) envoyeFlotte = true;
+    ecran("placement"); dessinerPlace(); return;
+  }
+  ecran("jeu"); dessinerCombat();
+}
+
+function dessinerCombat(){
+  const v = V, p = v.moi, o = 3 - p;
+  const mAdv = classesNavires(v.flotteAdv), mMoi = classesNavires(v.flotteMoi);
+  const der = v.dernier;
+  celsAdv.forEach((d, i) => {
+    const t = v.tirsMoi[i];
+    d.className = ["cel", ...(t === 3 || v.phase === "fin" ? (mAdv[i] || []) : []), CL_TIR[t], !t ? "libre" : "", der && der.p === p && der.i === i ? "dernier" : ""].join(" ").replace(/\s+/g, " ").trim();
+  });
+  celsMoi.forEach((d, i) => {
+    const t = v.tirsAdv[i];
+    d.className = ["cel", ...(mMoi[i] || []), CL_TIR[t], der && der.p === o && der.i === i ? "dernier" : ""].join(" ").replace(/\s+/g, " ").trim();
+  });
+  $("gAdv").classList.toggle("vise", monTour());
+  $("gAdv").classList.toggle("bloque", !monTour());
+
+  for(const q of [1, 2]){
+    const b = $("jr" + q);
+    b.querySelector(".nom").textContent = v.noms[q];
+    b.querySelector(".pts").textContent = v.scores[q];
+    b.classList.toggle("actif", v.phase === "combat" && v.tour === q);
+  }
+  const nomAdv = v.noms[o];
+  $("tAdv").textContent = mode === "local" ? `🎯 Eaux de ${nomAdv}` : mode === "ordi" ? "🎯 Eaux de l'ordi" : `🎯 Eaux de ${nomAdv}`;
+  $("tMoi").textContent = mode === "local" ? `🛡️ Flotte de ${v.noms[p]}` : "🛡️ Ta flotte";
+  $("fAdv").innerHTML = v.restantAdv.map(b => `<span class="${b.coule ? "k" : ""}">${b.n} (${b.t})</span>`).join("");
+  const mesCoules = (v.flotteMoi || []).filter(b => b.cases.every(c => v.tirsAdv[c] >= 2)).length;
+  $("fMoi").innerHTML = `<span>${5 - mesCoules} navire${5 - mesCoules > 1 ? "s" : ""} à flot</span>`;
+  const touches = v.tirsMoi.filter(t => t === 2 || t === 3).length;
+  $("sAdv").textContent = `${v.nb[p]} tir${v.nb[p] > 1 ? "s" : ""} · ${touches} touche${touches > 1 ? "s" : ""}` + (v.nb[p] ? ` · précision ${Math.round(touches / v.nb[p] * 100)} %` : "");
+
+  // annonce du dernier tir
+  const an = $("annonce");
+  if(der){
+    const qui = der.p === p ? (mode === "local" ? v.noms[p] : "Tu") : (mode === "ordi" ? "L'ordi" : v.noms[der.p]);
+    const verbe = der.p === p && mode !== "local" ? "tires" : "tire";
+    const txt = {eau: "💦 À l'eau…", touche: "🔥 Touché !", coule: `💥 Coulé : ${der.nom} !`}[der.res];
+    an.textContent = `${qui} ${verbe} en ${nomCase(der.i)} — ${txt}`;
+    an.className = "annonce " + der.res;
+    if(der.k !== dernierAnnonce){ dernierAnnonce = der.k; if(navigator.vibrate && der.p !== p && der.res !== "eau") navigator.vibrate(der.res === "coule" ? [60, 40, 120] : 60); }
+  }else{ an.textContent = ""; an.className = "annonce"; }
+
+  let s;
+  if(v.phase === "fin"){
+    const g = v.gagnant;
+    if(mode === "ordi") s = g === 1 ? `🎉 Victoire en ${v.nb[1]} tirs ! La flotte ennemie est au fond.` : "🤖 L'ordi a coulé toute ta flotte…";
+    else if(mode === "ligne") s = g === moi ? `🎉 Victoire en ${v.nb[g]} tirs !` : `😵 ${v.noms[g]} a coulé toute ta flotte…`;
+    else s = `🎉 ${v.noms[g]} gagne en ${v.nb[g]} tirs !`;
+  }else if(mode === "ordi") s = v.tour === 1 ? (ordiPense ? "" : "À toi de tirer !") : "🤖 L'ordi vise…";
+  else if(mode === "ligne") s = v.tour === moi ? "À toi de tirer !" : `${v.noms[v.tour]} vise…`;
+  else s = pause ? "" : `${v.noms[v.tour]}, à toi de tirer !`;
+  if(v.phase === "combat" && v.bonus && monTour() && der && der.p === p && der.res !== "eau") s = "🎯 Touché : tu rejoues !";
+  $("statut").textContent = s;
+  $("rejouer").classList.toggle("cache", v.phase !== "fin");
+}
+
+/* =================================================================
+   COMBAT : ACTIONS
+   ================================================================= */
+function clicTir(i){
+  if(!monTour() || V.tirsMoi[i]) return;
+  if(mode === "ligne"){
+    if(salle.hote){ tirer(1, i); apresTir(); diffuser(); afficher(); }
+    else{
+      attenteTir = true; salle.envoyer({t: "tir", i});
+      $("gAdv").classList.add("bloque"); $("gAdv").classList.remove("vise");
+      setTimeout(() => { if(attenteTir){ attenteTir = false; afficher(); } }, 4000);
+    }
+    return;
+  }
+  const p = mode === "local" ? G.tour : 1;
+  const res = tirer(p, i);
+  if(!res) return;
+  apresTir();
+  afficher();
+  if(G.phase !== "combat") return;
+  if(mode === "ordi" && G.tour === 2) tourOrdi();
+  if(mode === "local" && G.tour !== p){
+    pause = true; afficher();
+    setTimeout(() => { pause = false; rideauTour(); }, 1400);
+  }
+}
+function tourOrdi(){
+  ordiPense = true; afficher();
+  setTimeout(() => {
+    if(!G || mode !== "ordi" || G.phase !== "combat"){ ordiPense = false; return; }
+    const c = coupOrdi(G.tirs[2], G.flottes[1].map(b => ({t: b.t, coule: b.coule})), niveau);
+    tirer(2, c); apresTir();
+    if(G.phase === "combat" && G.tour === 2) tourOrdi();
+    else { ordiPense = false; afficher(); }
+    afficher();
+  }, 650);
+}
+function apresTir(){
+  if(G.phase !== "fin" || mode !== "ordi" || G.gagnant !== 1) return;
+  const v = stock.lire("victoires", {facile: 0, moyen: 0, difficile: 0});
+  v[niveau] = (v[niveau] || 0) + 1; stock.ecrire("victoires", v);
+  const m = stock.lire("meilleur", {});
+  if(!m[niveau] || G.nb[1] < m[niveau]){ m[niveau] = G.nb[1]; stock.ecrire("meilleur", m); }
+  const lab = {facile: "Facile", moyen: "Moyen", difficile: "Difficile"}[niveau];
+  if(Base.record("bataille", G.nb[1], {mieux: "bas", texte: `Victoire en ${G.nb[1]} tirs (${lab})`})) Base.toast("🏆 Nouveau record : victoire en " + G.nb[1] + " tirs !");
+}
+
+/* =================================================================
+   ÉCRANS
+   ================================================================= */
+function ecran(id){
+  ["menu", "pNiveau", "pLocal", "pLigne", "pAttente", "rideau", "placement", "jeu"].forEach(x => $(x).classList.toggle("cache", x !== id));
+}
+let suiteRideau = null;
+function rideau(titre, texte, suite){
+  $("rTitre").textContent = titre; $("rTexte").textContent = texte; suiteRideau = suite;
+  ecran("rideau");
+}
+$("rOk").onclick = () => { const f = suiteRideau; suiteRideau = null; f && f(); };
+function rideauTour(){
+  rideau(`${G.noms[G.tour]}, à toi de tirer !`, `Passe l'appareil à ${G.noms[G.tour]}. ${G.noms[3 - G.tour]}, ne regarde pas !`, afficher);
+}
+
+document.querySelectorAll(".retour").forEach(b => b.onclick = () => ecran("menu"));
+document.querySelectorAll(".mode").forEach(b => b.onclick = () => {
+  const m = b.dataset.mode;
+  dessinerRegles();
+  if(m === "ordi"){ afficherNiveaux(); ecran("pNiveau"); }
+  if(m === "local"){ ecran("pLocal"); }
+  if(m === "ligne"){ $("pseudo").value = Base.joueur.pseudo(); $("msgLigne").textContent = ""; ecran("pLigne"); }
+});
+
+let bonus = stock.lire("bonus", true);
+function dessinerRegles(){
+  document.querySelectorAll(".regle").forEach(z => {
+    z.innerHTML = "<p>Quand on touche un navire :</p>";
+    const pl = Base.el("div", "", "pilules"); pl.style.justifyContent = "flex-start";
+    [[true, "🎯 On rejoue"], [false, "➡️ Chacun son tour"]].forEach(([v, t]) => {
+      const b = Base.el("button", t); if(v === bonus) b.className = "on";
+      b.onclick = () => { bonus = v; stock.ecrire("bonus", v); dessinerRegles(); };
+      pl.appendChild(b);
+    });
+    z.appendChild(pl);
+  });
+}
+
+const NIVEAUX = {facile: "😊 Moussaillon", moyen: "🧭 Capitaine", difficile: "😈 Amiral"};
+function afficherNiveaux(){
+  const z = $("niveaux"); z.innerHTML = "";
+  for(const [k, t] of Object.entries(NIVEAUX)){
+    const b = Base.el("button", t); if(k === niveau) b.className = "on";
+    b.onclick = () => { niveau = k; stock.ecrire("niveau", k); afficherNiveaux(); };
+    z.appendChild(b);
+  }
+  const v = stock.lire("victoires", {}), m = stock.lire("meilleur", {}), n = v[niveau] || 0;
+  $("statsOrdi").textContent = n ? `Victoires dans ce niveau : ${n} · meilleure : ${m[niveau]} tirs.` : "Tu n'as pas encore battu cet adversaire.";
+}
+function lancerPlacement(){ reinitP(); nVu = G.n; afficher(); }
+function lancerCombat(){ dernierAnnonce = 0; afficher(); if(mode === "ordi" && G.tour === 2) tourOrdi(); }
+
+$("goOrdi").onclick = () => {
+  mode = "ordi";
+  nouvellePartie([Base.joueur.pseudo() || "Toi", "Ordi " + NIVEAUX[niveau].split(" ")[1]], bonus);
+  G.premier = 2; nouvelleManche();   // le joueur tire en premier à la 1re manche
+  lancerPlacement();
+};
+$("nom1").value = stock.lire("nom1", ""); $("nom2").value = stock.lire("nom2", "");
+$("goLocal").onclick = () => {
+  mode = "local";
+  const n1 = $("nom1").value.trim() || "Joueur 1"; let n2 = $("nom2").value.trim() || "Joueur 2";
+  if(n1.toLowerCase() === n2.toLowerCase()) n2 += " (2)";
+  stock.ecrire("nom1", $("nom1").value.trim()); stock.ecrire("nom2", $("nom2").value.trim());
+  nouvellePartie([n1, n2], bonus); G.premier = 2; nouvelleManche();
+  reinitP(); nVu = G.n;
+  rideau(`${n1}, à toi de placer ta flotte`, `${n2} ne doit pas regarder !`, () => { ecran("placement"); dessinerPlace(); });
+};
+
+$("rejouer").onclick = () => {
+  if(mode === "ligne"){
+    if(salle.hote){ nouvelleManche(); diffuser(); afficher(); }
+    else { salle.envoyer({t: "rejouer"}); $("statut").textContent = "Revanche demandée…"; }
+    return;
+  }
+  nouvelleManche();
+  if(mode === "local"){ reinitP(); nVu = G.n; rideau(`${G.noms[1]}, à toi de placer ta flotte`, `${G.noms[2]} ne doit pas regarder !`, () => { ecran("placement"); dessinerPlace(); }); }
+  else lancerPlacement();
+};
+function quitter(){
+  if(salle){ salle.quitter(); salle = null; }
+  G = null; V = null; mode = null; ordiPense = false; pause = false; ecran("menu");
+}
+$("quitter").onclick = quitter;
+$("quitterP").onclick = quitter;
+
+/* =================================================================
+   EN LIGNE : l'hôte arbitre et ne montre à l'invité que ce qu'il
+   a le droit de voir (la flotte de l'hôte reste secrète).
+   ================================================================= */
+function diffuser(){ if(salle && salle.hote && G) salle.envoyer({t: "etat", V: vue(2)}); }
+let relance = null;
+function relanceFlotte(f){
+  clearInterval(relance);
+  relance = setInterval(() => {
+    if(!salle || !V || V.phase !== "placement" || V.pret[2]){ clearInterval(relance); return; }
+    salle.envoyer({t: "flotte", f});
+  }, 3000);
+}
+function pseudoOK(){
+  const p = $("pseudo").value.trim();
+  if(!p){ $("pseudo").focus(); $("msgLigne").textContent = "Choisis d'abord un pseudo 🙂"; return false; }
+  Base.joueur.changerPseudo(p); return true;
+}
+$("creer").onclick = async () => {
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Création de la salle…";
+  try{
+    salle = await Reseau.creer("bataille", {
+      max: 2,
+      surEssai: t => $("msgLigne").textContent = t,
+      surArrivee(j){
+        mode = "ligne"; moi = 1;
+        nouvellePartie([Base.joueur.pseudo() || "Hôte", j.pseudo], bonus);
+        G.premier = 2; nouvelleManche();
+        reinitP(); nVu = -1; afficher(); diffuser();
+        Base.toast(j.avatar + " " + j.pseudo + " a rejoint la partie !");
+      },
+      surDepart(j){
+        Base.toast(j.pseudo + " a quitté la partie.");
+        G = null; V = null; $("code").textContent = salle.code; ecran("pAttente");
+      },
+      surMessage(m){
+        if(!G) return;
+        if(m.t === "etat?") diffuser();
+        if(m.t === "flotte" && G.phase === "placement" && !G.pret[2] && flotteValide(m.f)){
+          poserFlotte(2, m.f); afficher(); diffuser();
+        }
+        if(m.t === "tir" && G.phase === "combat" && G.tour === 2){ if(tirer(2, +m.i)) afficher(); diffuser(); }
+        if(m.t === "rejouer" && G.phase === "fin"){ nouvelleManche(); afficher(); diffuser(); }
+      }
+    });
+    $("code").textContent = salle.code; $("msgLigne").textContent = "";
+    ecran("pAttente");
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+};
+$("rejoindre").onclick = () => rejoindre($("codeIn").value);
+$("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("rejoindre").click(); });
+async function rejoindre(code){
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Connexion à la salle…";
+  try{
+    salle = await Reseau.rejoindre("bataille", code, {
+      surMessage(m){
+        if(m.t !== "etat" || !m.V) return;
+        const neuf = !V;
+        V = m.V; attenteTir = false;
+        if(neuf){ mode = "ligne"; moi = 2; nVu = -1; }
+        afficher();
+      },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; G = null; V = null; ecran("menu"); }
+    });
+    $("msgLigne").textContent = "Connecté ! En attente de la partie…";
+    salle.envoyer({t: "etat?"});
+  }catch(e){ salle = null; $("msgLigne").textContent = "❌ " + e.message; }
+}
+$("annuler").onclick = () => { if(salle){ salle.quitter(); salle = null; } ecran("pLigne"); };
+$("copier").onclick = async () => {
+  try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à ton ami 📨"); }
+  catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
+};
+$("tester").onclick = async () => { $("msgLigne").textContent = "Test des relais…"; $("msgLigne").textContent = await Reseau.tester(); };
+
+/* Arrivée par un lien d'invitation (?salle=CODE) */
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){
+  dessinerRegles();
+  $("codeIn").value = codeLien; $("pseudo").value = Base.joueur.pseudo(); ecran("pLigne");
+  if(Base.joueur.pseudo()) rejoindre(codeLien);
+  else $("msgLigne").textContent = "Choisis ton pseudo puis clique sur « Rejoindre ».";
+}
+</script>
+</body>
+</html>

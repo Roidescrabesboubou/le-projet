@@ -331,6 +331,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "bataille",
+    title: "Bataille navale",
+    emoji: "🚢",
+    desc: "Place tes 5 navires en secret, puis tire case par case pour couler la flotte ennemie. Contre l'ordi (3 amiraux, du moussaillon à l'impitoyable), à deux sur le même écran avec écran caché entre les tours, ou en ligne contre un ami.",
+    tags: ["Réflexion", "Multijoueur", "Solo"],
+    colors: ["#2f7fd1", "#1cb6aa"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "puissance4",
     title: "Puissance 4",
     emoji: "🔴",
