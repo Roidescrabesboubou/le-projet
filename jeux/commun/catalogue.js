@@ -25,6 +25,16 @@
    ============================================================ */
 window.SALLE_CATALOGUE = [
   {
+    slug: "manufacture",
+    title: "Manufacture",
+    emoji: "🏭",
+    desc: "Un vrai jeu de plateau d'usine : explore une île en hexagones, pose extracteurs, machines et tapis, raffine le bois, le sable et le fer jusqu'aux automates, et honore les contrats de l'Exposition. De 1 à 4 joueurs, contre des bots, sur un écran ou en ligne.",
+    tags: ["Plateau", "Stratégie", "Multijoueur", "Solo"],
+    colors: ["#b5692a", "#3a7882"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "laser",
     title: "Bataille Laser",
     emoji: "🔦",

@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Manufacture</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#b5692a;--fond1:rgba(181,105,42,.14);--fond2:rgba(58,120,130,.12);--b:#4f9d4f;--s:#dca93c;--f:#6079a5;--tourbe:#7a5a3c;--vapeur:#3fa7b5}
+.b-page{max-width:1240px}
+.cube{display:inline-flex;align-items:center;justify-content:center;width:1.45em;height:1.45em;border-radius:5px;color:#fff;font:800 .68em/1 Nunito,sans-serif;vertical-align:middle;box-shadow:inset 0 -2px 0 rgba(0,0,0,.2)}
+.cube.b{background:var(--b)}.cube.s{background:var(--s)}.cube.f{background:var(--f)}.cube.a{background:#a24fb5}
+.cout{display:inline-flex;gap:5px;flex-wrap:wrap;align-items:center;font-weight:800;font-size:.9rem}
+.cout span{display:inline-flex;gap:2px;align-items:center}
+/* Menu */
+.ecran{width:100%;max-width:620px;display:flex;flex-direction:column;gap:12px;align-items:stretch;margin:0 auto}
+.boite{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.boite h2{margin:0;font-size:1.1rem}
+.rangee{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pilule{border:2px solid var(--line);background:var(--card);border-radius:10px;padding:6px 12px;font-weight:800}
+.pilule.on{border-color:var(--accent);background:var(--fond1)}
+input.champ{border:2px solid var(--line);border-radius:10px;background:var(--card);padding:7px 10px;min-width:0;flex:1}
+/* Partie */
+#jeu{width:100%;display:flex;flex-direction:column;gap:8px}
+.haut{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.joueurs{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:5px;border:2px solid var(--line);background:var(--card);border-radius:12px;padding:4px 9px;font-weight:800;font-size:.9rem;border-left-width:7px}
+.chip.tour{box-shadow:0 0 0 2px var(--accent)}
+.chip.vu{background:var(--fond1)}
+.infos{font-family:Fredoka,sans-serif;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.piste{display:flex;gap:2px;align-items:center}
+.piste i{width:11px;height:11px;border-radius:3px;background:var(--soft);border:1px solid var(--line);display:block}
+.piste i.on{background:var(--accent);border-color:var(--accent)}
+.piste i.bonus{outline:1.5px solid var(--s);outline-offset:0}
+.table{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px;align-items:start}
+@media (max-width:880px){.table{grid-template-columns:1fr}}
+.gauche{display:flex;flex-direction:column;gap:8px;min-width:0}
+#plateau{width:100%;display:block;background:#bcd9dc;border-radius:14px;touch-action:manipulation;user-select:none;-webkit-user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+@media (prefers-color-scheme:dark){#plateau{background:#27424a}}
+#plateau .hx{cursor:default;stroke:rgba(0,0,0,.2);stroke-width:1}
+#plateau .ok{cursor:pointer;stroke:#fff;stroke-width:3}
+#plateau .ok:hover{stroke:#ffe27a}
+#plateau text{pointer-events:none;text-anchor:middle;dominant-baseline:central}
+.bande{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:7px 9px}
+.jetons{font-size:1.05rem;letter-spacing:1px;font-weight:800;margin-right:auto;display:flex;gap:6px;align-items:center}
+.jeton{display:inline-block;width:15px;height:15px;border-radius:50%;background:var(--accent);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.pulse{animation:pulse 1.1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 5px var(--fond1)}}
+#consigne{font-weight:700;font-size:.92rem;text-align:center;min-height:1.3em;margin:0}
+#dernier{font-size:.82rem;color:var(--muted);text-align:center;margin:0;min-height:1.2em}
+.onglets{display:flex;gap:4px;flex-wrap:wrap}
+.onglet{flex:1;border:2px solid var(--line);background:var(--card);border-radius:10px;padding:6px 4px;font-weight:800;font-size:.88rem;white-space:nowrap}
+.onglet.on{border-color:var(--accent);background:var(--fond1)}
+.vue{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+/* Usine */
+.jauges{display:flex;gap:6px;flex-wrap:wrap}
+.jauge{background:var(--card);border:2px solid var(--line);border-radius:10px;padding:3px 8px;font-weight:800;font-size:.86rem;font-variant-numeric:tabular-nums}
+.jauge.mal{border-color:var(--ko);color:var(--ko)}
+.ligne{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:6px 8px;display:flex;flex-direction:column;gap:4px}
+.ligne header{display:flex;justify-content:space-between;font-weight:800;font-size:.84rem;gap:6px}
+.machines{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.machine{border-radius:8px;padding:3px;display:flex;flex-direction:column;gap:3px;border:1.5px dashed var(--line);min-width:0}
+.machine.on{border:1.5px solid var(--text);background:var(--soft)}
+.machine small{display:flex;justify-content:space-between;align-items:center;font-size:.68rem;font-weight:800;gap:2px;white-space:nowrap;overflow:hidden}
+.vanne{border:0;background:none;padding:0 2px;font-size:.8rem;line-height:1}
+.segs{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.seg{min-height:42px;background:var(--bg);border-radius:4px;display:flex;flex-wrap:wrap;align-content:flex-end;justify-content:center;gap:1px;padding:2px;border-right:1px dotted var(--line)}
+.bloc{width:10px;height:10px;border-radius:2px;display:block}
+.bloc.b{background:var(--b)}.bloc.s{background:var(--s)}.bloc.f{background:var(--f)}.bloc.a{background:#a24fb5}
+.bloc.t2{outline:1.5px solid rgba(0,0,0,.45)}
+.bloc.t3{outline:2px solid #000;width:13px;height:13px}
+/* Cartes de marché */
+.carte{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:7px 9px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.carte b{font-family:Fredoka,sans-serif;font-size:.98rem}
+.carte small{color:var(--muted);display:block;line-height:1.2}
+.carte.possede{border-color:var(--ok);background:rgba(58,167,109,.08)}
+.carte .droite{display:flex;flex-direction:column;gap:3px;align-items:flex-end;flex-shrink:0}
+.liste{display:grid;gap:6px}
+h3.sec{margin:6px 0 0;font-size:.98rem}
+.journal{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:8px 10px;font-size:.85rem;max-height:420px;overflow:auto;display:flex;flex-direction:column;gap:3px}
+/* Feuille d'action */
+dialog{border:0;border-radius:18px;background:var(--bg);color:var(--text);padding:14px;width:min(520px,calc(100vw - 24px));max-height:85vh;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{margin:0 0 8px}
+.pied{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}
+.scores{width:100%;border-collapse:collapse;font-size:.92rem}
+.scores td,.scores th{padding:4px 6px;text-align:right;border-bottom:1px solid var(--line)}
+.scores td:first-child,.scores th:first-child{text-align:left}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="menu" class="ecran">
+    <p class="muted" style="margin:0;text-align:center">Un jeu de plateau d'usine : explore l'île, pose tes extracteurs, fais tourner tes lignes et honore les contrats de l'Exposition.</p>
+    <button class="btn cache" id="reprendre">▶️ Reprendre la partie</button>
+    <div class="boite">
+      <h2>🪑 Sur cet écran</h2>
+      <div class="rangee"><b>Joueurs humains</b><span class="rangee" id="nbH"></span></div>
+      <div class="rangee"><b>Bots</b><span class="rangee" id="nbB"></span></div>
+      <div class="rangee"><b>Niveau des bots</b><span class="rangee" id="nivB"></span></div>
+      <button class="btn" id="lancer">🏭 Lancer la partie</button>
+    </div>
+    <div class="boite">
+      <h2>🌐 En ligne</h2>
+      <div class="rangee"><b>Ton pseudo</b><input class="champ" id="pseudo" maxlength="16"></div>
+      <button class="btn ghost" id="creer">Créer une salle</button>
+      <div class="rangee"><input class="champ" id="codeIn" placeholder="Code de la salle" maxlength="6" style="text-transform:uppercase"><button class="btn ghost" id="rejoindre">Rejoindre</button></div>
+      <p class="muted" id="msgLigne" style="margin:0;font-size:.85rem"></p>
+    </div>
+  </section>
+
+  <section id="attente" class="ecran cache">
+    <div class="boite">
+      <h2>Salle <span id="code"></span></h2>
+      <button class="btn ghost petit" id="copier">🔗 Copier le lien d'invitation</button>
+      <ul id="salleJoueurs" style="margin:0;padding-left:18px"></ul>
+      <div id="reglageHote" class="rangee"><b>Bots en plus</b><span class="rangee" id="nbBL"></span></div>
+      <button class="btn" id="goLigne">🏭 Lancer la partie</button>
+      <p class="muted" id="attenteHote" style="margin:0">En attente du lancement par l'hôte…</p>
+      <button class="btn ghost petit" id="annuler">Quitter la salle</button>
+    </div>
+  </section>
+
+  <section id="jeu" class="cache">
+    <div class="haut">
+      <div class="joueurs" id="chips"></div>
+      <div class="infos">
+        <span>Manche <b id="iManche">1</b></span>
+        <span class="piste" id="iPiste" title="Piste de l'Exposition : la partie s'arrête à la dernière case"></span>
+        <button class="btn ghost petit" id="quitter">🚪</button>
+      </div>
+    </div>
+    <div class="table">
+      <div class="gauche">
+        <svg id="plateau"></svg>
+        <p id="consigne"></p>
+        <div class="bande">
+          <span class="jetons" id="iJetons"></span>
+          <button class="btn ghost petit" id="bBatir">🔨 Bâtir</button>
+          <button class="btn ghost petit" id="bAtelier">🛠️ Atelier</button>
+          <button class="btn ghost petit" id="bEchange">🔁 Échange</button>
+          <button class="btn petit" id="bFin">⏭️ Fin de tour</button>
+        </div>
+        <p id="dernier"></p>
+      </div>
+      <div>
+        <div class="onglets" id="onglets"></div>
+        <div class="vue" id="vue"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<dialog id="feuille"></dialog>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="moteur.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const M = window.RegleM;
+const {COUL, NOMS, CAP} = M;
+const store = Base.stock("manufacture_");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const COUL_J = ["#d8432f", "#2b78d0", "#e08a0c", "#8a4fd0"];
+const ROMAIN = ["", "I", "II", "III"];
+
+Base.entete({titre: "Manufacture", emoji: "🏭", aide: `
+  <p><b>But :</b> avoir le plus de <b>prestige ⭐</b>. La partie s'arrête à la fin de la manche où quelqu'un atteint ${M.BUT} ⭐, ou quand la piste de l'Exposition est au bout.</p>
+  <p><b>À ton tour</b>, dépense tes jetons d'action (3 au départ) :</p>
+  <ul>
+    <li><b>Marcher</b> : touche une case éclairée (2 cases de portée). Un gisement te donne ses ressources, une tourbière de la tourbe, une ruine 🏛️ une surprise et une trouvaille.</li>
+    <li><b>Bâtir</b> à côté de ton pion : extracteur sur un gisement, machine, centrale sur une source ♨️, tapis pour relier tes bâtiments, ou un plan.</li>
+    <li><b>Atelier</b> : raffiner à la main ou pousser les cubes d'une machine.</li>
+  </ul>
+  <p><b>Gratuit pendant ton tour :</b> contrats, améliorations, trouvailles, échanges (2 → 1) et vannes.</p>
+  <p><b>Production, à la fin de chaque manche :</b> vapeur → tapis → récolte. Chaque ligne a 3 machines : 🌲 Bûche → Planche → Charpente, 🏜️ Sable → Verre → Vitrail, ⛰️ Minerai → Lingot → Engrenage. Il faut <b>2</b> cubes de niveau II pour 1 de niveau III. Une charpente, un vitrail et un engrenage donnent un <b>automate</b>, qui rapporte du prestige une fois exposé.</p>
+  <ul>
+    <li>Seule une machine construite fait avancer ses cubes. Une <b>vanne</b> 🚰 fermée retient les cubes à la sortie de la machine, pour garder de quoi payer.</li>
+    <li><b>Vapeur :</b> chaque bâtiment en consomme. En négatif, chaque point coûte 1 tourbe, sinon des machines s'arrêtent. À 8 ou plus, tu vends l'excédent : +1 ⭐.</li>
+    <li><b>Dépôt :</b> un groupe d'extracteurs non relié à ton comptoir coûte 1 tourbe par production, sinon il s'arrête. Relie-le avec des tapis !</li>
+  </ul>
+  <p><b>Bêtes :</b> 🌿 interdit de bâtir à côté · 🐗 s'arrêter dessus coûte 1 action · 🐝 s'arrêter dessus ou à côté coûte 1 action. Tu peux les chasser en arrivant dessus pour 1 action de plus. Le marais coûte aussi 1 action.</p>
+  <p><b>Fin :</b> +1 ⭐ pour chaque majorité (ruines, vapeur, contrats), plus les points de tes plans.</p>`});
+
+/* ---------- État local ---------- */
+let G = null, mode = null, moi = 0, salle = null, sel = null, vuJ = null, onglet = "usine", timerBot = null, finVue = false;
+let reg = store.lire("reglages", {h: 1, b: 2, niv: 2, bl: 0});
+const peutJouer = () => G && !G.fini && (mode === "ligne" ? G.tour === moi : !G.joueurs[G.tour].bot);
+const joueurActif = () => mode === "ligne" ? moi : G.tour;
+
+function ecran(id){ for(const e of ["menu", "attente", "jeu"]) $(e).classList.toggle("cache", e !== id); }
+function pilules(el, valeurs, cle, apres){
+  $(el).innerHTML = valeurs.map(v => `<button class="pilule ${reg[cle] === v[0] ? "on" : ""}" data-v="${v[0]}">${v[1]}</button>`).join("");
+  $(el).querySelectorAll("button").forEach(b => b.onclick = () => { reg[cle] = +b.dataset.v; store.ecrire("reglages", reg); pilules(el, valeurs, cle, apres); apres && apres(); });
+}
+const nb = l => l.map(n => [n, n]);
+function menuLocal(){
+  if(reg.h + reg.b > 4) reg.b = 4 - reg.h;
+  pilules("nbH", nb([1,2,3,4]), "h", menuLocal);
+  pilules("nbB", nb([0,1,2,3].filter(n => n + reg.h <= 4)), "b", menuLocal);
+  pilules("nivB", [[1,"Apprenti"],[2,"Ingénieur"]], "niv");
+}
+function afficherMenu(){
+  ecran("menu");
+  menuLocal();
+  $("pseudo").value = Base.joueur.pseudo() || "";
+  $("reprendre").classList.toggle("cache", !store.lire("partie", null));
+}
+const NOMS_BOTS = ["Mme Vis", "Le Boulon", "Dame Vapeur", "Tonton Rivet"];
+function botsDe(n, niv){ return Array.from({length: n}, (_, i) => ({nom: NOMS_BOTS[i], avatar: "🤖", bot: true, niveau: niv})); }
+
+function melangeSimple(l){ for(let i = l.length - 1; i > 0; i--){ const k = Math.floor(Math.random() * (i + 1)); [l[i], l[k]] = [l[k], l[i]]; } return l; }
+function demarrer(joueurs){
+  G = M.creer(joueurs);
+  G.seq = 1;
+  lancerVue();
+}
+function lancerVue(){
+  sel = null; vuJ = null; onglet = "usine"; finVue = false;
+  ecran("jeu");
+  apresChangement();
+}
+$("lancer").onclick = () => {
+  const moiNom = Base.joueur.pseudo();
+  const humains = Array.from({length: reg.h}, (_, i) => ({nom: i === 0 && moiNom ? moiNom : "Joueur " + (i + 1), avatar: i === 0 ? Base.joueur.avatar() : ""}));
+  mode = "local"; moi = 0;
+  demarrer(melangeSimple([...humains, ...botsDe(reg.b, reg.niv)]));
+};
+$("reprendre").onclick = () => { G = store.lire("partie", null); if(!G) return; mode = "local"; lancerVue(); };
+$("quitter").onclick = () => {
+  if(timerBot) clearTimeout(timerBot);
+  if(salle){ salle.quitter(); salle = null; }
+  G = null; mode = null;
+  afficherMenu();
+};
+
+/* ---------- Boucle : une action, on redessine, puis les bots ---------- */
+function jouer(a){
+  if(mode === "ligne" && !salle.hote){ salle.envoyer({t: "action", a}); return true; }
+  const refus = M.agir(G, G.tour, a);
+  if(refus){ Base.toast(refus); return false; }
+  G.seq = (G.seq || 0) + 1;
+  apresChangement();
+  return true;
+}
+function apresChangement(){
+  if(mode === "local"){ if(G.fini) store.ecrire("partie", null); else store.ecrire("partie", G); }
+  if(mode === "ligne" && salle && salle.hote) salle.envoyer({t: "etat", G});
+  rendre();
+  if(G.fini) return finDePartie();
+  if(timerBot) clearTimeout(timerBot);
+  if(G.joueurs[G.tour].bot && (mode === "local" || salle.hote)) timerBot = setTimeout(tourBot, 420);
+}
+function tourBot(){
+  if(!G || G.fini || !G.joueurs[G.tour].bot) return;
+  const j = G.tour, a = M.coupBot(G, j);
+  if(M.agir(G, j, a)) M.agir(G, j, {t: "fin"});
+  G.seq = (G.seq || 0) + 1;
+  apresChangement();
+}
+
+/* ---------- Plateau ---------- */
+const FOND = {p:"#cfdba8", b:"#8cc27d", s:"#ecd98f", f:"#a9b4c9", t:"#a78c6a", g:"#b9e0e0", e:"#6db2cf", m:"#8d9a6b", "?":"#d9c6e8"};
+const ICONE = {b:"🌲", s:"🏜️", f:"⛰️", t:"🍂", g:"♨️", m:"☠️", "?":"🏛️", e:""};
+const BETE = {ronce:"🌿", sanglier:"🐗", essaim:"🐝"};
+const TAILLE = 30;
+const pix = id => { const [q, r] = M.QR(id); return [TAILLE * Math.sqrt(3) * (q + r / 2), TAILLE * 1.5 * r]; };
+function hexPoints(x, y){
+  const p = [];
+  for(let i = 0; i < 6; i++){ const a = Math.PI / 180 * (60 * i - 30); p.push((x + TAILLE * .97 * Math.cos(a)).toFixed(1) + "," + (y + TAILLE * .97 * Math.sin(a)).toFixed(1)); }
+  return p.join(" ");
+}
+function casesPermises(){
+  const o = {};
+  if(!peutJouer()) return o;
+  const j = G.tour, p = G.joueurs[j];
+  if(sel && sel.mode === "poser"){
+    if(sel.b === "tapis"){
+      for(const c of Object.keys(G.carte)) if(!sel.cases.includes(c) && !M.refusCaseTapis(G, j, c, sel.cases[sel.cases.length - 1] || null)) o[c] = 1;
+    } else {
+      for(const c of Object.keys(G.carte)){
+        if(M.refusCase(G, j, c, sel.b)) continue;
+        if(!M.peutPayer(p, M.coutBatiment(sel.b, sel.coul, sel.tier, c, G))) continue;
+        o[c] = 1;
+      }
+    }
+    return o;
+  }
+  if(p.jetons >= 1) for(const c of Object.keys(M.atteignables(G, j))) o[c] = 1;
+  return o;
+}
+function dessinerPlateau(){
+  const svg = $("plateau"), cases = Object.keys(G.carte), permis = casesPermises();
+  const xs = cases.map(c => pix(c)[0]), ys = cases.map(c => pix(c)[1]);
+  const m = TAILLE + 2, x0 = Math.min(...xs) - m, y0 = Math.min(...ys) - m;
+  svg.setAttribute("viewBox", `${x0} ${y0} ${Math.max(...xs) - Math.min(...xs) + 2 * m} ${Math.max(...ys) - Math.min(...ys) + 2 * m}`);
+  let h = "";
+  for(const c of cases){
+    const t = G.carte[c], [x, y] = pix(c);
+    h += `<polygon class="hx ${permis[c] ? "ok" : ""}" data-c="${c}" points="${hexPoints(x, y)}" fill="${FOND[t.k]}"></polygon>`;
+    if(t.k !== "p" && !G.batiments[c]) h += `<text x="${x}" y="${y - (t.n === 2 ? 4 : 0)}" font-size="20">${ICONE[t.k]}</text>`;
+    if(t.n && !G.batiments[c]) h += `<text x="${x}" y="${y + 15}" font-size="11" font-weight="800" fill="#222">${"•".repeat(t.n)}</text>`;
+  }
+  // réseaux : un trait entre bâtiments voisins d'un même joueur
+  const deja = new Set();
+  for(const c of Object.keys(G.batiments)){
+    const b = G.batiments[c], [x, y] = pix(c);
+    for(const v of M.voisins(c)){
+      const w = G.batiments[v], cle = [c, v].sort().join("|");
+      if(!w || w.j !== b.j || deja.has(cle)) continue;
+      deja.add(cle);
+      const [x2, y2] = pix(v);
+      h += `<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${COUL_J[b.j]}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${b.b === "tapis" || w.b === "tapis" ? "9 3" : "none"}" pointer-events="none"></line>`;
+    }
+  }
+  const isoles = G.joueurs.map((_, j) => new Set(M.depots(G, j).flat()));
+  for(const c of Object.keys(G.batiments)){
+    const b = G.batiments[c], [x, y] = pix(c), coul = COUL_J[b.j];
+    if(b.b === "tapis"){ h += `<circle cx="${x}" cy="${y}" r="7" fill="${coul}" pointer-events="none"></circle>`; continue; }
+    const danger = isoles[b.j].has(c);
+    h += `<circle cx="${x}" cy="${y}" r="${b.b === "qg" ? 23 : 19}" fill="${coul}" stroke="${danger ? "#ffd23c" : "#fff"}" stroke-width="${danger ? 4 : 2}" stroke-dasharray="${danger ? "5 3" : "none"}" pointer-events="none"></circle>`;
+    if(b.b === "machine"){
+      h += `<circle cx="${x}" cy="${y}" r="13" fill="var(--${b.coul})" pointer-events="none"></circle><text x="${x}" y="${y}" font-size="12" font-weight="800" fill="#fff">${ROMAIN[b.tier]}</text>`;
+    } else {
+      const ic = {qg:"🏠", ext:"⛏️", centrale:"🔥", auto:"🤖"}[b.b];
+      h += `<text x="${x}" y="${y}" font-size="${b.b === "qg" ? 22 : 18}">${ic}</text>`;
+    }
+  }
+  for(const c of cases){
+    const t = G.carte[c];
+    if(t.bete){ const [x, y] = pix(c); h += `<text x="${x + 10}" y="${y - 10}" font-size="19">${BETE[t.bete]}</text>`; }
+  }
+  if(sel && sel.cases) for(const c of sel.cases){ const [x, y] = pix(c); h += `<circle cx="${x}" cy="${y}" r="9" fill="#fff" stroke="${COUL_J[G.tour]}" stroke-width="4" pointer-events="none"></circle>`; }
+  G.joueurs.forEach((p, i) => {
+    const [x, y] = pix(p.pos), act = i === G.tour;
+    h += `<g pointer-events="none"><circle cx="${x}" cy="${y + 13}" r="${act ? 11 : 9}" fill="${COUL_J[i]}" stroke="${act ? "#fff" : "#222"}" stroke-width="${act ? 3 : 1.5}"></circle><text x="${x}" y="${y + 13}" font-size="10" font-weight="800" fill="#fff">${i + 1}</text></g>`;
+  });
+  svg.innerHTML = h;
+}
+$("plateau").addEventListener("click", e => {
+  const c = e.target.dataset && e.target.dataset.c;
+  if(!c || !peutJouer()) return;
+  if(!e.target.classList.contains("ok")) return;
+  if(sel && sel.mode === "poser"){
+    if(sel.b === "tapis"){
+      sel.cases.push(c);
+      if(sel.cases.length >= sel.max){ const cases = sel.cases; sel = null; jouer({t: "batir", b: "tapis", cases}); return; }
+      rendre();
+      return;
+    }
+    const a = {t: "batir", b: sel.b, c, coul: sel.coul, tier: sel.tier};
+    sel = null;
+    jouer(a);
+    return;
+  }
+  const t = G.carte[c], p = G.joueurs[G.tour];
+  if(t.bete && p.jetons >= 2 && t.bete !== "ronce" || t.bete === "ronce" && p.jetons >= 2){
+    feuille(`${BETE[t.bete]} Une bête sur cette case`, `<p>Chasse-la pour <b>1 action de plus</b> : tu ne subis rien, tu gagnes 1 tourbe et la case devient libre.</p>`, [
+      ["🏹 Chasser", () => jouer({t: "marcher", c, chasser: true})],
+      ["Y aller quand même", () => jouer({t: "marcher", c})]
+    ]);
+    return;
+  }
+  jouer({t: "marcher", c});
+});
+
+/* ---------- Petits bouts d'affichage ---------- */
+const cube = cle => cle === "a" ? `<span class="cube a" title="Automate">🤖</span>` : `<span class="cube ${cle[0]}" title="${NOMS[cle[0]][cle[1] - 1]}">${ROMAIN[cle[1]]}</span>`;
+const coutHtml = c => `<span class="cout">${Object.keys(c).map(k => `<span>${c[k]}${cube(k)}</span>`).join("")}</span>`;
+function bouton(texte, actif, attr, classe){ return `<button class="btn petit ${classe || ""}" ${attr} ${actif ? "" : "disabled"}>${texte}</button>`; }
+
+function feuille(titre, corps, boutons, fermer){
+  const d = $("feuille");
+  d.innerHTML = `<h3>${titre}</h3>${corps}<div class="pied"></div>`;
+  const pied = d.querySelector(".pied");
+  for(const [txt, f] of boutons){
+    const b = document.createElement("button");
+    b.className = "btn petit"; b.textContent = txt;
+    b.onclick = () => { d.close(); f(); };
+    pied.appendChild(b);
+  }
+  if(fermer !== false){
+    const b = document.createElement("button");
+    b.className = "btn ghost petit"; b.textContent = "Annuler";
+    b.onclick = () => d.close();
+    pied.appendChild(b);
+  }
+  d.showModal();
+  return d;
+}
+
+/* ---------- Rendu général ---------- */
+function rendre(){
+  if(!G) return;
+  $("iManche").textContent = G.manche;
+  let piste = "";
+  for(let i = 1; i <= M.PISTE; i++) piste += `<i class="${i <= G.piste ? "on" : ""} ${M.BONUS_PISTE[i] ? "bonus" : ""}" title="Case ${i}"></i>`;
+  $("iPiste").innerHTML = piste;
+  const vu = vuJ == null ? (mode === "ligne" ? moi : G.tour) : vuJ;
+  $("chips").innerHTML = G.joueurs.map((p, i) => `<button class="chip ${i === G.tour && !G.fini ? "tour" : ""} ${i === vu ? "vu" : ""}" data-j="${i}" style="border-left-color:${COUL_J[i]}">${esc(p.avatar || "")} ${esc(p.nom)} · ${p.prestige}⭐</button>`).join("");
+  $("chips").querySelectorAll("button").forEach(b => b.onclick = () => { vuJ = +b.dataset.j === (mode === "ligne" ? moi : G.tour) ? null : +b.dataset.j; onglet = "usine"; rendre(); });
+
+  dessinerPlateau();
+
+  const p = G.joueurs[G.tour], a = peutJouer();
+  let txt;
+  if(G.fini) txt = "Partie terminée.";
+  else if(!a) txt = `${esc(p.nom)} joue…`;
+  else if(sel && sel.b === "tapis") txt = `Tapis : touche les cases, l'une à la suite de l'autre (${sel.cases.length}/${sel.max}).`;
+  else if(sel) txt = "Touche une case éclairée pour bâtir.";
+  else if(p.jetons <= 0) txt = "Plus d'action : termine ton tour, ou profite des actions gratuites.";
+  else txt = `${esc(p.nom)}, à toi : touche une case éclairée pour marcher, ou choisis une action.`;
+  $("consigne").innerHTML = txt;
+  $("iJetons").innerHTML = `${"<span class='jeton'></span>".repeat(Math.max(0, p.jetons))} <span style="color:${COUL_J[G.tour]}">${esc(p.nom)}</span>`;
+  $("bBatir").disabled = !a || p.jetons < 1;
+  $("bAtelier").disabled = !a || p.jetons < 1;
+  $("bEchange").disabled = !a;
+  $("bFin").disabled = !a;
+  $("bFin").classList.toggle("pulse", a && p.jetons <= 0);
+  if(sel){
+    $("bBatir").textContent = sel.b === "tapis" && sel.cases.length ? "✅ Poser" : "✖️ Annuler";
+    $("bBatir").disabled = false;
+  } else $("bBatir").textContent = "🔨 Bâtir";
+  $("dernier").textContent = G.log.slice(-2).join(" · ");
+
+  const ongs = [["usine", "🏭 Usine"], ["marche", "📜 Contrats"], ["amelio", "🔧 Améliorer"], ["journal", "📖 Journal"]];
+  $("onglets").innerHTML = ongs.map(o => `<button class="onglet ${o[0] === onglet ? "on" : ""}" data-o="${o[0]}">${o[1]}</button>`).join("");
+  $("onglets").querySelectorAll("button").forEach(b => b.onclick = () => { onglet = b.dataset.o; rendre(); });
+  ({usine: vueUsine, marche: vueMarche, amelio: vueAmelio, journal: vueJournal})[onglet](vu);
+  brancher();
+}
+
+function vueUsine(j){
+  const p = G.joueurs[j], e = M.energieDe(G, j), mien = peutJouer() && j === G.tour;
+  let h = `<div class="jauges">
+    <span class="jauge">⭐ ${p.prestige}</span>
+    <span class="jauge ${e < 0 ? "mal" : ""}" title="Vapeur disponible">💨 ${e}</span>
+    <span class="jauge" title="Tourbe">🍂 ${p.tourbe}</span>
+    <span class="jauge" title="Vitesse des tapis">⏩ ${M.vitesseDe(p)}</span>
+    <span class="jauge" title="Récolte par production">⛏️ ${COUL.map(c => M.recolteDe(G, j, c)).join("/")}</span>
+    <span class="jauge" title="Jetons d'action par tour">🎟️ ${M.jetonsDe(p)}</span>
+    ${M.depots(G, j).some(g => g.some(c => G.batiments[c].b === "ext")) ? `<span class="jauge mal" title="Extracteurs non reliés au comptoir">⚠️ dépôt isolé</span>` : ""}
+  </div>`;
+  for(const c of COUL){
+    h += `<div class="ligne"><header><span>${{b:"🌲 Bois",s:"🏜️ Sable",f:"⛰️ Fer"}[c]}</span><span class="muted">${p.reserve[c] ? `+${p.reserve[c]} en réserve` : ""}</span></header><div class="machines">`;
+    for(let t = 1; t <= 3; t++){
+      const on = p.machines[c + t], ferme = p.vannes[c + t];
+      h += `<div class="machine ${on ? "on" : ""}"><small><span>${ROMAIN[t]} ${NOMS[c][t-1]}</span>${mien ? `<button class="vanne" data-vanne="${c}${t}" title="${ferme ? "Vanne fermée : les cubes restent ici" : "Vanne ouverte"}">${ferme ? "🛑" : "🚰"}</button>` : ferme ? "🛑" : ""}</small><div class="segs">`;
+      for(let s = 0; s < 3; s++){
+        const i = (t - 1) * 3 + s, n = p.u[c][i];
+        h += `<div class="seg">${`<i class="bloc ${c} t${t}"></i>`.repeat(n)}</div>`;
+      }
+      h += `</div></div>`;
+    }
+    h += `</div></div>`;
+  }
+  h += `<div class="ligne"><header><span>🤖 Assembleur ${p.machines.auto ? "" : "(à construire)"}</span><span class="muted">Exposés : ${p.vitrine}</span></header><div class="segs">${p.auto.map(n => `<div class="seg" style="min-height:24px">${`<i class="bloc a t3"></i>`.repeat(n)}</div>`).join("")}</div></div>`;
+  const plans = p.plans.map(id => M.PLANS.find(x => x.id === id)).map(x => `<div class="carte possede"><span><b>${x.nom}</b><small>${x.txt}</small></span></div>`).join("");
+  if(plans) h += `<h3 class="sec">📐 Plans réalisés</h3><div class="liste">${plans}</div>`;
+  if(p.main.length){
+    h += `<h3 class="sec">🎁 Trouvailles</h3><div class="liste">${p.main.map(id => { const x = M.TROUVAILLES.find(y => y.id === id); return `<div class="carte"><span><b>${x.nom}</b><small>${x.txt}</small></span>${mien ? bouton("Jouer", true, `data-carte="${id}"`) : ""}</div>`; }).join("")}</div>`;
+  }
+  $("vue").innerHTML = h;
+}
+function vueMarche(){
+  const j = G.tour, p = G.joueurs[j], a = peutJouer();
+  let h = `<h3 class="sec">📜 Contrats (gratuits, à ton tour)</h3><div class="liste">`;
+  for(const i of G.contrats){
+    const x = M.CONTRATS[i], ok = a && M.peutPayer(p, x.cout);
+    h += `<div class="carte"><span><b>${x.nom}</b> <small>Niveau ${ROMAIN[x.t]} · +${x.p}⭐ · Exposition +${x.av}</small>${coutHtml(x.cout)}</span>${a ? bouton("Honorer", ok, `data-contrat="${i}"`) : ""}</div>`;
+  }
+  h += `</div><h3 class="sec">📐 Plans (1 action)</h3>`;
+  for(const t of M.plansOuverts(G)){
+    h += `<div class="liste">`;
+    for(const id of G.plans[t]){
+      const x = M.PLANS.find(y => y.id === id), cout = M.coutPlan(p, x), ok = a && p.jetons >= 1 && M.peutPayer(p, cout);
+      h += `<div class="carte"><span><b>${x.nom}</b> <small>Niveau ${ROMAIN[t]} · ${x.txt}</small>${coutHtml(cout)}</span>${a ? bouton("Réaliser", ok, `data-plan="${id}"`) : ""}</div>`;
+    }
+    h += `</div>`;
+  }
+  if(G.piste < 8) h += `<p class="muted" style="margin:0;font-size:.85rem">Plans de niveau ${G.piste < 4 ? "II à la case 4" : "III à la case 8"} de l'Exposition.</p>`;
+  $("vue").innerHTML = h;
+}
+function vueAmelio(){
+  const j = G.tour, p = G.joueurs[j], a = peutJouer();
+  const bloc = (col, titre) => `<h3 class="sec">${titre}</h3><div class="liste">${M.AMELIOS.filter(x => x.col === col).map(x => {
+    const eu = p.am.includes(x.id);
+    return `<div class="carte ${eu ? "possede" : ""}"><span><b>${x.nom}</b><small>${x.txt}</small></span><span class="droite">${eu ? "✅" : coutHtml(x.cout) + (a ? bouton("Obtenir", M.peutPayer(p, x.cout), `data-amelio="${x.id}"`) : "")}</span></div>`;
+  }).join("")}</div>`;
+  $("vue").innerHTML = `<p class="muted" style="margin:0;font-size:.85rem">Gratuit à ton tour : tu ne paies que les cubes.</p>` + bloc("u", "🏭 Usine") + bloc("c", "🧳 Compagnie");
+}
+function vueJournal(){
+  $("vue").innerHTML = `<div class="journal">${G.log.slice().reverse().map(l => `<div>${esc(l)}</div>`).join("")}</div>`;
+}
+function brancher(){
+  $("vue").querySelectorAll("[data-vanne]").forEach(b => b.onclick = () => jouer({t: "vanne", coul: b.dataset.vanne[0], tier: +b.dataset.vanne[1]}));
+  $("vue").querySelectorAll("[data-carte]").forEach(b => b.onclick = () => jouer({t: "carte", id: b.dataset.carte}));
+  $("vue").querySelectorAll("[data-contrat]").forEach(b => b.onclick = () => jouer({t: "contrat", i: +b.dataset.contrat}));
+  $("vue").querySelectorAll("[data-plan]").forEach(b => b.onclick = () => jouer({t: "plan", id: b.dataset.plan}));
+  $("vue").querySelectorAll("[data-amelio]").forEach(b => b.onclick = () => jouer({t: "amelio", id: b.dataset.amelio}));
+}
+
+/* ---------- Feuilles d'action ---------- */
+$("bBatir").onclick = () => {
+  if(sel){
+    if(sel.b === "tapis" && sel.cases.length){ const cases = sel.cases; sel = null; jouer({t: "batir", b: "tapis", cases}); return; }
+    sel = null; rendre(); return;
+  }
+  const j = G.tour, p = G.joueurs[j], e = M.energieDe(G, j);
+  const ligne = (id, nom, desc, cout, conso, ok, attrs) => `<div class="carte"><span><b>${nom}</b><small>${desc}${conso ? ` · ${conso > 0 ? "-" + conso : "+" + (-conso)} 💨` : ""}</small>${cout ? coutHtml(cout) : ""}</span>${bouton("Choisir", ok && (conso <= 0 || e - conso >= M.ENERGIE_MIN), `data-b="${id}" ${attrs || ""}`)}</div>`;
+  let h = `<p class="muted" style="margin:0 0 6px">Vapeur actuelle : <b>${e}</b> (minimum ${M.ENERGIE_MIN})</p><div class="liste">`;
+  const extOk = COUL.some(c => M.peutPayer(p, {[c + "1"]: 2}));
+  h += ligne("ext", "⛏️ Extracteur", "Sur un gisement : 2 cubes de sa couleur", null, 1, extOk);
+  h += ligne("centrale", "🔥 Centrale", "Sur une source ♨️", M.coutBatiment("centrale"), -4, M.peutPayer(p, M.coutBatiment("centrale")));
+  h += ligne("tapis", "➖ Tapis", `Jusqu'à ${2 + M.AMELIOS.filter(x => p.am.includes(x.id) && x.e.tapis).length} cases à la suite, pour relier tes bâtiments`, {b1: 1}, 0, M.peutPayer(p, {b1: 1}));
+  for(const c of COUL) for(let t = 1; t <= 3; t++){
+    if(p.machines[c + t]) continue;
+    const cout = M.coutBatiment("machine", c, t);
+    h += ligne("machine", `⚙️ ${NOMS[c][t-1]}`, `Machine de niveau ${ROMAIN[t]}`, cout, M.consoDe("machine", t), M.peutPayer(p, cout), `data-coul="${c}" data-tier="${t}"`);
+  }
+  if(!p.machines.auto) h += ligne("auto", "🤖 Assembleur", "1 charpente + 1 vitrail + 1 engrenage → 1 automate", M.COUT_AUTO, 4, M.peutPayer(p, M.COUT_AUTO));
+  h += `</div>`;
+  const d = feuille("🔨 Bâtir (1 action)", h, []);
+  d.querySelectorAll("[data-b]").forEach(b => b.onclick = () => {
+    d.close();
+    const x = b.dataset.b;
+    sel = {mode: "poser", b: x, coul: b.dataset.coul, tier: b.dataset.tier ? +b.dataset.tier : undefined};
+    if(x === "tapis"){ sel.cases = []; sel.max = 2 + M.AMELIOS.filter(a => p.am.includes(a.id) && a.e.tapis).length; }
+    rendre();
+    if(!Object.keys(casesPermises()).length){ Base.toast("Aucune case possible à côté de ton pion : déplace-toi d'abord."); sel = null; rendre(); }
+  });
+};
+$("bAtelier").onclick = () => {
+  const p = G.joueurs[G.tour];
+  let h = `<p class="muted" style="margin:0 0 6px">Raffiner à la main, même sans machine. Pousser fait avancer les cubes à l'intérieur d'une machine, sans passer à la suivante.</p><div class="liste">`;
+  for(const c of COUL){
+    const r2 = M.stock(p, c + "1") >= 1 && p.u[c][3] < CAP[3];
+    const r3 = M.stock(p, c + "2") >= 2 && p.u[c][6] < CAP[6];
+    const pousse = [1,2,3].map(t => { const d = (t-1)*3, l = p.u[c]; return `<button class="btn ghost petit" data-pousse="${c}${t}" ${(l[d] && l[d+1] < CAP[d+1]) || (l[d+1] && l[d+2] < CAP[d+2]) ? "" : "disabled"}>⏩ ${ROMAIN[t]}</button>`; }).join("");
+    h += `<div class="carte"><span style="flex:1"><b>${{b:"🌲 Bois",s:"🏜️ Sable",f:"⛰️ Fer"}[c]}</b><div class="rangee" style="margin-top:4px;gap:4px">
+      <button class="btn petit" data-raf="${c}2" ${r2 ? "" : "disabled"}>1${ROMAIN[1]}→${NOMS[c][1]}</button>
+      <button class="btn petit" data-raf="${c}3" ${r3 ? "" : "disabled"}>2${ROMAIN[2]}→${NOMS[c][2]}</button>${pousse}</div></span></div>`;
+  }
+  h += `</div>`;
+  const d = feuille("🛠️ Atelier (1 action)", h, []);
+  d.querySelectorAll("[data-raf]").forEach(b => b.onclick = () => { d.close(); jouer({t: "atelier", m: "raffiner", coul: b.dataset.raf[0], tier: +b.dataset.raf[1]}); });
+  d.querySelectorAll("[data-pousse]").forEach(b => b.onclick = () => { d.close(); jouer({t: "atelier", m: "pousser", coul: b.dataset.pousse[0], tier: +b.dataset.pousse[1]}); });
+};
+$("bEchange").onclick = () => {
+  const p = G.joueurs[G.tour], tarif = p.plans.some(id => M.PLANS.find(x => x.id === id).e.troc) ? 1 : 2;
+  const res = [...COUL, "t"], de = [];
+  const nom = k => k === "t" ? "🍂 Tourbe" : {b:"🌲 Bûche",s:"🏜️ Sable",f:"⛰️ Minerai"}[k];
+  const dispo = k => (k === "t" ? p.tourbe : M.stock(p, k + "1")) - de.filter(x => x === k).length;
+  let vers = null;
+  const d = feuille(`🔁 Échange (gratuit) : ${tarif} → 1`, `<div id="ech"></div>`, [["Échanger", () => jouer({t: "echange", de, vers})]]);
+  const valider = d.querySelector(".pied .btn");
+  const maj = () => {
+    d.querySelector("#ech").innerHTML = `<p style="margin:0 0 4px"><b>Tu donnes</b> (${de.length}/${tarif})</p><div class="rangee">${res.map(k => `<button class="pilule" data-de="${k}" ${dispo(k) > 0 && de.length < tarif ? "" : "disabled"}>${nom(k)} (${dispo(k)})</button>`).join("")}</div>
+      <p class="muted" style="margin:4px 0">${de.map(nom).join(" + ") || "Rien pour l'instant"}</p>
+      <p style="margin:0 0 4px"><b>Tu reçois</b></p><div class="rangee">${res.map(k => `<button class="pilule ${vers === k ? "on" : ""}" data-vers="${k}">${nom(k)}</button>`).join("")}</div>`;
+    d.querySelectorAll("[data-de]").forEach(b => b.onclick = () => { de.push(b.dataset.de); maj(); });
+    d.querySelectorAll("[data-vers]").forEach(b => b.onclick = () => { vers = b.dataset.vers; maj(); });
+    valider.disabled = de.length !== tarif || !vers;
+  };
+  maj();
+};
+$("bFin").onclick = () => { sel = null; jouer({t: "fin"}); };
+
+/* ---------- Fin de partie ---------- */
+function finDePartie(){
+  if(finVue) return;
+  finVue = true;
+  const lignes = G.scores.map(s => {
+    const p = G.joueurs[s.j], fin = Object.values(s.fin).reduce((a, b) => a + b, 0);
+    return `<tr><td>${G.gagnants.includes(s.j) ? "🏆 " : ""}<b style="color:${COUL_J[s.j]}">${esc(p.nom)}</b>${s.majs.length ? `<br><small class="muted">${s.majs.join(", ")}</small>` : ""}</td><td>${s.base}</td><td>${fin}</td><td>${s.maj}</td><td><b>${s.total}</b></td></tr>`;
+  }).join("");
+  const moiI = mode === "ligne" ? moi : G.joueurs.findIndex(p => !p.bot);
+  const score = G.scores.find(s => s.j === moiI);
+  if(score) Base.record("manufacture", score.total, {mieux: "haut", texte: score.total + " ⭐"});
+  const titre = G.gagnants.length > 1 ? "🤝 Égalité !" : `🏆 ${esc(G.joueurs[G.gagnants[0]].nom)} gagne !`;
+  feuille(titre, `<p class="muted" style="margin:0 0 8px">L'Exposition ouvre ses portes après ${G.manche} manche${G.manche > 1 ? "s" : ""}.</p>
+    <table class="scores"><tr><th></th><th>Partie</th><th>Plans</th><th>Majorités</th><th>Total</th></tr>${lignes}</table>`,
+    [["Voir le plateau", () => {}]], false);
+}
+
+/* ---------- En ligne : l'hôte arbitre, les invités envoient leurs actions ---------- */
+function pseudoOK(){
+  const v = $("pseudo").value.trim();
+  if(!v){ $("pseudo").focus(); $("msgLigne").textContent = "Choisis d'abord un pseudo 🙂"; return false; }
+  Base.joueur.changerPseudo(v);
+  return true;
+}
+function majSalle(){
+  if(!salle) return;
+  $("salleJoueurs").innerHTML = salle.joueurs.map((j, i) => `<li>${esc(j.avatar)} ${esc(j.pseudo)}${i === 0 ? " 👑" : ""}</li>`).join("");
+  $("reglageHote").classList.toggle("cache", !salle.hote);
+  $("goLigne").classList.toggle("cache", !salle.hote);
+  $("attenteHote").classList.toggle("cache", salle.hote);
+  if(salle.hote){
+    if(reg.bl + salle.joueurs.length > 4) reg.bl = 4 - salle.joueurs.length;
+    pilules("nbBL", nb([0,1,2,3].filter(n => n + salle.joueurs.length <= 4)), "bl", majSalle);
+    $("goLigne").disabled = salle.joueurs.length + reg.bl < 2;
+  }
+}
+$("creer").onclick = async () => {
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Création de la salle…";
+  try{
+    salle = await Reseau.creer("manufacture", {
+      max: 4,
+      surEssai: t => $("msgLigne").textContent = t,
+      surArrivee(j){ Base.toast(j.avatar + " " + j.pseudo + " a rejoint la salle !"); majSalle(); if(G) salle.envoyer({t: "etat", G}); },
+      surDepart(j){
+        Base.toast(j.pseudo + " a quitté la salle.");
+        majSalle();
+        if(G){ const p = G.joueurs.find(x => x.id === j.id); if(p){ p.bot = true; apresChangement(); } }
+      },
+      surMessage(m, j){
+        if(m.t === "etat?" && G) salle.envoyer({t: "etat", G});
+        if(m.t === "action" && G){
+          const i = G.joueurs.findIndex(x => x.id === j.id);
+          if(i === G.tour && !M.agir(G, i, m.a)) G.seq = (G.seq || 0) + 1;
+          apresChangement();
+        }
+      }
+    });
+    $("code").textContent = salle.code; $("msgLigne").textContent = "";
+    majSalle();
+    ecran("attente");
+  }catch(e){ salle = null; $("msgLigne").textContent = "❌ " + e.message; }
+};
+$("goLigne").onclick = () => {
+  mode = "ligne";
+  const humains = salle.joueurs.map(j => ({id: j.id, nom: j.pseudo, avatar: j.avatar}));
+  G = M.creer(melangeSimple([...humains, ...botsDe(reg.bl, 2)]));
+  G.seq = 1;
+  moi = G.joueurs.findIndex(j => j.id === salle.moi);
+  lancerVue();
+};
+$("rejoindre").onclick = () => rejoindre($("codeIn").value);
+async function rejoindre(code){
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Connexion à la salle…";
+  try{
+    salle = await Reseau.rejoindre("manufacture", code, {
+      surEssai: t => $("msgLigne").textContent = t,
+      surMessage(m){
+        if(m.t !== "etat") return;
+        const nouvelle = !G || m.G.seq < G.seq;
+        G = m.G; mode = "ligne";
+        moi = G.joueurs.findIndex(j => j.id === salle.moi);
+        if(nouvelle){ sel = null; vuJ = null; finVue = false; ecran("jeu"); }
+        rendre();
+        if(G.fini) finDePartie();
+      },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; G = null; mode = null; afficherMenu(); }
+    });
+    $("code").textContent = salle.code; $("msgLigne").textContent = "";
+    majSalle();
+    ecran("attente");
+    salle.envoyer({t: "etat?"});
+  }catch(e){ salle = null; $("msgLigne").textContent = "❌ " + e.message; }
+}
+$("annuler").onclick = () => { if(salle){ salle.quitter(); salle = null; } afficherMenu(); };
+$("copier").onclick = async () => {
+  try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à tes amis 📨"); }
+  catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
+};
+
+afficherMenu();
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){ $("codeIn").value = codeLien; if($("pseudo").value.trim()) rejoindre(codeLien); }
+</script>
+</body>
+</html>
