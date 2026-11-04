@@ -51,6 +51,12 @@
 .td-camp strong{display:block;font-size:.95rem}
 .td-camp .btn{width:100%;margin-top:6px}
 .td-butin{font-size:.82rem;margin:3px 0}
+.td-classement{list-style:none;margin:6px 0 0;padding:0}
+.td-classement li{display:flex;justify-content:space-between;gap:10px;padding:5px 10px;border-radius:9px}
+.td-classement li:nth-child(odd){background:var(--soft)}
+.td-classement li.moi{outline:2px solid var(--accent)}
+.namerow{display:flex;gap:6px}
+.namerow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 12px}
 @media (max-width:820px){
   .td-menu{order:1}
   .td-jeu{order:2;flex-direction:column;align-items:center}
@@ -88,6 +94,7 @@
 
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
 <script src="donnees.js"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -101,14 +108,24 @@ const DIR = [[0, 1], [1, 0], [0, -1], [-1, 0]];           // haut, droite, bas, 
 const STOCK_MS = 120000;                                   // la boutique change toutes les 2 minutes
 const PAS = 1 / 30;
 
+const bClassement = el("button", "🏆", "b-ico");
+bClassement.title = "Classement";
+bClassement.onclick = () => {
+  const zone = el("div");
+  Base.fenetre("🏆 Meilleures vagues", zone, {bouton: "Fermer"});
+  Classement.tableau(zone, optionsClassement());
+};
+
 Base.entete({
   titre: "Défense du Château",
   emoji: "🏰",
+  boutons: [bClassement],
   aide: `<p>Protège le château des vagues d'ennemis et agrandis ton royaume.</p>
     <ul>
-      <li><b>Construire</b> : relie chaque camp au château avec des chemins, puis place tes tours à côté.</li>
+      <li><b>Construire</b> : relie chaque camp au château avec des chemins, puis place tes tours à côté et oriente-les : la plupart ne tirent que dans un cône. Glisse un élément posé pour le déplacer.</li>
       <li><b>Combattre</b> : les ennemis rapportent de l'or selon le camp et la vague.</li>
-      <li>Chaque <b>boss</b> tué fait un tirage : nouvelle tour ou nouveau chemin. Plus le camp est rare, meilleures sont les chances.</li>
+      <li>Chaque <b>boss</b> tué fait un tirage : nouvelle tour ou nouveau chemin. Plus le camp est rare, meilleures sont les chances. Le 👑 au-dessus d'un camp indique dans combien de vagues arrive son boss.</li>
+      <li><b>Relance auto</b> : le combat repart tout seul quand le château tombe, pour farmer.</li>
       <li><b>Améliorer</b> : dépense ton or dans l'arbre pour un terrain plus grand, plus de défenses et de camps, plus de chance…</li>
       <li><b>Camps</b> : la boutique change toutes les 2 minutes. Les camps rares y sont peu fréquents.</li>
       <li>Si le château tombe, tu gardes tout ce que tu as gagné.</li>
@@ -133,8 +150,8 @@ const pc = v => Math.round(v * 1000) / 10 + " %";
 function partieNeuve(){
   const plan = {[cle(0, 6)]: {t: "camp", k: "foret"}};
   for(let l = 1; l <= 5; l++) plan[cle(0, l)] = {t: "chemin", k: "terre_droit", r: 0};
-  return {v: 1, t: 0, or: 0, achats: {}, plan, premierT: false,
-    inv: {tours: {"arbalete:0": 3}, chemins: {}, camps: {foret: 1}},
+  return {v: 3, t: 0, or: 0, achats: {}, plan, premierT: false,
+    inv: {tours: {"arbalete:0": 3}, chemins: {terre_droit: 5}, camps: {foret: 1}},
     bilan: {vagueMax: 0, ennemis: 0, boss: 0, batailles: 0, orTotal: 0},
     boutique: null};
 }
@@ -148,10 +165,29 @@ const cleLocale = () => { const s = session(); return "save_" + (s ? s.uid : "in
 function sauver(){
   G.t = Date.now();
   stock.ecrire(cleLocale(), G);
-  if(session()){
-    clearTimeout(minuteurNuage);
-    minuteurNuage = setTimeout(envoyerNuage, 3000);
+  /* en combat on sauvegarde souvent : un seul envoi en ligne toutes les 30 secondes suffit */
+  if(session() && !minuteurNuage){
+    minuteurNuage = setTimeout(() => { minuteurNuage = 0; envoyerNuage(); }, B ? 30000 : 3000);
   }
+}
+function migrer(){
+  /* v2 : les chemins de terre ne sont plus illimités, on garde ceux déjà posés */
+  if((G.v || 1) < 2){
+    G.inv.chemins.terre_droit = Math.max(G.inv.chemins.terre_droit || 0, places("chemin", "terre_droit"), 5);
+    G.inv.chemins.terre_virage = Math.max(G.inv.chemins.terre_virage || 0, places("chemin", "terre_virage"));
+  }
+  /* v3 : les tours ont une orientation, celles déjà posées regardent le chemin le plus proche */
+  if((G.v || 1) < 3){
+    const chemins = Object.keys(G.plan).filter(k => G.plan[k].t === "chemin").map(deCle);
+    Object.keys(G.plan).forEach(k => {
+      if(G.plan[k].t !== "tour" || !chemins.length) return;
+      const [c, l] = deCle(k);
+      const [pc, pl] = chemins.reduce((a, b) => Math.hypot(b[0] - c, b[1] - l) < Math.hypot(a[0] - c, a[1] - l) ? b : a);
+      const dx = pc - c, dy = pl - l;
+      G.plan[k].r = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 0 : 2);
+    });
+  }
+  G.v = 3;
 }
 async function envoyerNuage(){
   const s = session(); if(!s) return;
@@ -176,6 +212,7 @@ async function chargerSauvegarde(){
       nuage = "☁️ Sauvegardé";
     }catch(e){ nuage = "💾 Sauvegarde locale"; }
   }
+  migrer();
   recalculer();
   toutDessiner();
 }
@@ -204,13 +241,12 @@ function noeudDispo(n){
 
 /* ---------- Inventaire ---------- */
 const cleChemin = (m, f) => m + "_" + f;
-const illimite = k => k === "terre_droit" || k === "terre_virage";
 function places(t, k){
   let n = 0;
   for(const c in G.plan) if(G.plan[c].t === t && (k == null || G.plan[c].k === k)) n++;
   return n;
 }
-const possede = (t, k) => t === "chemin" ? (illimite(k) ? Infinity : G.inv.chemins[k] || 0) : t === "tour" ? G.inv.tours[k] || 0 : G.inv.camps[k] || 0;
+const possede = (t, k) => t === "chemin" ? G.inv.chemins[k] || 0 : t === "tour" ? G.inv.tours[k] || 0 : G.inv.camps[k] || 0;
 const restant = (t, k) => possede(t, k) - places(t, k);
 const defTour = k => TOUR[k.split(":")[0]];
 const niveauTour = k => +k.split(":")[1];
@@ -311,33 +347,56 @@ function pointDe(k){
 }
 
 /* ---------- Tirage au boss ---------- */
-function tirage(camp){
-  const chance = 1 + ST.chance;
-  let r = 0, p = 1;
+/* Probabilité réelle de chaque rareté : on tente du plus rare au plus commun */
+function chancesRaretes(camp){
+  const res = [];
+  let reste = 1;
   for(let i = RARETES.length - 1; i >= 1; i--){
-    const q = Math.min(.95, RARETES[i].chance * camp.mult[i - 1] * chance);
-    if(poolTours(i, camp).length + poolChemins(i).length && Math.random() < q){ r = i; p = q; break; }
+    const q = poolTours(i, camp).length + poolChemins(i).length ? Math.min(.95, RARETES[i].chance * camp.mult[i - 1] * (1 + ST.chance)) : 0;
+    res[i] = reste * q;
+    reste *= 1 - q;
   }
-  if(r === 0) p = RARETES[0].chance;
+  res[0] = reste;
+  return res;
+}
+/* Probabilité d'obtenir exactement cet article sur un boss de ce camp */
+function chanceArticle(t, k, camp){
+  const r = rareteDe(t, k), tours = poolTours(r, camp), chemins = poolChemins(r), base = chancesRaretes(camp)[r];
+  if(t === "tour"){
+    if(!tours.includes(defTour(k))) return 0;
+    return base * (chemins.length ? .6 : 1) / tours.length;
+  }
+  const total = chemins.reduce((s, c) => s + c.poids, 0), c = chemins.find(x => x.k === k);
+  return base * (tours.length ? .4 : 1) * c.poids / total;
+}
+const formatChance = p => "1/" + Math.round(1 / p).toLocaleString("fr-FR");
+function tirage(camp){
+  const probas = chancesRaretes(camp);
+  let x = Math.random(), r = 0;
+  for(let i = RARETES.length - 1; i >= 1; i--){
+    if(x < probas[i]){ r = i; break; }
+    x -= probas[i];
+  }
   const tours = poolTours(r, camp), chemins = poolChemins(r);
   const prendreTour = chemins.length ? (tours.length && Math.random() < .6) : true;
   if(prendreTour){
-    const d = choix(tours);
-    ajouter("tour", d.id + ":0");
-    return {t: "tour", k: d.id + ":0", r, chance: p * (chemins.length ? .6 : 1) / tours.length};
+    const d = choix(tours), k = d.id + ":0";
+    ajouter("tour", k);
+    return {t: "tour", k, r, chance: chanceArticle("tour", k, camp)};
   }
   const total = chemins.reduce((s, c) => s + c.poids, 0);
-  let x = Math.random() * total, pris = chemins[0];
-  for(const c of chemins){ x -= c.poids; if(x <= 0){ pris = c; break; } }
-  ajouter("chemin", pris.k);
-  return {t: "chemin", k: pris.k, r, chance: p * (tours.length ? .4 : 1) * pris.poids / total};
+  let y = Math.random() * total, pris = chemins[0];
+  for(const c of chemins){ y -= c.poids; if(y <= 0){ pris = c; break; } }
+  const n = QTE_CHEMINS[r] || 1;
+  ajouter("chemin", pris.k, n);
+  return {t: "chemin", k: pris.k, r, n, chance: chanceArticle("chemin", pris.k, camp)};
 }
+const QTE_CHEMINS = [3, 2];      // un tirage donne plusieurs cases des chemins communs et peu communs
 const poolTours = (r, camp) => TOURS.filter(t => t.r === r && (!t.camp || t.camp === camp.id));
 function poolChemins(r){
   const res = [];
   MATIERES.filter(m => m.r === r).forEach(m => {
     for(const f in FORMES){
-      if(illimite(cleChemin(m.id, f))) continue;
       res.push({k: cleChemin(m.id, f), poids: m.poids * FORMES[f].poids});
     }
   });
@@ -346,8 +405,19 @@ function poolChemins(r){
 
 /* ---------- Combat ---------- */
 let B = null;
+let relance = false;      // relance auto : le prochain combat démarre à l'image suivante
+let farm = null;          // totaux depuis le dernier lancement manuel
 function difficulte(camp){ return Math.pow(1.35, CAMPS.indexOf(camp)); }
-function lancerCombat(){
+const relanceAuto = () => stock.lire("auto", false);
+const angleDe = r => (r - 1) * Math.PI / 2;      // 0 haut, 1 droite, 2 bas, 3 gauche
+function dansArc(s, e){
+  if(s.d.arc >= 360) return true;
+  let da = Math.abs(Math.atan2(e.y - s.y, e.x - s.x) - s.a);
+  if(da > Math.PI) da = 2 * Math.PI - da;
+  return da <= s.d.arc / 360 * Math.PI;
+}
+function lancerCombat(enAuto){
+  if(!enAuto) farm = {combats: 0, gains: 0, tues: 0, boss: 0, recus: {}, derniers: []};
   const e = etatPlateau();
   if(!e.ok){ Base.toast(e.msg); return; }
   const tours = [];
@@ -355,7 +425,7 @@ function lancerCombat(){
     const p = G.plan[k];
     if(p.t !== "tour") continue;
     const d = defTour(p.k), pt = pointDe(k);
-    tours.push({d, x: pt.x, y: pt.y, mDeg: Math.pow(1.5, niveauTour(p.k)) * (1 + ST.degats), mCad: 1 + ST.cadence, cd: 0, cible: null, rampe: 0, gel: 0, retour: d.retour || 0});
+    tours.push({d, x: pt.x, y: pt.y, a: angleDe(p.r || 0), mDeg: Math.pow(1.5, niveauTour(p.k)) * (1 + ST.degats), mCad: 1 + ST.cadence, cd: 0, cible: null, rampe: 0, gel: 0, retour: d.retour || 0});
   }
   tours.forEach(s => {
     if(!s.d.buffDeg && !s.d.buffCad) return;
@@ -367,8 +437,9 @@ function lancerCombat(){
   const camps = [];
   for(const k in G.plan) if(G.plan[k].t === "camp") camps.push({k, camp: CAMP[G.plan[k].k]});
   B = {vague: 0, pv: ST.pv, pvMax: ST.pv, dist: e.dist, tours, camps, ennemis: [], file: [], attente: 1, fx: [],
-    vie2: ST.secondeVie > 0, gains: 0, tues: 0, boss: 0, butins: [], vitesse: stock.lire("vitesse", 1), acc: 0, depuis: 0, horloge: 0};
+    vie2: ST.secondeVie > 0, gains: 0, tues: 0, boss: 0, butins: farm.derniers, vitesse: stock.lire("vitesse", 1), acc: 0, depuis: 0, horloge: 0};
   G.bilan.batailles++;
+  farm.combats++;
   cellSel = null; sel = null;
   toutDessiner();
 }
@@ -386,9 +457,9 @@ function vagueSuivante(){
 }
 function creerEnnemi(f){
   const dif = difficulte(f.camp), w = B.vague;
-  const hp = 15 * dif * Math.pow(1.14, w - 1) * (f.boss ? 8 : 1);
+  const hp = 15 * dif * Math.pow(1.14, w - 1) * (f.boss ? 5 : 1);
   B.ennemis.push({
-    route: creerTrajet(f.k, B.dist), p: 0, x: 0, y: 0,
+    k: f.k, route: creerTrajet(f.k, B.dist), p: 0, x: 0, y: 0,
     hp, hpMax: hp, boss: f.boss, camp: f.camp,
     v: (f.boss ? .55 : 1) * (1 + f.camp.r * .04),
     or: 2 * Math.pow(1.3, CAMPS.indexOf(f.camp)) * (1 + .1 * (w - 1)) * (f.boss ? 15 : 1),
@@ -416,15 +487,20 @@ function tuer(e){
     for(let i = 0; i < n; i++) recevoirButin(tirage(e.camp));
     if(!G.premierT){
       G.premierT = true; ajouter("chemin", "terre_t");
-      B.butins.unshift({t: "chemin", k: "terre_t", r: 0, offert: true});
+      noterButin({t: "chemin", k: "terre_t", r: 0, offert: true});
       Base.toast("🎁 Ton premier T : tu peux relier plusieurs camps !", 3500);
     }
   }
 }
 function gagner(or){ G.or += or; G.bilan.orTotal += or; B.gains += or; }
-function recevoirButin(b){
+function noterButin(b){
   B.butins.unshift(b); B.butins.length = Math.min(B.butins.length, 12);
-  if(b.r >= 2) Base.toast(`${RARETES[b.r].nom} ! ${nomDe(b.t, b.k)} (1/${Math.round(1 / b.chance).toLocaleString("fr-FR")})`, 3500);
+  const r = farm.recus[b.k] || (farm.recus[b.k] = {t: b.t, k: b.k, r: b.r, n: 0});
+  r.n += b.n || 1;
+}
+function recevoirButin(b){
+  noterButin(b);
+  if(b.r >= 2) Base.toast(`${RARETES[b.r].nom} ! ${nomDe(b.t, b.k)} (${formatChance(b.chance)})`, 3500);
   dessinerPanneau();
 }
 function ajouterFx(f){ if(B.fx.length < 120) B.fx.push({...f, vie: .15}); }
@@ -442,7 +518,7 @@ function viser(s){
   for(const e of B.ennemis){
     if(e.mort) continue;
     const dx = e.x - s.x, dy = e.y - s.y;
-    if(dx * dx + dy * dy > r2) continue;
+    if(dx * dx + dy * dy > r2 || !dansArc(s, e)) continue;
     const v = d.vise === "fort" ? e.hp : e.p;
     if(v > score){ score = v; best = e; }
   }
@@ -471,7 +547,7 @@ function tirer(s){
       if(e.mort || Math.hypot(e.x - s.x, e.y - s.y) > d.portee) continue;
       let da = Math.abs(Math.atan2(e.y - s.y, e.x - s.x) - a);
       if(da > Math.PI) da = 2 * Math.PI - da;
-      if(da <= .6){ blesser(e, dmg, s); appliquerEffets(e, s); }
+      if(da <= .6 && dansArc(s, e)){ blesser(e, dmg, s); appliquerEffets(e, s); }
     }
   }else if(d.mode === "chaine"){
     const vus = new Set([c]);
@@ -537,7 +613,7 @@ function pasCombat(h){
     if(s.retour){
       s.retourT = (s.retourT || 0) - h;
       if(s.retourT <= 0){
-        const v = B.ennemis.filter(e => !e.mort && !e.boss && Math.hypot(e.x - s.x, e.y - s.y) <= s.d.portee).sort((a, b) => b.p - a.p)[0];
+        const v = B.ennemis.filter(e => !e.mort && !e.boss && Math.hypot(e.x - s.x, e.y - s.y) <= s.d.portee && dansArc(s, e)).sort((a, b) => b.p - a.p)[0];
         if(v){ v.p = 0; s.retourT = s.retour; ajouterFx({type: "rond", x: s.x, y: s.y, r: 1, c: "#ffd34d"}); }
       }
     }
@@ -561,26 +637,62 @@ function toucherChateau(e){
     Base.toast("💖 Seconde vie !");
     return;
   }
-  finCombat("Le château est tombé");
+  finCombat("Le château est tombé", relanceAuto());
 }
-function finCombat(raison){
+/* ---------- Classement : la meilleure vague de chaque joueur ---------- */
+const scoresLocaux = () => stock.lire("scores", []);
+const classementLocal = {
+  liste: scoresLocaux,
+  qualifie: v => { const l = scoresLocaux(); return l.length < 10 || v > l[l.length - 1].s; },
+  ajouter(e){
+    const l = scoresLocaux();
+    l.push(e);
+    l.sort((a, b) => b.s - a.s);
+    l.length = Math.min(l.length, 10);
+    stock.ecrire("scores", l);
+    return l.indexOf(l.find(x => x.d === e.d));
+  }
+};
+function rendreClassement(box, liste, moi){
+  box.innerHTML = "";
+  if(!liste.length){ box.appendChild(el("p", "Personne encore : à toi de jouer !", "muted")); return; }
+  const ol = el("ol", null, "td-classement");
+  liste.forEach((e, i) => {
+    const li = el("li", null, i === moi ? "moi" : "");
+    li.append(el("span", `${i + 1}. ${e.n}`), el("strong", "Vague " + e.s));
+    ol.appendChild(li);
+  });
+  box.appendChild(ol);
+}
+const optionsClassement = () => ({cle: "defense", champ: "s", liste: scoresLocaux, rendu: rendreClassement});
+
+function finCombat(raison, enAuto){
   const b = B;
   B = null;
+  farm.gains += b.gains; farm.tues += b.tues; farm.boss += b.boss;
   if(Base.record("defense", b.vague, {mieux: "haut", texte: "Vague " + b.vague})) Base.toast("🏆 Nouveau record !");
   sauver();
+  /* relance auto : pas de fenêtre, le classement attendra l'arrêt du farm */
+  if(enAuto){ relance = true; return; }
+  /* on ne propose le classement qu'une fois par record, pour qu'un joueur n'y figure pas dix fois */
+  const meilleure = G.bilan.vagueMax, aInscrire = meilleure > (G.bilan.vagueClassee || 0);
   toutDessiner();
   const c = el("div");
   c.appendChild(el("p", raison + " à la vague " + b.vague + "."));
-  c.appendChild(el("p", `💰 +${nb(b.gains)} · ⚔️ ${b.tues} ennemis · 👑 ${b.boss} boss`));
-  const vus = {};
-  b.butins.forEach(u => { vus[u.k] = (vus[u.k] || 0) + 1; });
-  Object.keys(vus).forEach(k => {
-    const u = b.butins.find(x => x.k === k);
-    const l = el("p", `${vus[k] > 1 ? vus[k] + " × " : ""}${nomDe(u.t, u.k)} (${RARETES[u.r].nom})`, "td-butin");
+  if(farm.combats > 1) c.appendChild(el("p", `🔁 ${farm.combats} combats d'affilée`));
+  c.appendChild(el("p", `💰 +${nb(farm.gains)} · ⚔️ ${farm.tues} ennemis · 👑 ${farm.boss} boss`));
+  Object.values(farm.recus).sort((x, y) => y.r - x.r).forEach(u => {
+    const l = el("p", `${u.n > 1 ? u.n + " × " : ""}${nomDe(u.t, u.k)} (${RARETES[u.r].nom})`, "td-butin");
     l.style.color = RARETES[u.r].couleur === "#e8eaf0" ? "" : RARETES[u.r].couleur;
     c.appendChild(l);
   });
+  const zone = el("div");
+  zone.style.marginTop = "12px";
+  c.appendChild(zone);
   Base.fenetre("Fin du combat", c, {bouton: "Continuer"});
+  if(aInscrire) Classement.finDePartie({...optionsClassement(), zone, entree: {s: meilleure, lv: meilleure}, local: classementLocal,
+    apres(){ G.bilan.vagueClassee = meilleure; sauver(); }});
+  else Classement.tableau(zone, optionsClassement());
 }
 
 /* ---------- Dessin du plateau ---------- */
@@ -629,20 +741,11 @@ function dessiner(){
   const coupes = reseau ? new Set(reseau.coupes) : new Set();
   for(const k in G.plan){
     const p = G.plan[k], pt = pointDe(k), [px, py] = versPx(pt.x - .5, pt.y - .5);
-    if(p.t === "chemin") dessinerChemin(p, px, py, s);
+    if(p.t === "chemin" && k !== glisse) dessinerChemin(p, px, py, s);
   }
   for(const k in G.plan){
     const p = G.plan[k], pt = pointDe(k), [px, py] = versPx(pt.x - .5, pt.y - .5);
-    if(p.t === "chemin") continue;
-    const coul = RARETES[rareteDe(p.t, p.k)].couleur;
-    carre(px + s * .06, py + s * .06, s * .88, s * .16, coupes.has(k) ? "#e8607a" : coul);
-    carre(px + s * .13, py + s * .13, s * .74, s * .12, "#2f3442");
-    poser(p.t === "tour" ? defTour(p.k).emoji : CAMP[p.k].emoji, px + s / 2, py + s / 2, s * .52);
-    if(p.t === "tour" && niveauTour(p.k)){
-      ctx.fillStyle = "#ffd34d"; ctx.font = `800 ${Math.max(9, s * .24)}px Nunito,sans-serif`;
-      ctx.textAlign = "right"; ctx.textBaseline = "top";
-      ctx.fillText("+" + niveauTour(p.k), px + s * .86, py + s * .12);
-    }
+    if(p.t !== "chemin" && k !== glisse) dessinerBatiment(p, px, py, s, coupes.has(k));
   }
   const pc0 = pointDe(cle(0, 0)), [cx, cy] = versPx(pc0.x - .5, pc0.y - .5);
   carre(cx + s * .03, cy + s * .03, s * .94, s * .16, "#6a4a2c");
@@ -652,17 +755,83 @@ function dessiner(){
     const p = G.plan[cellSel], pt = pointDe(cellSel), [px, py] = versPx(pt.x - .5, pt.y - .5);
     ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(2, s * .05);
     ctx.strokeRect(px, py, s, s);
-    if(p && p.t === "tour") cercle(pt, defTour(p.k).portee);
+    if(p && p.t === "tour") zoneDeTir(pt, defTour(p.k), p.r || 0);
   }
   if(B) dessinerCombat(s);
+  dessinerCompteursBoss(s);
+  dessinerApercu(s);
   ctx.strokeStyle = "#5a3d25"; ctx.lineWidth = Math.max(4, cv.width * .012);
   ctx.strokeRect(0, 0, cv.width, cv.height);
 }
-function cercle(pt, r){
-  const [x, y] = versPx(pt.x, pt.y);
-  ctx.beginPath(); ctx.arc(x, y, r * cote(), 0, 7);
-  ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 2; ctx.stroke();
+function dessinerBatiment(p, px, py, s, coupe){
+  const coul = RARETES[rareteDe(p.t, p.k)].couleur;
+  carre(px + s * .06, py + s * .06, s * .88, s * .16, coupe ? "#e8607a" : coul);
+  carre(px + s * .13, py + s * .13, s * .74, s * .12, "#2f3442");
+  poser(p.t === "tour" ? defTour(p.k).emoji : CAMP[p.k].emoji, px + s / 2, py + s / 2, s * .52);
+  if(p.t !== "tour") return;
+  if(niveauTour(p.k)){
+    ctx.fillStyle = "#ffd34d"; ctx.font = `800 ${Math.max(9, s * .24)}px Nunito,sans-serif`;
+    ctx.textAlign = "right"; ctx.textBaseline = "top";
+    ctx.fillText("+" + niveauTour(p.k), px + s * .86, py + s * .12);
+  }
+  /* petite flèche : le côté vers lequel la tour tire */
+  if(defTour(p.k).arc < 360){
+    const a = angleDe(p.r || 0), cx = px + s / 2 + Math.cos(a) * s * .4, cy = py + s / 2 + Math.sin(a) * s * .4, t = s * .13;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * t, cy + Math.sin(a) * t);
+    ctx.lineTo(cx + Math.cos(a + 2.2) * t, cy + Math.sin(a + 2.2) * t);
+    ctx.lineTo(cx + Math.cos(a - 2.2) * t, cy + Math.sin(a - 2.2) * t);
+    ctx.fill();
+  }
+}
+/* Portée d'une tour : un disque, ou un cône dans la direction r */
+function zoneDeTir(pt, d, r){
+  const [x, y] = versPx(pt.x, pt.y), R = d.portee * cote();
+  ctx.beginPath();
+  if(d.arc >= 360) ctx.arc(x, y, R, 0, 7);
+  else {
+    const a = angleDe(r), m = d.arc / 360 * Math.PI;
+    ctx.moveTo(x, y);
+    ctx.arc(x, y, R, a - m, a + m);
+    ctx.closePath();
+  }
+  ctx.fillStyle = "rgba(255,255,255,.16)"; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2; ctx.stroke();
+}
+/* Au-dessus de chaque camp : le nombre de vagues avant son prochain boss */
+function dessinerCompteursBoss(s){
+  const h = Math.max(13, s * .26);
+  ctx.font = `800 ${Math.round(h * .72)}px Nunito,sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for(const k in G.plan){
+    const p = G.plan[k];
+    if(p.t !== "camp" || k === glisse) continue;
+    const tous = RARETES[CAMP[p.k].r].boss, v = B ? B.vague : 0;
+    const present = B && (B.ennemis.some(e => e.boss && e.k === k) || B.file.some(f => f.boss && f.k === k));
+    const texte = present ? "👑 BOSS" : "👑 " + (tous - v % tous);
+    const pt = pointDe(k), [x, y] = versPx(pt.x, pt.y - .5);
+    const w = ctx.measureText(texte).width + h * .7, yp = Math.max(h / 2 + 2, y);
+    ctx.fillStyle = present ? "#c2362b" : "rgba(20,16,28,.85)";
+    ctx.beginPath(); ctx.roundRect(x - w / 2, yp - h / 2, w, h, h / 2); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.fillText(texte, x, yp);
+  }
+}
+/* Aperçu de ce qu'on place ou déplace, sur la case sous le curseur */
+function dessinerApercu(s){
+  if(B || !survol) return;
+  const p = glisse ? G.plan[glisse] : sel ? {t: sel.t, k: sel.k, r: rotation} : null;
+  if(!p) return;
+  const k = cle(survol.c, survol.l), pt = pointDe(k), [px, py] = versPx(pt.x - .5, pt.y - .5);
+  const ok = k !== cle(0, 0) && (glisse || (!G.plan[k] && !refusPose(sel.t, sel.k)));
+  ctx.globalAlpha = .75;
+  if(p.t === "chemin") dessinerChemin(p, px, py, s);
+  else dessinerBatiment(p, px, py, s, false);
+  ctx.globalAlpha = 1;
+  if(p.t === "tour") zoneDeTir(pt, defTour(p.k), p.r || 0);
+  ctx.strokeStyle = ok ? "#fff" : "#e8607a"; ctx.lineWidth = Math.max(2, s * .05);
+  ctx.strokeRect(px, py, s, s);
 }
 function dessinerChemin(p, px, py, s){
   const m = MATIERE[p.k.split("_")[0]], l = s * .62, cx = px + s / 2, cy = py + s / 2;
@@ -703,22 +872,31 @@ function dessinerCombat(s){
 
 /* ---------- Boucle ---------- */
 let dernier = performance.now();
-function boucle(t){
-  const dt = Math.min(120, (t - dernier) / 1000);    // au retour sur l'onglet : on rattrape 2 minutes au plus
+function avancer(budget){
+  const t = performance.now();
+  const dt = Math.min(120, (t - dernier) / 1000);    // après une longue absence : on rattrape 2 minutes au plus
   dernier = t;
+  if(relance && !B){ relance = false; lancerCombat(true); }
   if(B){
-    B.acc += dt * B.vitesse;
+    B.acc = Math.min(600, B.acc + dt * B.vitesse);
     const debut = performance.now();
-    while(B && B.acc >= PAS && performance.now() - debut < 12){ B.acc -= PAS; pasCombat(PAS); }
+    while(B && B.acc >= PAS && performance.now() - debut < budget){ B.acc -= PAS; pasCombat(PAS); }
   }
+}
+function boucle(){
+  avancer(12);
   dessiner();
   dessinerHautCombat();
   requestAnimationFrame(boucle);
 }
+/* onglet en arrière-plan : le navigateur ne dessine plus, mais le farm continue */
+setInterval(() => { if(document.hidden) avancer(100); }, 1000);
 
 /* ---------- Touches sur le plateau ---------- */
 const doigts = new Map();
 let appui = null, ecart = 0;
+let survol = null;        // case sous le curseur ou le doigt
+let glisse = null;        // clé de l'élément posé qu'on est en train de déplacer
 function celluleSous(ev){
   const r = cv.getBoundingClientRect(), k = cv.width / r.width;
   const x = ((ev.clientX - r.left) * k - vue.ox) / cote(), y = ((ev.clientY - r.top) * k - vue.oy) / cote();
@@ -734,12 +912,18 @@ function zoomer(f, cx, cy){
   vue.z = z; borner();
 }
 cv.addEventListener("pointerdown", ev => {
+  if(ev.button === 2) return;
   doigts.set(ev.pointerId, ev);
   cv.setPointerCapture(ev.pointerId);
-  if(doigts.size === 1) appui = {x: ev.clientX, y: ev.clientY, bouge: false};
-  else { appui = null; const [a, b] = [...doigts.values()]; ecart = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+  survol = celluleSous(ev);
+  if(doigts.size === 1){
+    const k = survol && !B ? cle(survol.c, survol.l) : null;
+    appui = {x: ev.clientX, y: ev.clientY, bouge: false, k: k && G.plan[k] ? k : null};
+  }
+  else { appui = null; glisse = null; const [a, b] = [...doigts.values()]; ecart = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
 });
 cv.addEventListener("pointermove", ev => {
+  survol = celluleSous(ev);
   if(!doigts.has(ev.pointerId)) return;
   const avant = doigts.get(ev.pointerId);
   doigts.set(ev.pointerId, ev);
@@ -752,6 +936,8 @@ cv.addEventListener("pointermove", ev => {
   }
   if(appui && Math.hypot(ev.clientX - appui.x, ev.clientY - appui.y) > 6) appui.bouge = true;
   if(appui && appui.bouge){
+    if(!B && appui.k && G.plan[appui.k]){ glisse = appui.k; return; }
+    if(!B && sel) return;                              // l'aperçu suit le doigt
     vue.ox += (ev.clientX - avant.clientX) * k;
     vue.oy += (ev.clientY - avant.clientY) * k;
     borner();
@@ -760,11 +946,19 @@ cv.addEventListener("pointermove", ev => {
 function finDoigt(ev){
   if(!doigts.has(ev.pointerId)) return;
   doigts.delete(ev.pointerId);
-  if(appui && !appui.bouge && !doigts.size && ev.type === "pointerup") toucherCase(celluleSous(ev));
-  appui = null;
+  const fini = ev.type === "pointerup" && !doigts.size;
+  if(glisse){ if(fini) deplacer(glisse, celluleSous(ev)); }
+  else if(appui && fini && (!appui.bouge || sel)) toucherCase(celluleSous(ev));
+  glisse = null; appui = null;
+  if(ev.pointerType !== "mouse") survol = null;
 }
 cv.addEventListener("pointerup", finDoigt);
 cv.addEventListener("pointercancel", finDoigt);
+cv.addEventListener("pointerleave", ev => { if(!doigts.size) survol = null; });
+cv.addEventListener("contextmenu", ev => { ev.preventDefault(); tournerSelection(); });
+document.addEventListener("keydown", ev => {
+  if((ev.key === "r" || ev.key === "R") && !ev.target.closest("input, textarea")) tournerSelection();
+});
 cv.addEventListener("wheel", ev => {
   ev.preventDefault();
   const r = cv.getBoundingClientRect(), k = cv.width / r.width;
@@ -795,11 +989,30 @@ function toucherCase(c){
   if(!sel){ cellSel = null; dessinerPanneau(); return; }
   const refus = refusPose(sel.t, sel.k);
   if(refus){ Base.toast(refus); return; }
-  G.plan[k] = sel.t === "chemin" ? {t: "chemin", k: sel.k, r: rotation} : {t: sel.t, k: sel.k};
+  G.plan[k] = sel.t === "camp" ? {t: "camp", k: sel.k} : {t: sel.t, k: sel.k, r: rotation};
   cellSel = null;
-  if(sel.t !== "chemin" && restant(sel.t, sel.k) <= 0) sel = null;
+  if(restant(sel.t, sel.k) <= 0) sel = null;
   sauver();
   dessinerPanneau(); dessinerHaut();
+}
+/* Glisser un élément posé : vers une case libre, ou échange avec celui qui s'y trouve */
+function deplacer(de, c){
+  if(!c) return;
+  const k = cle(c.c, c.l);
+  if(k === de) return;
+  if(k === cle(0, 0)){ Base.toast("Le château ne bouge pas"); return; }
+  const dessus = G.plan[k];
+  G.plan[k] = G.plan[de];
+  if(dessus) G.plan[de] = dessus; else delete G.plan[de];
+  cellSel = k;
+  sauver();
+  dessinerPanneau();
+}
+const peutTourner = (t, k) => t === "chemin" ? FORMES[k.split("_")[1]].ports.length < 4 : t === "tour" && defTour(k).arc < 360;
+function tournerSelection(){
+  if(B) return;
+  if(sel && peutTourner(sel.t, sel.k)){ rotation = (rotation + 1) % 4; dessinerPanneau(); }
+  else if(cellSel && G.plan[cellSel] && peutTourner(G.plan[cellSel].t, G.plan[cellSel].k)) tourner(cellSel);
 }
 function retirer(k){
   delete G.plan[k];
@@ -817,7 +1030,7 @@ function articles(){
     .sort((a, b) => defTour(b).r - defTour(a).r || niveauTour(b) - niveauTour(a)).map(k => ({t: "tour", k}));
   if(onglet === "camp") return Object.keys(G.inv.camps).filter(k => G.inv.camps[k] > 0)
     .sort((a, b) => CAMP[b].r - CAMP[a].r).map(k => ({t: "camp", k}));
-  const res = ["terre_droit", "terre_virage"];
+  const res = Object.keys(FORMES).map(f => cleChemin("terre", f));    // toujours visibles, même à ×0
   Object.keys(G.inv.chemins).forEach(k => { if(G.inv.chemins[k] > 0 && !res.includes(k)) res.push(k); });
   return res.sort((a, b) => rareteDe("chemin", b) - rareteDe("chemin", a)).map(k => ({t: "chemin", k}));
 }
@@ -833,7 +1046,8 @@ function carteArticle(a){
   b.appendChild(icone);
   b.appendChild(document.createTextNode(nomDe(a.t, a.k)));
   const r = restant(a.t, a.k);
-  b.appendChild(el("i", isFinite(r) ? "×" + r : "∞"));
+  b.appendChild(el("i", "×" + r));
+  if(r <= 0) b.style.opacity = ".5";
   b.style.borderColor = RARETES[rareteDe(a.t, a.k)].couleur;
   if(sel && sel.t === a.t && sel.k === a.k) b.classList.add("on");
   b.onclick = () => {
@@ -846,7 +1060,21 @@ function carteArticle(a){
 function texteTour(k){
   const d = defTour(k), m = Math.pow(1.5, niveauTour(k)) * (1 + ST.degats);
   const dps = d.rampe ? `${Math.round(d.rampe[0] * m)} à ${Math.round(d.rampe[1] * m)}` : nb(Math.round(d.dmg * d.cad * m * 10) / 10);
-  return `${RARETES[d.r].nom} · ${dps} DPS · portée ${d.portee} — ${d.txt}`;
+  return `${RARETES[d.r].nom} · ${dps} DPS · portée ${d.portee} · ${d.arc < 360 ? "cône de " + d.arc + "°" : "360°"} — ${d.txt} · ${texteChance("tour", k)}`;
+}
+/* Chance sur un boss, avec le meilleur camp posé (ou la Forêt s'il n'y en a aucun) */
+function texteChance(t, k){
+  if(t === "tour" && defTour(k).camp){
+    const c = CAMP[defTour(k).camp];
+    return `🎲 ${formatChance(chanceArticle(t, k, c))}, seulement avec ${c.nom}`;
+  }
+  const poses = Object.values(G.plan).filter(p => p.t === "camp").map(p => CAMP[p.k]);
+  let meilleur = CAMP.foret, p = 0;
+  (poses.length ? poses : [CAMP.foret]).forEach(c => {
+    const q = chanceArticle(t, k, c);
+    if(q > p){ p = q; meilleur = c; }
+  });
+  return `🎲 ${formatChance(p)} avec ${meilleur.nom}`;
 }
 function texteArticle(t, k){
   if(t === "tour") return texteTour(k);
@@ -855,7 +1083,14 @@ function texteArticle(t, k){
     return `${RARETES[c.r].nom} · boss toutes les ${RARETES[c.r].boss} vagues · ennemis ×${difficulte(c).toFixed(1)}`;
   }
   const m = MATIERE[k.split("_")[0]];
-  return `${RARETES[m.r].nom}${m.lent ? ` · ralentit de ${Math.round(m.lent * 100)} %` : ""}`;
+  return `${RARETES[m.r].nom}${m.lent ? ` · ralentit de ${Math.round(m.lent * 100)} %` : ""} · ${texteChance(t, k)}`;
+}
+function boutonRelance(){
+  const b = el("button", `🔁 Relance auto : ${relanceAuto() ? "oui" : "non"}`, "btn petit" + (relanceAuto() ? "" : " ghost"));
+  b.title = "Relance un combat tout seul quand le château tombe";
+  b.style.marginTop = "8px";
+  b.onclick = () => { stock.ecrire("auto", !relanceAuto()); dessinerPanneau(); };
+  return b;
 }
 function dessinerPanneau(){
   const p = $("panneau");
@@ -881,7 +1116,7 @@ function dessinerPanneau(){
     const a = G.plan[cellSel], i = el("div", null, "td-info");
     i.appendChild(el("strong", nomDe(a.t, a.k)));
     i.appendChild(el("div", texteArticle(a.t, a.k)));
-    if(a.t === "chemin" && FORMES[a.k.split("_")[1]].ports.length < 4){
+    if(peutTourner(a.t, a.k)){
       const b = el("button", "⟳ Tourner", "btn petit"); b.onclick = () => tourner(cellSel); i.appendChild(b);
     }
     const r = el("button", "Retirer", "btn ghost petit"); r.onclick = () => retirer(cellSel); i.appendChild(r);
@@ -890,15 +1125,16 @@ function dessinerPanneau(){
     const i = el("div", null, "td-info");
     i.appendChild(el("strong", nomDe(sel.t, sel.k)));
     i.appendChild(el("div", texteArticle(sel.t, sel.k)));
-    if(sel.t === "chemin"){
-      const b = el("button", `⟳ Rotation : ${rotation * 90}°`, "btn petit");
+    if(peutTourner(sel.t, sel.k)){
+      const b = el("button", `⟳ Tourner : ${["haut", "droite", "bas", "gauche"][rotation]}`, "btn petit");
       b.onclick = () => { rotation = (rotation + 1) % 4; dessinerPanneau(); };
       i.appendChild(b);
+      i.appendChild(el("div", "Touche R ou clic droit pour tourner.", "muted"));
     }
-    i.appendChild(el("div", "Touche une case libre pour le placer.", "muted"));
+    i.appendChild(el("div", "Passe sur le plateau pour voir l'aperçu, puis pose-le sur une case libre.", "muted"));
     p.appendChild(i);
   }else{
-    p.appendChild(el("div", "Choisis un élément puis touche une case libre. Touche un élément posé pour le retirer ou le tourner.", "td-info muted"));
+    p.appendChild(el("div", "Choisis un élément puis pose-le sur une case libre. Glisse un élément posé pour le déplacer, touche-le pour le tourner ou le retirer.", "td-info muted"));
   }
 
   const liste = el("div", null, "td-liste");
@@ -910,6 +1146,8 @@ function dessinerPanneau(){
     f.style.marginTop = "8px"; f.onclick = fusionnerTout;
     p.appendChild(f);
   }
+  p.appendChild(el("div"));
+  p.appendChild(boutonRelance());
 }
 function dessinerPanneauCombat(p){
   p.appendChild(el("h3", "⚔️ Combat"));
@@ -920,6 +1158,8 @@ function dessinerPanneauCombat(p){
     pil.appendChild(b);
   });
   p.appendChild(pil);
+  p.appendChild(boutonRelance());
+  if(farm.combats > 1) p.appendChild(el("div", `🔁 Combat n° ${farm.combats}`, "muted"));
   const i = el("div", null, "td-info");
   i.id = "resumeCombat";
   p.appendChild(i);
@@ -928,7 +1168,7 @@ function dessinerPanneauCombat(p){
   p.appendChild(t);
   if(!B.butins.length) p.appendChild(el("p", "Tue un boss pour faire un tirage.", "muted"));
   B.butins.forEach(u => {
-    const texte = nomDe(u.t, u.k) + (u.offert ? " (offert)" : ` · 1/${Math.round(1 / u.chance).toLocaleString("fr-FR")}`);
+    const texte = (u.n > 1 ? u.n + " × " : "") + nomDe(u.t, u.k) + (u.offert ? " (offert)" : ` · ${formatChance(u.chance)}`);
     const l = el("p", texte, "td-butin");
     l.style.fontWeight = u.r >= 3 ? "800" : "400";
     p.appendChild(l);
@@ -967,7 +1207,7 @@ function dessinerMenu(){
   bouton("⬆️", "Améliorer", "#7a4bd0", ouvrirArbre, !!B);
   bouton("🛠️", "Construire", "#2f7fdd", () => { $("panneau").scrollIntoView({behavior: "smooth", block: "nearest"}); }, !!B);
   if(B) bouton("🛑", "Arrêter", "#c2362b", () => finCombat("Combat arrêté"));
-  else bouton("⚔️", "Combattre", "#d94a4a", lancerCombat);
+  else bouton("⚔️", "Combattre", "#d94a4a", () => lancerCombat());
   bouton("🛒", "Camps", "#c9892b", ouvrirBoutique, !!B);
 }
 function toutDessiner(){ dessinerHaut(); dessinerPanneau(); dessinerMenu(); }

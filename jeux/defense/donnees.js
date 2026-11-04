@@ -48,12 +48,19 @@ window.TD = (function(){
     {id: "corrompu", nom: "Serveur corrompu", emoji: "🖥️", r: 6, dmg: 400, cad: 5, portee: 5, mode: "continu", infection: true, camp: "serveur", txt: "L'infection se propage et double l'or des infectés"}
   ];
 
+  /* Angle de tir en degrés, centré sur l'orientation de la tour.
+     Les tours absentes de cette liste tirent à 360° (électricité, abeilles, champ, auras). */
+  const ARCS = {arbalete: 120, mitrailleuse: 120, catapulte: 120, baliste: 70, givre: 120, bombarde: 120,
+    flammes: 90, poison: 120, laser: 100, mortier: 120, comptoir: 120, missiles: 120, cryo: 90, ronin: 150,
+    pince: 120, dragon: 100, corrompu: 120};
+  TOURS.forEach(t => { t.arc = ARCS[t.id] || 360; });
+
   /* ports : côtés ouverts sans rotation (0 haut, 1 droite, 2 bas, 3 gauche) */
   const FORMES = {
-    droit:  {nom: "Droit",      signe: "┃", ports: [0, 2],       poids: 40},
-    virage: {nom: "Virage",     signe: "┗", ports: [0, 1],       poids: 40},
+    droit:  {nom: "Droit",      signe: "┃", ports: [0, 2],       poids: 35},
+    virage: {nom: "Virage",     signe: "┗", ports: [0, 1],       poids: 35},
     t:      {nom: "T",          signe: "┻", ports: [0, 1, 3],    poids: 15},
-    croix:  {nom: "Croisement", signe: "╋", ports: [0, 1, 2, 3], poids: 5}
+    croix:  {nom: "Croisement", signe: "╋", ports: [0, 1, 2, 3], poids: 15}
   };
   const MATIERES = [
     {id: "terre",  nom: "Terre",         r: 0, couleur: "#a5794f", lent: 0,   poids: 1},
