@@ -94,6 +94,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "mainmise",
+    title: "Mainmise",
+    emoji: "🌆",
+    desc: "Prends le contrôle de Cité Néon : achète des quartiers, construis jusqu'à la tour, négocie avec tes rivaux et ruine-les à coups de loyers. De 2 à 6 joueurs, contre l'ordi, sur un seul écran ou en ligne.",
+    tags: ["Plateau", "Stratégie", "Multijoueur", "Solo"],
+    colors: ["#ff2e93", "#19e3ff"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "categorie",
     title: "Devine ta Catégorie",
     emoji: "🏷️",

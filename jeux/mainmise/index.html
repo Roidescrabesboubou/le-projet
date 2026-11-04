@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mainmise</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap">
+<style>
+:root{--accent:#ff2e93;--accent2:#19e3ff;--plateau:#100e24}
+.b-page{max-width:1120px}
+h1,h2,h3,.titre,.btn{font-family:"Chakra Petch",Fredoka,sans-serif}
+.btn{letter-spacing:.02em}
+.btn.bleu{background:var(--accent2);color:#06121a}
+
+/* ---------- Menus ---------- */
+.ecran{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
+.etroit{max-width:520px}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;width:100%}
+.mode{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 12px;transition:transform .15s,border-color .15s}
+.mode:hover{transform:translateY(-3px);border-color:var(--accent2)}
+.mode .ic{font-size:2.2rem}
+.mode b{font-family:"Chakra Petch",sans-serif;font-size:1.15rem}
+.reglage{margin-bottom:14px}
+.reglage .etiquette{margin:0 0 6px;text-align:center}
+.noms{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+.actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.code{font-family:"Chakra Petch",sans-serif;font-size:2.4rem;letter-spacing:.2em;text-align:center;color:var(--accent2);margin:4px 0}
+.liste{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:4px}
+.ligneJoin{display:flex;gap:8px;margin-top:8px}
+#msgLigne{min-height:1.3em;text-align:center}
+
+/* ---------- Plateau ---------- */
+.table{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+.cote{display:flex;flex-direction:column;gap:12px;min-width:0}
+.cote .b-carte{padding:12px}
+.plateau{position:relative;display:grid;aspect-ratio:1;width:100%;gap:2px;background:var(--line);border:2px solid var(--line);border-radius:12px;overflow:hidden}
+.case{position:relative;background:var(--plateau);min-width:0;min-height:0;overflow:hidden;padding:0;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center;line-height:1.08;color:var(--text)}
+.case:hover{filter:brightness(1.35)}
+.case .bar{position:absolute;background:var(--c,transparent)}
+.case.s-bas .bar{left:0;right:0;top:0;height:14%}
+.case.s-haut .bar{left:0;right:0;bottom:0;height:14%}
+.case.s-gauche .bar{top:0;bottom:0;right:0;width:14%}
+.case.s-droite .bar{top:0;bottom:0;left:0;width:14%}
+.case .ic{font-size:clamp(.72rem,2.1vw,1.15rem)}
+.case .nom{font-size:clamp(.5rem,.82vw,.66rem);font-weight:800;padding:0 8%;max-width:100%;max-height:2.2em;overflow:hidden}
+.case .prix{font-size:clamp(.5rem,.8vw,.64rem);color:var(--muted);font-weight:700}
+.case.coin .ic{font-size:clamp(1rem,3vw,1.7rem)}
+.case.coin .nom{color:var(--accent2)}
+.case.gage{opacity:.45}
+.case.a-moi{box-shadow:inset 0 0 0 2px var(--o)}
+.case .prop{position:absolute;right:3px;bottom:2px;width:8px;height:8px;border-radius:50%;background:var(--o);box-shadow:0 0 6px var(--o)}
+.case .niv{position:absolute;left:3px;bottom:1px;font-size:.58rem;letter-spacing:-1px;color:#ffe680;font-weight:800}
+.centre{grid-row:2 / -2;grid-column:2 / -2;background:radial-gradient(circle at 50% 35%,rgba(255,46,147,.13),transparent 70%),var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px;text-align:center;min-width:0;min-height:0;overflow:hidden}
+.logo{font-family:"Chakra Petch",sans-serif;font-weight:700;font-size:clamp(1rem,3.2vw,1.9rem);color:var(--accent2);text-shadow:0 0 12px var(--accent2);letter-spacing:.08em;text-transform:uppercase}
+.des{display:flex;gap:10px}
+.de{width:clamp(30px,6vw,48px);aspect-ratio:1;background:#f4f4ff;border-radius:8px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:12%;box-shadow:0 0 12px rgba(25,227,255,.45)}
+.de i{border-radius:50%;background:#14122b;margin:8%;visibility:hidden}
+.de i.on{visibility:visible}
+.des.roule .de{animation:roule .5s ease-out}
+.des.roule .de:last-child{animation-duration:.62s}
+@keyframes roule{0%{transform:rotate(-200deg) scale(.6)}70%{transform:rotate(12deg) scale(1.08)}100%{transform:none}}
+#msg{font-size:clamp(.72rem,1.5vw,.92rem);font-weight:700;max-width:92%;max-height:5.6em;overflow:hidden}
+#carte{max-width:92%;border:1px solid var(--accent);border-radius:10px;padding:5px 9px;font-size:clamp(.68rem,1.35vw,.84rem);background:rgba(255,46,147,.1)}
+#pot{font-size:clamp(.68rem,1.3vw,.82rem);color:var(--muted);font-weight:800}
+.pion{position:absolute;width:clamp(15px,3.6%,26px);aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(.56rem,1.3vw,.84rem);background:var(--bg);border:2px solid var(--o);box-shadow:0 0 7px var(--o);transition:left .13s linear,top .13s linear;pointer-events:none;z-index:3;transform:translate(-50%,-50%)}
+
+/* ---------- Panneaux ---------- */
+.cote h3{margin:0 0 8px;font-size:1rem}
+#actions{display:flex;flex-direction:column;gap:8px}
+#actions .tete{font-weight:800;text-align:center}
+#actions .btn{width:100%}
+.joueur{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;border:1px solid transparent;font-size:.92rem}
+.joueur.actif{border-color:var(--o);background:var(--soft)}
+.joueur.mort{opacity:.45;text-decoration:line-through}
+.joueur .av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--o);flex:none;font-size:.85rem}
+.joueur .n{flex:1;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.joueur .a{font-weight:800;color:var(--accent2);white-space:nowrap}
+.joueur small{color:var(--muted);font-weight:700;white-space:nowrap}
+.bien{display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid var(--line);font-size:.86rem;flex-wrap:wrap}
+.bien:first-child{border-top:0}
+.bien .pastille{width:10px;height:10px;border-radius:3px;flex:none}
+.bien .n{flex:1;min-width:110px;font-weight:700;cursor:pointer}
+.bien .boutons{display:flex;gap:4px}
+.bien .btn{padding:4px 8px;font-size:.76rem;border-radius:8px}
+#journal{max-height:170px;overflow:auto;font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+#journal div:first-child{color:var(--text)}
+table.loyers{width:100%;border-collapse:collapse;font-size:.9rem;margin:8px 0}
+table.loyers td{padding:3px 0;border-top:1px solid var(--line)}
+table.loyers td:last-child{text-align:right;font-weight:800}
+table.loyers tr.ici{color:var(--accent2)}
+.echange{display:flex;flex-direction:column;gap:8px}
+.echange .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.echange .col{display:flex;flex-direction:column;gap:3px;font-size:.85rem;min-width:0}
+.echange label{display:flex;gap:5px;align-items:center}
+.echange .vide{font-size:.8rem;color:var(--muted)}
+.podium{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.92rem}
+
+@media (max-width:900px){
+  .table{grid-template-columns:minmax(0,1fr)}
+  .case .nom,.case .prix{display:none}
+  .case.coin .nom{display:none}
+  .case .ic{font-size:clamp(.72rem,4vw,1.3rem)}
+  .case.coin .ic{font-size:clamp(1rem,5.5vw,1.8rem)}
+  .logo{font-size:clamp(.9rem,4.6vw,1.6rem)}
+  #msg{font-size:clamp(.72rem,3vw,.92rem)}
+  #carte{font-size:clamp(.66rem,2.7vw,.84rem)}
+  #pot{font-size:clamp(.66rem,2.6vw,.82rem)}
+  .de{width:clamp(28px,9vw,48px)}
+  .pion{font-size:clamp(.5rem,2.4vw,.84rem)}
+  .b-page{padding:8px 8px 28px}
+}
+</style>
+</head>
+<body>
+<main class="b-page">
+
+  <section class="ecran etroit" id="menu">
+    <div class="b-carte cache" id="choixTheme">
+      <p class="etiquette" style="text-align:center;margin:0 0 6px;font-weight:800">Ville</p>
+      <div class="pilules" id="themes"></div>
+    </div>
+    <div class="modes">
+      <button class="mode" id="mLocal"><span class="ic">📱</span><b>Sur cet écran</b><span class="muted">Seul contre l'ordi ou en se passant l'appareil</span></button>
+      <button class="mode" id="mLigne"><span class="ic">🌐</span><b>En ligne</b><span class="muted">2 à 6 joueurs, chacun sur son appareil</span></button>
+    </div>
+    <button class="btn bleu cache" id="reprendre">▶️ Reprendre la partie</button>
+  </section>
+
+  <section class="ecran etroit cache" id="pLocal">
+    <div class="b-carte">
+      <div class="reglage"><p class="etiquette">Joueurs humains</p><div class="pilules" id="nbHumains"></div></div>
+      <div class="noms" id="noms"></div>
+      <div class="reglage"><p class="etiquette">Adversaires ordi</p><div class="pilules" id="nbBots"></div></div>
+      <div class="reglage"><p class="etiquette">Durée</p><div class="pilules" id="duree"></div></div>
+      <p class="muted cache" id="msgLocal" style="text-align:center">Il faut au moins 2 joueurs, et 6 au maximum.</p>
+      <div class="actions"><button class="btn" id="goLocal">🌆 Lancer la partie</button><button class="btn ghost" data-menu>Retour</button></div>
+    </div>
+  </section>
+
+  <section class="ecran etroit cache" id="pLigne">
+    <div class="b-carte">
+      <label class="etiquette" for="pseudo">Ton pseudo</label>
+      <input class="champ" id="pseudo" maxlength="16" autocomplete="off">
+      <div class="actions" style="margin-top:14px"><button class="btn" id="creer">➕ Créer une salle</button></div>
+      <div class="ligneJoin"><input class="champ" id="codeIn" maxlength="5" placeholder="Code (ex. KXRT1)" autocomplete="off" style="text-transform:uppercase"><button class="btn bleu" id="rejoindre">Rejoindre</button></div>
+      <p class="muted" id="msgLigne"></p>
+      <div class="actions"><button class="btn ghost petit" id="tester">Tester la connexion</button><button class="btn ghost petit" data-menu>Retour</button></div>
+    </div>
+  </section>
+
+  <section class="ecran etroit cache" id="pAttente">
+    <div class="b-carte">
+      <div id="blocHote">
+        <p class="muted" style="text-align:center;margin:0">Code de la salle</p>
+        <p class="code" id="code"></p>
+        <div class="actions" style="margin-bottom:12px"><button class="btn ghost petit" id="copier">🔗 Copier le lien</button></div>
+      </div>
+      <p class="etiquette" style="margin:0;font-weight:800">Joueurs</p>
+      <ul class="liste" id="salleJoueurs"></ul>
+      <div id="reglagesHote">
+        <div class="reglage"><p class="etiquette">Adversaires ordi</p><div class="pilules" id="nbBotsL"></div></div>
+        <div class="reglage"><p class="etiquette">Durée</p><div class="pilules" id="dureeL"></div></div>
+        <p class="muted cache" id="msgSalle" style="text-align:center">Il faut au moins 2 joueurs, et 6 au maximum.</p>
+      </div>
+      <p class="muted cache" id="attenteHote" style="text-align:center">L'hôte va lancer la partie…</p>
+      <div class="actions"><button class="btn" id="goLigne">🌆 Lancer la partie</button><button class="btn ghost" id="annuler">Quitter</button></div>
+    </div>
+  </section>
+
+  <section class="table cache" id="jeu">
+    <div class="plateau" id="plateau">
+      <div class="centre">
+        <div class="logo" id="logo"></div>
+        <div class="des" id="des"></div>
+        <div id="msg"></div>
+        <div id="carte" class="cache"></div>
+        <div id="pot"></div>
+      </div>
+    </div>
+    <div class="cote">
+      <div class="b-carte"><div id="actions"></div></div>
+      <div class="b-carte"><div id="joueurs"></div></div>
+      <div class="b-carte cache" id="blocBiens"><h3>🏢 Tes quartiers</h3><div id="biens"></div></div>
+      <div class="b-carte"><h3>📜 Journal</h3><div id="journal"></div></div>
+      <button class="btn ghost" id="quitter">🏠 Quitter la partie</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="themes.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("mainmise_");
+const THEMES = window.MAINMISE_THEMES;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const de6 = () => 1 + Math.floor(Math.random() * 6);
+function melange(t){ const a = t.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+Base.entete({
+  titre: "Mainmise", emoji: "🌆",
+  aide: `<p>Achète les quartiers de la ville, fais payer ceux qui s'y arrêtent et ruine tes adversaires. <b>Le dernier encore solvable gagne</b> (ou le plus riche si la durée est limitée).</p>
+  <ul>
+    <li>🎲 Lance les dés et avance. Un double te fait rejouer, trois doubles t'envoient en cellule.</li>
+    <li>🏢 Un quartier libre ? Achète-le ou passe ton chemin. Il appartient à un autre ? Paie le loyer.</li>
+    <li>🎨 Toute la couleur à toi : le loyer double, et tu peux construire jusqu'à 4 niveaux.</li>
+    <li>🚄 Plus tu possèdes de lignes, plus elles rapportent. ⚡ Les services se paient selon les dés.</li>
+    <li>🛰️ Passer par la case départ rapporte un salaire.</li>
+    <li>💰 Les taxes et amendes vont dans la cagnotte : qui s'arrête au Marché noir la ramasse.</li>
+    <li>🔒 En cellule : paie l'amende, utilise un passe, ou tente un double (3 essais).</li>
+    <li>🤝 Pendant ton tour, propose des échanges de quartiers et d'argent à qui tu veux.</li>
+    <li>🏦 À court d'argent ? Vends des niveaux ou mets des quartiers en gage. Si ça ne suffit pas, c'est la faillite !</li>
+  </ul>`
+});
+
+/* État de l'interface */
+let G = null, mode = null, salle = null, moi = -1;
+let theme = THEMES[stock.lire("theme", "neon")] ? stock.lire("theme", "neon") : Object.keys(THEMES)[0];
+let T = THEMES[theme];
+let timerBot = null, victoireVue = false, confirmeFaillite = false;
+let reg = {humains: 1, bots: 2, duree: 25, botsL: 0, dureeL: 25};
+
+const ECRANS = ["menu", "pLocal", "pLigne", "pAttente", "jeu"];
+function ecran(id){ ECRANS.forEach(e => $(e).classList.toggle("cache", e !== id)); window.scrollTo(0, 0); }
+const m = n => T.monnaie + " " + Number(n).toLocaleString("fr-FR");
+
+function appliquerTheme(cle){
+  theme = cle; T = THEMES[cle];
+  Object.entries(T.couleurs).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+  $("logo").textContent = T.nom;
+}
+
+/* =================================================================
+   RÈGLES : tout passe par agir(i, action), arbitré par l'hôte
+   ================================================================= */
+const achetable = c => ["quartier", "ligne", "service"].includes(c.type);
+const P = c => G.props[c];
+const cases = () => T.cases;
+const casesDe = i => cases().map((c, k) => k).filter(k => achetable(cases()[k]) && P(k).p === i);
+const memeGroupe = k => cases().map((c, n) => n).filter(n => cases()[n].groupe && cases()[n].groupe === cases()[k].groupe);
+const memeType = k => cases().map((c, n) => n).filter(n => cases()[n].type === cases()[k].type);
+const groupeComplet = (k, i) => memeGroupe(k).every(n => P(n).p === i);
+const groupeNu = k => cases()[k].type !== "quartier" || memeGroupe(k).every(n => !P(n).n);
+const up = k => T.groupes[cases()[k].groupe].up;
+const coutLever = k => Math.ceil(cases()[k].prix / 2 * 1.1);
+const actifs = () => G.joueurs.map((j, i) => i).filter(i => !G.joueurs[i].faillite);
+
+function loyer(k){
+  const c = cases()[k], p = P(k);
+  if(p.p === null || p.g) return 0;
+  if(c.type === "quartier"){
+    if(p.n) return c.loyers[p.n];
+    return c.loyers[0] * (groupeComplet(k, p.p) ? 2 : 1);
+  }
+  const nb = memeType(k).filter(n => P(n).p === p.p).length;
+  if(c.type === "ligne") return 25 * Math.pow(2, nb - 1);
+  return (G.des[0] + G.des[1]) * (nb === memeType(k).length ? 10 : 4);
+}
+function fortune(i){
+  const j = G.joueurs[i];
+  return j.argent + casesDe(i).reduce((s, k) => {
+    const c = cases()[k], p = P(k);
+    return s + (p.g ? c.prix / 2 : c.prix) + (p.n ? p.n * up(k) : 0);
+  }, 0);
+}
+const noter = t => { G.journal.unshift(t); G.journal.length = Math.min(G.journal.length, 30); };
+const dire = t => { G.msg = t; noter(t); };
+
+function nouvellePartie(joueurs, limite, cle){
+  appliquerTheme(cle);
+  const props = {};
+  T.cases.forEach((c, k) => { if(achetable(c)) props[k] = {p: null, n: 0, g: false}; });
+  const pioches = {};
+  Object.keys(T.pioches).forEach(n => pioches[n] = melange(T.pioches[n].cartes.map((c, i) => i)));
+  G = {
+    theme: cle, limite, manche: 1, tour: 0, phase: "lancer",
+    joueurs: joueurs.map((j, i) => ({id: j.id || null, nom: j.nom, avatar: j.avatar || "😀", bot: !!j.bot, couleur: T.pions[i], argent: T.regles.depart, pos: 0, enCellule: false, essais: 0, passes: 0, faillite: false})),
+    props, pioches, des: [1, 1], doubles: 0, rejouer: false, pot: 0, seq: 0, journal: [], msg: "", carte: null, dette: null, offre: null, classement: null
+  };
+  dire(`${joueurs[0].nom} commence. Bonne chance à tous !`);
+  victoireVue = false;
+}
+
+function agir(i, a){
+  if(!G || !a || G.phase === "fin") return false;
+  if(a.type === "annulerOffre"){
+    if(!G.offre || G.offre.de !== i) return false;
+    G.offre = null; dire(`${G.joueurs[i].nom} retire son offre.`);
+    return true;
+  }
+  if(a.type === "reponse"){
+    if(!G.offre || G.offre.a !== i) return false;
+    repondreOffre(!!a.ok);
+    return true;
+  }
+  if(G.offre || i !== G.tour) return false;
+  const j = G.joueurs[i], k = a.c, c = cases()[k];
+  const gestionLibre = G.phase === "lancer" || G.phase === "gestion";
+  switch(a.type){
+    case "lancer":
+      if(G.phase !== "lancer") return false;
+      lancer();
+      return true;
+    case "payerCellule":
+      if(G.phase !== "lancer" || !j.enCellule || j.argent < T.regles.amende) return false;
+      j.argent -= T.regles.amende; G.pot += T.regles.amende; j.enCellule = false; j.essais = 0;
+      dire(`${j.nom} paie ${m(T.regles.amende)} et sort du ${cases()[prison()].nom}.`);
+      return true;
+    case "passe":
+      if(G.phase !== "lancer" || !j.enCellule || !j.passes) return false;
+      j.passes--; j.enCellule = false; j.essais = 0;
+      dire(`${j.nom} utilise un passe et sort du ${cases()[prison()].nom}.`);
+      return true;
+    case "acheter":
+      if(G.phase !== "achat" || j.argent < cases()[j.pos].prix) return false;
+      j.argent -= cases()[j.pos].prix; P(j.pos).p = i; G.phase = "gestion";
+      dire(`${j.nom} achète ${cases()[j.pos].nom} pour ${m(cases()[j.pos].prix)}.`);
+      return true;
+    case "passer":
+      if(G.phase !== "achat") return false;
+      G.phase = "gestion";
+      noter(`${j.nom} n'achète pas ${cases()[j.pos].nom}.`);
+      return true;
+    case "ameliorer":
+      if(!gestionLibre || !c || c.type !== "quartier" || P(k).p !== i || !groupeComplet(k, i) || P(k).n >= 4) return false;
+      if(memeGroupe(k).some(n => P(n).g) || j.argent < up(k)) return false;
+      j.argent -= up(k); P(k).n++;
+      dire(`${j.nom} construit à ${c.nom} : ${T.niveaux[P(k).n - 1]}.`);
+      return true;
+    case "vendre":
+      if(!c || c.type !== "quartier" || P(k).p !== i || !P(k).n) return false;
+      P(k).n--; j.argent += Math.floor(up(k) / 2);
+      noter(`${j.nom} revend un niveau à ${c.nom}.`);
+      return true;
+    case "gager":
+      if(!c || !achetable(c) || P(k).p !== i || P(k).g || !groupeNu(k)) return false;
+      P(k).g = true; j.argent += Math.floor(c.prix / 2);
+      noter(`${j.nom} met ${c.nom} en gage (+${m(Math.floor(c.prix / 2))}).`);
+      return true;
+    case "lever":
+      if(!gestionLibre || !c || !achetable(c) || P(k).p !== i || !P(k).g || j.argent < coutLever(k)) return false;
+      j.argent -= coutLever(k); P(k).g = false;
+      noter(`${j.nom} récupère ${c.nom}.`);
+      return true;
+    case "payer": {
+      const d = G.dette;
+      if(G.phase !== "dette" || !d || j.argent < d.m) return false;
+      j.argent -= d.m;
+      verser(d.vers, d.m);
+      noter(`${j.nom} règle sa dette de ${m(d.m)}.`);
+      G.dette = null; G.phase = "gestion";
+      if(d.avancer) avancer(d.avancer);
+      return true;
+    }
+    case "faillite":
+      if(G.phase !== "dette") return false;
+      faireFaillite(i, G.dette.vers);
+      return true;
+    case "offre":
+      return proposerOffre(i, a);
+    case "fin":
+      if(G.phase !== "gestion") return false;
+      finDeTour();
+      return true;
+  }
+  return false;
+}
+const prison = () => cases().findIndex(c => c.type === "cellule");
+function verser(vers, n){
+  if(vers === "pot") G.pot += n;
+  else if(typeof vers === "number") G.joueurs[vers].argent += n;
+}
+
+function lancer(){
+  const j = G.joueurs[G.tour], a = de6(), b = de6(), dbl = a === b;
+  G.des = [a, b]; G.seq++; G.carte = null; G.rejouer = false;
+  if(j.enCellule){
+    if(dbl){
+      j.enCellule = false; j.essais = 0;
+      dire(`${j.nom} fait un double et s'évade !`);
+    }else if(++j.essais >= 3){
+      j.enCellule = false; j.essais = 0;
+      noter(`${j.nom} a raté ses 3 essais : amende obligatoire.`);
+      du(T.regles.amende, "pot", `l'amende du ${cases()[prison()].nom}`, a + b);
+      return;
+    }else{
+      dire(`${j.nom} rate son évasion (essai ${j.essais}/3).`);
+      G.phase = "gestion";
+      return;
+    }
+    avancer(a + b);
+    return;
+  }
+  if(dbl && ++G.doubles >= 3){
+    dire(`Trois doubles de suite ! ${j.nom} part en cellule.`);
+    enCellule();
+    return;
+  }
+  if(!dbl) G.doubles = 0;
+  G.rejouer = dbl;
+  avancer(a + b);
+}
+function avancer(n){
+  const j = G.joueurs[G.tour], N = cases().length, av = j.pos;
+  j.pos = (j.pos + n) % N;
+  if(j.pos < av) salaire(j);
+  arriver();
+}
+function salaire(j){
+  j.argent += T.regles.salaire;
+  noter(`${j.nom} passe par ${cases()[0].nom} : +${m(T.regles.salaire)}.`);
+}
+function enCellule(){
+  const j = G.joueurs[G.tour];
+  j.pos = prison(); j.enCellule = true; j.essais = 0;
+  G.rejouer = false; G.doubles = 0; G.phase = "gestion";
+}
+function arriver(){
+  const j = G.joueurs[G.tour], i = G.tour, c = cases()[j.pos];
+  G.phase = "gestion";
+  switch(c.type){
+    case "depart": dire(`${j.nom} s'arrête sur ${c.nom}.`); break;
+    case "cellule": dire(`${j.nom} visite ${c.nom}… simple visite.`); break;
+    case "marche":
+      if(G.pot){ dire(`${j.nom} ramasse la cagnotte du ${c.nom} : +${m(G.pot)} !`); j.argent += G.pot; G.pot = 0; }
+      else dire(`${j.nom} arrive au ${c.nom}, mais la cagnotte est vide.`);
+      break;
+    case "rafle":
+      dire(`${c.nom} ! ${j.nom} part en cellule.`);
+      enCellule();
+      break;
+    case "taxe":
+      dire(`${j.nom} doit ${m(c.montant)} : ${c.nom}.`);
+      du(c.montant, "pot", c.nom);
+      break;
+    case "carte": piocher(c.pioche); break;
+    default: {
+      const p = P(j.pos);
+      if(p.p === null){ G.phase = "achat"; dire(`${j.nom} arrive à ${c.nom} (libre, ${m(c.prix)}).`); }
+      else if(p.p === i) dire(`${j.nom} est sur ses terres à ${c.nom}.`);
+      else if(p.g) dire(`${c.nom} est en gage : pas de loyer pour ${j.nom}.`);
+      else{
+        const l = loyer(j.pos);
+        dire(`${j.nom} doit ${m(l)} à ${G.joueurs[p.p].nom} pour ${c.nom}.`);
+        du(l, p.p, `le loyer de ${c.nom}`);
+      }
+    }
+  }
+}
+function du(n, vers, raison, avancerApres){
+  const j = G.joueurs[G.tour];
+  if(j.argent >= n){
+    j.argent -= n; verser(vers, n);
+    G.phase = "gestion";
+    if(avancerApres) avancer(avancerApres);
+    return;
+  }
+  G.dette = {m: n, vers, raison, avancer: avancerApres || 0};
+  G.phase = "dette";
+  noter(`${j.nom} n'a pas assez pour payer ${raison}.`);
+}
+function piocher(nom){
+  const def = T.pioches[nom], j = G.joueurs[G.tour];
+  if(!G.pioches[nom].length) G.pioches[nom] = melange(def.cartes.map((c, i) => i));
+  const carte = def.cartes[G.pioches[nom].pop()];
+  G.carte = {ico: def.ico, nom: def.nom, t: carte.t};
+  noter(`${def.ico} ${j.nom} : ${carte.t}`);
+  G.msg = `${j.nom} pioche une carte ${def.nom}.`;
+  switch(carte.f){
+    case "gain": j.argent += carte.n; break;
+    case "perte": du(carte.n, "pot", "sa carte " + def.nom); break;
+    case "aller": {
+      const av = j.pos;
+      j.pos = carte.c;
+      if(j.pos < av) salaire(j);
+      arriver();
+      break;
+    }
+    case "recule": {
+      const N = cases().length;
+      j.pos = (j.pos - carte.n + N) % N;
+      arriver();
+      break;
+    }
+    case "cellule": enCellule(); break;
+    case "passe": j.passes++; break;
+    case "collecte":
+      actifs().filter(x => x !== G.tour).forEach(x => {
+        const v = Math.min(carte.n, G.joueurs[x].argent);
+        G.joueurs[x].argent -= v; j.argent += v;
+      });
+      break;
+    case "entretien": {
+      const total = casesDe(G.tour).reduce((s, k) => s + P(k).n, 0) * carte.n;
+      if(total) du(total, "pot", "son entretien");
+      break;
+    }
+    case "ligne": {
+      const N = cases().length;
+      let k = j.pos;
+      do{ k = (k + 1) % N; }while(cases()[k].type !== "ligne");
+      if(k < j.pos) salaire(j);
+      j.pos = k;
+      arriver();
+      break;
+    }
+  }
+}
+function faireFaillite(i, vers){
+  const j = G.joueurs[i], heritier = typeof vers === "number" && !G.joueurs[vers].faillite;
+  dire(`💥 ${j.nom} fait faillite${heritier ? " au profit de " + G.joueurs[vers].nom : ""} !`);
+  casesDe(i).forEach(k => {
+    const p = P(k);
+    p.n = 0;
+    if(heritier) p.p = vers;
+    else{ p.p = null; p.g = false; }
+  });
+  if(heritier) G.joueurs[vers].argent += j.argent;
+  else if(vers === "pot") G.pot += j.argent;
+  j.argent = 0; j.faillite = true; j.enCellule = false;
+  if(G.offre && (G.offre.de === i || G.offre.a === i)) G.offre = null;
+  const tourDeLui = G.tour === i;
+  if(tourDeLui){ G.dette = null; G.phase = "gestion"; G.rejouer = false; }
+  if(actifs().length <= 1){ terminer(); return; }
+  if(tourDeLui) finDeTour();
+}
+function finDeTour(){
+  const j = G.joueurs[G.tour];
+  G.carte = null;
+  if(G.rejouer && !j.faillite && !j.enCellule){
+    G.rejouer = false; G.phase = "lancer";
+    G.msg = `${j.nom} a fait un double : encore un lancer !`;
+    return;
+  }
+  G.doubles = 0; G.rejouer = false;
+  const N = G.joueurs.length, av = G.tour;
+  do{ G.tour = (G.tour + 1) % N; }while(G.joueurs[G.tour].faillite);
+  if(G.tour <= av){
+    G.manche++;
+    if(G.limite && G.manche > G.limite){ terminer(); return; }
+  }
+  G.phase = "lancer";
+  G.msg = `À ${G.joueurs[G.tour].nom} de jouer.`;
+}
+function terminer(){
+  G.phase = "fin"; G.offre = null; G.dette = null;
+  G.classement = G.joueurs.map((j, i) => ({i, f: j.faillite ? -1 : fortune(i)})).sort((a, b) => b.f - a.f);
+  dire(`🏆 ${G.joueurs[G.classement[0].i].nom} prend la mainmise sur la ville !`);
+}
+
+/* ---------- Échanges ---------- */
+function echangeable(k, i){ return achetable(cases()[k]) && P(k).p === i && groupeNu(k); }
+function proposerOffre(i, a){
+  if(G.phase !== "lancer" && G.phase !== "gestion") return false;
+  const c = a.a, ad = G.joueurs[c];
+  if(c === i || !ad || ad.faillite) return false;
+  const propre = (o, qui) => ({
+    argent: Math.max(0, Math.floor(Number(o && o.argent) || 0)),
+    cases: Array.isArray(o && o.cases) ? [...new Set(o.cases.map(Number))].filter(k => cases()[k] && echangeable(k, qui)) : []
+  });
+  const donne = propre(a.donne, i), veut = propre(a.veut, c);
+  if(!donne.argent && !donne.cases.length && !veut.argent && !veut.cases.length) return false;
+  if(donne.argent > G.joueurs[i].argent || veut.argent > ad.argent) return false;
+  G.offre = {de: i, a: c, donne, veut};
+  dire(`🤝 ${G.joueurs[i].nom} fait une offre à ${ad.nom}.`);
+  return true;
+}
+function repondreOffre(ok){
+  const o = G.offre, A = G.joueurs[o.de], B = G.joueurs[o.a];
+  G.offre = null;
+  const encoreBon = o.donne.argent <= A.argent && o.veut.argent <= B.argent
+    && o.donne.cases.every(k => echangeable(k, o.de)) && o.veut.cases.every(k => echangeable(k, o.a));
+  if(!ok || !encoreBon){ dire(`${B.nom} refuse l'offre de ${A.nom}.`); return; }
+  A.argent += o.veut.argent - o.donne.argent;
+  B.argent += o.donne.argent - o.veut.argent;
+  o.donne.cases.forEach(k => P(k).p = o.a);
+  o.veut.cases.forEach(k => P(k).p = o.de);
+  dire(`🤝 Marché conclu entre ${A.nom} et ${B.nom} !`);
+}
+const texteLot = l => [...l.cases.map(k => cases()[k].nom), ...(l.argent ? [m(l.argent)] : [])].join(", ") || "rien";
+
+/* ---------- Départ d'un joueur en ligne ---------- */
+function joueurParti(id){
+  if(!G || G.phase === "fin") return;
+  const i = G.joueurs.findIndex(j => j.id === id);
+  if(i < 0 || G.joueurs[i].faillite) return;
+  noter(`${G.joueurs[i].nom} a quitté la partie.`);
+  faireFaillite(i, null);
+}
+
+/* =================================================================
+   ORDI
+   ================================================================= */
+function botConstruit(i){
+  const j = G.joueurs[i];
+  return casesDe(i).filter(k => cases()[k].type === "quartier" && groupeComplet(k, i) && P(k).n < 4 && !memeGroupe(k).some(n => P(n).g) && j.argent - up(k) >= 350)
+    .sort((x, y) => P(x).n - P(y).n)[0];
+}
+function botValeur(k, recoit){
+  const c = cases()[k];
+  const complete = c.groupe && memeGroupe(k).every(n => n === k || P(n).p === recoit);
+  return c.prix * (complete ? 2.5 : 1);
+}
+/* L'ordi rachète ce qui le rapproche d'une couleur (une offre toutes les 4 manches au plus) */
+function botOffre(i){
+  const j = G.joueurs[i];
+  if(j.derniereOffre && G.manche - j.derniereOffre < 4) return null;
+  for(const k of cases().keys()){
+    const c = cases()[k];
+    if(c.type !== "quartier" || P(k).p === null || P(k).p === i || !groupeNu(k)) continue;
+    const autres = memeGroupe(k).filter(n => n !== k);
+    const miens = autres.filter(n => P(n).p === i).length;
+    if(!miens) continue;
+    const complete = miens === autres.length;
+    const chezLui = autres.filter(n => P(n).p === P(k).p).length + 1;
+    if(!complete && chezLui > miens) continue;
+    const prix = Math.ceil(c.prix * (complete ? 3.2 : 1.5));
+    if(j.argent - prix < 200) continue;
+    j.derniereOffre = G.manche;
+    return {type: "offre", a: P(k).p, donne: {argent: prix, cases: []}, veut: {argent: 0, cases: [k]}};
+  }
+  return null;
+}
+function botAction(i){
+  const j = G.joueurs[i];
+  if(G.offre){
+    const o = G.offre;
+    const recu = o.donne.argent + o.donne.cases.reduce((s, k) => s + botValeur(k, o.a), 0);
+    const donne = o.veut.argent + o.veut.cases.reduce((s, k) => s + botValeur(k, o.de), 0);
+    return {type: "reponse", ok: recu >= donne * 1.25};
+  }
+  if(G.phase === "dette"){
+    if(j.argent >= G.dette.m) return {type: "payer"};
+    const mes = casesDe(i);
+    const niv = mes.find(k => P(k).n > 0);
+    if(niv !== undefined) return {type: "vendre", c: niv};
+    const gage = mes.find(k => !P(k).g);
+    if(gage !== undefined) return {type: "gager", c: gage};
+    return {type: "faillite"};
+  }
+  if(G.phase === "achat") return {type: j.argent - cases()[j.pos].prix >= 150 ? "acheter" : "passer"};
+  const bat = botConstruit(i);
+  if(bat !== undefined) return {type: "ameliorer", c: bat};
+  const offre = botOffre(i);
+  if(offre) return offre;
+  if(G.phase === "gestion") return {type: "fin"};
+  if(j.enCellule){
+    if(j.passes) return {type: "passe"};
+    if(j.argent >= 500) return {type: "payerCellule"};
+  }
+  return {type: "lancer"};
+}
+const acteur = () => !G || G.phase === "fin" ? -1 : G.offre ? G.offre.a : G.tour;
+function planifierBot(){
+  clearTimeout(timerBot);
+  const a = acteur();
+  if(a < 0 || !G.joueurs[a].bot || (mode === "ligne" && !salle.hote)) return;
+  timerBot = setTimeout(() => { if(G && agir(a, botAction(a))) apresChangement(); }, G.phase === "lancer" ? 1000 : 650);
+}
+
+/* =================================================================
+   AFFICHAGE
+   ================================================================= */
+let cellules = [], pions = [], affiche = [], seqVue = -1;
+const PIPS = {1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8]};
+
+function construirePlateau(){
+  const pl = $("plateau"), n = T.cases.length / 4, gabarit = `1.4fr repeat(${n - 1},1fr) 1.4fr`;
+  pl.style.gridTemplateColumns = gabarit; pl.style.gridTemplateRows = gabarit;
+  pl.querySelectorAll(".case,.pion").forEach(e => e.remove());
+  cellules = T.cases.map((c, k) => {
+    const b = document.createElement("button");
+    let r, col, cote;
+    if(k <= n){ r = n + 1; col = n + 1 - k; cote = "bas"; }
+    else if(k <= 2 * n){ r = n + 1 - (k - n); col = 1; cote = "gauche"; }
+    else if(k <= 3 * n){ r = 1; col = 1 + (k - 2 * n); cote = "haut"; }
+    else{ r = 1 + (k - 3 * n); col = n + 1; cote = "droite"; }
+    b.className = "case s-" + cote + (k % n === 0 ? " coin" : "");
+    b.style.gridRow = r; b.style.gridColumn = col;
+    b.onclick = () => ficheCase(k);
+    pl.appendChild(b);
+    return b;
+  });
+  pions = []; affiche = []; seqVue = -1;
+  G.joueurs.forEach((j, i) => {
+    const d = document.createElement("div");
+    d.className = "pion"; d.textContent = j.avatar; d.style.setProperty("--o", j.couleur);
+    pl.appendChild(d); pions[i] = d;
+  });
+}
+function placerPion(i, k){
+  const cel = cellules[k], d = pions[i], decal = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]][i];
+  d.style.left = (cel.offsetLeft + cel.offsetWidth / 2 + decal[0] * cel.offsetWidth * .2) + "px";
+  d.style.top = (cel.offsetTop + cel.offsetHeight / 2 + decal[1] * cel.offsetHeight * .2) + "px";
+}
+function dessinerPions(){
+  const N = T.cases.length;
+  G.joueurs.forEach((j, i) => {
+    pions[i].classList.toggle("cache", j.faillite);
+    if(affiche[i] === undefined){ affiche[i] = {k: j.pos}; placerPion(i, j.pos); return; }
+    const a = affiche[i];
+    clearInterval(a.t);
+    const pas = (j.pos - a.k + N) % N;
+    if(!pas) return placerPion(i, j.pos);
+    if(pas > 12 || j.enCellule){ a.k = j.pos; placerPion(i, j.pos); return; }
+    a.t = setInterval(() => {
+      a.k = (a.k + 1) % N; placerPion(i, a.k);
+      if(a.k === j.pos) clearInterval(a.t);
+    }, 150);
+  });
+}
+function dessinerCases(){
+  T.cases.forEach((c, k) => {
+    const b = cellules[k];
+    const couleur = c.groupe ? T.groupes[c.groupe].couleur : "transparent";
+    const ico = c.ico || T.pioches[c.pioche].ico, nom = c.nom || T.pioches[c.pioche].nom;
+    let bas = "";
+    if(achetable(c)) bas = m(c.prix);
+    else if(c.type === "taxe") bas = m(c.montant);
+    let h = `<span class="bar" style="--c:${couleur}"></span><span class="ic">${ico}</span><span class="nom">${esc(nom)}</span>`;
+    if(bas) h += `<span class="prix">${bas}</span>`;
+    b.className = b.className.replace(/ (a-moi|gage)/g, "");
+    if(achetable(c) && P(k).p !== null){
+      const p = P(k);
+      b.classList.add("a-moi"); b.style.setProperty("--o", G.joueurs[p.p].couleur);
+      if(p.g) b.classList.add("gage");
+      h += `<span class="prop"></span>`;
+      if(p.n) h += `<span class="niv">${"▮".repeat(p.n)}</span>`;
+    }
+    b.innerHTML = h;
+    b.setAttribute("aria-label", nom);
+  });
+}
+function dessinerDes(){
+  const box = $("des");
+  box.innerHTML = G.des.map(v => `<div class="de">${[0,1,2,3,4,5,6,7,8].map(p => `<i class="${PIPS[v].includes(p) ? "on" : ""}"></i>`).join("")}</div>`).join("");
+  if(G.seq !== seqVue){
+    seqVue = G.seq;
+    if(G.seq){ box.classList.remove("roule"); void box.offsetWidth; box.classList.add("roule"); }
+  }
+}
+function dessinerJoueurs(){
+  $("joueurs").innerHTML = G.joueurs.map((j, i) => `<div class="joueur${i === G.tour && G.phase !== "fin" ? " actif" : ""}${j.faillite ? " mort" : ""}" style="--o:${j.couleur}">
+    <span class="av">${esc(j.avatar)}</span>
+    <span class="n">${esc(j.nom)}${j.bot ? " 🤖" : ""}${j.enCellule ? " 🔒" : ""}${j.passes ? " 🎫" : ""}</span>
+    <small>${casesDe(i).length} 🏢</small>
+    <span class="a">${m(j.argent)}</span></div>`).join("")
+    + `<p class="muted" style="margin:8px 0 0;font-size:.8rem;text-align:center">Manche ${G.limite ? Math.min(G.manche, G.limite) + " / " + G.limite : G.manche}</p>`;
+}
+/* Le joueur dont cet appareil montre les boutons */
+function vue(){
+  if(mode === "ligne") return moi;
+  const a = acteur();
+  if(a >= 0 && !G.joueurs[a].bot) return a;
+  return G.joueurs.findIndex(j => !j.bot && !j.faillite);
+}
+function bouton(txt, a, cls, off){ return `<button class="btn ${cls || ""}" ${off ? "disabled" : ""} data-a='${esc(JSON.stringify(a))}'>${txt}</button>`; }
+function dessinerActions(){
+  const box = $("actions"), a = acteur(), v = vue();
+  confirmeFaillite = confirmeFaillite && G.phase === "dette";
+  let h = "";
+  if(G.phase === "fin"){
+    h = `<div class="tete">🏆 ${esc(G.joueurs[G.classement[0].i].nom)} gagne !</div><ol class="podium">`
+      + G.classement.map(c => `<li>${esc(G.joueurs[c.i].nom)} : ${c.f < 0 ? "faillite" : m(c.f)}</li>`).join("") + "</ol>";
+    if(mode !== "ligne" || salle.hote) h += `<button class="btn" id="rejouer">🔁 Rejouer</button>`;
+    box.innerHTML = h;
+    if($("rejouer")) $("rejouer").onclick = rejouer;
+    return;
+  }
+  const j = G.joueurs[a];
+  if(G.offre && G.offre.de === v && v !== a){
+    h = `<div class="tete">🤝 Offre envoyée à ${esc(j.nom)}…</div>` + bouton("Retirer l'offre", {type: "annulerOffre"}, "ghost");
+  }else if(v !== a){
+    h = `<div class="tete">${j.bot ? "🤖" : "⏳"} ${esc(j.nom)} joue…</div>`;
+  }else if(G.offre){
+    const o = G.offre;
+    h = `<div class="tete">🤝 ${esc(G.joueurs[o.de].nom)} te propose un échange${mode === "ligne" ? "" : ", " + esc(j.nom)}</div>
+      <div>Tu reçois : <b>${esc(texteLot(o.donne))}</b></div><div>Tu donnes : <b>${esc(texteLot(o.veut))}</b></div>`
+      + bouton("✅ Accepter", {type: "reponse", ok: true}, "bleu") + bouton("❌ Refuser", {type: "reponse", ok: false}, "ghost");
+  }else if(G.phase === "lancer"){
+    h = `<div class="tete">${mode === "ligne" ? "À toi de jouer !" : "À " + esc(j.nom) + " de jouer !"}</div>`;
+    if(j.enCellule){
+      h += bouton(`🎲 Tenter un double (essai ${j.essais + 1}/3)`, {type: "lancer"})
+        + bouton(`💸 Payer ${m(T.regles.amende)} et sortir`, {type: "payerCellule"}, "bleu", j.argent < T.regles.amende);
+      if(j.passes) h += bouton(`🎫 Utiliser un passe (${j.passes})`, {type: "passe"}, "bleu");
+    }else h += bouton("🎲 Lancer les dés", {type: "lancer"});
+    h += boutonEchange();
+  }else if(G.phase === "achat"){
+    const c = cases()[j.pos];
+    h = `<div class="tete">${c.ico} ${esc(c.nom)} est libre</div>`
+      + bouton(`🏢 Acheter pour ${m(c.prix)}`, {type: "acheter"}, "", j.argent < c.prix)
+      + bouton("Passer", {type: "passer"}, "ghost");
+    if(j.argent < c.prix) h += `<p class="muted" style="margin:0;font-size:.85rem;text-align:center">Pas assez d'argent : mets un quartier en gage ou passe.</p>`;
+  }else if(G.phase === "dette"){
+    const d = G.dette;
+    h = `<div class="tete">⚠️ ${esc(j.nom)} doit ${m(d.m)} (${esc(d.raison)})</div>`
+      + bouton(`💸 Payer ${m(d.m)}`, {type: "payer"}, "bleu", j.argent < d.m);
+    if(j.argent < d.m) h += `<p class="muted" style="margin:0;font-size:.85rem;text-align:center">Vends des niveaux ou mets des quartiers en gage, ci-dessous.</p>`;
+    h += confirmeFaillite ? bouton("💥 Oui, je déclare faillite", {type: "faillite"}) : `<button class="btn ghost" id="demFaillite">Déclarer faillite</button>`;
+  }else{
+    h = bouton(G.rejouer && !j.enCellule ? "🎲 Double : relancer" : "✅ Fin du tour", {type: "fin"}) + boutonEchange();
+  }
+  box.innerHTML = h;
+  if($("demFaillite")) $("demFaillite").onclick = () => { confirmeFaillite = true; dessinerActions(); };
+  if($("echanger")) $("echanger").onclick = ouvrirEchange;
+}
+function boutonEchange(){
+  return actifs().length > 1 ? `<button class="btn ghost" id="echanger">🤝 Proposer un échange</button>` : "";
+}
+function dessinerBiens(){
+  const v = vue();
+  const mes = v >= 0 ? casesDe(v) : [];
+  $("blocBiens").classList.toggle("cache", !mes.length);
+  if(!mes.length) return;
+  const j = G.joueurs[v], aLui = v === acteur() && !G.offre;
+  const libre = aLui && (G.phase === "lancer" || G.phase === "gestion");
+  const urgence = aLui && (G.phase === "dette" || G.phase === "achat");
+  $("biens").innerHTML = mes.map(k => {
+    const c = cases()[k], p = P(k);
+    const couleur = c.groupe ? T.groupes[c.groupe].couleur : "var(--muted)";
+    let b = "";
+    if(c.type === "quartier" && groupeComplet(k, v) && p.n < 4 && !memeGroupe(k).some(n => P(n).g))
+      b += bouton(`⬆️ ${m(up(k))}`, {type: "ameliorer", c: k}, "bleu", !libre || j.argent < up(k));
+    if(p.n) b += bouton(`⬇️ +${m(Math.floor(up(k) / 2))}`, {type: "vendre", c: k}, "ghost", !(libre || urgence));
+    if(p.g) b += bouton(`🔓 ${m(coutLever(k))}`, {type: "lever", c: k}, "ghost", !libre || j.argent < coutLever(k));
+    else if(groupeNu(k)) b += bouton(`🏦 +${m(Math.floor(c.prix / 2))}`, {type: "gager", c: k}, "ghost", !(libre || urgence));
+    return `<div class="bien"><span class="pastille" style="background:${couleur}"></span>
+      <span class="n" data-fiche="${k}">${esc(c.nom)}${p.g ? " (gage)" : ""}${p.n ? " " + "▮".repeat(p.n) : ""}</span>
+      <span class="boutons">${b}</span></div>`;
+  }).join("");
+}
+function dessiner(){
+  if(!G) return;
+  dessinerCases(); dessinerDes(); dessinerPions(); dessinerJoueurs(); dessinerActions(); dessinerBiens();
+  $("msg").textContent = G.msg;
+  $("carte").classList.toggle("cache", !G.carte);
+  if(G.carte) $("carte").textContent = `${G.carte.ico} ${G.carte.t}`;
+  $("pot").textContent = `💰 Cagnotte : ${m(G.pot)}`;
+  $("journal").innerHTML = G.journal.map(t => `<div>${esc(t)}</div>`).join("");
+  verifierVictoire();
+}
+function verifierVictoire(){
+  if(G.phase !== "fin" || victoireVue) return;
+  victoireVue = true;
+  const g = G.joueurs[G.classement[0].i];
+  const pourMoi = mode === "ligne" ? G.classement[0].i === moi : !g.bot;
+  if(!pourMoi) return;
+  const n = stock.lire("victoires", 0) + 1;
+  stock.ecrire("victoires", n);
+  Base.record("mainmise", n, {texte: `${n} victoire${n > 1 ? "s" : ""}`});
+}
+function ficheCase(k){
+  const c = cases()[k], nom = c.nom || T.pioches[c.pioche].nom, ico = c.ico || T.pioches[c.pioche].ico;
+  let h = "";
+  if(achetable(c)){
+    const p = P(k);
+    h += `<p><b>Propriétaire :</b> ${p.p === null ? "personne" : esc(G.joueurs[p.p].nom)}${p.g ? " (en gage)" : ""}<br><b>Prix :</b> ${m(c.prix)}</p>`;
+    if(c.type === "quartier"){
+      const g = T.groupes[c.groupe];
+      h += `<p><span style="color:${g.couleur};font-weight:800">${esc(g.nom)}</span> · construire : ${m(g.up)} le niveau</p><table class="loyers">`
+        + `<tr class="${!p.n && !(p.p !== null && groupeComplet(k, p.p)) ? "ici" : ""}"><td>Loyer nu</td><td>${m(c.loyers[0])}</td></tr>`
+        + `<tr class="${!p.n && p.p !== null && groupeComplet(k, p.p) ? "ici" : ""}"><td>Toute la couleur</td><td>${m(c.loyers[0] * 2)}</td></tr>`
+        + T.niveaux.map((n, i) => `<tr class="${p.n === i + 1 ? "ici" : ""}"><td>${esc(n)}</td><td>${m(c.loyers[i + 1])}</td></tr>`).join("") + "</table>";
+    }else if(c.type === "ligne") h += `<p>Loyer : ${m(25)}, doublé pour chaque autre ligne du même propriétaire (${m(200)} avec les 4).</p>`;
+    else h += `<p>Loyer : total des dés × 4, ou × 10 avec tous les services.</p>`;
+  }else{
+    const textes = {
+      depart: `Passer ici rapporte ${m(T.regles.salaire)}.`,
+      cellule: `Simple visite si tu t'y arrêtes. En cellule : paie ${m(T.regles.amende)}, utilise un passe ou tente un double.`,
+      marche: `Ramasse toute la cagnotte (${m(G.pot)} en ce moment).`,
+      rafle: `Direction ${T.cases[prison()].nom}, sans toucher de salaire.`,
+      taxe: `Verse ${m(c.montant)} à la cagnotte.`,
+      carte: "Pioche une carte : ça peut payer… ou coûter cher."
+    };
+    h = `<p>${textes[c.type]}</p>`;
+  }
+  Base.fenetre(`${ico} ${nom}`, h, {html: true, bouton: "Fermer"});
+}
+function ouvrirEchange(){
+  const v = vue();
+  const racine = document.createElement("div"); racine.className = "echange";
+  const autres = actifs().filter(i => i !== v);
+  racine.innerHTML = `<label class="etiquette" style="margin:0">Avec <select class="champ" id="exQui">${autres.map(i => `<option value="${i}">${esc(G.joueurs[i].nom)}</option>`).join("")}</select></label>
+    <div class="cols"><div class="col"><b>Tu donnes</b><div id="exDonne"></div><input class="champ" id="exArgentD" type="number" min="0" inputmode="numeric" placeholder="${T.monnaie}"></div>
+    <div class="col"><b>Tu demandes</b><div id="exVeut"></div><input class="champ" id="exArgentV" type="number" min="0" inputmode="numeric" placeholder="${T.monnaie}"></div></div>
+    <button class="btn" id="exEnvoyer">📨 Envoyer l'offre</button>`;
+  const liste = (qui, nom) => {
+    const c = casesDe(qui).filter(k => echangeable(k, qui));
+    return c.length ? c.map(k => `<label><input type="checkbox" name="${nom}" value="${k}"> ${esc(cases()[k].nom)}</label>`).join("") : `<span class="vide">Aucun quartier échangeable</span>`;
+  };
+  const q = racine.querySelector("#exQui");
+  const maj = () => {
+    racine.querySelector("#exDonne").innerHTML = liste(v, "d");
+    racine.querySelector("#exVeut").innerHTML = liste(Number(q.value), "v");
+  };
+  q.onchange = maj; maj();
+  const fen = Base.fenetre("🤝 Échange", racine, {bouton: "Annuler"});
+  racine.querySelector("#exEnvoyer").onclick = () => {
+    const coches = n => [...racine.querySelectorAll(`input[name=${n}]:checked`)].map(e => Number(e.value));
+    jouer({
+      type: "offre", a: Number(q.value),
+      donne: {argent: Number(racine.querySelector("#exArgentD").value) || 0, cases: coches("d")},
+      veut: {argent: Number(racine.querySelector("#exArgentV").value) || 0, cases: coches("v")}
+    }, "Offre impossible : vérifie les montants et les quartiers.");
+    fen.close();
+  };
+}
+
+/* ---------- Clics sur les boutons d'action ---------- */
+function jouer(a, siRefus){
+  if(mode === "ligne" && !salle.hote){ salle.envoyer({t: "action", a}); return; }
+  const i = mode === "ligne" ? moi : (a.type === "annulerOffre" ? G.offre && G.offre.de : acteur());
+  if(agir(i, a)) apresChangement();
+  else if(siRefus) Base.toast(siRefus);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-a]");
+  if(b && !b.disabled){ jouer(JSON.parse(b.dataset.a)); return; }
+  const f = e.target.closest("[data-fiche]");
+  if(f) ficheCase(Number(f.dataset.fiche));
+});
+window.addEventListener("resize", () => { if(G && pions.length) G.joueurs.forEach((j, i) => { if(affiche[i]) placerPion(i, affiche[i].k); }); });
+
+function apresChangement(){
+  if(mode === "ligne" && salle && salle.hote) diffuser();
+  if(mode === "local"){ if(G.phase === "fin") stock.effacer("partie"); else stock.ecrire("partie", G); }
+  dessiner();
+  planifierBot();
+}
+const diffuser = () => salle && salle.envoyer({t: "etat", G});
+function demarrer(){ ecran("jeu"); construirePlateau(); dessiner(); planifierBot(); }
+function rejouer(){
+  const garde = j => ({id: j.id, nom: j.nom, avatar: j.avatar, bot: j.bot});
+  const humains = mode === "ligne" ? salle.joueurs.map(j => ({id: j.id, nom: j.pseudo, avatar: j.avatar})) : G.joueurs.filter(j => !j.bot).map(garde);
+  const liste = [...humains, ...G.joueurs.filter(j => j.bot).map(garde)].slice(0, 6);
+  if(liste.length < 2){
+    Base.toast("Il faut au moins 2 joueurs pour rejouer.");
+    G = null; moi = -1;
+    majSalle(); ecran("pAttente");
+    return;
+  }
+  nouvellePartie(melange(liste), G.limite, G.theme);
+  if(mode === "ligne") moi = G.joueurs.findIndex(j => j.id === salle.moi);
+  affiche = [];
+  construirePlateau();
+  apresChangement();
+}
+
+/* =================================================================
+   MENUS
+   ================================================================= */
+function pilules(id, valeurs, cle, libelle, surChange){
+  const box = $(id);
+  box.innerHTML = "";
+  valeurs.forEach(v => {
+    const b = document.createElement("button");
+    b.textContent = libelle ? libelle(v) : v;
+    b.className = reg[cle] === v ? "on" : "";
+    b.onclick = () => { reg[cle] = v; pilules(id, valeurs, cle, libelle, surChange); surChange && surChange(); };
+    box.appendChild(b);
+  });
+}
+const libDuree = v => v ? v + " manches" : "Sans limite";
+const avatarsBots = ["🤖", "👾", "👽", "👻", "🎃"];
+const botsDe = n => melange(T.bots).slice(0, n).map((nom, i) => ({nom, avatar: avatarsBots[i], bot: true}));
+function majNoms(){
+  const anciens = stock.lire("noms", []);
+  $("noms").innerHTML = Array.from({length: reg.humains}, (_, i) => `<input class="champ" maxlength="16" data-nom placeholder="Joueur ${i + 1}" value="${esc(anciens[i] || (i === 0 ? Base.joueur.pseudo() : ""))}">`).join("");
+  majTotal();
+}
+function majTotal(){
+  const n = reg.humains + reg.bots, ok = n >= 2 && n <= 6;
+  $("goLocal").disabled = !ok; $("msgLocal").classList.toggle("cache", ok);
+}
+function menuTheme(){
+  const cles = Object.keys(THEMES);
+  $("choixTheme").classList.toggle("cache", cles.length < 2);
+  $("themes").innerHTML = "";
+  cles.forEach(c => {
+    const b = document.createElement("button");
+    b.textContent = THEMES[c].emoji + " " + THEMES[c].nom; b.className = c === theme ? "on" : "";
+    b.onclick = () => { appliquerTheme(c); stock.ecrire("theme", c); menuTheme(); };
+    $("themes").appendChild(b);
+  });
+}
+function afficherMenu(){
+  $("reprendre").classList.toggle("cache", !stock.lire("partie", null));
+  ecran("menu");
+}
+$("mLocal").onclick = () => {
+  pilules("nbHumains", [1, 2, 3, 4, 5, 6], "humains", null, majNoms);
+  pilules("nbBots", [0, 1, 2, 3, 4, 5], "bots", null, majTotal);
+  pilules("duree", [15, 25, 0], "duree", libDuree);
+  majNoms(); ecran("pLocal");
+};
+$("mLigne").onclick = () => { $("pseudo").value = Base.joueur.pseudo(); $("msgLigne").textContent = ""; ecran("pLigne"); };
+document.querySelectorAll("[data-menu]").forEach(b => b.onclick = afficherMenu);
+$("reprendre").onclick = () => {
+  G = stock.lire("partie", null);
+  if(!G || !THEMES[G.theme]) return;
+  mode = "local"; appliquerTheme(G.theme); victoireVue = false;
+  demarrer();
+};
+$("goLocal").onclick = () => {
+  const noms = [...document.querySelectorAll("[data-nom]")].map(e => e.value.trim());
+  stock.ecrire("noms", noms);
+  const humains = noms.map((n, i) => ({nom: n || "Joueur " + (i + 1), avatar: i === 0 ? Base.joueur.avatar() : Base.joueur.AVATARS[i + 1]}));
+  mode = "local";
+  appliquerTheme(theme);
+  nouvellePartie(melange([...humains, ...botsDe(reg.bots)]), reg.duree, theme);
+  stock.ecrire("partie", G);
+  demarrer();
+};
+$("quitter").onclick = () => {
+  clearTimeout(timerBot);
+  if(salle){ salle.quitter(); salle = null; }
+  G = null; mode = null; moi = -1;
+  afficherMenu();
+};
+
+/* =================================================================
+   EN LIGNE : l'hôte arbitre, les invités envoient leurs actions
+   ================================================================= */
+function pseudoOK(){
+  const p = $("pseudo").value.trim();
+  if(!p){ $("pseudo").focus(); $("msgLigne").textContent = "Choisis d'abord un pseudo 🙂"; return false; }
+  Base.joueur.changerPseudo(p); return true;
+}
+function majSalle(){
+  if(!salle) return;
+  $("salleJoueurs").innerHTML = salle.joueurs.map((j, i) => `<li>${esc(j.avatar)} ${esc(j.pseudo)}${i === 0 ? " 👑" : ""}</li>`).join("");
+  $("blocHote").classList.toggle("cache", !salle.hote);
+  $("reglagesHote").classList.toggle("cache", !salle.hote);
+  $("goLigne").classList.toggle("cache", !salle.hote);
+  $("attenteHote").classList.toggle("cache", salle.hote);
+  if(salle.hote){
+    const n = salle.joueurs.length + reg.botsL, ok = n >= 2 && n <= 6;
+    $("goLigne").disabled = !ok; $("msgSalle").classList.toggle("cache", ok);
+  }
+}
+$("creer").onclick = async () => {
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Création de la salle…";
+  try{
+    salle = await Reseau.creer("mainmise", {
+      max: 6,
+      surEssai: t => $("msgLigne").textContent = t,
+      surArrivee(j){
+        Base.toast(j.avatar + " " + j.pseudo + " a rejoint la salle !");
+        majSalle();
+        if(G) diffuser();
+      },
+      surDepart(j){
+        Base.toast(j.pseudo + " a quitté la salle.");
+        majSalle();
+        if(G){ joueurParti(j.id); apresChangement(); }
+      },
+      surMessage(m, j){
+        if(m.t === "etat?" && G) diffuser();
+        if(m.t === "action" && G){
+          const i = G.joueurs.findIndex(x => x.id === j.id);
+          if(i >= 0 && agir(i, m.a)) apresChangement(); else diffuser();
+        }
+      }
+    });
+    $("code").textContent = salle.code; $("msgLigne").textContent = "";
+    pilules("nbBotsL", [0, 1, 2, 3, 4, 5], "botsL", null, majSalle);
+    pilules("dureeL", [15, 25, 0], "dureeL", libDuree);
+    majSalle();
+    ecran("pAttente");
+  }catch(e){ salle = null; $("msgLigne").textContent = "❌ " + e.message; }
+};
+$("goLigne").onclick = () => {
+  mode = "ligne";
+  appliquerTheme(theme);
+  const humains = salle.joueurs.map(j => ({id: j.id, nom: j.pseudo, avatar: j.avatar}));
+  nouvellePartie(melange([...humains, ...botsDe(reg.botsL)]), reg.dureeL, theme);
+  moi = G.joueurs.findIndex(j => j.id === salle.moi);
+  diffuser();
+  demarrer();
+};
+$("rejoindre").onclick = () => rejoindre($("codeIn").value);
+$("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("rejoindre").click(); });
+async function rejoindre(code){
+  if(!pseudoOK()) return;
+  $("msgLigne").textContent = "Connexion à la salle…";
+  try{
+    salle = await Reseau.rejoindre("mainmise", code, {
+      surListe: majSalle,
+      surMessage(m){
+        if(m.t !== "etat") return;
+        const nouvelle = !G || m.G.seq < G.seq || m.G.theme !== G.theme;
+        G = m.G;
+        moi = G.joueurs.findIndex(j => j.id === salle.moi);
+        if(nouvelle){
+          mode = "ligne"; victoireVue = false;
+          appliquerTheme(G.theme);
+          ecran("jeu"); construirePlateau();
+        }
+        dessiner();
+      },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; G = null; mode = null; afficherMenu(); }
+    });
+    $("msgLigne").textContent = "";
+    majSalle();
+    ecran("pAttente");
+    salle.envoyer({t: "etat?"});
+  }catch(e){ salle = null; $("msgLigne").textContent = "❌ " + e.message; }
+}
+$("annuler").onclick = () => { if(salle){ salle.quitter(); salle = null; } ecran("pLigne"); };
+$("copier").onclick = async () => {
+  try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à tes amis 📨"); }
+  catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
+};
+$("tester").onclick = async () => { $("msgLigne").textContent = "Test des relais…"; $("msgLigne").textContent = await Reseau.tester(); };
+
+appliquerTheme(theme);
+menuTheme();
+afficherMenu();
+
+/* Arrivée par un lien d'invitation (?salle=CODE) */
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){
+  $("codeIn").value = codeLien; $("pseudo").value = Base.joueur.pseudo(); ecran("pLigne");
+  if(Base.joueur.pseudo()) rejoindre(codeLien);
+  else $("msgLigne").textContent = "Choisis ton pseudo puis clique sur « Rejoindre ».";
+}
+</script>
+</body>
+</html>
