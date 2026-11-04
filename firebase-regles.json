@@ -206,6 +206,22 @@
         ".validate": false
       }
     },
+    "defense_sauvegardes": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['json', 't'])",
+        "json": {
+          ".validate": "newData.isString() && newData.val().length <= 200000"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
+    },
     "profils": {
       "$uid": {
         ".read": "auth != null",

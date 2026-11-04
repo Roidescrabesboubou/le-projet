@@ -45,6 +45,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "defense",
+    title: "Défense du Château",
+    emoji: "🏰",
+    desc: "Tower defense à construire toi-même : place tes camps, trace les chemins jusqu'au château et poste tes tours. Chaque boss tué fait un tirage pour une nouvelle tour ou un nouveau chemin, du commun au secret. Dépense ton or dans l'arbre d'améliorations pour aller toujours plus loin.",
+    tags: ["Stratégie", "Collection", "Solo"],
+    colors: ["#7cc35a", "#8a5a2b"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "blindtest",
     title: "Blind Test",
     emoji: "🎧",
