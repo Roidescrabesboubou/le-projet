@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Rocade</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#3f6fb5;--fond1:rgba(63,111,181,.13);--fond2:rgba(226,120,60,.1)}
+.barre{display:flex;align-items:center;justify-content:space-between;gap:6px 12px;width:100%;flex-wrap:wrap}
+.infos{display:flex;gap:12px;font-family:Fredoka,sans-serif;font-size:1.1rem;font-variant-numeric:tabular-nums;align-items:center}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn.on{background:var(--accent);color:#fff}
+#outils{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;width:100%}
+.outil{display:flex;align-items:center;gap:5px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);padding:5px 9px;font-weight:800;font-size:.86rem;font-variant-numeric:tabular-nums}
+.outil.on{border-color:var(--accent);background:var(--fond1)}
+.outil.fixe{cursor:default;border-style:dashed}
+.outil.vide b{color:var(--ko)}
+#scene{display:block;border-radius:12px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:crosshair;box-shadow:0 2px 12px rgba(0,0,0,.2);max-width:100%}
+.villes{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;width:100%}
+.ville{display:flex;flex-direction:column;gap:6px;padding:10px;border:2px solid var(--line);border-radius:16px;background:var(--card);color:var(--text);text-align:left;font-weight:600}
+.ville:hover{border-color:var(--accent)}
+.ville canvas{width:100%;border-radius:8px;display:block}
+.ville b{font-family:Fredoka,sans-serif;font-size:1.2rem}
+.ville small{color:var(--muted);display:flex;justify-content:space-between}
+.cartes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.carte{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 10px;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--text);font-weight:600}
+.carte:hover{border-color:var(--accent)}
+.carte span{font-size:2rem}
+.carte b{font-family:Fredoka,sans-serif;font-size:1.05rem}
+.carte small{color:var(--muted);line-height:1.2}
+.recap{text-align:center}
+.recap .gros{font-family:Fredoka,sans-serif;font-size:2.2rem;margin:0}
+.help{color:var(--muted);font-size:.8rem;text-align:center;margin:0}
+@media (pointer:coarse){.help{display:none}}
+@media (max-width:640px){.outil span.nom{display:none}}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="menu" style="width:100%;display:flex;flex-direction:column;gap:12px;align-items:center">
+    <p class="muted" style="margin:0;text-align:center">Choisis une ville, trace tes routes et tiens le plus longtemps possible.</p>
+    <div class="villes" id="villes"></div>
+  </section>
+  <section id="jeu" class="cache" style="width:100%;display:flex;flex-direction:column;gap:8px;align-items:center">
+    <div class="barre">
+      <div class="infos">
+        <span id="iVille"></span>
+        <span title="Trajets réussis">🚗 <b id="iScore">0</b></span>
+        <span title="Semaine">📅 <b id="iSemaine">1</b></span>
+      </div>
+      <div class="actions">
+        <button class="btn ghost petit" id="bVite">⏩ ×2</button>
+        <button class="btn ghost petit" id="bPause">⏸️ Pause</button>
+        <button class="btn ghost petit" id="bMenu">🏙️ Villes</button>
+      </div>
+    </div>
+    <div id="outils"></div>
+    <canvas id="scene"></canvas>
+    <p class="help">Glisse pour tracer une route, en diagonale aussi · Clic droit ou gomme pour effacer · Touches 1 à 5 : outils · Espace : pause</p>
+  </section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="villes.js"></script>
+<script src="moteur.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const store=Base.stock("rocade_");
+const{L,H,id:idCase,X,Y}=RocadeMoteur;
+const COULEURS=["#d8432f","#2b78d0","#e8a20c","#8a4fd0","#0f9d8e","#d0468f"];
+
+Base.entete({titre:"Rocade",emoji:"🛣️",
+  aide:`<p>Chaque destination réclame des voitures de sa couleur. Relie-la aux maisons de la même couleur : les voitures font le trajet toutes seules.</p>
+  <ul>
+    <li><b>Route</b> : glisse pour tracer, en droite ou en diagonale. Un bâtiment se branche uniquement par sa porte, le petit trait gris.</li>
+    <li><b>Gomme</b> ou clic droit : efface et rend ce qui était posé.</li>
+    <li><b>Pont</b> et <b>tunnel</b> : ils se posent tout seuls quand ta route touche l'eau ou un relief (6 cases au plus).</li>
+    <li><b>Carrefour</b> : dès que 3 routes se croisent, une seule voiture passe à la fois. Ça bouchonne vite !</li>
+    <li><b>Rond-point</b> : 4 voitures à la fois. <b>Feu</b> : chaque axe passe à son tour, par deux.</li>
+    <li><b>Autoroute</b> : glisse d'une route à une autre, même loin. Très rapide, et elle passe au-dessus de tout.</li>
+    <li>Une destination trop en attente s'entoure d'un cercle rouge. Si le cercle se ferme, la partie est finie.</li>
+    <li>Chaque semaine, la carte s'agrandit, tu reçois des routes et tu choisis une amélioration.</li>
+  </ul>`});
+
+/* ---------- Dessin du terrain, partagé par le menu et la partie ---------- */
+function imageTerrain(ville,e,avecNoms){
+  const c=document.createElement("canvas");c.width=L*e;c.height=H*e;
+  const g=c.getContext("2d"),s=RocadeMoteur.terrain(ville);
+  g.fillStyle=ville.sol;g.fillRect(0,0,c.width,c.height);
+  for(let y=0;y<H;y++)for(let x=0;x<L;x++){
+    const t=s[idCase(x,y)];
+    if(!t)continue;
+    g.fillStyle=t===1?ville.eau:t===2?ville.mont:ville.parc;
+    g.fillRect(x*e,y*e,e+.5,e+.5);
+  }
+  // reliefs et arbres
+  for(let y=0;y<H;y++)for(let x=0;x<L;x++){
+    const t=s[idCase(x,y)],a=(x+.5)*e,b=(y+.5)*e;
+    if(t===2){g.fillStyle="rgba(0,0,0,.14)";g.beginPath();g.moveTo(a,b-e*.32);g.lineTo(a+e*.34,b+e*.26);g.lineTo(a-e*.34,b+e*.26);g.closePath();g.fill()}
+    if(t===3&&(x+y)%2===0){g.fillStyle="rgba(40,100,50,.28)";g.beginPath();g.arc(a,b,e*.22,0,7);g.fill()}
+  }
+  if(avecNoms){
+    g.font=`italic 700 ${e*.72}px Nunito,sans-serif`;g.textAlign="center";g.textBaseline="middle";
+    g.fillStyle="rgba(40,40,50,.42)";
+    for(const n of ville.noms)g.fillText(n.t,(n.x+.5)*e,(n.y+.5)*e);
+  }
+  return c;
+}
+
+/* ---------- Menu ---------- */
+function afficherMenu(){
+  J=null;$("menu").classList.remove("cache");$("jeu").classList.add("cache");
+  const z=$("villes");z.innerHTML="";
+  ROCADE_VILLES.forEach(v=>{
+    const b=document.createElement("button");b.className="ville";b.type="button";
+    const c=imageTerrain(v,6,false);
+    const t=document.createElement("b");t.textContent=`${v.emoji} ${v.nom}`;
+    const s=document.createElement("small");
+    const a=document.createElement("span");a.textContent="⭐".repeat(v.etoiles);
+    const r=document.createElement("span");const rec=store.lire("record_"+v.id,0);r.textContent=rec?`🏆 ${rec}`:"Pas encore jouée";
+    s.append(a,r);b.append(c,t,s);
+    b.onclick=()=>demarrer(v);
+    z.appendChild(b);
+  });
+}
+
+/* ---------- Partie ---------- */
+const cv=$("scene"),ctx=cv.getContext("2d");
+let J=null,fond=null,outil="route",pause=false,vite=false,dernier=0,geste=null,fenetreOuverte=false,finAffichee=false;
+let vue={x:0,y:0,w:L,h:H},W=800,Hc=500,portrait=false,ech=20,ox=0,oy=0;
+const OUTILS=[
+  {id:"route",nom:"Route",e:"🛣️",k:"routes"},
+  {id:"gomme",nom:"Gomme",e:"🧽"},
+  {id:"rond",nom:"Rond-point",e:"⭕",k:"ronds"},
+  {id:"feu",nom:"Feu",e:"🚦",k:"feux"},
+  {id:"autoroute",nom:"Autoroute",e:"🛤️",k:"autoroutes"}
+];
+function demarrer(ville){
+  J=RocadeMoteur.creer(ville,Math.random()*2147483647|0);
+  fond=imageTerrain(ville,24,true);
+  outil="route";pause=false;finAffichee=false;fenetreOuverte=false;
+  $("menu").classList.add("cache");$("jeu").classList.remove("cache");
+  $("iVille").textContent=`${ville.emoji} ${ville.nom}`;
+  construireOutils();majBoutons();dimensionner();
+  const z=J.zone;vue={x:z.x1-1,y:z.y1-1,w:z.x2-z.x1+3,h:z.y2-z.y1+3};
+}
+function construireOutils(){
+  const o=$("outils");o.innerHTML="";
+  OUTILS.forEach((t,i)=>{
+    const b=document.createElement("button");b.className="outil";b.type="button";b.dataset.id=t.id;b.title=t.nom+" (touche "+(i+1)+")";
+    b.innerHTML=`${t.e} <span class="nom">${t.nom}</span> <b></b>`;
+    b.onclick=()=>{outil=t.id;majBoutons()};
+    o.appendChild(b);
+  });
+  for(const[k,e,nom]of[["ponts","🌉","Ponts"],["tunnels","🚇","Tunnels"]]){
+    const d=document.createElement("div");d.className="outil fixe";d.dataset.k=k;d.title=nom+" : posés automatiquement";
+    d.innerHTML=`${e} <span class="nom">${nom}</span> <b></b>`;o.appendChild(d);
+  }
+}
+function majBoutons(){
+  $("bPause").textContent=pause?"▶️ Reprendre":"⏸️ Pause";
+  $("bVite").classList.toggle("on",vite);
+  document.querySelectorAll(".outil[data-id]").forEach(b=>b.classList.toggle("on",b.dataset.id===outil));
+}
+function majInfos(){
+  $("iScore").textContent=J.score;$("iSemaine").textContent=J.semaine;
+  document.querySelectorAll(".outil").forEach(b=>{
+    const t=OUTILS.find(o=>o.id===b.dataset.id),k=b.dataset.k||(t&&t.k);
+    if(!k)return;
+    const n=J.total[k]-J.utilise[k];
+    b.querySelector("b").textContent=n;b.classList.toggle("vide",n<=0);
+  });
+}
+function proposerCartes(){
+  fenetreOuverte=true;
+  const zone=document.createElement("div");zone.className="cartes";
+  const a=J.choix[0];
+  const ouverte=()=>document.querySelector("dialog[open]");
+  J.choix.forEach(c=>{
+    const b=document.createElement("button");b.className="carte";b.type="button";
+    const e=document.createElement("span");e.textContent=c.emoji;
+    const t=document.createElement("b");t.textContent=c.titre;
+    const s=document.createElement("small");s.textContent=c.texte;
+    b.append(e,t,s);
+    b.onclick=()=>{J.choisir(c.id);const d=ouverte();d&&d.close()};
+    zone.appendChild(b);
+  });
+  Base.fenetre(`📅 Semaine ${J.semaine} : +14 routes, choisis un bonus`,zone,{bouton:`Prendre « ${a.titre} »`,fermeture(){if(J&&J.choix)J.choisir(a.id);fenetreOuverte=false}});
+}
+function terminer(){
+  finAffichee=true;
+  const v=J.ville,cle="record_"+v.id,avant=store.lire(cle,0);
+  if(J.score>avant)store.ecrire(cle,J.score);
+  Base.record("rocade",J.score,{mieux:"haut",texte:J.score+" trajets"});
+  const r=document.createElement("div");r.className="recap";
+  const m=Math.floor(J.temps/60),s=String(Math.floor(J.temps%60)).padStart(2,"0");
+  r.innerHTML=`<p class="gros">🚗 ${J.score}</p><p class="muted">${v.nom} · ${m}:${s} · semaine ${J.semaine}</p><p class="muted">${J.score>avant?"🏆 Nouveau record pour cette ville !":"Record ici : "+avant}</p>`;
+  Base.fenetre("🚧 Ville paralysée !",r,{bouton:"🏙️ Choisir une ville",fermeture:afficherMenu});
+}
+
+/* ---------- Taille et repères ---------- */
+function dimensionner(){
+  const place=Math.min(document.querySelector(".b-page").clientWidth-32,1100);
+  portrait=innerHeight>innerWidth&&innerWidth<760;
+  W=place;Hc=Math.max(260,portrait?innerHeight-265:Math.min(place*.68,innerHeight-190));
+  const r=devicePixelRatio||1;
+  cv.width=W*r;cv.height=Hc*r;cv.style.width=W+"px";cv.style.height=Hc+"px";
+}
+function caler(){
+  const ew=portrait?Hc:W,eh=portrait?W:Hc;
+  ech=Math.min(ew/vue.w,eh/vue.h);
+  ox=(ew-vue.w*ech)/2-vue.x*ech;oy=(eh-vue.h*ech)/2-vue.y*ech;
+}
+/* Sur un téléphone en hauteur, la carte est tournée d'un quart de tour */
+function monde(e){
+  const b=cv.getBoundingClientRect(),sx=e.clientX-b.left,sy=e.clientY-b.top;
+  const lx=portrait?sy:sx,ly=portrait?W-sx:sy;
+  return[(lx-ox)/ech,(ly-oy)/ech];
+}
+function caseSous(e){
+  const[x,y]=monde(e),a=Math.floor(x),b=Math.floor(y);
+  return a<0||b<0||a>=L||b>=H?-1:idCase(a,b);
+}
+
+/* ---------- Tracé ---------- */
+function refus(t){if(typeof t==="string"&&t)Base.toast(t)}
+function pas(cur,c){
+  const dx=X(c)-X(cur),dy=Y(c)-Y(cur),ax=Math.abs(dx),ay=Math.abs(dy);
+  const sx=ax>=ay*2?Math.sign(dx):ay>=ax*2?0:Math.sign(dx);
+  const sy=ay>=ax*2?Math.sign(dy):ax>=ay*2?0:Math.sign(dy);
+  return idCase(X(cur)+sx,Y(cur)+sy);
+}
+/* Vers un bâtiment, la route contourne les obstacles pour rejoindre sa porte */
+function contourner(de,vers){
+  const av=new Map([[de,-1]]),f=[de];
+  for(let i=0;i<f.length;i++){
+    const c=f[i];
+    if(c===vers){const p=[];let k=c;while(k!==-1){p.push(k);k=av.get(k)}return p.reverse()}
+    for(const[dx,dy]of J.DIRS){
+      const x=X(c)+dx,y=Y(c)+dy;
+      if(x<0||y<0||x>=L||y>=H)continue;
+      const v=idCase(x,y);
+      if(av.has(v)||!J.dansZone(v)||J.empreinte.has(v))continue;
+      if((J.sol[v]===J.EAU||J.sol[v]===J.MONT)&&!J.liens.has(v))continue;
+      av.set(v,c);f.push(v);
+    }
+  }
+  return null;
+}
+function tracerVers(c){
+  let cur=geste.dernier;
+  const cible=J.empreinte.get(c);
+  const but=cible?cible.porte:c;
+  const depart=J.batiments.get(cur);
+  if(depart&&cur!==but){
+    const r=J.relier(cur,depart.porte);
+    if(r!==true){refus(r);return}
+    cur=depart.porte;
+  }
+  const detour=cible&&contourner(cur,but);
+  while(cur!==but){
+    const s=detour?detour[detour.indexOf(cur)+1]:pas(cur,but),r=J.relier(cur,s);
+    if(r!==true){refus(r);break}
+    cur=s;
+  }
+  if(cur===but&&cible&&cible!==depart){
+    const r=J.relier(cur,cible.c);
+    if(r===true)cur=cible.c;else refus(r);
+  }
+  geste.dernier=cur;
+}
+cv.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  if(!J||J.fini)return;
+  const c=caseSous(e);if(c<0)return;
+  cv.setPointerCapture(e.pointerId);
+  const t=e.button===2?"gomme":outil;
+  if(t==="rond"||t==="feu"){refus(J.jonction(c,t));return}
+  const b=J.empreinte.get(c);
+  geste={outil:t,dernier:b?b.c:c,debut:c,fin:c};
+  if(t==="gomme")J.effacer(c);
+});
+cv.addEventListener("pointermove",e=>{
+  if(!geste||!J||J.fini)return;
+  const c=caseSous(e);
+  if(c<0)return;
+  geste.fin=c;
+  if(geste.outil==="autoroute")return;
+  if(geste.outil==="gomme"){if(c!==geste.dernier){J.effacer(c);geste.dernier=c}return}
+  if(c!==geste.dernier&&J.empreinte.get(c)!==J.batiments.get(geste.dernier))tracerVers(c);
+});
+function lacherGeste(){
+  if(geste&&geste.outil==="autoroute"&&J&&geste.debut!==geste.fin)refus(J.autoroute(geste.debut,geste.fin));
+  geste=null;
+}
+cv.addEventListener("pointerup",lacherGeste);
+cv.addEventListener("pointercancel",()=>{geste=null});
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+
+/* ---------- Dessin de la partie (unité : une case) ---------- */
+const cx=c=>X(c)+.5,cy=c=>Y(c)+.5;
+function rond(x,y,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill()}
+/* Chaque couleur a sa forme, pour rester lisible sans distinguer les couleurs */
+function forme(n,x,y,r,c){
+  ctx.fillStyle=c;ctx.beginPath();
+  if(n===0)ctx.arc(x,y,r,0,7);
+  else if(n===1)ctx.rect(x-r*.85,y-r*.85,r*1.7,r*1.7);
+  else if(n===2){ctx.moveTo(x,y-r*1.1);ctx.lineTo(x+r,y+r*.8);ctx.lineTo(x-r,y+r*.8);ctx.closePath()}
+  else if(n===3){ctx.moveTo(x,y-r*1.2);ctx.lineTo(x+r,y);ctx.lineTo(x,y+r*1.2);ctx.lineTo(x-r,y);ctx.closePath()}
+  else if(n===4){for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,q=i%2?r*.5:r*1.2;ctx.lineTo(x+Math.cos(a)*q,y+Math.sin(a)*q)}ctx.closePath()}
+  else{ctx.rect(x-r*.35,y-r,r*.7,r*2);ctx.rect(x-r,y-r*.35,r*2,r*.7)}
+  ctx.fill();
+}
+function traits(filtre,couleur,large,tirets){
+  ctx.strokeStyle=couleur;ctx.lineWidth=large;ctx.lineCap=tirets?"butt":"round";ctx.setLineDash(tirets||[]);ctx.beginPath();
+  for(const[a,l]of J.liens)for(const[b,t]of l){
+    if(a>b||!filtre(a,b,t))continue;
+    ctx.moveTo(cx(a),cy(a));ctx.lineTo(cx(b),cy(b));
+  }
+  ctx.stroke();ctx.setLineDash([]);
+}
+function dessinerRoutes(){
+  const route=(a,b,t)=>t==="r";
+  traits((a,b,t)=>t==="r"&&(J.sol[a]===J.EAU||J.sol[b]===J.EAU),"#8d7355",.86);
+  traits(route,"#4d525c",.64);
+  traits(route,"rgba(255,255,255,.55)",.045,[.22,.26]);
+  traits((a,b,t)=>t==="r"&&J.sol[a]===J.MONT&&J.sol[b]===J.MONT,"rgba(25,20,15,.72)",.64);
+  // ronds-points et feux
+  for(const[c,t]of J.jonctions){
+    const x=cx(c),y=cy(c);
+    if(t==="rond"){rond(x,y,.56,"#4d525c");rond(x,y,.24,"#7fbf6a")}
+    else{
+      rond(x,y,.34,"#26282e");
+      const p=J.phaseFeu(c);
+      rond(x-.13,y,.1,p===0?"#39d353":"#e0453a");rond(x+.13,y,.1,p===1?"#39d353":"#e0453a");
+    }
+  }
+}
+function dessinerAutoroutes(){
+  const auto=(a,b,t)=>t==="a";
+  traits(auto,"#23508f",.62);
+  traits(auto,"#6fa5e8",.44);
+  traits(auto,"rgba(255,255,255,.8)",.05,[.3,.3]);
+  if(geste&&geste.outil==="autoroute"&&geste.debut!==geste.fin){
+    ctx.strokeStyle="rgba(35,80,143,.6)";ctx.lineWidth=.4;ctx.lineCap="round";ctx.beginPath();
+    ctx.moveTo(cx(geste.debut),cy(geste.debut));ctx.lineTo(cx(geste.fin),cy(geste.fin));ctx.stroke();
+  }
+}
+function dessinerPorte(b){
+  ctx.strokeStyle=J.liens.has(b.c)?"#4d525c":"#8b8f97";ctx.lineWidth=.3;ctx.lineCap="round";ctx.beginPath();
+  ctx.moveTo(cx(b.c),cy(b.c));ctx.lineTo(cx(b.c)+(X(b.porte)-X(b.c))*.72,cy(b.c)+(Y(b.porte)-Y(b.c))*.72);ctx.stroke();
+}
+function apparition(b){return Math.min(1,(J.temps-b.ne)*4+.01)}
+function dessinerMaison(m){
+  dessinerPorte(m);
+  const x=cx(m.c),y=cy(m.c),e=apparition(m)*.42,c=COULEURS[m.couleur];
+  ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x-e,y-e,e*2,e*2,.1);ctx.fill();
+  ctx.fillStyle="rgba(0,0,0,.2)";ctx.beginPath();ctx.moveTo(x-e,y);ctx.lineTo(x,y-e);ctx.lineTo(x+e,y);ctx.lineTo(x+e,y+e);ctx.lineTo(x-e,y+e);ctx.closePath();ctx.fill();
+  const l=m.voitures-m.dehors;
+  for(let i=0;i<l;i++)rond(x+(i-(l-1)/2)*.26,y+.14,.08,"#fff");
+}
+function dessinerDest(d){
+  dessinerPorte(d);
+  const xs=d.cases.map(X),ys=d.cases.map(Y),x1=Math.min(...xs),y1=Math.min(...ys),a=apparition(d);
+  const mx=x1+1,my=y1+1,c=COULEURS[d.couleur];
+  ctx.save();ctx.translate(mx,my);ctx.scale(a,a);
+  ctx.fillStyle="#fbfaf6";ctx.strokeStyle=c;ctx.lineWidth=.14;ctx.beginPath();ctx.roundRect(-.92,-.92,1.84,1.84,.22);ctx.fill();ctx.stroke();
+  forme(d.couleur,0,-.42,.22,c);
+  // une marque par voiture attendue
+  const n=Math.min(d.pins,12);
+  for(let i=0;i<n;i++)forme(d.couleur,-.56+(i%6)*.225,.1+(i/6|0)*.3,.09,c);
+  if(d.danger>0){
+    ctx.strokeStyle="rgba(255,255,255,.85)";ctx.lineWidth=.2;ctx.beginPath();ctx.arc(0,0,1.32,0,7);ctx.stroke();
+    ctx.strokeStyle="#d81f1f";ctx.lineWidth=.15;ctx.beginPath();ctx.arc(0,0,1.32,-Math.PI/2,-Math.PI/2+d.danger*Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+}
+function dessinerVoiture(v){
+  const de=v.chemin[v.i],vers=v.chemin[v.i+1],c=COULEURS[v.maison.couleur];
+  let x=cx(de),y=cy(de),an=v.angle||0;
+  if(vers!=null){
+    const dx=cx(vers)-x,dy=cy(vers)-y,lon=Math.hypot(dx,dy)||1;
+    // chacun roule à droite, les deux sens se croisent sans se gêner
+    x+=dx*v.t-dy/lon*.14;y+=dy*v.t+dx/lon*.14;
+    an=Math.atan2(dy,dx);v.angle=an;
+  }
+  ctx.save();ctx.translate(x,y);ctx.rotate(an);
+  ctx.fillStyle=c;ctx.strokeStyle="rgba(255,255,255,.9)";ctx.lineWidth=.035;ctx.beginPath();ctx.roundRect(-.2,-.11,.4,.22,.07);ctx.fill();ctx.stroke();
+  ctx.fillStyle="rgba(255,255,255,.65)";ctx.fillRect(.03,-.08,.09,.16);
+  ctx.restore();
+}
+function dessiner(){
+  const r=devicePixelRatio||1;
+  ctx.setTransform(r,0,0,r,0,0);
+  ctx.fillStyle="#3b3f47";ctx.fillRect(0,0,W,Hc);
+  if(portrait){ctx.translate(W,0);ctx.rotate(Math.PI/2)}
+  ctx.translate(ox,oy);ctx.scale(ech,ech);
+  ctx.drawImage(fond,0,0,L,H);
+  dessinerRoutes();
+  J.maisons.forEach(dessinerMaison);
+  J.dests.forEach(dessinerDest);
+  J.voitures.forEach(dessinerVoiture);
+  dessinerAutoroutes();
+  // hors de la zone constructible, la carte reste visible mais voilée
+  const z=J.zone;
+  ctx.fillStyle="rgba(30,32,40,.45)";ctx.beginPath();ctx.rect(-2,-2,L+4,H+4);ctx.rect(z.x1,z.y1,z.x2-z.x1+1,z.y2-z.y1+1);ctx.fill("evenodd");
+  if(pause){
+    ctx.fillStyle="rgba(0,0,0,.25)";ctx.fillRect(vue.x,vue.y,vue.w,vue.h);
+    ctx.fillStyle="#fff";ctx.font="700 2px Fredoka,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText("Pause",vue.x+vue.w/2,vue.y+vue.h/2);
+  }
+}
+
+/* ---------- Boucle ---------- */
+function boucle(t){
+  const dt=Math.min(.1,Math.max(0,(t-dernier)/1000));dernier=t;
+  if(J){
+    const bloque=pause||document.hidden||document.querySelector("dialog[open]");
+    if(!bloque)for(let i=0;i<(vite?2:1);i++)J.avance(dt);
+    if(J.choix&&!fenetreOuverte)proposerCartes();
+    if(J.fini&&!finAffichee)terminer();
+    // la caméra recule en douceur quand la carte s'agrandit
+    const z=J.zone,k=Math.min(1,dt*2);
+    vue.x+=(z.x1-1-vue.x)*k;vue.y+=(z.y1-1-vue.y)*k;
+    vue.w+=(z.x2-z.x1+3-vue.w)*k;vue.h+=(z.y2-z.y1+3-vue.h)*k;
+    caler();majInfos();dessiner();
+  }
+  requestAnimationFrame(boucle);
+}
+
+/* ---------- Contrôles ---------- */
+$("bVite").onclick=()=>{vite=!vite;majBoutons()};
+$("bPause").onclick=()=>{pause=!pause;majBoutons()};
+$("bMenu").onclick=()=>{if(J.temps<20||confirm("Abandonner cette partie et revenir aux villes ?"))afficherMenu()};
+document.addEventListener("keydown",e=>{
+  if(!J||document.querySelector("dialog[open]"))return;
+  if(e.key===" "){e.preventDefault();pause=!pause;majBoutons()}
+  const o=OUTILS[+e.key-1];
+  if(o){outil=o.id;majBoutons()}
+});
+window.addEventListener("resize",()=>{if(J)dimensionner()});
+
+afficherMenu();
+requestAnimationFrame(boucle);
+</script>
+</body>
+</html>
