@@ -92,16 +92,17 @@
 
   /* ---------------- 🏅 Médailles ---------------- */
   async function medailles(zone){
-    const [cl, med, comptes, ban] = await Promise.all([
+    const [cl, med, comptes, ban, vus] = await Promise.all([
       db("medailles_classement").then(x => x || {}), db("medailles").then(x => x || {}),
-      db("comptes").then(x => x || {}).catch(() => ({})), db("bannis").then(x => x || {}).catch(() => ({}))]);
+      db("comptes").then(x => x || {}).catch(() => ({})), db("bannis").then(x => x || {}).catch(() => ({})),
+      db("moderation_vu").then(x => x || {}).catch(() => ({}))]);
     const uids = [...new Set([...Object.keys(cl), ...Object.keys(med)])];
     const J = jourAuj();
     const lignes = uids.map(uid => {
       const c = cl[uid] || {}, jours = med[uid] || {};
       const pseudo = c.n || (comptes[uid] && comptes[uid].pseudo) || uid.slice(0, 8);
       let total = 0, parfaits = 0, defis = 0;
-      const details = [];
+      const details = [], vu = vus[uid] || null;   // « ✅ Vérifié » : on ne signale plus que ce qui est écrit après
       for(const [j, entree] of Object.entries(jours)){
         const slugs = Object.keys(entree).filter(k => k[0] !== "_");
         for(const [k, v] of Object.entries(entree)){
@@ -114,14 +115,15 @@
           if(+j > J) pb.push("jour dans le futur");
           if(v.t != null && v.t < (TMIN[k] || 15)) pb.push(`fini en ${duree(v.t)}`);
           if(v.g && Q[k] && Q[k](v.e) === 1) parfaits++;
-          details.push({j: +j, k, v, pb});
+          details.push({j: +j, k, v, pb: vu && (v.d || 0) <= vu.t ? [] : pb});
         }
-        if(entree._tous && slugs.length < 6){ details.push({j: +j, k: "_tous", v: {m: entree._tous}, pb: ["bonus sans les défis faits"]}); }
+        if(entree._tous && slugs.length < 6 && !(vu && +j <= jourDe(vu.t))){ details.push({j: +j, k: "_tous", v: {m: entree._tous}, pb: ["bonus sans les défis faits"]}); }
       }
       const flags = [];
       details.forEach(d => d.pb.forEach(p => flags.push(`${dateDuJour(d.j)} · ${d.k} : ${p}`)));
-      if(c.t != null && c.t > total) flags.unshift(`classement ${c.t} 🏅 > médailles réelles ${total} 🏅`);
-      if(defis >= 6 && parfaits / defis > 0.6) flags.unshift(`${parfaits} défis parfaits sur ${defis}`);
+      const inchange = vu && vu.n === total;
+      if(c.t != null && c.t > total && !inchange) flags.unshift(`classement ${c.t} 🏅 > médailles réelles ${total} 🏅`);
+      if(defis >= 6 && parfaits / defis > 0.6 && !inchange) flags.unshift(`${parfaits} défis parfaits sur ${defis}`);
       return {uid, pseudo, c, total, defis, flags, details, banni: !!ban[uid]};
     }).sort((a, b) => b.flags.length - a.flags.length || (b.c.t || 0) - (a.c.t || 0));
 
@@ -146,6 +148,10 @@
           await db(`medailles_classement/${l.uid}`, {method: "DELETE"});
           toast(`Médailles de ${l.pseudo} remises à zéro`); medailles(zone);
         }, `Effacer toutes les médailles de ${l.pseudo} (en ligne et sur ses appareils) ?`));
+        if(l.flags.length) act.appendChild(bouton("✅ Vérifié", "ghost", async () => {
+          await db(`moderation_vu/${l.uid}`, {method: "PUT", body: {t: SV, n: l.total}});
+          toast(`Alertes de ${l.pseudo} masquées (seules les nouvelles s'afficheront)`); medailles(zone);
+        }));
         act.appendChild(boutonBan("bannis", l.uid, l.pseudo, l.banni, () => medailles(zone)));
         t.appendChild(act);
         b.append(t, drapeaux(l.flags.slice(0, 8).concat(l.flags.length > 8 ? [`+ ${l.flags.length - 8} autres`] : []), "rien à signaler"), det);
