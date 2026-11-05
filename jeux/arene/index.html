@@ -99,7 +99,7 @@ table.sc .pastille{display:inline-block;width:11px;height:11px;border-radius:50%
 .tb.on{background:rgba(255,138,31,.55)}
 #tTir{right:28px;bottom:110px;width:84px;height:84px;font-size:2rem}
 #tSaut{right:128px;bottom:40px}#tDash{right:28px;bottom:24px}#tRech{right:128px;bottom:140px}
-#tArme{right:200px;bottom:60px}#tZoom{right:30px;bottom:210px}#tPause{right:14px;top:56px;width:44px;height:44px;font-size:1.1rem}
+#tArme{right:200px;bottom:150px}#tGlisse{right:212px;bottom:40px}#tZoom{right:30px;bottom:210px}#tPause{right:14px;top:56px;width:44px;height:44px;font-size:1.1rem}
 body.tactile #mun{bottom:auto;top:96px;right:auto;left:22px;text-align:left}
 body.tactile #mun .n{font-size:1.6rem}
 body.tactile #armes{bottom:auto;top:52px}
@@ -162,8 +162,9 @@ body.en-jeu .gr-btn,body.en-jeu .gr-panneau{display:none!important}
     <h2 style="margin-top:0">🎮 Commandes</h2>
     <div class="touches">
       <span><kbd>Z Q S D</kbd> / <kbd>W A S D</kbd></span><span>Se déplacer (très vite)</span>
-      <span><kbd>Espace</kbd></span><span>Sauter — <b>double saut</b> en l'air, maintiens pour enchaîner les sauts</span>
+      <span><kbd>Espace</kbd></span><span>Sauter — <b>double saut</b> en l'air (il te réoriente dans la direction voulue)</span>
       <span><kbd>Maj</kbd></span><span><b>Dash</b> dans la direction où tu vas (recharge 1 s)</span>
+      <span><kbd>C</kbd> (maintenu)</span><span><b>Glissade</b> en courant : plus vite, plus bas, et saute pendant la glissade pour garder l'élan</span>
       <span><kbd>Clic gauche</kbd></span><span>Tirer</span>
       <span><kbd>Clic droit</kbd></span><span>Viser à la lunette (sniper)</span>
       <span><kbd>1</kbd>–<kbd>5</kbd> / molette</span><span>Changer d'arme</span>
@@ -171,7 +172,7 @@ body.en-jeu .gr-btn,body.en-jeu .gr-panneau{display:none!important}
       <span><kbd>Tab</kbd></span><span>Tableau des scores</span>
       <span><kbd>Échap</kbd></span><span>Pause / réglages (sensibilité, champ de vision, volume)</span>
     </div>
-    <p class="muted" style="margin-bottom:0">Sur téléphone : joystick à gauche, glisse à droite pour viser, boutons pour tirer, sauter et dasher.</p>
+    <p class="muted" style="margin-bottom:0">Sur téléphone : joystick à gauche, glisse à droite pour viser, boutons pour tirer, sauter, dasher et glisser.</p>
     <div class="armesListe" id="armesListe"></div>
   </section>
 </main>
@@ -197,6 +198,7 @@ body.en-jeu .gr-btn,body.en-jeu .gr-panneau{display:none!important}
     <div class="tb" id="tTir">🔥</div>
     <div class="tb" id="tSaut">⤴️</div>
     <div class="tb" id="tDash">💨</div>
+    <div class="tb" id="tGlisse">🛷</div>
     <div class="tb" id="tRech">🔄</div>
     <div class="tb" id="tArme">🔁</div>
     <div class="tb" id="tZoom">🔍</div>
@@ -245,9 +247,10 @@ Base.entete({
   aide: `<p>Un FPS rapide en arène : élimine les autres et sois <b>le premier à atteindre l'objectif de frags</b> (10 ou 20).</p>
   <ul><li>Tu réapparais 2 s après chaque mort, protégé 1 s (la protection saute si tu tires).</li>
   <li><b>Double saut</b>, <b>dash</b> (Maj) et <b>tremplins</b> lumineux pour monter sur les corniches et le bastion central.</li>
-  <li>Les tirs dans la tête font plus mal (le sniper tue en un tir à la tête).</li>
+  <li>Les tirs dans la tête font plus mal, et le sniper tue <b>toujours</b> en un tir à la tête.</li>
   <li>Le lance-roquettes repousse : tire à tes pieds en sautant pour faire un <b>rocket-jump</b> (ça coûte un peu de vie).</li>
-  <li>Ta vie remonte toute seule si tu n'es pas touché pendant 3 secondes.</li>
+  <li>Ta vie remonte toute seule si tu n'es pas touché pendant 4 secondes.</li>
+  <li><b>Glissade</b> (C en courant) : plus rapide et plus dure à toucher. Saute pendant la glissade pour garder la vitesse.</li>
   <li>En ligne : crée une salle, donne le code, et ajoute des bots si vous êtes peu nombreux.</li></ul>`
 });
 
@@ -255,21 +258,21 @@ Base.entete({
    ARMES
    ================================================================ */
 const ARMES = [
-  {nom: "Pistolet", ico: "🔫", dmg: 26, cad: 0.2, auto: false, chargeur: 12, recharge: 0.9, disp: 0.004, mvt: 0.012, portee: 150, hs: 1.8, plombs: 1, recul: 0.022, chute: null, coul: 0xffd166, son: [2600, 0.08, 0.5]},
-  {nom: "Mitraillette", ico: "🐝", dmg: 12, cad: 0.072, auto: true, chargeur: 32, recharge: 1.25, disp: 0.016, mvt: 0.02, portee: 90, hs: 1.5, plombs: 1, recul: 0.01, chute: [15, 40, 0.55], coul: 0x63e6ff, son: [3200, 0.05, 0.32]},
-  {nom: "Pompe", ico: "💥", dmg: 11, cad: 0.8, auto: false, chargeur: 6, recharge: 1.5, disp: 0.07, mvt: 0.02, portee: 45, hs: 1.3, plombs: 10, recul: 0.07, chute: [6, 22, 0.25], coul: 0xff7a3d, son: [900, 0.22, 0.85]},
-  {nom: "Sniper", ico: "🎯", dmg: 80, cad: 1.05, auto: false, chargeur: 5, recharge: 1.7, disp: 0.045, dispZoom: 0, mvt: 0.03, portee: 400, hs: 2.2, plombs: 1, recul: 0.09, chute: null, coul: 0xb48cff, son: [1400, 0.28, 0.95], zoom: true},
-  {nom: "Lance-roquettes", ico: "🚀", dmg: 105, cad: 0.85, auto: false, chargeur: 4, recharge: 1.8, disp: 0, mvt: 0, portee: 0, hs: 1, plombs: 1, recul: 0.05, chute: null, coul: 0xff4f6d, son: [500, 0.3, 0.8], roquette: true, rayon: 4.3, vitesse: 40}
+  {nom: "Pistolet", ico: "🔫", dmg: 34, cad: 0.19, auto: false, chargeur: 12, recharge: 0.9, disp: 0.004, mvt: 0.01, portee: 150, hs: 2, plombs: 1, recul: 0.022, chute: null, coul: 0xffd166, son: [2600, 0.08, 0.5]},
+  {nom: "Mitraillette", ico: "🐝", dmg: 17, cad: 0.075, auto: true, chargeur: 30, recharge: 1.2, disp: 0.014, mvt: 0.016, portee: 90, hs: 1.6, plombs: 1, recul: 0.01, chute: [15, 40, 0.6], coul: 0x63e6ff, son: [3200, 0.05, 0.32]},
+  {nom: "Pompe", ico: "💥", dmg: 14, cad: 0.75, auto: false, chargeur: 6, recharge: 1.4, disp: 0.065, mvt: 0.015, portee: 45, hs: 1.4, plombs: 10, recul: 0.07, chute: [7, 22, 0.25], coul: 0xff7a3d, son: [900, 0.22, 0.85]},
+  {nom: "Sniper", ico: "🎯", dmg: 95, cad: 1.0, auto: false, chargeur: 5, recharge: 1.6, disp: 0.04, dispZoom: 0, mvt: 0.025, portee: 400, hs: 1, tueTete: true, plombs: 1, recul: 0.09, chute: null, coul: 0xb48cff, son: [1400, 0.28, 0.95], zoom: true},
+  {nom: "Lance-roquettes", ico: "🚀", dmg: 120, cad: 0.85, auto: false, chargeur: 4, recharge: 1.7, disp: 0, mvt: 0, portee: 0, hs: 1, plombs: 1, recul: 0.05, chute: null, coul: 0xff4f6d, son: [500, 0.3, 0.8], roquette: true, rayon: 4.5, vitesse: 42}
 ];
 $("armesListe").innerHTML = ARMES.map((a, i) => `<div><b>${i + 1}. ${a.ico} ${a.nom}</b>${[
-  "Précis, rapide, 1,8× à la tête.", "Rafale automatique, idéale à mi-distance.", "Dévastateur au contact, inutile de loin.",
-  "Un tir dans la tête = un frag. Clic droit pour la lunette.", "Explosions de zone et rocket-jump."][i]}</div>`).join("");
+  "3 balles au corps, 2 à la tête.", "Rafale automatique, tue en ~0,4 s.", "Dévastateur au contact, inutile de loin.",
+  "Tête = mort instantanée. Corps = 95 dégâts. Clic droit : lunette.", "Explosions de zone et rocket-jump."][i]}</div>`).join("");
 
 /* ================================================================
    CONSTANTES DE MOUVEMENT
    ================================================================ */
-const R = 0.35, H = 1.75, OEIL = 1.6, GRAV = 25, VMAX = 9.2, ACC_SOL = 11, ACC_AIR = 2.8, FRIC = 7, STOP = 3;
-const SAUT = 8.6, SAUT2 = 8.3, DASH = 18, DASH_CD = 1.0, REAP = 2, INVUL = 1.2;
+const R = 0.35, H = 1.75, OEIL = 1.6, OEIL_G = 0.95, GRAV = 27, VMAX = 9, ACC_SOL = 80, DEC_SOL = 65, ACC_AIR = 32, GLISSE_V = 14, GLISSE_DUREE = 0.8, GLISSE_FREIN = 7;
+const SAUT = 9, SAUT2 = 8.6, DASH = 19, DASH_CD = 1.0, REAP = 2, INVUL = 1.2;
 const COULEURS = [0xff8a1f, 0x3ad6ff, 0xa8ff60, 0xff4fa3, 0xb48cff, 0xffd23a, 0xff5050, 0x50ffc8, 0xffffff, 0x8899ff];
 const NOMS_BOTS = ["Robo-Raoul", "Zigzag", "Mme Mitraille", "Pixel", "Turbo", "Kevin.exe", "Gaston", "Bip-Bop"];
 const NIVEAUX = [
@@ -340,6 +343,8 @@ function bougerY(e, d){
     if(d <= 0){ p.y = b.max[1]; e.vel.y = 0; e.sol = true; }
     else{ p.y = b.min[1] - H - 0.0005; e.vel.y = 0; }
   }
+  // posé au sol sans s'enfoncer (vitesse verticale nulle) : on sonde juste en dessous
+  if(!e.sol && d <= 0 && !libre(p.x, p.y - 0.02, p.z)) e.sol = true;
 }
 /* ---------- lancer de rayons ---------- */
 function rayBoite(o, d, b, lim){
@@ -364,11 +369,13 @@ function rayEnts(o, d, max, ignore, gras){
   const g = gras || 0; let res = {t: max, e: null, tete: false};
   for(const e of ents.values()){
     if(e.id === ignore || !e.vivant) continue;
-    const p = e.rpos;
-    const th = raySphere(o, d, [p.x, p.y + 1.6, p.z], 0.29 + g);
-    if(th < res.t) res = {t: th, e, tete: true};
-    const tb = rayBoite(o, d, {min: [p.x - 0.4 - g, p.y - g, p.z - 0.4 - g], max: [p.x + 0.4 + g, p.y + 1.36, p.z + 0.4 + g]}, res.t);
-    if(tb < res.t) res = {t: tb, e, tete: false};
+    const p = e.rpos, bas = e.local ? e.glisseT > 0 : e.glisse;
+    const yt = bas ? 1.0 : 1.6, yc = bas ? 0.8 : 1.36;
+    const th = raySphere(o, d, [p.x, p.y + yt, p.z], 0.32 + g);
+    const tb = rayBoite(o, d, {min: [p.x - 0.4 - g, p.y - g, p.z - 0.4 - g], max: [p.x + 0.4 + g, p.y + yc, p.z + 0.4 + g]}, res.t);
+    // si le rayon touche la tête, elle compte même si le bord du corps est un peu plus proche
+    if(th < res.t && th <= tb + 0.25) res = {t: th, e, tete: true};
+    else if(tb < res.t) res = {t: tb, e, tete: false};
   }
   return res;
 }
@@ -564,6 +571,8 @@ function son(nom, vol){
   else if(nom === "saut") bip(320, 560, 0.09, 0.12 * vol, "sine", t);
   else if(nom === "pad"){ bip(200, 1100, 0.35, 0.3 * vol, "sawtooth", t); }
   else if(nom === "dash"){ bruitage(2500, "highpass", 0.22, 0.35 * vol, t); }
+  else if(nom === "glisse"){ bruitage(1200, "bandpass", 0.55, 0.3 * vol, t); }
+  else if(nom === "atterrit"){ bruitage(180, "lowpass", 0.12, 0.45 * vol, t); }
   else if(nom === "recharge"){ bip(700, 650, 0.03, 0.2 * vol, "square", t); bip(900, 850, 0.03, 0.2 * vol, "square", t + 0.18); }
   else if(nom === "vide") bip(1200, 1100, 0.025, 0.2 * vol, "square", t);
   else if(nom === "mort"){ bip(500, 90, 0.6, 0.35 * vol, "sawtooth", t); }
@@ -591,7 +600,7 @@ function creerEnt(id, local, bot){
     pos: new THREE.Vector3(0, -50, 0), vel: new THREE.Vector3(), rpos: null,
     yaw: 0, pitch: 0, hp: 100, vivant: false, arme: 0, mun: ARMES.map(a => a.chargeur),
     recharge: 0, changement: 0, prochainTir: 0, sol: false, quitteSol: 0, sauts: 0, dashCD: 0, dashT: 0, padT: 0,
-    invul: 0, dernDegat: -9, respawnA: 0, zoom: false, quiMaTue: "",
+    invul: 0, dernDegat: -9, glisseT: 0, glisseCD: 0, oeil: OEIL, glisse: false, respawnA: 0, zoom: false, quiMaTue: "",
     cible: new THREE.Vector3(), cYaw: 0, cPitch: 0, vu: performance.now(),
     mesh: null
   };
@@ -622,7 +631,7 @@ function reapparaitre(e){
   const s = choisirSpawn(e);
   e.pos.set(s[0], s[1] + 0.01, s[2]); e.vel.set(0, 0, 0);
   e.yaw = Math.atan2(s[0], s[2]); e.pitch = 0;
-  e.hp = 100; e.vivant = true; e.invul = INVUL; e.mun = ARMES.map(a => a.chargeur); e.recharge = 0; e.changement = 0; e.dashCD = 0; e.sauts = 0; e.zoom = false;
+  e.hp = 100; e.vivant = true; e.invul = INVUL; e.glisseT = 0; e.oeil = OEIL; e.mun = ARMES.map(a => a.chargeur); e.recharge = 0; e.changement = 0; e.dashCD = 0; e.sauts = 0; e.zoom = false;
   if(e === moi){ son("spawn", 0.8); majVM(); }
   if(e.ia){ e.ia.cible = null; e.ia.wp = null; e.ia.dernierVu = null; e.arme = Math.floor(Math.random() * 3); }
 }
@@ -636,48 +645,68 @@ function physique(e, inp, dt){
   const wl = Math.hypot(wx, wz);
   if(wl > 0.01){ wx /= wl; wz /= wl; }
   const vit = VMAX * Math.min(1, wl);
-  // sauts
-  if(inp.saut && (e.sol || (Tg - e.quitteSol < 0.12 && e.sauts === 0))){
-    e.vel.y = SAUT; e.sol = false; e.sauts = 1; e.dernierSaut = Tg;
+  let vh = Math.hypot(e.vel.x, e.vel.z);
+  // glissade (C) : seulement au sol et en mouvement
+  if(inp.glisse && e.sol && e.glisseT <= 0 && Tg > e.glisseCD && vh > 5){
+    const k = Math.max(vh + 3, GLISSE_V) / vh; e.vel.x *= k; e.vel.z *= k; vh *= k;
+    e.glisseT = GLISSE_DUREE; e.glisseCD = Tg + 0.9;
+    if(e === moi){ son("glisse", 1); fovBoost = 8; } else son("glisse", volDist([e.pos.x, e.pos.y, e.pos.z]) * 0.6);
+  }
+  if(e.glisseT > 0){ e.glisseT -= dt; if(!inp.glisse || !e.sol && Tg - e.quitteSol > 0.15) e.glisseT = 0; }
+  // sauts (le saut garde l'élan de la glissade)
+  if(inp.sautNouveau && (e.sol || (Tg - e.quitteSol < 0.12 && e.sauts === 0))){
+    e.vel.y = SAUT; e.sol = false; e.sauts = 1; e.dernierSaut = Tg; e.glisseT = 0;
     if(e === moi) son("saut", 0.7);
-  }else if(!e.sol && inp.sautNouveau && e.sauts < 2 && Tg - (e.dernierSaut || 0) > 0.12){
+  }else if(!e.sol && inp.sautNouveau && e.sauts < 2 && Tg - (e.dernierSaut || 0) > 0.1){
     e.vel.y = SAUT2; e.sauts = 2; e.dernierSaut = Tg;
-    if(wl > 0.01){ e.vel.x += wx * 2.5; e.vel.z += wz * 2.5; }
+    // le double saut réoriente l'élan vers la direction voulue
+    if(wl > 0.01){ const v = Math.max(vh, VMAX); e.vel.x = wx * v; e.vel.z = wz * v; }
     if(e === moi) son("saut", 0.9);
     if(e.local) particules([e.pos.x, e.pos.y + 0.1, e.pos.z], 0x9ff0ff, 6, 2.5, 0.07);
+  }else if(inp.saut && e.sol && Tg - (e.dernierSaut || 0) > 0.25){
+    e.vel.y = SAUT; e.sol = false; e.sauts = 1; e.dernierSaut = Tg; e.glisseT = 0;
+    if(e === moi) son("saut", 0.6);
   }
   // dash
   if(inp.dash && e.dashCD <= 0){
     let dx = wx, dz = wz; if(wl <= 0.01){ dx = -sy; dz = -cy; }
-    e.vel.x = dx * DASH; e.vel.z = dz * DASH; if(!e.sol) e.vel.y = Math.max(e.vel.y, 2);
-    e.dashCD = DASH_CD; e.dashT = 0.16;
+    e.vel.x = dx * DASH; e.vel.z = dz * DASH; e.vel.y = e.sol ? 0 : Math.max(e.vel.y, 1.5);
+    e.dashCD = DASH_CD; e.dashT = 0.18; e.glisseT = 0;
     if(e === moi){ son("dash", 0.9); fovBoost = 12; }
     else son("dash", volDist([e.pos.x, e.pos.y, e.pos.z]) * 0.6);
   }
-  // frottements et accélération (façon Quake)
-  const vx = e.vel.x, vz = e.vel.z, v = Math.hypot(vx, vz);
-  if(e.sol && !inp.saut && e.dashT <= 0 && v > 0){
-    const drop = Math.max(v, STOP) * FRIC * dt, k = Math.max(v - drop, 0) / v;
-    e.vel.x *= k; e.vel.z *= k;
+  vh = Math.hypot(e.vel.x, e.vel.z);
+  if(e.dashT > 0){ e.dashT -= dt; }
+  else if(e.sol && e.glisseT > 0){
+    // glissade : freinage léger, on peut un peu orienter
+    const nv = Math.max(0, vh - GLISSE_FREIN * dt);
+    if(vh > 0){ e.vel.x *= nv / vh; e.vel.z *= nv / vh; }
+    if(wl > 0.01){ e.vel.x += wx * 6 * dt; e.vel.z += wz * 6 * dt; }
+    if(nv < 6) e.glisseT = 0;
+  }else if(e.sol){
+    // au sol : réponse immédiate, on atteint la vitesse max en ~0,1 s et on s'arrête net
+    const tx = wx * vit, tz = wz * vit, dx = tx - e.vel.x, dz = tz - e.vel.z, dl = Math.hypot(dx, dz);
+    const acc = (vit > vh - 0.1 ? ACC_SOL : DEC_SOL) * dt;
+    if(dl <= acc){ e.vel.x = tx; e.vel.z = tz; } else { e.vel.x += dx / dl * acc; e.vel.z += dz / dl * acc; }
+  }else if(wl > 0.01){
+    // en l'air : vrai contrôle de trajectoire, sans gagner de vitesse au-delà de l'élan actuel
+    e.vel.x += wx * ACC_AIR * dt; e.vel.z += wz * ACC_AIR * dt;
+    const lim = Math.max(vh, vit), n = Math.hypot(e.vel.x, e.vel.z);
+    if(n > lim){ e.vel.x *= lim / n; e.vel.z *= lim / n; }
   }
-  if(wl > 0.01){
-    const actuelle = e.vel.x * wx + e.vel.z * wz, ajout = vit - actuelle;
-    if(ajout > 0){
-      const acc = Math.min(ajout, (e.sol ? ACC_SOL : ACC_AIR) * vit * dt);
-      e.vel.x += wx * acc; e.vel.z += wz * acc;
-    }
-  }
-  const vh = Math.hypot(e.vel.x, e.vel.z); if(vh > 24){ e.vel.x *= 24 / vh; e.vel.z *= 24 / vh; }
+  vh = Math.hypot(e.vel.x, e.vel.z); if(vh > 24){ e.vel.x *= 24 / vh; e.vel.z *= 24 / vh; }
   e.vel.y -= GRAV * dt;
   // intégration avec sous-pas
-  const avant = e.sol, n = Math.ceil(dt / 0.008), h = dt / n;
+  const avant = e.sol, vyAvant = e.vel.y, n = Math.ceil(dt / 0.008), h = dt / n;
   for(let i = 0; i < n; i++){ bougerAxe(e, 0, e.vel.x * h); bougerAxe(e, 2, e.vel.z * h); bougerY(e, e.vel.y * h); }
-  if(e.sol && !avant){ e.sauts = 0; }
+  if(e.sol && !avant){ e.sauts = 0; if(e === moi && vyAvant < -6){ atterrissage = Math.min(0.22, -vyAvant * 0.012); son("atterrit", Math.min(1, -vyAvant / 15)); } }
   if(!e.sol && avant) e.quitteSol = Tg;
+  // hauteur des yeux (plus bas en glissade)
+  e.oeil += ((e.glisseT > 0 ? OEIL_G : OEIL) - e.oeil) * Math.min(1, dt * 14);
   // tremplins
   for(const p of PADS){
     if(Tg > e.padT && e.pos.y < 0.4 && Math.hypot(e.pos.x - p.x, e.pos.z - p.z) < 1.25){
-      e.vel.set(p.v[0], p.v[1], p.v[2]); e.sol = false; e.sauts = 1; e.padT = Tg + 0.5; e.dernierSaut = Tg;
+      e.vel.set(p.v[0], p.v[1], p.v[2]); e.sol = false; e.sauts = 1; e.padT = Tg + 0.5; e.dernierSaut = Tg; e.glisseT = 0;
       son("pad", e === moi ? 1 : volDist([p.x, 0, p.z]));
     }
   }
@@ -700,7 +729,7 @@ function tirer(e){
   if(!e.vivant || Tg < e.prochainTir || e.recharge > 0 || e.changement > 0) return false;
   if(e.mun[e.arme] <= 0){ demarrerRecharge(e); if(e === moi){ son("vide"); e.prochainTir = Tg + 0.25; } return false; }
   e.mun[e.arme]--; e.prochainTir = Tg + A.cad; e.invul = 0;
-  const oeil = [e.pos.x, e.pos.y + OEIL, e.pos.z], d0 = dirDe(e.yaw, e.pitch);
+  const oeil = [e.pos.x, e.pos.y + e.oeil, e.pos.z], d0 = dirDe(e.yaw, e.pitch);
   const dep = departTir(e, oeil);
   let disp = A.zoom ? (e.zoom ? A.dispZoom : A.disp) : A.disp;
   disp += A.mvt * Math.min(1, vitesseDe(e) / VMAX) + (e.sol ? 0 : A.mvt * 0.8);
@@ -722,7 +751,7 @@ function tirer(e){
       fins.push(fin);
       if(re.e){
         let f = 1; if(A.chute){ const [a, b, m] = A.chute; f = t <= a ? 1 : t >= b ? m : 1 - (1 - m) * (t - a) / (b - a); }
-        const c = cumul.get(re.e) || {d: 0, hs: false}; c.d += A.dmg * f * (re.tete ? A.hs : 1); c.hs = c.hs || re.tete; cumul.set(re.e, c);
+        const c = cumul.get(re.e) || {d: 0, hs: false}; c.d += A.tueTete && re.tete ? 999 : A.dmg * f * (re.tete ? A.hs : 1); c.hs = c.hs || re.tete; cumul.set(re.e, c);
         particules(fin, re.e.coul, 3, 3, 0.07);
       }else if(tm < A.portee) particules(fin, 0xffe9a0, 2, 2.5, 0.05);
     }
@@ -892,7 +921,7 @@ function majBot(b, dt){
     if(best && best !== ia.cible){ ia.cible = best; ia.reflexe = N.reflexe * (0.7 + Math.random() * 0.6); }
     if(!best && ia.cible){ if(ia.cible.vivant) ia.dernierVu = ia.cible.rpos.clone(); ia.cible = null; }
   }
-  const inp = {av: 0, lat: 0, saut: false, sautNouveau: false, dash: false};
+  const inp = {av: 0, lat: 0, saut: false, sautNouveau: false, dash: false, glisse: false};
   let tir = false;
   const c = ia.cible && ia.cible.vivant ? ia.cible : null;
   let yawV, pitchV, tourne = N.tour;
@@ -910,8 +939,9 @@ function majBot(b, dt){
       ia.strafe = Math.random() < 0.5 ? -1 : 1; ia.strafeT = Tg + 0.45 + Math.random() * 1.1;
       if(Math.random() < 0.3) inp.saut = true;
       if(Math.random() < 0.12 * (diff + 1)) inp.dash = true;
+      else if(Math.random() < 0.2) ia.glisseJusqua = Tg + 0.6;
     }
-    inp.lat = ia.strafe;
+    inp.lat = ia.strafe; inp.glisse = Tg < (ia.glisseJusqua || 0);
     const pref = prefDistance(b.arme);
     inp.av = d > pref + 4 ? 1 : d < pref - 4 ? -1 : 0;
     ia.dernierVu = c.rpos.clone();
@@ -948,7 +978,7 @@ function majBot(b, dt){
 const touches = {};
 let tirMaintenu = false, tirDejaPart = false, zoomMaintenu = false, sautEdge = false, dashEdge = false;
 let joy = {id: null, x: 0, y: 0, ox: 0, oy: 0}, regard = {id: null, x: 0, y: 0}, zoomTactile = false;
-let verrouille = false;
+let verrouille = false, glisseTactile = false;
 
 document.addEventListener("keydown", e => {
   if(!enJeu) return;
@@ -957,6 +987,7 @@ document.addEventListener("keydown", e => {
   if(!touches[e.code]){
     if(e.code === "Space") sautEdge = true;
     if(e.code === "ShiftLeft" || e.code === "ShiftRight") dashEdge = true;
+    if(e.code === "KeyC") e.preventDefault();
     if(e.code === "KeyR" && moi && moi.vivant) demarrerRecharge(moi);
     const m = e.code.match(/^Digit([1-5])$/); if(m && moi) changerArme(moi, +m[1] - 1);
   }
@@ -988,7 +1019,8 @@ document.addEventListener("wheel", e => {
 function verrouiller(){
   audio(); if(AC && AC.state === "suspended") AC.resume();
   if(TACTILE){ verrouille = true; $("pause").classList.add("cache"); pauseSolo = false; return; }
-  try{ const p = canvas.requestPointerLock(); if(p && p.catch) p.catch(() => {}); }catch(e){}
+  const simple = () => { try{ const q = canvas.requestPointerLock(); if(q && q.catch) q.catch(() => {}); }catch(e){} };
+  try{ const p = canvas.requestPointerLock({unadjustedMovement: true}); if(p && p.catch) p.catch(simple); }catch(e){ simple(); }
 }
 document.addEventListener("pointerlockchange", () => {
   verrouille = document.pointerLockElement === canvas;
@@ -1008,6 +1040,7 @@ if(TACTILE){
   btn("tTir", () => { tirMaintenu = true; tirDejaPart = false; }, () => tirMaintenu = false);
   btn("tSaut", () => { sautEdge = true; touches.Space = true; }, () => touches.Space = false);
   btn("tDash", () => dashEdge = true);
+  btn("tGlisse", () => glisseTactile = true, () => glisseTactile = false);
   btn("tRech", () => moi && demarrerRecharge(moi));
   btn("tArme", () => moi && changerArme(moi, (moi.arme + 1) % ARMES.length));
   btn("tZoom", () => { zoomTactile = !zoomTactile; $("tZoom").classList.toggle("on", zoomTactile); });
@@ -1042,7 +1075,7 @@ function lireEntrees(){
   let av = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0);
   let lat = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
   if(joy.id !== null){ av -= joy.y; lat += joy.x; }
-  const inp = {av, lat, saut: !!k.Space, sautNouveau: sautEdge, dash: dashEdge};
+  const inp = {av, lat, saut: !!k.Space, sautNouveau: sautEdge, dash: dashEdge, glisse: !!(k.KeyC || glisseTactile)};
   sautEdge = false; dashEdge = false;
   return inp;
 }
@@ -1050,7 +1083,7 @@ function lireEntrees(){
 /* ================================================================
    HUD
    ================================================================ */
-let reculVM = 0, flashT = 0, flammeT = 0, degatT = 0, toucheT = 0, annonceT = 0, fovBoost = 0, bob = 0;
+let atterrissage = 0, roulis = 0, reculVM = 0, flashT = 0, flammeT = 0, degatT = 0, toucheT = 0, annonceT = 0, fovBoost = 0, bob = 0;
 function majVM(){ VM.forEach((g, i) => g.visible = moi && i === moi.arme); majArmesHUD(); }
 function majArmesHUD(){
   $("armes").innerHTML = ARMES.map((a, i) => `<span class="${moi && moi.arme === i ? "on" : ""}"><small>${i + 1}</small>${a.ico}</span>`).join("");
@@ -1140,7 +1173,7 @@ function majHUD(){
    RÉSEAU
    ================================================================ */
 function etatCompact(e){
-  return [e.id, r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), r3(e.yaw), r3(e.pitch), e.arme, (e.vivant ? 1 : 0) | (e.invul > 0 ? 2 : 0)];
+  return [e.id, r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), r3(e.yaw), r3(e.pitch), e.arme, (e.vivant ? 1 : 0) | (e.invul > 0 ? 2 : 0) | (e.glisseT > 0 ? 4 : 0)];
 }
 function envoyerPaquet(){
   if(!salle){ sortie.s.length = sortie.h.length = sortie.k.length = 0; return; }
@@ -1160,7 +1193,7 @@ function majDistant(a){
   if(e.local) return;
   const viv = !!(f & 1);
   if(viv && !e.vivant){ e.rpos.set(x, y, z); e.yaw = yw; }
-  e.vivant = viv; e.invul = f & 2 ? 1 : 0;
+  e.vivant = viv; e.invul = f & 2 ? 1 : 0; e.glisse = !!(f & 4);
   e.cible.set(x, y, z); e.cYaw = yw; e.cPitch = pt; e.arme = w; e.vu = performance.now();
 }
 function tirDistant(ev){
@@ -1284,7 +1317,7 @@ function maj(dt){
     e.dashCD = Math.max(0, e.dashCD - dt); e.dashT -= dt; e.invul = Math.max(0, e.invul - dt);
     if(e.changement > 0) e.changement -= dt;
     if(e.recharge > 0){ e.recharge -= dt; if(e.recharge <= 0){ e.recharge = 0; e.mun[e.arme] = ARMES[e.arme].chargeur; } }
-    if(e.vivant && Tg - e.dernDegat > 3 && e.hp < 100) e.hp = Math.min(100, e.hp + 32 * dt);
+    if(e.vivant && Tg - e.dernDegat > 4 && e.hp < 100) e.hp = Math.min(100, e.hp + 25 * dt);
     if(!e.vivant){ if(partieActive && Tg >= e.respawnA) reapparaitre(e); continue; }
     if(e === moi){
       const actif = verrouille;
@@ -1311,9 +1344,12 @@ function rendu(dt){
   if(moi){
     const vit = vitesseDe(moi);
     if(moi.vivant){
-      bob += dt * (moi.sol ? vit : 0) * 1.1;
-      camera.position.set(moi.pos.x, moi.pos.y + OEIL + (moi.sol ? Math.sin(bob * 2) * 0.03 * Math.min(1, vit / VMAX) : 0), moi.pos.z);
-      camera.rotation.set(moi.pitch, moi.yaw, 0);
+      bob += dt * (moi.sol && moi.glisseT <= 0 ? vit : 0) * 1.1;
+      atterrissage = Math.max(0, atterrissage - dt * 0.9);
+      camera.position.set(moi.pos.x, moi.pos.y + moi.oeil - atterrissage + (moi.sol && moi.glisseT <= 0 ? Math.sin(bob * 2) * 0.025 * Math.min(1, vit / VMAX) : 0), moi.pos.z);
+      const lat = (moi.vel.x * Math.cos(moi.yaw) - moi.vel.z * Math.sin(moi.yaw)) / VMAX;
+      roulis += ((moi.glisseT > 0 ? 0.06 : 0) - lat * 0.018 - roulis) * Math.min(1, dt * 10);
+      camera.rotation.set(moi.pitch, moi.yaw, roulis);
     }else{
       camera.position.y += (moi.pos.y + 5 - camera.position.y) * Math.min(1, dt * 2);
       camera.rotation.x += (-0.9 - camera.rotation.x) * Math.min(1, dt * 2);
@@ -1338,6 +1374,7 @@ function rendu(dt){
     if(!e.vivant) continue;
     e.mesh.position.copy(e.rpos); e.mesh.rotation.y = e.yaw;
     e.mesh.userData.tete.rotation.x = e.pitch * 0.6; e.mesh.userData.bras.rotation.x = e.pitch;
+    const bas = e.local ? e.glisseT > 0 : e.glisse; e.mesh.scale.y += ((bas ? 0.62 : 1) - e.mesh.scale.y) * Math.min(1, dt * 14);
     e.mesh.userData.mat.emissive.setHex(e.invul > 0 && Math.sin(performance.now() / 70) > 0 ? 0x666666 : 0x000000);
   }
   // effets
