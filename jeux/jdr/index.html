@@ -27,24 +27,35 @@
 .stat .m{font-size:.8rem}
 @media(max-width:520px){.stats{grid-template-columns:repeat(3,1fr)}}
 .code{font:700 2.2rem Fredoka,sans-serif;letter-spacing:5px;text-align:center;margin:6px 0}
-ul.joueurs{padding-left:18px;line-height:1.8}
+textarea.champ{resize:vertical;min-height:58px}
+
+/* ---------- Salle (création commune) ---------- */
+.lobby{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;width:100%;align-items:start}
+@media(max-width:860px){.lobby{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pj{border:1px solid var(--line);border-left:5px solid var(--hc,#aaa);border-radius:12px;padding:8px 10px;background:var(--bg);font-size:.88rem;margin-bottom:8px}
+.pj .haut{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);font-weight:800;margin-bottom:2px}
+.pj .ok{color:#3aa76d}
+.pj .bg{font-style:italic;margin-top:4px;white-space:pre-wrap;opacity:.88}
 
 /* ---------- Jeu ---------- */
 .jeu{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;width:100%;align-items:start}
 @media(max-width:860px){.jeu{grid-template-columns:1fr}}
 .panneau{background:var(--card);border:1px solid var(--line);border-radius:var(--rayon);padding:12px}
-.lieu{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-weight:800}
+.lieu{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-weight:800;flex-wrap:wrap}
 .lieu .muted{font-weight:700;font-size:.85rem}
 .carte{display:grid;gap:1px;background:rgba(0,0,0,.25);border-radius:10px;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.carte.edit{touch-action:none;cursor:crosshair}
 .c{aspect-ratio:1;position:relative;display:flex;align-items:center;justify-content:center;line-height:1;background:var(--tsol);cursor:pointer}
 .c.mur{background:var(--tmur)}
 .c.herbe,.c.arbre{background:var(--therbe)}
 .c.eau{background:var(--teau)}
 .c.danger{background:color-mix(in srgb,var(--tsol) 75%,#e8604a)}
 .c .deco{opacity:.9;pointer-events:none}
-.c.ok::after,.c.vise::after{content:"";position:absolute;inset:0;pointer-events:none}
+.c.ok::after,.c.vise::after,.c.pion::after{content:"";position:absolute;inset:0;pointer-events:none}
 .c.ok::after{background:rgba(70,160,255,.4)}
 .c.vise::after{background:rgba(240,70,70,.45)}
+.c.pion::after{box-shadow:inset 0 0 0 3px #f2c14e;z-index:2}
 .tk{position:absolute;inset:5%;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.93);box-shadow:0 0 0 2px var(--tc,#333),0 2px 4px rgba(0,0,0,.4);z-index:1;pointer-events:none}
 .tk.m{border-radius:24%;background:rgba(45,20,30,.88)}
 .tk.ko{filter:grayscale(1);opacity:.5}
@@ -79,7 +90,7 @@ ul.joueurs{padding-left:18px;line-height:1.8}
 .puces button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .puces button:disabled{opacity:.45;cursor:default}
 .attente{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:700}
-.attente::before{content:"";width:14px;height:14px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:tourne .8s linear infinite}
+.attente::before{content:"";width:14px;height:14px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:tourne .8s linear infinite;flex:none}
 @keyframes tourne{to{transform:rotate(360deg)}}
 #de{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:900}
 #de .d{width:110px;height:110px;display:flex;align-items:center;justify-content:center;font:700 2.7rem Fredoka,sans-serif;color:#fff;background:var(--accent);
@@ -87,8 +98,22 @@ ul.joueurs{padding-left:18px;line-height:1.8}
 #de .d.crit{background:#e0a526}#de .d.rate{background:#6d6875}
 #de p{background:var(--text);color:var(--bg);padding:7px 14px;border-radius:12px;font-weight:800;margin-top:12px;max-width:90vw;text-align:center}
 @keyframes roule{from{transform:rotate(-600deg) scale(.3)}to{transform:none}}
-textarea.champ{resize:vertical;min-height:58px}
-.fiche td{padding:3px 6px}.fiche td:first-child{font-weight:800;color:var(--muted)}
+.fiche td{padding:3px 6px;vertical-align:top}.fiche td:first-child{font-weight:800;color:var(--muted)}
+
+/* ---------- Outils du MJ ---------- */
+.onglets{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.onglets button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:6px 10px;font-weight:800;font-size:.85rem}
+.onglets button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mjl{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:5px 0;border-bottom:1px dashed var(--line);font-size:.88rem}
+.mjl .n{flex:1;min-width:130px}
+.mini{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 8px;font-weight:800;font-size:.8rem}
+.mini.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mini:disabled{opacity:.4;cursor:default}
+.sous{font-weight:800;font-size:.85rem;margin:12px 0 5px;color:var(--muted)}
+.pal{display:flex;flex-wrap:wrap;gap:4px}
+.pal button{display:flex;align-items:center;gap:5px;border:2px solid var(--line);border-radius:9px;padding:3px 7px 3px 3px;font-size:.8rem;font-weight:700;background:var(--card)}
+.pal button.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.pal i{width:22px;height:22px;border-radius:5px;font-style:normal;font-size:.8rem}
 body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
 </style>
 </head>
@@ -100,7 +125,7 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
     <div class="b-carte" style="text-align:center">
       <div style="font-size:3rem">🐉</div>
       <h2 style="margin:4px 0">Table de Légendes</h2>
-      <p class="muted">Un jeu de rôle façon Donjons & Dragons où une IA est le maître du jeu. Crée ton héros, décris tes actions, lance les dés, explore les cartes et affronte les monstres, seul ou jusqu'à 8.</p>
+      <p class="muted">Un jeu de rôle façon Donjons & Dragons. Le maître du jeu est une IA… ou l'un d'entre vous ! Créez vos héros ensemble, décrivez vos actions, lancez les dés, explorez les cartes et affrontez les monstres, seul ou jusqu'à 8.</p>
       <div class="ligne" style="justify-content:center">
         <button class="btn" id="bNouvelle">✨ Nouvelle aventure</button>
         <button class="btn ghost cache" id="bContinuer">📜 Continuer l'aventure</button>
@@ -109,7 +134,7 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
     </div>
     <div class="b-carte">
       <b>🌐 Rejoindre une partie en ligne</b>
-      <p class="muted" style="margin:4px 0 8px;font-size:.88rem">Pas besoin de clé IA : c'est l'hôte qui fait tourner le maître du jeu.</p>
+      <p class="muted" style="margin:4px 0 8px;font-size:.88rem">Pas besoin de clé IA : c'est l'hôte qui fait tourner la partie.</p>
       <div class="ligne">
         <input class="champ" id="codeIn" placeholder="Code (ex. KXRT1)" maxlength="5" style="flex:1;min-width:140px;text-transform:uppercase">
         <button class="btn" id="bRejoindre">Rejoindre</button>
@@ -125,39 +150,56 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
       <div class="grille" id="cfgUniv"></div>
       <label class="etiquette">2. Mode de jeu</label>
       <div class="pilules g" id="cfgMode"></div>
+      <label class="etiquette">3. Maître du jeu</label>
+      <div class="pilules g" id="cfgMj"></div>
+      <p class="muted" id="cfgMjNote" style="font-size:.86rem;margin:6px 0 0"></p>
       <div id="cfgNbBloc">
-        <label class="etiquette">Nombre de héros sur cet appareil</label>
+        <label class="etiquette" id="cfgNbTitre">Nombre de héros sur cet appareil</label>
         <div class="pilules g" id="cfgNb"></div>
       </div>
-      <label class="etiquette">3. Type d'aventure</label>
+      <label class="etiquette">4. Type d'aventure</label>
       <div class="pilules g" id="cfgType"></div>
       <label class="etiquette">Difficulté</label>
       <div class="pilules g" id="cfgDiff"></div>
-      <label class="etiquette">Ton idée d'aventure <span class="muted">(facultatif)</span></label>
-      <textarea class="champ" id="cfgPitch" maxlength="300" placeholder="Ex. : retrouver la fille du forgeron enlevée par des gobelins…"></textarea>
-      <p class="muted" id="cfgMsg"></p>
-      <div class="ligne" style="justify-content:space-between">
+      <div id="cfgPitchBloc">
+        <label class="etiquette">Ton idée d'aventure pour l'IA <span class="muted">(facultatif)</span></label>
+        <textarea class="champ" id="cfgPitch" maxlength="300" placeholder="Ex. : retrouver la fille du forgeron enlevée par des gobelins…"></textarea>
+      </div>
+      <div class="ligne" style="justify-content:space-between;margin-top:12px">
         <button class="btn ghost" id="cfgRetour">← Retour</button>
-        <button class="btn" id="cfgGo">Créer les héros →</button>
+        <button class="btn" id="cfgGo">Continuer →</button>
       </div>
     </div>
   </section>
 
-  <!-- ===== Création de héros ===== -->
-  <section class="ecran cache" id="eCrea"><div class="b-carte" id="crea"></div></section>
+  <!-- ===== Salle : création commune des héros ===== -->
+  <section class="ecran cache" id="eLobby">
+    <div class="b-carte" id="lobHaut"></div>
+    <div class="lobby">
+      <div class="col">
+        <div class="b-carte" id="lobForm"></div>
+        <div class="b-carte cache" id="lobMJ"></div>
+      </div>
+      <div class="b-carte" id="lobTable"></div>
+    </div>
+  </section>
 
-  <!-- ===== Salle en ligne ===== -->
-  <section class="ecran cache" id="eSalle"><div class="b-carte" id="salleBox"></div></section>
+  <!-- ===== Création en cours de partie ===== -->
+  <section class="ecran cache" id="eCrea"><div class="b-carte" id="crea"></div></section>
 
   <!-- ===== Partie ===== -->
   <section class="ecran cache" id="eJeu">
     <div class="jeu">
-      <div class="panneau">
-        <div class="lieu"><span id="jLieu"></span><span class="muted" id="jInfo"></span></div>
-        <div class="ordre cache" id="jOrdre"></div>
-        <div class="carte" id="jCarte"></div>
-        <div class="equipe" id="jEquipe"></div>
-        <div class="groupe muted" id="jGroupe"></div>
+      <div class="col">
+        <div class="panneau">
+          <div class="lieu"><span id="jLieu"></span><span class="muted" id="jInfo"></span></div>
+          <div class="ordre cache" id="jOrdre"></div>
+          <div class="carte" id="jCarte"></div>
+          <div class="equipe" id="jEquipe"></div>
+          <div class="groupe muted" id="jGroupe"></div>
+          <div class="groupe" id="jMjSel"></div>
+        </div>
+        <div class="panneau cache" id="jMJ"></div>
       </div>
       <div class="panneau">
         <div class="journal" id="jLog"></div>
@@ -175,10 +217,14 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
 <script src="donnees.js"></script>
 <script>
 /* ============================================================
-   TABLE DE LÉGENDES — jeu de rôle avec IA maître du jeu
-   L'IA ne fait que raconter et décider (jets, combats, cartes) ;
-   le moteur gère les dés, les stats, les combats et les monstres
-   (données fixes dans donnees.js) pour dépenser peu de tokens.
+   TABLE DE LÉGENDES — jeu de rôle, MJ IA ou MJ humain
+   - Le moteur gère dés, stats, combats et monstres (donnees.js).
+   - MJ IA : elle raconte et décide (jets, combats, cartes) en JSON.
+   - MJ humain : un joueur a des outils (récit, jets, cartes,
+     créatures, récompenses, contrôle des monstres). Ses actions
+     sont des « commandes MJ » appliquées par l'hôte (mjAppliquer).
+   - Salle : chacun crée son héros, tout le monde voit les
+     brouillons des autres en direct.
    ============================================================ */
 const $ = id => document.getElementById(id);
 const stock = Base.stock("jdr_");
@@ -189,15 +235,25 @@ const d = n => 1 + Math.floor(Math.random() * n);
 const mod = v => Math.floor((v - 10) / 2);
 const sgn = n => (n >= 0 ? "+" : "") + n;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rg = (a, b) => Array.from({length: b - a + 1}, (_, i) => a + i);
 const COUL = ["#e86a92", "#5b6bd0", "#3aa76d", "#f2a03d", "#9b59d0", "#22a7b8", "#d9534f", "#8a6d3b"];
-const PRO = niv => 2 + Math.floor((niv - 1) / 4);          // bonus de maîtrise
-const XP_NIV = niv => 100 * niv * niv;                    // XP pour passer au niveau suivant
+const PRO = niv => 2 + Math.floor((niv - 1) / 4);
+const XP_NIV = niv => 100 * niv * niv;
 const XP_MONSTRE = niv => 25 * niv * (niv + 1) / 2;
-const VIT = 6, VIT_M = 5;                                 // cases de déplacement
+const VIT = 6, VIT_M = 5;
 const BLOQUE = "#~T^=C";
 const TUILE = {"#": "mur", ".": "sol", ",": "herbe", "~": "eau", T: "arbre", "^": "roc", "=": "meuble", D: "porte", C: "coffre", S: "esc", "!": "danger", "*": "objet", P: "sol", M: "sol"};
+const SYMBOLES = [["#", "Mur"], [".", "Sol"], [",", "Herbe"], ["~", "Eau"], ["T", "Arbre"], ["^", "Rocher"], ["=", "Meuble"], ["D", "Porte"], ["C", "Coffre"], ["S", "Escalier"], ["!", "Danger"], ["*", "Objet"], ["P", "Départ héros"], ["M", "Ennemi"]];
 const DIRS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 const dch = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+const ACCROCHES = [
+  "Cherche un frère disparu depuis des années.", "Fuit un ancien employeur qui veut sa peau.", "Doit une grosse somme à des gens peu recommandables.",
+  "A juré de protéger quelqu'un, coûte que coûte.", "Dernier survivant de son village, rasé par un mystérieux ennemi.", "Cache un secret dont il a honte.",
+  "Rêve de gloire et de fortune, quitte à prendre des risques.", "A été chassé de sa famille pour une faute qu'il n'a pas commise.",
+  "Possède un objet étrange hérité de sa mère, sans savoir à quoi il sert.", "Recherche celui qui a trahi son ancien groupe.",
+  "Fait des rêves prophétiques qui finissent toujours mal.", "Veut réparer une erreur qui a coûté des vies."
+];
+const EMOS = ["👹", "👺", "💀", "🧟", "🐺", "🕷️", "🐍", "🐉", "🤖", "👽", "🧙", "🥷", "🦇", "🐻", "👻", "🦂", "🐗", "🧛"];
 
 function lancer(expr){
   const m = String(expr || "").replace(/\s/g, "").match(/^(\d*)d(\d+)([+-]\d+)?$/i);
@@ -209,15 +265,26 @@ function lancer(expr){
 }
 const desSeuls = expr => { const x = lancer(expr); return x.n ? lancer(x.n + "d" + x.f).t : 0; };
 
+function garderFocus(fn){
+  const a = document.activeElement, id = a && a.id;
+  let s = null, e = null;
+  try{ s = a.selectionStart; e = a.selectionEnd; }catch(x){}
+  fn();
+  if(id){ const n = document.getElementById(id); if(n && n !== a){ n.focus(); try{ if(s != null) n.setSelectionRange(s, e); }catch(x){} } }
+}
+
 /* ---------- État ---------- */
 let G = null;          // la partie
 let mode = null;       // "local" | "ligne"
 let salle = null;      // salle en ligne
-let L = null;          // salle d'attente (hôte) : {u, heros}
-let GL = {u: null, heros: []};   // salle d'attente vue par un invité
+let L = null;          // salle d'attente {cfg, heros, reprise}
 let enJeu = false, enCours = false, vise = null, selId = null, animVue = 0, ecranActuel = "eMenu";
-let cfg = Object.assign({u: "fantasy", mode: "local", nb: 1, type: "oneshot", diff: 1, pitch: ""}, stock.lire("cfg", {}));
+let cfg = Object.assign({u: "fantasy", mode: "local", nb: 1, type: "oneshot", diff: 1, mj: "ia", pitch: ""}, stock.lire("cfg", {}));
 cfg.pitch = "";
+let lib = Object.assign({cartes: {}, monstres: []}, stock.lire("mjlib", {}));
+let libV = 0;
+const saveLib = () => { libV++; stock.ecrire("mjlib", lib); };
+const MJ = {onglet: "recit", recit: "", choix: "", jh: null, js: "DEX", jdd: 12, jpour: "", secret: false, log: [], rencontre: [], auto: true, outil: null, pion: null, filtre: 0, xp: 50, or: 10, objet: "", vuCombat: false};
 
 /* ---------- Héros : calculs ---------- */
 const classe = h => { const U = UNIV[h.u] || UNIV.fantasy; return U.classes.find(c => c.id === h.cls) || U.classes[0]; };
@@ -228,6 +295,7 @@ function ca(h){ const C = classe(h); return C.ca + Math.min(C.dex, mod(h.st.DEX)
 const attB = h => PRO(h.niv) + mod(h.st[classe(h).arme.stat]);
 const degTxt = h => { const C = classe(h), m = mod(h.st[C.arme.stat]); return C.arme.de + (m ? sgn(m) : ""); };
 const bonusTxt = b => STATS.filter(s => b[s]).map(s => s + " +" + b[s]).join(", ");
+const statsTxt = h => STATS.map(s => `<b>${s}</b> ${h.st[s]} (${sgn(mod(h.st[s]))})`).join(" · ");
 
 function gagnerXP(h, n){
   if(!n) return;
@@ -249,37 +317,51 @@ function controle(h){
   return !!salle.hote && !salle.joueurs.some(j => j.id === h.owner);
 }
 const estInvite = () => mode === "ligne" && salle && !salle.hote;
+const mjHumain = () => !!G && G.mj !== "ia";
+function estMJ(){
+  if(!G || G.mj === "ia") return false;
+  if(mode !== "ligne") return true;            // MJ assis devant cet écran
+  return !!salle && G.mj === salle.moi;
+}
+function nomMJ(){
+  if(!G || G.mj === "ia") return "🤖 IA";
+  if(mode !== "ligne") return "🎭 un joueur (cet écran)";
+  const j = salle && salle.joueurs.find(x => x.id === G.mj);
+  return "🎭 " + (j ? j.pseudo : G.mjPseudo || "?");
+}
 
 function sauverHeros(h){
   const l = stock.lire("heros", []).filter(x => x.id !== h.id);
-  const {x, y, owner, ...propre} = h;
+  const {x, y, owner, pret, ancien, ...propre} = h;
   l.unshift(propre);
   stock.ecrire("heros", l.slice(0, 40));
 }
 
 /* ---------- Écrans ---------- */
 const bQuit = Base.el("button", "🚪", "b-ico");
-bQuit.title = "Quitter la partie (elle est sauvegardée)";
+bQuit.title = "Quitter (la partie est sauvegardée)";
 bQuit.style.display = "none";
 Base.entete({
   titre: "Table de Légendes", emoji: "🐉", boutons: [bQuit],
-  aide: `<p>Un jeu de rôle où une <b>IA est le maître du jeu</b>. Elle raconte, joue les personnages et décide des épreuves ; le jeu gère les dés, les caractéristiques et les combats.</p>
+  aide: `<p>Un jeu de rôle façon D&D. Le <b>maître du jeu (MJ)</b> est une IA ou l'un des joueurs ; le jeu gère les dés, les caractéristiques et les combats.</p>
   <ul>
-   <li><b>Crée ton héros</b> : origine, classe, caractéristiques tirées aux dés (4d6, on garde les 3 meilleurs). Touche deux caractéristiques pour les échanger.</li>
-   <li><b>Décris ce que tu fais</b> en une phrase, ou choisis une suggestion. À plusieurs, chacun donne son action puis le MJ répond à tout le monde.</li>
+   <li><b>Créez vos héros ensemble</b> : dans la salle, chacun voit en direct les héros des autres. Origine, classe, caractéristiques tirées aux dés (4d6, on garde les 3 meilleurs) et une petite <b>histoire</b> que le MJ utilisera.</li>
+   <li><b>Décris ce que tu fais</b> en une phrase, ou choisis une suggestion. Le MJ répond à tout le groupe.</li>
    <li><b>Jets de dés</b> : quand l'issue est incertaine, le MJ demande un jet (d20 + modificateur contre une difficulté).</li>
    <li><b>Combats</b> sur la carte, au tour par tour : déplace-toi (🦶), attaque (⚔️), utilise ton talent (✨) ou une potion (🧪).</li>
-   <li>Monstres vaincus et quêtes rapportent de l'XP : jusqu'au niveau 10 !</li>
-   <li>La partie est sauvegardée automatiquement. En ligne, seul l'hôte a besoin d'une clé IA (⚙️ Réglages).</li>
+   <li><b>MJ joueur</b> : il a ses outils (récit, jets, éditeur de cartes, créatures, récompenses) et peut jouer lui-même les monstres. Pas besoin de clé IA.</li>
+   <li>La partie est sauvegardée automatiquement. En ligne, seul l'hôte a besoin d'une clé IA si le MJ est l'IA (⚙️ Réglages).</li>
   </ul>`
 });
 
+let cleHaut = "", cleMJ = "", cleAct = "", cleLog = "", lobGauche = "";
 function ecran(id){
   document.querySelectorAll(".ecran").forEach(e => e.classList.toggle("cache", e.id !== id));
   ecranActuel = id;
-  bQuit.style.display = (id === "eJeu" || id === "eSalle") ? "" : "none";
+  bQuit.style.display = (id === "eJeu" || id === "eLobby") ? "" : "none";
   if(id === "eMenu") majMenu();
-  if(id === "eJeu"){ cleAct = ""; cleLog = ""; rendre(); }
+  if(id === "eLobby"){ cleHaut = ""; cleMJ = ""; }
+  if(id === "eJeu"){ cleAct = ""; cleLog = ""; cleMJ = ""; rendre(); }
   window.scrollTo(0, 0);
 }
 function majMenu(){
@@ -287,17 +369,21 @@ function majMenu(){
   $("bContinuer").classList.toggle("cache", !p);
   $("infoSauve").textContent = p ? `Partie sauvegardée : ${UNIV[p.u] ? UNIV[p.u].emo + " " + UNIV[p.u].nom : ""} · ${p.heros.map(h => h.nom + " niv " + h.niv).join(", ")}` : "";
 }
+function besoinCle(){
+  Base.fenetre("🔑 Clé IA nécessaire", `<p>Avec l'IA comme maître du jeu, il faut une clé (gratuite chez Google Gemini ou Groq) dans la page <a href="${Base.RACINE}reglages/">⚙️ Réglages</a>.</p><p class="muted">Sans clé, choisis « 🎭 Un joueur » comme maître du jeu. Pour rejoindre la partie d'un ami, pas besoin de clé.</p>`, {html: true, bouton: "OK"});
+}
 
 /* ---------- Configuration ---------- */
-function pilules(elId, opts, cle, apres){
-  const el = $(elId); el.innerHTML = "";
+function pil(el, opts, val, fn){
+  el.innerHTML = "";
   opts.forEach(([v, t]) => {
     const b = document.createElement("button");
-    b.textContent = t; b.className = cfg[cle] === v ? "on" : "";
-    b.onclick = () => { cfg[cle] = v; pilules(elId, opts, cle, apres); if(apres) apres(); };
+    b.textContent = t; b.className = val === v ? "on" : "";
+    b.onclick = () => fn(v);
     el.appendChild(b);
   });
 }
+const pilules = (elId, opts, cle, apres) => pil($(elId), opts, cfg[cle], v => { cfg[cle] = v; pilules(elId, opts, cle, apres); if(apres) apres(); });
 function dessinerConfig(){
   const box = $("cfgUniv"); box.innerHTML = "";
   for(const [k, U] of Object.entries(UNIV)){
@@ -308,40 +394,35 @@ function dessinerConfig(){
     box.appendChild(t);
   }
   pilules("cfgMode", [["local", "📱 Sur cet appareil"], ["ligne", "🌐 En ligne (chacun son appareil)"]], "mode", dessinerConfig);
+  pilules("cfgMj", [["ia", "🤖 L'IA"], ["joueur", "🎭 Un joueur"]], "mj", dessinerConfig);
+  $("cfgMjNote").textContent = cfg.mj === "ia"
+    ? "L'IA raconte, joue les personnages, demande les jets et lance les combats (clé IA nécessaire)."
+    : cfg.mode === "ligne"
+      ? "Un joueur de la salle tient le rôle de MJ (toi par défaut, modifiable dans la salle) avec ses outils : récit, jets, éditeur de cartes, créatures, récompenses. Pas besoin de clé IA."
+      : "Le MJ joue sur cet écran avec ses outils : récit, jets, éditeur de cartes, créatures, récompenses. Pas besoin de clé IA.";
   $("cfgNbBloc").classList.toggle("cache", cfg.mode !== "local");
-  pilules("cfgNb", [1, 2, 3, 4, 5, 6, 7, 8].map(n => [n, n === 1 ? "1 (solo)" : String(n)]), "nb");
+  $("cfgNbTitre").textContent = "Nombre de héros sur cet appareil" + (cfg.mj === "joueur" ? " (sans compter le MJ)" : "");
+  pilules("cfgNb", rg(1, 8).map(n => [n, n === 1 ? "1 (solo)" : String(n)]), "nb");
   pilules("cfgType", [["oneshot", "⚡ One-shot (courte, avec une fin)"], ["campagne", "🗺️ Campagne (longue et ouverte)"]], "type");
   pilules("cfgDiff", [[0, "🙂 Facile"], [1, "⚔️ Normale"], [2, "💀 Héroïque"]], "diff");
-  $("cfgGo").textContent = cfg.mode === "ligne" ? "Créer mon héros puis la salle →" : "Créer les héros →";
+  $("cfgPitchBloc").classList.toggle("cache", cfg.mj !== "ia");
+  $("cfgGo").textContent = cfg.mode === "ligne" ? "Ouvrir la salle →" : "Créer les héros →";
 }
-$("bNouvelle").onclick = () => {
-  if(!IA.disponible()){ Base.fenetre("🔑 Clé IA nécessaire", `<p>Le maître du jeu est une IA : ajoute une clé (gratuite chez Google Gemini ou Groq) dans la page <a href="${Base.RACINE}reglages/">⚙️ Réglages</a>.</p><p class="muted">Pour rejoindre la partie d'un ami, pas besoin de clé.</p>`, {html: true, bouton: "OK"}); return; }
-  dessinerConfig(); ecran("eConfig");
-};
+$("bNouvelle").onclick = () => { dessinerConfig(); ecran("eConfig"); };
 $("cfgRetour").onclick = () => ecran("eMenu");
 $("cfgGo").onclick = () => {
   cfg.pitch = $("cfgPitch").value.trim().slice(0, 300);
-  stock.ecrire("cfg", {u: cfg.u, mode: cfg.mode, nb: cfg.nb, type: cfg.type, diff: cfg.diff});
-  if(cfg.mode === "ligne"){
-    ouvrirCreation(cfg.u, "Ton héros", h => {
-      L = {u: cfg.u, heros: [{...h, coul: COUL[0], pseudo: Base.joueur.pseudo() || h.nom, owner: "hote"}]};
-      G = null; creerSalle();
-    }, [], () => ecran("eConfig"));
-    return;
-  }
-  mode = "local";
-  const liste = [];
-  const suivant = () => {
-    if(liste.length >= cfg.nb){ nouvellePartie(liste); return; }
-    ouvrirCreation(cfg.u, cfg.nb > 1 ? `Héros ${liste.length + 1} / ${cfg.nb}` : "Ton héros", h => {
-      liste.push({...h, coul: COUL[liste.length % 8]}); suivant();
-    }, liste.map(h => h.id), liste.length ? null : () => ecran("eConfig"));
-  };
-  suivant();
+  stock.ecrire("cfg", {u: cfg.u, mode: cfg.mode, nb: cfg.nb, type: cfg.type, diff: cfg.diff, mj: cfg.mj});
+  if(cfg.mj === "ia" && !IA.disponible()){ besoinCle(); return; }
+  G = null; enJeu = false; CR = null; lobGauche = "";
+  L = {cfg: {u: cfg.u, type: cfg.type, diff: cfg.diff, nb: cfg.nb, pitch: cfg.mj === "ia" ? cfg.pitch : "",
+    mj: cfg.mj === "ia" ? "ia" : (cfg.mode === "ligne" ? "hote" : "local")}, heros: []};
+  if(cfg.mode === "ligne") creerSalle();
+  else{ mode = "local"; salle = null; ouvrirLobby(); }
 };
 
-/* ---------- Création de héros ---------- */
-let CR = null;
+/* ---------- Formulaire de création de héros ---------- */
+let CR = null, tCR = null;
 function jetCarac(){
   let v;
   do{ v = STATS.map(() => { const r = [d(6), d(6), d(6), d(6)].sort((a, b) => a - b); return r[1] + r[2] + r[3]; }); }
@@ -355,79 +436,261 @@ function ranger(){
   prio.forEach((s, i) => nb[STATS.indexOf(s)] = tri[i]);
   CR.base = nb;
 }
-function ouvrirCreation(u, titre, fini, exclus, retour){
-  CR = {u, titre, fini, exclus: exclus || [], retour, nom: "", ori: 0, cls: 0, base: jetCarac(), rel: 3, sel: -1, id: uid(), charge: null};
-  ranger();
-  ecran("eCrea"); dessinerCrea();
+/* o : {box, u, titre, nom, bg, exclus, retour, valide(h), change(h, pret), modePret} */
+function ouvrirCreation(o){
+  CR = {...o, nom: o.nom || "", bg: o.bg || "", ori: 0, cls: 0, base: jetCarac(), rel: 3, sel: -1, id: uid(), charge: null, pret: false};
+  ranger(); dessinerCrea(); changeCrea();
 }
 function heroDeCrea(){
+  if(CR.charge){ const h = {...CR.charge, bg: CR.bg.trim().slice(0, 400)}; h.pvMax = pvMax(h); h.pv = h.pvMax; return h; }
   const U = UNIV[CR.u], O = U.origines[CR.ori], C = U.classes[CR.cls];
   const st = {}; STATS.forEach((s, i) => st[s] = Math.min(20, CR.base[i] + (O.bonus[s] || 0)));
-  const h = {id: CR.id, u: CR.u, nom: CR.nom.trim().slice(0, 20) || "Héros", ori: O.nom, cls: C.id, emo: C.emo, st, niv: 1, xp: 0};
+  const h = {id: CR.id, u: CR.u, nom: CR.nom.trim().slice(0, 20), ori: O.nom, cls: C.id, emo: C.emo, st, niv: 1, xp: 0, bg: CR.bg.trim().slice(0, 400)};
   h.pvMax = pvMax(h); h.pv = h.pvMax;
   return h;
 }
+function changeCrea(){ clearTimeout(tCR); if(CR && CR.change) CR.change(heroDeCrea(), CR.pret); }
+function changeCreaBientot(){ clearTimeout(tCR); tCR = setTimeout(changeCrea, 350); }
 function resumeClasse(h){
   const C = classe(h), t = C.cap;
   return `<b>${C.emo} ${esc(C.nom)}</b> — ${esc(C.desc)}<br>
-    ❤️ PV ${h.pvMax} · 🛡️ CA ${ca(h)} · ⚔️ ${esc(C.arme.nom)} ${sgn(attB(h))} pour toucher, ${degTxt(h)} dégâts${C.arme.portee > 1 ? " (portée " + C.arme.portee + ")" : " (corps à corps)"}<br>
+    ❤️ PV ${pvMax(h)} · 🛡️ CA ${ca(h)} · ⚔️ ${esc(C.arme.nom)} ${sgn(attB(h))} pour toucher, ${degTxt(h)} dégâts${C.arme.portee > 1 ? " (portée " + C.arme.portee + ")" : " (corps à corps)"}<br>
     ✨ <b>${esc(t.nom)}</b> ×${t.n} par combat : ${esc(t.desc)}<br>
     🎯 Maîtrises : ${C.maitrises.map(s => NOMS_STATS[s]).join(", ")} · 🎒 ${esc(C.kit.join(", "))}`;
 }
 function dessinerCrea(){
-  const U = UNIV[CR.u], box = $("crea");
-  const sauves = stock.lire("heros", []).filter(h => h.u === CR.u && !CR.exclus.includes(h.id));
-  if(CR.charge){
-    const h = CR.charge;
+  if(!CR || !CR.box) return;
+  const U = UNIV[CR.u], box = CR.box, h = heroDeCrea();
+  if(CR.pret){
     box.innerHTML = `<h2 style="margin:0">${esc(CR.titre)}</h2>
-      <p style="font-size:1.2rem;margin:10px 0 4px"><b>${h.emo} ${esc(h.nom)}</b> · ${esc(h.ori)} niveau ${h.niv}</p>
-      <div class="encart">${resumeClasse(h)}<br>${STATS.map(s => `<b>${s}</b> ${h.st[s]} (${sgn(mod(h.st[s]))})`).join(" · ")}</div>
-      <div class="ligne" style="margin-top:14px;justify-content:space-between"><button class="btn ghost" id="crAutre">← Créer un autre héros</button><button class="btn" id="crOk">✅ Partir avec ${esc(h.nom)}</button></div>`;
-    $("crAutre").onclick = () => { CR.charge = null; CR.id = uid(); dessinerCrea(); };
-    $("crOk").onclick = () => { const x = {...CR.charge, pvMax: pvMax(CR.charge)}; x.pv = x.pvMax; CR.fini(x); };
+      <p style="font-size:1.15rem;margin:10px 0 4px"><b>${h.emo} ${esc(h.nom)}</b> · ${esc(h.ori)} · niveau ${h.niv} <span style="color:#3aa76d;font-weight:800">✅ Prêt</span></p>
+      <div class="encart">${resumeClasse(h)}<br>${statsTxt(h)}${h.bg ? `<br><i>📖 « ${esc(h.bg)} »</i>` : ""}</div>
+      <div class="ligne" style="margin-top:12px"><button class="btn ghost" id="crModif">✏️ Modifier mon héros</button></div>`;
+    $("crModif").onclick = () => { CR.pret = false; dessinerCrea(); changeCrea(); };
     return;
   }
-  const O = U.origines[CR.ori], C = U.classes[CR.cls], h = heroDeCrea();
-  box.innerHTML = `<h2 style="margin:0">${esc(CR.titre)}</h2>
-    <p class="muted" style="margin:2px 0 0">${U.emo} ${esc(U.nom)}</p>
-    ${sauves.length ? `<label class="etiquette">Reprendre un héros enregistré</label><div class="puces">${sauves.map(s => `<button data-sv="${esc(s.id)}">${s.emo} ${esc(s.nom)} · niv ${s.niv}</button>`).join("")}</div>` : ""}
-    <label class="etiquette">Nom du héros</label>
-    <input class="champ" id="crNom" maxlength="20" placeholder="Ex. : Aldric, Nova, Kaede…" value="${esc(CR.nom)}">
-    <label class="etiquette">Origine</label>
-    <div class="grille">${U.origines.map((o, i) => `<div class="tuile ${i === CR.ori ? "on" : ""}" data-ori="${i}"><b>${esc(o.nom)}</b><small>${bonusTxt(o.bonus)}<br>${esc(o.desc)}</small></div>`).join("")}</div>
-    <label class="etiquette">Classe</label>
-    <div class="grille">${U.classes.map((c, i) => `<div class="tuile ${i === CR.cls ? "on" : ""}" data-cls="${i}"><span class="gros">${c.emo}</span><b>${esc(c.nom)}</b><small>${esc(c.desc)}</small></div>`).join("")}</div>
-    <div class="encart">${resumeClasse(h)}</div>
-    <label class="etiquette">Caractéristiques <span class="muted">(touche deux cases pour les échanger · ★ = stat principale)</span></label>
-    <div class="stats">${STATS.map((s, i) => `<div class="stat ${CR.sel === i ? "sel" : ""}" data-st="${i}" title="${NOMS_STATS[s]}"><div class="k">${s}${s === C.stat ? " ★" : ""}</div><div class="n">${h.st[s]}</div><div class="m">${sgn(mod(h.st[s]))}${O.bonus[s] ? ` <span class="muted">(+${O.bonus[s]})</span>` : ""}</div></div>`).join("")}</div>
-    <div class="ligne" style="margin-top:8px">
-      <button class="btn ghost petit" id="crRanger">🪄 Ranger pour ma classe</button>
-      <button class="btn ghost petit" id="crRelancer" ${CR.rel ? "" : "disabled"}>🎲 Relancer les dés (${CR.rel})</button>
-    </div>
+  const ch = CR.charge;
+  const sauves = ch ? [] : stock.lire("heros", []).filter(s => s.u === CR.u && !(CR.exclus || []).includes(s.id)).slice(0, 12);
+  const O = U.origines[CR.ori], C = U.classes[CR.cls];
+  let html = `<h2 style="margin:0">${esc(CR.titre)}</h2><p class="muted" style="margin:2px 0 0">${U.emo} ${esc(U.nom)}</p>`;
+  if(sauves.length) html += `<label class="etiquette">Reprendre un héros enregistré</label><div class="puces">${sauves.map(s => `<button data-sv="${esc(s.id)}">${s.emo} ${esc(s.nom)} · niv ${s.niv}</button>`).join("")}</div>`;
+  if(ch){
+    html += `<div class="encart"><b style="font-size:1.1rem">${h.emo} ${esc(h.nom)}</b> · ${esc(h.ori)} · niveau ${h.niv}<br>${resumeClasse(h)}<br>${statsTxt(h)}</div>
+      <button class="btn ghost petit" id="crAutre" style="margin-top:8px">← Créer un nouveau héros à la place</button>`;
+  }else{
+    html += `<label class="etiquette">Nom du héros</label>
+      <input class="champ" id="crNom" maxlength="20" placeholder="Ex. : Aldric, Nova, Kaede…" value="${esc(CR.nom)}">
+      <label class="etiquette">Origine</label>
+      <div class="grille">${U.origines.map((o, i) => `<div class="tuile ${i === CR.ori ? "on" : ""}" data-ori="${i}"><b>${esc(o.nom)}</b><small>${bonusTxt(o.bonus)}<br>${esc(o.desc)}</small></div>`).join("")}</div>
+      <label class="etiquette">Classe</label>
+      <div class="grille">${U.classes.map((c, i) => `<div class="tuile ${i === CR.cls ? "on" : ""}" data-cls="${i}"><span class="gros">${c.emo}</span><b>${esc(c.nom)}</b><small>${esc(c.desc)}</small></div>`).join("")}</div>
+      <div class="encart">${resumeClasse(h)}</div>
+      <label class="etiquette">Caractéristiques <span class="muted">(touche deux cases pour les échanger · ★ = stat principale)</span></label>
+      <div class="stats">${STATS.map((s, i) => `<div class="stat ${CR.sel === i ? "sel" : ""}" data-st="${i}" title="${NOMS_STATS[s]}"><div class="k">${s}${s === C.stat ? " ★" : ""}</div><div class="n">${h.st[s]}</div><div class="m">${sgn(mod(h.st[s]))}${O.bonus[s] ? ` <span class="muted">(+${O.bonus[s]})</span>` : ""}</div></div>`).join("")}</div>
+      <div class="ligne" style="margin-top:8px">
+        <button class="btn ghost petit" id="crRanger">🪄 Ranger pour ma classe</button>
+        <button class="btn ghost petit" id="crRelancer" ${CR.rel ? "" : "disabled"}>🎲 Relancer les dés (${CR.rel})</button>
+      </div>`;
+  }
+  html += `<label class="etiquette">📖 Histoire du personnage <span class="muted">(facultatif — le MJ s'en servira)</span></label>
+    <textarea class="champ" id="crBg" maxlength="400" placeholder="D'où vient-il ? Que cherche-t-il ? Un secret, une dette, un ennemi juré, un être cher…">${esc(CR.bg)}</textarea>
+    <div class="ligne" style="justify-content:space-between;margin-top:4px"><button class="btn ghost petit" id="crIdee">🎲 Une idée d'accroche</button><span class="muted" id="crNb" style="font-size:.8rem">${CR.bg.length}/400</span></div>
     <div class="ligne" style="margin-top:14px;justify-content:space-between">
       ${CR.retour ? `<button class="btn ghost" id="crRetour">← Retour</button>` : "<span></span>"}
-      <button class="btn" id="crOk">✅ Valider ce héros</button>
+      <button class="btn" id="crOk">${CR.modePret ? "✅ Je suis prêt" : "✅ Valider ce héros"}</button>
     </div>`;
-  $("crNom").oninput = e => CR.nom = e.target.value;
-  box.querySelectorAll("[data-ori]").forEach(t => t.onclick = () => { CR.ori = +t.dataset.ori; dessinerCrea(); });
-  box.querySelectorAll("[data-cls]").forEach(t => t.onclick = () => { CR.cls = +t.dataset.cls; ranger(); dessinerCrea(); });
+  box.innerHTML = html;
+  const re = () => { dessinerCrea(); changeCrea(); };
+  if($("crNom")) $("crNom").oninput = e => { CR.nom = e.target.value; changeCreaBientot(); };
+  $("crBg").oninput = e => { CR.bg = e.target.value; $("crNb").textContent = CR.bg.length + "/400"; changeCreaBientot(); };
+  $("crIdee").onclick = () => { CR.bg = ((CR.bg.trim() ? CR.bg.trim() + " " : "") + ACCROCHES[d(ACCROCHES.length) - 1]).slice(0, 400); re(); };
+  box.querySelectorAll("[data-ori]").forEach(t => t.onclick = () => { CR.ori = +t.dataset.ori; re(); });
+  box.querySelectorAll("[data-cls]").forEach(t => t.onclick = () => { CR.cls = +t.dataset.cls; ranger(); re(); });
   box.querySelectorAll("[data-st]").forEach(t => t.onclick = () => {
     const i = +t.dataset.st;
     if(CR.sel < 0) CR.sel = i;
     else{ if(CR.sel !== i){ const a = CR.base[CR.sel]; CR.base[CR.sel] = CR.base[i]; CR.base[i] = a; } CR.sel = -1; }
-    dessinerCrea();
+    re();
   });
   box.querySelectorAll("[data-sv]").forEach(b => b.onclick = () => {
     const s = stock.lire("heros", []).find(x => x.id === b.dataset.sv);
-    if(s){ CR.charge = s; dessinerCrea(); }
+    if(s){ CR.charge = s; CR.nom = s.nom; CR.bg = s.bg || CR.bg; re(); }
   });
-  $("crRanger").onclick = () => { ranger(); CR.sel = -1; dessinerCrea(); };
-  $("crRelancer").onclick = () => { if(CR.rel <= 0) return; CR.rel--; CR.base = jetCarac(); ranger(); CR.sel = -1; dessinerCrea(); };
+  if($("crAutre")) $("crAutre").onclick = () => { CR.charge = null; CR.id = uid(); CR.nom = ""; re(); };
+  if($("crRanger")) $("crRanger").onclick = () => { ranger(); CR.sel = -1; re(); };
+  if($("crRelancer")) $("crRelancer").onclick = () => { if(CR.rel <= 0) return; CR.rel--; CR.base = jetCarac(); ranger(); CR.sel = -1; re(); };
   if(CR.retour) $("crRetour").onclick = CR.retour;
   $("crOk").onclick = () => {
-    if(!CR.nom.trim()){ Base.toast("Donne un nom à ton héros !"); $("crNom").focus(); return; }
-    const hh = heroDeCrea(); sauverHeros(hh); CR.fini(hh);
+    if(!ch && !CR.nom.trim()){ Base.toast("Donne un nom à ton héros !"); $("crNom").focus(); return; }
+    const hh = heroDeCrea(); sauverHeros(hh);
+    if(CR.modePret){ CR.pret = true; re(); }
+    else CR.valide(hh);
   };
+}
+
+/* ---------- Salle : création commune ---------- */
+function ouvrirLobby(){ lobGauche = ""; ecran("eLobby"); assurerForm(); rendreLobby(); }
+const jeSuisMJLobby = () => mode === "ligne" && salle && L && L.cfg.mj === salle.moi;
+function assurerForm(){
+  if(!L) return;
+  const box = $("lobForm");
+  if(mode !== "ligne"){
+    const n = L.heros.length, nb = L.cfg.nb || 1;
+    if(n < nb){
+      const cle = "crea" + n;
+      if(lobGauche !== cle){
+        lobGauche = cle;
+        ouvrirCreation({box, u: L.cfg.u, titre: nb > 1 ? `Héros ${n + 1} / ${nb}` : "Ton héros", exclus: L.heros.map(h => h.id),
+          retour: n ? null : () => { dessinerConfig(); ecran("eConfig"); },
+          valide: h => { L.heros.push({...h, coul: COUL[L.heros.length % 8], pret: true}); assurerForm(); rendreLobby(); }});
+      }
+    }else if(lobGauche !== "pret"){
+      lobGauche = "pret"; CR = null;
+      box.innerHTML = `<h2 style="margin:0">✅ La table est prête</h2>
+        <p class="muted">${L.cfg.mj === "ia" ? "Le maître du jeu IA n'attend plus que vous." : "Le maître du jeu joue sur cet écran : ses outils apparaîtront sous la carte."}</p>
+        <div class="ligne" style="margin-top:12px"><button class="btn" id="lGo">🚀 Lancer l'aventure</button></div>`;
+      $("lGo").onclick = lancerDepuisLobby;
+    }
+    $("lobMJ").classList.toggle("cache", L.cfg.mj !== "local");
+    if(L.cfg.mj === "local") rendreMJ(true);
+    return;
+  }
+  if(jeSuisMJLobby()){
+    $("lobMJ").classList.remove("cache");
+    if(lobGauche !== "mj"){
+      lobGauche = "mj"; CR = null;
+      box.innerHTML = `<h2 style="margin:0">🎭 Tu es le maître du jeu</h2>
+        <p class="muted">Pendant que les joueurs créent leurs héros (tu les vois à droite, avec leurs histoires), prépare tes cartes, tes créatures, ta première rencontre et tes notes. Tout sera dans tes outils pendant la partie.</p>`;
+    }
+    rendreMJ(true);
+    return;
+  }
+  $("lobMJ").classList.add("cache");
+  const mien = L.heros.find(h => h.owner === salle.moi);
+  if(mien && mien.ancien){
+    if(lobGauche !== "ancien" + mien.id){
+      lobGauche = "ancien" + mien.id; CR = null;
+      box.innerHTML = `<h2 style="margin:0">✅ Tu retrouves ${mien.emo} ${esc(mien.nom)}</h2><p class="muted">Niveau ${mien.niv}. L'hôte va reprendre l'aventure…</p>`;
+    }
+    return;
+  }
+  const cle = "crea" + L.cfg.u;
+  if(lobGauche !== cle || !CR){
+    const avant = CR; lobGauche = cle;
+    ouvrirCreation({box, u: L.cfg.u, titre: "Ton héros", nom: avant ? avant.nom : "", bg: avant ? avant.bg : "", modePret: true, change: envoyerBrouillon});
+  }
+}
+function envoyerBrouillon(h, pret){
+  if(!salle) return;
+  const x = {...h, pret: !!pret};
+  if(salle.hote) majBrouillon(x, {id: salle.moi, pseudo: Base.joueur.pseudo() || "Hôte"});
+  else salle.envoyer({t: "brouillon", h: x});
+}
+const couleurLibre = liste => COUL.find(c => !liste.some(h => h.coul === c)) || COUL[liste.length % 8];
+function majBrouillon(h, j){
+  if(!L || enJeu) return;
+  const x = nettoyerHero(h, j, L.cfg.u); if(!x) return;
+  x.pret = !!h.pret;
+  const i = L.heros.findIndex(y => y.owner === j.id);
+  if(i >= 0){ if(L.heros[i].ancien) return; x.coul = L.heros[i].coul; L.heros[i] = x; }
+  else{ x.coul = couleurLibre(L.heros); L.heros.push(x); }
+  rendreLobby(); diffuserBientot();
+}
+function rendreLobby(){
+  if(!L || ecranActuel !== "eLobby") return;
+  rendreLobHaut(); rendreTable();
+  if(mode === "ligne") assurerForm();
+}
+function rendreLobHaut(){
+  const box = $("lobHaut"), c = L.cfg, U = UNIV[c.u], hote = mode !== "ligne" || salle.hote;
+  const joueurs = mode === "ligne" ? salle.joueurs : [];
+  const cle = JSON.stringify([hote ? {...c, pitch: ""} : c, joueurs.map(j => j.id + j.pseudo), hote, mode, !!L.reprise, mode === "ligne" ? 0 : L.heros.length]);
+  if(cle === cleHaut) return;
+  cleHaut = cle;
+  const nomJ = id => (joueurs.find(j => j.id === id) || {}).pseudo || "?";
+  const mjNom = c.mj === "ia" ? "🤖 IA" : c.mj === "local" ? "🎭 un joueur (cet écran)" : "🎭 " + esc(nomJ(c.mj));
+  const resume = `${U.emo} <b>${esc(U.nom)}</b> · ${c.type === "campagne" ? "🗺️ Campagne" : "⚡ One-shot"} · ${["🙂 Facile", "⚔️ Normale", "💀 Héroïque"][c.diff]} · MJ : ${mjNom}`;
+  let html = "";
+  if(mode === "ligne") html += `<div class="ligne" style="justify-content:space-between"><b>🌐 Salle en ligne <span class="muted">· 8 joueurs max</span></b>${hote ? `<button class="btn ghost petit" id="lCopie">📋 Copier le lien d'invitation</button>` : ""}</div><div class="code">${esc(salle.code)}</div>`;
+  if(mode === "ligne" && hote){
+    html += `<div class="ligne">
+      ${L.reprise ? `<span style="flex:1">${U.emo} <b>${esc(U.nom)}</b> · reprise de l'aventure</span>` : `<select class="champ" id="lU" style="flex:1;min-width:180px">${Object.entries(UNIV).map(([k, u]) => `<option value="${k}" ${k === c.u ? "selected" : ""}>${u.emo} ${esc(u.nom)}</option>`).join("")}</select>`}
+      <select class="champ" id="lMJ" style="flex:1;min-width:180px"><option value="ia" ${c.mj === "ia" ? "selected" : ""}>Maître du jeu : 🤖 IA</option>${joueurs.map(j => `<option value="${esc(j.id)}" ${c.mj === j.id ? "selected" : ""}>Maître du jeu : 🎭 ${esc(j.pseudo)}</option>`).join("")}</select></div>`;
+    if(!L.reprise){
+      html += `<div class="pilules g" id="lType" style="margin-top:8px"></div><div class="pilules g" id="lDiff" style="margin-top:6px"></div>`;
+      if(c.mj === "ia") html += `<textarea class="champ" id="lPitch" maxlength="300" placeholder="Votre idée d'aventure pour l'IA (facultatif)" style="margin-top:8px">${esc(c.pitch || "")}</textarea>`;
+    }
+  }else{
+    html += `<p style="margin:4px 0">${resume}</p>${c.pitch ? `<p class="muted" style="margin:0">💡 ${esc(c.pitch)}</p>` : ""}`;
+  }
+  html += `<div class="ligne" style="justify-content:space-between;margin-top:12px">` + (mode === "ligne"
+    ? (hote ? `<button class="btn ghost" id="lFermer">✖ Fermer la salle</button><button class="btn" id="lGo2">${L.reprise ? "▶️ Reprendre l'aventure" : "🚀 Lancer l'aventure"}</button>`
+            : `<button class="btn ghost" id="lQuit">← Quitter la salle</button><span class="muted">L'hôte lancera l'aventure.</span>`)
+    : `<button class="btn ghost" id="lRet">← Changer les réglages</button><span class="muted">${L.heros.length} / ${c.nb} héros</span>`) + `</div>`;
+  box.innerHTML = html;
+  if($("lCopie")) $("lCopie").onclick = async () => { try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à tes amis 📨"); }catch(e){ Base.fenetre("Lien d'invitation", salle.lien); } };
+  if($("lU")) $("lU").onchange = e => changerCfg({u: e.target.value});
+  if($("lMJ")) $("lMJ").onchange = e => changerCfg({mj: e.target.value});
+  if($("lType")) pil($("lType"), [["oneshot", "⚡ One-shot"], ["campagne", "🗺️ Campagne"]], c.type, v => changerCfg({type: v}));
+  if($("lDiff")) pil($("lDiff"), [[0, "🙂 Facile"], [1, "⚔️ Normale"], [2, "💀 Héroïque"]], c.diff, v => changerCfg({diff: v}));
+  if($("lPitch")) $("lPitch").oninput = e => { L.cfg.pitch = e.target.value.slice(0, 300); diffuserBientot(); };
+  if($("lFermer")) $("lFermer").onclick = () => { salle.quitter(); salle = null; mode = null; L = null; ecran("eMenu"); };
+  if($("lGo2")) $("lGo2").onclick = lancerDepuisLobby;
+  if($("lQuit")) $("lQuit").onclick = () => { salle.quitter(); salle = null; mode = null; L = null; ecran("eMenu"); };
+  if($("lRet")) $("lRet").onclick = () => { if(L.heros.length && !confirm("Revenir aux réglages ? Les héros déjà créés restent enregistrés et pourront être repris.")) return; dessinerConfig(); ecran("eConfig"); };
+}
+function changerCfg(p){
+  if(p.mj === "ia" && !IA.disponible()){ besoinCle(); cleHaut = ""; rendreLobHaut(); return; }
+  if(p.u && p.u !== L.cfg.u) L.heros = L.heros.filter(h => h.ancien);
+  Object.assign(L.cfg, p);
+  cleHaut = ""; rendreLobby(); diffuser();
+}
+function carteHero(h, tete){
+  const C = classe(h);
+  return `<div class="pj" style="--hc:${h.coul || "#aaa"}"><div class="haut">${tete}</div>
+    <div><b>${h.emo} ${esc(h.nom || "(sans nom)")}</b> <span class="muted">${esc(h.ori)} · ${esc(C.nom)} · niv ${h.niv}</span></div>
+    <div class="muted" style="font-size:.78rem">❤️ ${pvMax(h)} · 🛡️ ${ca(h)} · ${STATS.map(s => s + " " + h.st[s]).join(" · ")}</div>
+    ${h.bg ? `<div class="bg">📖 ${esc(h.bg)}</div>` : ""}</div>`;
+}
+function rendreTable(){
+  const box = $("lobTable");
+  let html = `<h3 style="margin:0 0 8px">🪑 La table</h3>`;
+  if(mode === "ligne"){
+    for(const j of salle.joueurs){
+      const h = L.heros.find(x => x.owner === j.id), estMj = L.cfg.mj === j.id;
+      const etat = estMj ? `<span>🎭 Maître du jeu</span>` : !h ? `<span>arrive…</span>` : h.pret ? `<span class="ok">✅ Prêt</span>` : `<span>✏️ En création…</span>`;
+      const tete = `<span>${esc(j.avatar)} ${esc(j.pseudo)}${j.id === salle.joueurs[0].id ? " 👑" : ""}</span>${etat}`;
+      html += estMj || !h ? `<div class="pj"><div class="haut">${tete}</div></div>` : carteHero(h, tete);
+    }
+    const seuls = L.heros.filter(h => !salle.joueurs.some(j => j.id === h.owner));
+    if(seuls.length) html += `<p class="muted" style="font-size:.85rem">Héros sans joueur (joués par l'hôte) :</p>` + seuls.map(h => carteHero(h, `<span>${esc(h.pseudo || "—")} (absent)</span>${h.pret ? `<span class="ok">✅</span>` : ""}`)).join("");
+    if(L.cfg.mj === "ia") html += `<div class="pj"><div class="haut"><span>🤖 IA</span><span>🎭 Maître du jeu</span></div></div>`;
+  }else{
+    html += L.heros.length ? L.heros.map((h, i) => carteHero(h, `<span>Héros ${i + 1}</span><button class="mini" data-retire="${i}">✖ Retirer</button>`)).join("") : `<p class="muted">Les héros créés apparaissent ici.</p>`;
+    html += `<p class="muted" style="font-size:.85rem">Maître du jeu : ${L.cfg.mj === "ia" ? "🤖 IA" : "🎭 un joueur sur cet écran"}</p>`;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll("[data-retire]").forEach(b => b.onclick = () => {
+    L.heros.splice(+b.dataset.retire, 1); L.heros.forEach((h, i) => h.coul = COUL[i % 8]);
+    lobGauche = ""; assurerForm(); cleHaut = ""; rendreLobby();
+  });
+}
+function lancerDepuisLobby(){
+  const c = L.cfg;
+  if(c.mj === "ia" && !IA.disponible()){ besoinCle(); return; }
+  const heros = mode === "ligne" ? L.heros.filter(h => h.pret && h.owner !== c.mj) : L.heros;
+  if(!heros.length){ Base.toast("Il faut au moins un héros prêt."); return; }
+  if(mode === "ligne"){
+    const pas = salle.joueurs.filter(j => j.id !== c.mj && !L.heros.some(h => h.owner === j.id && h.pret));
+    if(pas.length && !confirm(pas.map(j => j.pseudo).join(", ") + " n'a pas fini son héros. Lancer quand même ? (il pourra rejoindre en cours de partie)")) return;
+  }
+  const propres = heros.map((h, i) => { const {pret, ancien, ...r} = h; return ancien ? r : {...r, coul: h.coul || COUL[i % 8], x: -1, y: -1}; });
+  if(L.reprise && G){
+    G.heros = propres; G.mj = c.mj;
+    G.mjPseudo = mode === "ligne" ? ((salle.joueurs.find(j => j.id === c.mj) || {}).pseudo || "") : "";
+    reprendre(); return;
+  }
+  nouvellePartie(c, propres);
 }
 
 /* ---------- Cartes ---------- */
@@ -470,7 +733,14 @@ function placerHeros(){
     if(p){ h.x = p[0]; h.y = p[1]; }
   });
 }
-function normCarte(c){
+function integrer(h){
+  if(!carteL()) return;
+  const p = G.heros.find(x => x !== h && x.x >= 0);
+  const q = p ? caseLibreProche(p.x, p.y, h) : caseLibreProche(1, 1, h);
+  if(q){ h.x = q[0]; h.y = q[1]; }
+}
+function nettoyerCarte(c, nomDef){
+  if(!c) return null;
   let l = Array.isArray(c.l) ? c.l : String(c.l || "").split(/[\n|]/);
   l = l.map(r => String(r).replace(/\s/g, ".").replace(/[^#.,~T^=DCS!*PM]/g, ".")).filter(r => r.length >= 3).slice(0, 13);
   if(l.length < 4) return null;
@@ -480,7 +750,7 @@ function normCarte(c){
   if(!l.some(r => r.includes("P"))){
     for(let y = 0; y < l.length; y++){ const x = l[y].search(/[.,]/); if(x >= 0){ l[y] = l[y].slice(0, x) + "P" + l[y].slice(x + 1); break; } }
   }
-  return {nom: String(c.nom || G.lieu || "Lieu inconnu").slice(0, 50), l};
+  return {nom: String(c.nom || nomDef || "Lieu inconnu").trim().slice(0, 50) || "Lieu inconnu", l};
 }
 function carteDefaut(){
   const W = 12, H = 8, l = [];
@@ -495,30 +765,124 @@ function changerCarte(nom){
   placerHeros();
 }
 
+/* Générateurs de cartes (outils du MJ) */
+function plusGrandeZone(g){
+  const H = g.length, W = g[0].length, vu = new Set();
+  let best = new Set();
+  for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){
+    const k = x + "," + y;
+    if(vu.has(k) || BLOQUE.includes(g[y][x])) continue;
+    const z = new Set([k]), q = [[x, y]]; vu.add(k);
+    while(q.length){
+      const [a, b] = q.shift();
+      for(const [dx, dy] of DIRS){
+        const nx = a + dx, ny = b + dy, nk = nx + "," + ny;
+        if(nx < 0 || ny < 0 || nx >= W || ny >= H || vu.has(nk) || BLOQUE.includes(g[ny][nx])) continue;
+        vu.add(nk); z.add(nk); q.push([nx, ny]);
+      }
+    }
+    if(z.size > best.size) best = z;
+  }
+  return best;
+}
+function poser(g, ch, n){
+  const libres = [];
+  g.forEach((r, y) => r.forEach((c, x) => { if(c === "." || c === ",") libres.push([x, y]); }));
+  for(let i = 0; i < n && libres.length; i++){ const [x, y] = libres.splice(Math.floor(Math.random() * libres.length), 1)[0]; g[y][x] = ch; }
+}
+function marqueurs(g){
+  const zone = plusGrandeZone(g), ok = [];
+  g.forEach((r, y) => r.forEach((c, x) => { if((c === "." || c === ",") && zone.has(x + "," + y)) ok.push([x, y]); }));
+  if(!ok.length) return;
+  ok.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const nb = clamp(Math.floor(ok.length / 6), 1, 3);
+  ok.slice(0, nb).forEach(([x, y]) => g[y][x] = "P");
+  ok.slice(-nb).forEach(([x, y]) => { if(g[y][x] !== "P") g[y][x] = "M"; });
+}
+function genCarte(type, W, H){
+  const R = n => Math.floor(Math.random() * n);
+  let g = Array.from({length: H}, () => Array(W).fill("."));
+  const bord = ch => { for(let y = 0; y < H; y++) for(let x = 0; x < W; x++) if(!x || !y || x === W - 1 || y === H - 1) g[y][x] = ch; };
+  const dedans = f => { for(let y = 1; y < H - 1; y++) for(let x = 1; x < W - 1; x++) f(x, y); };
+  if(type === "vide") bord("#");
+  else if(type === "salle"){
+    bord("#");
+    const n = 3 + R(4);
+    for(let i = 0; i < n; i++) g[1 + R(H - 2)][3 + R(Math.max(1, W - 6))] = "=";
+    g[1 + R(H - 2)][W - 1] = "D"; g[H - 2][2 + R(W - 4)] = "C";
+    if(R(2)) g[1][2 + R(W - 4)] = "!";
+  }
+  else if(type === "foret"){
+    g = g.map(r => r.map(() => ","));
+    bord("T");
+    dedans((x, y) => { const r = Math.random(); if(r < .11) g[y][x] = "T"; else if(r < .15) g[y][x] = "^"; else if(r < .3) g[y][x] = "."; });
+    let x = Math.floor(W / 2) + R(3) - 1;
+    const gue = 1 + R(H - 3);
+    for(let y = 1; y < H - 1; y++){ g[y][clamp(x, 2, W - 3)] = (y === gue || y === gue + 1) ? "." : "~"; if(R(3) === 0) x += R(3) - 1; }
+  }
+  else if(type === "grotte"){
+    for(let essai = 0; essai < 15; essai++){
+      g = Array.from({length: H}, (_, y) => Array.from({length: W}, (_, x) => (!x || !y || x === W - 1 || y === H - 1 || Math.random() < .42) ? "#" : "."));
+      for(let it = 0; it < 4; it++){
+        const n = g.map(r => r.slice());
+        dedans((x, y) => { let c = 0; for(const [dx, dy] of DIRS) if(g[y + dy][x + dx] === "#") c++; n[y][x] = c >= 5 ? "#" : c <= 3 ? "." : g[y][x]; });
+        g = n;
+      }
+      const zone = plusGrandeZone(g);
+      if(zone.size >= W * H * 0.3 || essai === 14){ dedans((x, y) => { if(g[y][x] !== "#" && !zone.has(x + "," + y)) g[y][x] = "#"; }); break; }
+    }
+    dedans((x, y) => { if(g[y][x] === "." && Math.random() < .04) g[y][x] = "^"; });
+    poser(g, "*", 1);
+  }
+  else if(type === "donjon"){
+    g = g.map(r => r.map(() => "#"));
+    const salles = [];
+    for(let t = 0; t < 60 && salles.length < 5; t++){
+      const w = 3 + R(3), h = 2 + R(3), x = 1 + R(Math.max(1, W - w - 1)), y = 1 + R(Math.max(1, H - h - 1));
+      if(x + w > W - 1 || y + h > H - 1) continue;
+      if(salles.some(s => x <= s.x + s.w && x + w >= s.x && y <= s.y + s.h && y + h >= s.y)) continue;
+      salles.push({x, y, w, h});
+      for(let yy = y; yy < y + h; yy++) for(let xx = x; xx < x + w; xx++) g[yy][xx] = ".";
+    }
+    salles.sort((a, b) => a.x - b.x);
+    for(let i = 1; i < salles.length; i++){
+      const a = salles[i - 1], b = salles[i];
+      let x = a.x + (a.w >> 1), y = a.y + (a.h >> 1);
+      const x2 = b.x + (b.w >> 1), y2 = b.y + (b.h >> 1);
+      while(x !== x2){ g[y][x] = "."; x += Math.sign(x2 - x); }
+      while(y !== y2){ g[y][x] = "."; y += Math.sign(y2 - y); }
+    }
+    if(salles.length > 1){ const s = salles[salles.length - 1]; g[s.y][s.x + s.w - 1] = "C"; }
+    poser(g, "!", 1); poser(g, "=", 2); poser(g, "S", 1);
+  }
+  marqueurs(g);
+  return g.map(r => r.join(""));
+}
+
 /* ---------- Journal ---------- */
 function log(t, x, extra){
   G.log.push({t, x, ...(extra || {})});
-  if(G.log.length > 140) G.log.splice(0, G.log.length - 140);
+  if(G.log.length > 160) G.log.splice(0, G.log.length - 160);
 }
-function anim(r, txt){
-  G.anim = {n: (G.anim ? G.anim.n : 0) + 1, r, txt};
+function anim(r, txt, f){
+  G.anim = {n: (G.anim ? G.anim.n : 0) + 1, r, txt, f: f == null ? 20 : f};
   animVue = G.anim.n; montrerDe(G.anim);
 }
 let tDe = null;
 function montrerDe(a){
-  const b = $("de");
-  b.innerHTML = `<div class="d ${a.r === 20 ? "crit" : a.r === 1 ? "rate" : ""}">${a.r}</div><p>${esc(a.txt)}</p>`;
+  const b = $("de"), f = a.f == null ? 20 : a.f;
+  b.innerHTML = `<div class="d ${f === 20 && a.r === 20 ? "crit" : f === 20 && a.r === 1 ? "rate" : ""}">${a.r}</div><p>${esc(a.txt)}</p>`;
   b.classList.remove("cache");
   clearTimeout(tDe); tDe = setTimeout(() => b.classList.add("cache"), 1900);
 }
 
-/* ---------- Maître du jeu (IA) ---------- */
+/* ---------- Maître du jeu IA ---------- */
 function niveauGroupe(){ const v = G.heros.map(h => h.niv); return Math.round(v.reduce((a, b) => a + b, 0) / v.length) || 1; }
 function systeme(){
   const U = UNIV[G.u], lvl = niveauGroupe();
   const heros = G.heros.map(h => {
     const C = classe(h);
-    return `- ${h.nom} (${h.ori} ${C.nom}, niv ${h.niv}) PV ${h.pv}/${h.pvMax}, CA ${ca(h)}, ${STATS.map(s => s + sgn(mod(h.st[s]))).join(" ")} ; arme : ${C.arme.nom} ; talent : ${C.cap.nom} ; équipement : ${C.kit.join(", ")}`;
+    return `- ${h.nom} (${h.ori} ${C.nom}, niv ${h.niv}) PV ${h.pv}/${h.pvMax}, CA ${ca(h)}, ${STATS.map(s => s + sgn(mod(h.st[s]))).join(" ")} ; arme : ${C.arme.nom} ; talent : ${C.cap.nom} ; équipement : ${C.kit.join(", ")}${h.bg ? "\n  Histoire : " + h.bg.slice(0, 300) : ""}`;
   }).join("\n");
   const best = U.monstres.filter(m => m.niv <= lvl + 3).map(m => `${m.id}:${m.nom}(${m.niv}${m.portee > 1 ? ",distance" : ""})`).join(" ");
   const type = G.type === "campagne"
@@ -538,6 +902,7 @@ ${best}
 
 RÈGLES DU MJ :
 - Raconte au présent, en français, 2 à 5 phrases vivantes et concrètes. Joue les PNJ avec de courtes répliques. Ne décide jamais à la place des héros et finis en laissant les joueurs agir.
+- HISTOIRES DES HÉROS : tisse-les dans l'aventure (PNJ de leur passé, secrets, objectifs personnels, dettes, ennemis jurés), régulièrement et sans jamais les contredire. Donne à chaque héros des moments à lui.
 - Un message [TOUR] contient les actions de tous les héros : réponds à toutes dans un seul récit.
 - JETS : si une action a une issue incertaine (escalader, crocheter, convaincre, se cacher, repérer, se souvenir, résister…), ne donne PAS l'issue : décris la tentative et ajoute "jets":[{"j":"Nom du héros","stat":"DEX","dd":12,"pour":"escalader le mur"}] (stat : FOR DEX CON INT SAG CHA ; dd 8 facile, 12 moyen, 15 difficile, 18 très difficile). Le jeu lance le d20 et t'envoie [JETS] avec les résultats : raconte alors fidèlement réussites et échecs. Les actions faciles réussissent sans jet.
 - COMBAT : quand un combat éclate, décris seulement l'apparition des ennemis et ajoute "combat":{"monstres":[{"id":"gob","n":2}]} (id du bestiaire ; environ 1 ennemi de niveau ${lvl} par héros, ou plus de faibles, ou un boss de niveau ${lvl + 2} avec 1 ou 2 sbires). Ne raconte PAS le déroulé : le jeu gère le combat sur la carte et t'enverra [FIN DU COMBAT].
@@ -552,9 +917,12 @@ RÈGLES DU MJ :
 RÉPONDS UNIQUEMENT avec un objet JSON valide :
 {"recit":"…","lieu":"nom du lieu","carte":null,"jets":[],"combat":null,"effets":[],"butin":null,"xp":0,"repos":false,"memo":"","choix":[],"fin":null}`;
 }
+const recents = n => G.log.slice(-n).map(e => (e.t === "j" ? e.q + " : " : e.t === "mj" ? "MJ : " : "") + e.x).join("\n");
 
 async function appelerMJ(msg){
-  if(enCours || estInvite()) return;
+  if(estInvite()) return;
+  if(mjHumain()){ G.phase = "mj"; G.attente = null; G.actions = {}; sync(); return; }
+  if(enCours) return;
   enCours = true;
   G.phase = "ia"; G.attente = msg; G.erreur = "";
   sync();
@@ -565,7 +933,7 @@ async function appelerMJ(msg){
     G.histo.push({role: "user", content: msg}, {role: "assistant", content: JSON.stringify({recit: o.recit || "", lieu: o.lieu || G.lieu})});
     G.histo = G.histo.slice(-12);
     G.attente = null;
-    appliquer(o);
+    if(G.mj === "ia") appliquer(o);
   }catch(e){
     G.phase = "erreur"; G.erreur = String(e.message || e).slice(0, 220);
   }
@@ -583,7 +951,7 @@ function appliquer(o){
   if(o.recit) log("mj", String(o.recit).slice(0, 3000));
   if(o.carte){
     if(typeof o.carte === "string"){ if(G.cartes[o.carte]) changerCarte(o.carte); }
-    else if(o.carte.l){ const c = normCarte(o.carte); if(c){ G.cartes[c.nom] = c.l; changerCarte(c.nom); if(!o.lieu) G.lieu = c.nom; } }
+    else if(o.carte.l){ const c = nettoyerCarte(o.carte, G.lieu); if(c){ G.cartes[c.nom] = c.l; changerCarte(c.nom); if(!o.lieu) G.lieu = c.nom; } }
   }
   if(!G.carte){ G.cartes[G.lieu || "Lieu"] = carteDefaut(); changerCarte(G.lieu || "Lieu"); }
 
@@ -605,7 +973,7 @@ function appliquer(o){
   const xp = clamp(parseInt(o.xp) || 0, 0, 300);
   if(xp){ log("sys", `⭐ +${xp} XP pour chaque héros`); G.heros.forEach(h => gagnerXP(h, xp)); }
   if(o.repos === true){ G.heros.forEach(h => h.pv = h.pvMax); log("sys", "🏕️ Repos : tous les PV sont rendus."); }
-  if(o.memo) { G.journal.push(String(o.memo).slice(0, 160)); if(G.journal.length > 25) G.journal.shift(); }
+  if(o.memo){ G.journal.push(String(o.memo).slice(0, 160)); if(G.journal.length > 25) G.journal.shift(); }
   G.choix = (Array.isArray(o.choix) ? o.choix : []).map(x => String(x).slice(0, 90)).filter(Boolean).slice(0, 4);
 
   if(o.combat && Array.isArray(o.combat.monstres) && o.combat.monstres.length){ demarrerCombat(o.combat.monstres); return; }
@@ -665,27 +1033,33 @@ function planifier(f, ms){ clearTimeout(minut); minut = setTimeout(() => { if(G 
 const acteurDe = o => o.k === "h" ? hero(o.id) : G.combat.m.find(m => m.id === o.id);
 const acteurCourant = () => G && G.combat ? acteurDe(G.combat.ordre[G.combat.i]) : null;
 
-function demarrerCombat(liste){
-  const U = UNIV[G.u], mult = [0.75, 1, 1.3][G.diff], plus = [-1, 0, 1][G.diff];
-  const ms = [];
-  for(const e of liste){
-    if(!e) continue;
-    const id = String(e.id || "").toLowerCase();
-    const def = U.monstres.find(m => m.id === id) || U.monstres.find(m => m.nom.toLowerCase() === id);
-    if(!def) continue;
-    const n = clamp(parseInt(e.n) || 1, 1, 6);
-    for(let i = 0; i < n && ms.length < 10; i++){
+const DEG_OK = /^\d{1,2}d\d{1,3}([+-]\d{1,3})?$/i;
+function defMonstre(e){
+  if(e && e.def && typeof e.def === "object"){
+    const x = e.def, deg = String(x.deg || "").replace(/\s/g, "");
+    return {id: String(x.id || "c_" + String(x.nom || "").slice(0, 12)).slice(0, 24), nom: String(x.nom || "Créature").slice(0, 30), emo: String(x.emo || "").slice(0, 4) || "👹",
+      niv: clamp(parseInt(x.niv) || 1, 1, 20), pv: clamp(parseInt(x.pv) || 10, 1, 999), ca: clamp(parseInt(x.ca) || 12, 5, 30),
+      att: clamp(parseInt(x.att) || 0, -5, 20), deg: DEG_OK.test(deg) ? deg : "1d6", portee: clamp(parseInt(x.portee) || 1, 1, 10)};
+  }
+  const U = UNIV[G.u], id = String(e && e.id || "").toLowerCase();
+  return U.monstres.find(m => m.id === id) || U.monstres.find(m => m.nom.toLowerCase() === id) || null;
+}
+function creerMonstres(liste, ia){
+  const mult = ia ? [0.75, 1, 1.3][G.diff] : 1, plus = ia ? [-1, 0, 1][G.diff] : 0, ms = [];
+  for(const e of liste || []){
+    const def = defMonstre(e); if(!def) continue;
+    const n = clamp(parseInt(e.n) || 1, 1, 8);
+    for(let i = 0; i < n && ms.length < 12; i++){
       const pv = Math.max(1, Math.round(def.pv * mult));
-      ms.push({id: "m" + ms.length, ref: def.id, nom: def.nom + (n > 1 ? " " + (i + 1) : ""), emo: def.emo, niv: def.niv, pv, pvMax: pv, ca: def.ca, att: def.att + plus, deg: def.deg, portee: def.portee, x: -1, y: -1, et: 0});
+      G.mid = (G.mid || 0) + 1;
+      ms.push({id: "m" + G.mid, ref: def.id, nom: def.nom + (n > 1 ? " " + (i + 1) : ""), emo: def.emo, niv: def.niv, pv, pvMax: pv, ca: def.ca, att: def.att + plus, deg: def.deg, portee: def.portee || 1, x: -1, y: -1, et: 0});
     }
   }
-  if(!ms.length){
-    const lvl = niveauGroupe(), def = U.monstres.filter(m => m.niv <= lvl).pop() || U.monstres[0];
-    vivants().forEach((h, i) => ms.push({id: "m" + i, ref: def.id, nom: def.nom + " " + (i + 1), emo: def.emo, niv: def.niv, pv: def.pv, pvMax: def.pv, ca: def.ca, att: def.att, deg: def.deg, portee: def.portee, x: -1, y: -1, et: 0}));
-  }
-  G.combat = {m: ms, ordre: [], i: 0, round: 1, bouclier: 0, uses: {}, fait: {b: false, a: false}};
-  // placement : cases M, sinon cases libres éloignées des héros
-  const l = carteL(), M = [], libres = [];
+  return ms;
+}
+function placerMonstres(ms){
+  const l = carteL(); if(!l) return;
+  const M = [], libres = [];
   l.forEach((r, y) => [...r].forEach((c, x) => { if(c === "M") M.push([x, y]); else if(marchable(x, y)) libres.push([x, y]); }));
   const hs = G.heros.filter(h => h.x >= 0);
   const loin = p => hs.length ? Math.min(...hs.map(h => Math.max(Math.abs(h.x - p[0]), Math.abs(h.y - p[1])))) : 9;
@@ -695,6 +1069,19 @@ function demarrerCombat(liste){
     const p = places.find(p => !occupe(p[0], p[1], m)) || caseLibreProche(l[0].length - 2, Math.floor(l.length / 2), m);
     if(p){ m.x = p[0]; m.y = p[1]; }
   }
+}
+function demarrerCombat(liste, o){
+  o = o || {};
+  const ia = G.mj === "ia";
+  let ms = creerMonstres(liste, ia);
+  if(!ms.length && ia){
+    const U = UNIV[G.u], lvl = niveauGroupe(), def = U.monstres.filter(m => m.niv <= lvl).pop() || U.monstres[0];
+    ms = creerMonstres([{id: def.id, n: vivants().length}], true);
+  }
+  if(!ms.length){ sync(); return; }
+  if(!carteL()){ G.cartes[G.lieu || "Lieu"] = carteDefaut(); changerCarte(G.lieu || "Lieu"); }
+  G.combat = {m: ms, ordre: [], i: 0, round: 1, bouclier: 0, uses: {}, fait: {b: false, a: false}, auto: o.auto !== false};
+  placerMonstres(ms);
   const ini = [
     ...G.heros.map(h => ({k: "h", id: h.id, v: d(20) + mod(h.st.DEX) + h.st.DEX / 100})),
     ...ms.map(m => ({k: "m", id: m.id, v: d(20) + Math.floor(m.niv / 2)}))
@@ -705,6 +1092,13 @@ function demarrerCombat(liste){
   log("sys", `⚔️ Combat ! ${ms.map(m => m.emo + " " + m.nom).join(", ")}`);
   log("sys", "Initiative : " + G.combat.ordre.map(o => { const a = acteurDe(o); return a.emo + " " + a.nom; }).join(" → "));
   debutTour();
+}
+function renfort(liste){
+  const cb = G.combat; if(!cb) return;
+  const ms = creerMonstres(liste, false); if(!ms.length) return;
+  cb.m.push(...ms); placerMonstres(ms);
+  ms.forEach(m => cb.ordre.push({k: "m", id: m.id}));
+  log("sys", `⚠️ Renforts : ${ms.map(m => m.emo + " " + m.nom).join(", ")}`);
 }
 function verifFin(){
   if(!G.combat) return true;
@@ -720,6 +1114,7 @@ function debutTour(){
   const o = c.ordre[c.i], a = acteurDe(o);
   if(o.k === "m"){
     if(a.et > 0){ a.et--; log("sys", `💫 ${a.emo} ${a.nom} est étourdi et perd son tour.`); sync(); planifier(finTour, 900); return; }
+    if(c.auto === false && mjHumain()){ sync(); return; }       // le MJ joue ce monstre
     sync(); planifier(() => tourMonstre(a), 700);
   }else sync();
 }
@@ -754,6 +1149,28 @@ function attaqueMonstre(m, h){
   anim(r, `${m.emo} ${m.nom} → ${h.nom} : ${tot} contre CA ${cah} → ${touche ? dg + " dégâts" : "raté"}`);
   log("de", `${m.emo} ${m.nom} attaque ${h.nom} : 🎲${r}${sgn(m.att)}=${tot} vs CA ${cah} → ${touche ? (r === 20 ? "CRITIQUE ! " : "") + dg + " dégâts" : "raté"}`);
   if(h.pv <= 0) log("sys", `💫 ${h.nom} est à terre !`);
+  sync();
+}
+/* Monstre joué par le MJ humain */
+function commandeMonstre(c){
+  const cb = G.combat; if(!cb) return;
+  const o = cb.ordre[cb.i]; if(o.k !== "m") return;
+  if(c.t === "fin"){ finTour(); return; }
+  const m = acteurDe(o); if(!m || m.pv <= 0) return;
+  if(c.t === "auto"){ tourMonstre(m); return; }
+  if(c.t === "bouge"){
+    if(cb.fait.b) return;
+    const x = parseInt(c.x), y = parseInt(c.y);
+    const dist = bfs(m.x, m.y, VIT_M, (a, b) => marchable(a, b) && !heroEn(a, b) && !monstreEn(a, b, m));
+    if(!((x + "," + y) in dist) || occupe(x, y, m)) return;
+    m.x = x; m.y = y; cb.fait.b = true;
+  }else if(c.t === "att"){
+    if(cb.fait.a) return;
+    const h = hero(c.cible); if(!h || h.pv <= 0 || dch(m, h) > m.portee) return;
+    attaqueMonstre(m, h); cb.fait.a = true;
+  }else return;
+  if(verifFin()) return;
+  if(cb.fait.a && cb.fait.b) setTimeout(() => { if(G && G.combat === cb && acteurCourant() === m) finTour(); }, 1000);
   sync();
 }
 function frapper(h, m, extra){
@@ -794,7 +1211,8 @@ function talent(h, c){
     case "bonus": if(!monstre || dch(h, monstre) > C.arme.portee) return false; ann(); frapper(h, monstre, t.de); return true;
     case "etourdir": {
       if(!monstre || dch(h, monstre) > Math.max(t.portee, 1)) return false;
-      ann(); const r = d(20), tot = r + PRO(h.niv) + m, touche = r === 20 || (r !== 1 && tot >= monstre.ca);
+      ann();
+      const r = d(20), tot = r + PRO(h.niv) + m, touche = r === 20 || (r !== 1 && tot >= monstre.ca);
       let dg = 0;
       if(touche){ dg = Math.max(1, lancer(t.de).t + m); monstre.pv = Math.max(0, monstre.pv - dg); monstre.et = 1; }
       anim(r, `${t.nom} → ${monstre.nom} : ${tot} contre CA ${monstre.ca} → ${touche ? dg + " dégâts, étourdi !" : "raté"}`);
@@ -807,7 +1225,7 @@ function talent(h, c){
       ann();
       const tg = cb.m.filter(x => x.pv > 0 && Math.max(Math.abs(x.x - c.x), Math.abs(x.y - c.y)) <= 1);
       const dg = Math.max(1, lancer(t.de).t + m);
-      anim(dg, `${t.nom} : ${dg} dégâts à ${tg.length} ennemi${tg.length > 1 ? "s" : ""}`);
+      anim(dg, `${t.nom} : ${dg} dégâts à ${tg.length} ennemi${tg.length > 1 ? "s" : ""}`, 0);
       tg.forEach(x => { x.pv = Math.max(0, x.pv - dg); log("de", `💥 ${x.nom} subit ${dg} dégâts${x.pv <= 0 ? " et est vaincu ☠️" : ""}`); });
       if(!tg.length) log("de", "💥 L'explosion ne touche personne…");
       return true;
@@ -852,7 +1270,7 @@ function commande(hid, c){
 }
 function envoyerCmd(hid, c){
   vise = null;
-  if(estInvite()){ salle.envoyer({t: "cmd", h: hid, c}); rendre(); return; }
+  if(estInvite()){ salle.envoyer({t: "cmd", h: hid, c}); cleAct = ""; rendre(); return; }
   commande(hid, c);
 }
 
@@ -887,44 +1305,149 @@ function finCombat(issue){
   appelerMJ(msg);
 }
 
+/* ---------- Commandes du MJ humain (appliquées par l'hôte) ---------- */
+function mj(c){
+  vise = null; MJ.pion = null;
+  if(estInvite()){ salle.envoyer({t: "mj", c}); cleAct = ""; rendreCarte(); rendreActions(); return; }
+  mjAppliquer(c);
+}
+function mjAppliquer(c){
+  if(!G || !c || typeof c !== "object") return;
+  const cb = G.combat;
+  const cible = (k, id) => k === "m" ? (cb && cb.m.find(m => m.id === id)) : hero(id);
+  switch(c.t){
+    case "recit": {
+      const txt = String(c.txt || "").trim().slice(0, 3000);
+      if(txt) log("mj", txt);
+      G.choix = (Array.isArray(c.choix) ? c.choix : []).map(x => String(x).trim().slice(0, 90)).filter(Boolean).slice(0, 4);
+      if(!cb && ["mj", "actions", "erreur", "ia"].includes(G.phase)){ G.phase = "actions"; G.actions = {}; }
+      break;
+    }
+    case "carte": {
+      const k = nettoyerCarte(c, "Lieu"); if(!k) return;
+      G.cartes[k.nom] = k.l;
+      if(c.voir !== false && !cb){ changerCarte(k.nom); G.lieu = k.nom; log("sys", `🗺️ ${k.nom}`); }
+      else if(k.nom === G.carte) G.heros.forEach(h => { if(h.x >= 0 && !marchable(h.x, h.y)) integrer(h); });
+      break;
+    }
+    case "voir": if(cb || !G.cartes[c.nom]) return; changerCarte(c.nom); G.lieu = c.nom; log("sys", `🗺️ ${c.nom}`); break;
+    case "jets": {
+      if(cb) return;
+      const s = String(c.s || "").toUpperCase(); if(!STATS.includes(s)) return;
+      const dd = clamp(parseInt(c.dd) || 12, 2, 30), pour = String(c.pour || "").slice(0, 70);
+      G.jets = (Array.isArray(c.hs) ? c.hs : []).map(id => hero(id)).filter(h => h && h.pv > 0).slice(0, 8).map(h => ({h: h.id, s, dd, pour, r: null}));
+      if(!G.jets.length) return;
+      G.phase = "jets";
+      log("sys", `🎲 Le MJ demande un jet de ${NOMS_STATS[s]} (DD ${dd})${pour ? " pour " + pour : ""} à ${G.jets.map(j => hero(j.h).nom).join(", ")}`);
+      break;
+    }
+    case "annulerJets": G.jets = []; if(G.phase === "jets") G.phase = "mj"; break;
+    case "de": { const txt = String(c.txt || "").slice(0, 90); anim(clamp(parseInt(c.r) || 0, 0, 999), txt, parseInt(c.f) || 0); log("de", "🎭 " + txt); break; }
+    case "combat":
+      if(cb) renfort(c.monstres);
+      else{ demarrerCombat(Array.isArray(c.monstres) ? c.monstres : [], {auto: c.auto !== false}); return; }
+      break;
+    case "place": {
+      const a = cible(c.k, c.id), x = parseInt(c.x), y = parseInt(c.y);
+      if(!a || !marchable(x, y) || occupe(x, y, a)) return;
+      a.x = x; a.y = y; break;
+    }
+    case "pv": {
+      const a = cible(c.k, c.id), n = clamp(parseInt(c.n) || 0, -999, 999);
+      if(!a || !n) return;
+      const avant = a.pv; a.pv = clamp(a.pv + n, 0, a.pvMax);
+      log("sys", n < 0 ? `💔 ${a.nom} perd ${avant - a.pv} PV (${a.pv}/${a.pvMax})` : `💚 ${a.nom} récupère ${a.pv - avant} PV (${a.pv}/${a.pvMax})`);
+      if(c.k === "m" && a.pv <= 0) log("sys", `☠️ ${a.emo} ${a.nom} est vaincu !`);
+      if(cb){ if(verifFin()) return; const cur = acteurCourant(); if(cur && cur.pv <= 0){ finTour(); return; } }
+      break;
+    }
+    case "xp": {
+      const n = clamp(parseInt(c.n) || 0, 0, 5000); if(!n) return;
+      const hs = c.id ? [hero(c.id)].filter(Boolean) : G.heros;
+      log("sys", `⭐ +${n} XP pour ${c.id && hs[0] ? hs[0].nom : "chaque héros"}`);
+      hs.forEach(h => gagnerXP(h, n)); break;
+    }
+    case "or": { const n = clamp(parseInt(c.n) || 0, -99999, 99999); if(!n) return; const avant = G.or; G.or = Math.max(0, G.or + n); log("sys", `💰 ${G.or - avant >= 0 ? "+" : ""}${G.or - avant} ${UNIV[G.u].monnaie}`); break; }
+    case "potion": { const n = c.n > 0 ? 1 : -1; if(n < 0 && G.potions <= 0) return; G.potions += n; log("sys", n > 0 ? "🧪 +1 potion de soin" : "🧪 −1 potion de soin"); break; }
+    case "objet": { const o = String(c.nom || "").trim().slice(0, 60); if(!o) return; G.sac = [...G.sac, o].slice(-30); log("sys", `🎒 Nouvel objet : ${o}`); break; }
+    case "retirer": { const i = parseInt(c.i); if(G.sac[i] == null) return; log("sys", `🎒 ${G.sac[i]} retiré du sac`); G.sac.splice(i, 1); break; }
+    case "repos": G.heros.forEach(h => h.pv = h.pvMax); log("sys", "🏕️ Repos : tous les PV sont rendus."); break;
+    case "fincombat": if(cb) finCombat(["fuite", "defaite"].includes(c.issue) ? c.issue : "victoire"); return;
+    case "auto": if(!cb) return; cb.auto = !!c.v; if(cb.auto && cb.ordre[cb.i].k === "m"){ const a = acteurCourant(); if(a && a.pv > 0) planifier(() => tourMonstre(a), 500); } break;
+    case "mcmd": commandeMonstre(c.c || {}); return;
+    case "fin": if(cb) return; G.phase = "fin"; G.fin = c.issue === "defaite" ? "defaite" : "victoire"; log("sys", G.fin === "victoire" ? "🏆 L'aventure est terminée : victoire !" : "💀 L'aventure s'achève sur une défaite…"); break;
+    case "tour": if(cb) return; G.phase = "actions"; G.actions = {}; G.jets = []; break;
+    default: return;
+  }
+  sync();
+}
+function setMJ(v){
+  if(!G || estInvite() || v === G.mj) return;
+  if(v === "ia" && !IA.disponible()){ besoinCle(); $("jMjSel").dataset.cle = ""; rendre(); return; }
+  G.mj = v; G.mjRetour = "";
+  G.mjPseudo = mode === "ligne" ? ((salle.joueurs.find(x => x.id === v) || {}).pseudo || "") : "";
+  log("sys", `🎭 Nouveau maître du jeu : ${nomMJ()}`);
+  if(v === "ia"){
+    if(G.combat){ G.combat.auto = true; if(G.combat.ordre[G.combat.i].k === "m"){ const a = acteurCourant(); if(a && a.pv > 0) planifier(() => tourMonstre(a), 600); } }
+    if(G.phase === "mj"){
+      G.histo = [];
+      appelerMJ("[REPRISE] Tu deviens le maître du jeu de cette partie en cours. Derniers événements :\n" + recents(14) + "\nEnchaîne naturellement à partir de là (redonne la carte du lieu actuel si besoin).");
+      return;
+    }
+  }
+  sync();
+}
+
 /* ---------- Nouvelle partie / reprise ---------- */
-function nouvellePartie(heros){
-  G = {v: 1, id: uid(), u: cfg.u, type: cfg.type, diff: cfg.diff, pitch: cfg.pitch, mode,
+function nouvellePartie(c, heros){
+  G = {v: 2, id: uid(), u: c.u, type: c.type, diff: c.diff, pitch: c.pitch || "", mode, mj: c.mj, mjPseudo: "", mjRetour: "",
     heros: heros.map((h, i) => ({...h, coul: h.coul || COUL[i % 8], x: -1, y: -1})),
     or: 10 * heros.length, potions: heros.length + 1, sac: [],
     lieu: "", cartes: {}, carte: null, log: [], journal: [], histo: [],
-    phase: "ia", actions: {}, jets: [], combat: null, choix: [], anim: {n: 0}, seq: 0, tours: 0, fin: null};
-  animVue = 0; enJeu = true;
+    phase: "ia", actions: {}, jets: [], combat: null, choix: [], anim: {n: 0}, seq: 0, tours: 0, fin: null, mid: 0};
+  if(mode === "ligne") G.mjPseudo = (salle.joueurs.find(j => j.id === c.mj) || {}).pseudo || "";
   if(mode === "ligne" && L) L.heros = G.heros;
+  animVue = 0; enJeu = true; MJ.onglet = "recit"; MJ.vuCombat = false;
   const U = UNIV[G.u];
   log("sys", `📖 L'aventure commence ! ${U.emo} ${U.nom} · ${G.heros.map(h => h.emo + " " + h.nom).join(", ")}`);
+  if(mjHumain()) log("sys", `Maître du jeu : ${nomMJ()}`);
   ecran("eJeu");
-  appelerMJ("[DÉBUT] Lance l'aventure : une scène d'ouverture captivante qui réunit le groupe, un objectif ou un mystère clair, et la carte du premier lieu. Pas de combat ni de jet tout de suite.");
+  if(mjHumain()){ G.phase = "mj"; sync(); return; }
+  appelerMJ("[DÉBUT] Lance l'aventure : une scène d'ouverture captivante qui réunit le groupe (en t'appuyant sur leurs histoires), un objectif ou un mystère clair, et la carte du premier lieu. Pas de combat ni de jet tout de suite.");
 }
 function reprendre(){
   enJeu = true; animVue = G.anim ? G.anim.n : 0;
+  G.heros.forEach(h => { if(h.x == null || h.x < 0) integrer(h); });
   ecran("eJeu");
   if(G.phase === "ia"){ G.phase = "erreur"; G.erreur = "Partie reprise : le dernier message du MJ n'était pas arrivé."; }
+  if(mjHumain() && G.phase === "erreur") G.phase = "mj";
   if(G.phase === "combat" && G.combat){ debutTour(); return; }
   sync();
 }
 $("bContinuer").onclick = () => {
   const p = stock.lire("partie", null); if(!p) return;
-  if(!IA.disponible()){ Base.toast("Ajoute une clé IA dans ⚙️ Réglages pour continuer."); return; }
+  if(!p.mj) p.mj = "ia";
+  if(p.mj === "ia" && !IA.disponible()){ besoinCle(); return; }
   G = p;
-  if(p.mode !== "ligne"){ mode = "local"; reprendre(); return; }
+  if(p.mode !== "ligne"){ mode = "local"; if(G.mj !== "ia") G.mj = "local"; reprendre(); return; }
   const box = Base.el("div");
   box.innerHTML = `<p>Cette aventure se jouait en ligne. Comment veux-tu la reprendre ?</p><p class="muted" style="font-size:.88rem">En ligne, chaque ami qui rejoint avec le même pseudo retrouve son héros.</p>`;
   const b1 = Base.el("button", "🌐 Rouvrir une salle en ligne", "btn"), b2 = Base.el("button", "📱 Tout jouer sur cet appareil", "btn ghost");
   b1.style.margin = b2.style.margin = "4px";
   box.append(b1, b2);
   const f = Base.fenetre("📜 Reprendre l'aventure", box, {bouton: "Annuler"});
-  b1.onclick = () => { f.close(); G.mode = "ligne"; L = {u: G.u, heros: G.heros}; G.heros.forEach(h => h.owner = h.pseudo === (Base.joueur.pseudo() || "") ? "hote" : h.owner); creerSalle(); };
-  b2.onclick = () => { f.close(); G.mode = "local"; mode = "local"; reprendre(); };
+  b1.onclick = () => {
+    f.close(); G.mode = "ligne";
+    const moi = Base.joueur.pseudo() || "";
+    L = {cfg: {u: G.u, type: G.type, diff: G.diff, pitch: G.pitch, nb: 0, mj: G.mj === "ia" ? "ia" : "hote"}, reprise: true,
+      heros: G.heros.map(h => ({...h, pret: true, ancien: true, owner: h.pseudo && h.pseudo === moi ? "hote" : h.owner}))};
+    creerSalle();
+  };
+  b2.onclick = () => { f.close(); G.mode = "local"; mode = "local"; if(G.mj !== "ia") G.mj = "local"; reprendre(); };
 };
 
 /* ---------- Synchronisation / sauvegarde ---------- */
-let tDiff = null, tSave = null;
+let tDiff = null, tSave = null, tLob = null;
 function sync(){
   if(!G) return;
   G.seq = (G.seq || 0) + 1;
@@ -933,74 +1456,83 @@ function sync(){
   rendre();
 }
 function sauver(){
-  if(!G || estInvite()) return;
+  if(!G || estInvite() || !enJeu) return;
   stock.ecrire("partie", G);
   G.heros.filter(h => mode !== "ligne" || !salle || h.owner === salle.moi).forEach(sauverHeros);
 }
-const pubHero = h => ({id: h.id, u: h.u, nom: h.nom, emo: h.emo, cls: h.cls, ori: h.ori, niv: h.niv, owner: h.owner, pseudo: h.pseudo});
+const pubHero = h => ({id: h.id, u: h.u, nom: h.nom, emo: h.emo, cls: h.cls, ori: h.ori, niv: h.niv, xp: h.xp, st: h.st, bg: h.bg || "", owner: h.owner, pseudo: h.pseudo, pret: !!h.pret, ancien: !!h.ancien, coul: h.coul});
 function diffuser(){
   if(!salle || !salle.hote) return;
-  if(G && enJeu){ const {histo, attente, ...pub} = G; pub.log = G.log.slice(-70); salle.envoyer({t: "etat", G: pub}); }
-  else if(L) salle.envoyer({t: "lobby", u: L.u, heros: L.heros.map(pubHero)});
+  if(G && enJeu){ const {histo, attente, ...pub} = G; pub.log = G.log.slice(-80); salle.envoyer({t: "etat", G: pub}); }
+  else if(L) salle.envoyer({t: "lobby", cfg: L.cfg, reprise: !!L.reprise, heros: L.heros.map(pubHero)});
 }
+const diffuserBientot = () => { clearTimeout(tLob); tLob = setTimeout(diffuser, 250); };
 
 /* ---------- En ligne : hôte ---------- */
 async function creerSalle(){
-  ecran("eSalle");
-  $("salleBox").innerHTML = `<p class="attente">Création de la salle…</p>`;
+  ecran("eLobby");
+  $("lobHaut").innerHTML = `<p class="attente">Création de la salle…</p>`;
+  $("lobForm").innerHTML = ""; $("lobTable").innerHTML = ""; $("lobMJ").classList.add("cache");
   try{
     salle = await Reseau.creer("jdr", {
       max: 8,
-      surEssai: t => { $("salleBox").innerHTML = `<p class="attente">${esc(t)}</p>`; },
+      surEssai: t => { $("lobHaut").innerHTML = `<p class="attente">${esc(t)}</p>`; },
       surArrivee(j){
-        const libre = L.heros.find(h => h.pseudo && h.pseudo === j.pseudo && !salle.joueurs.some(x => x.id === h.owner && x.id !== j.id));
+        const liste = enJeu ? G.heros : L.heros;
+        const libre = liste.find(h => h.pseudo && h.pseudo === j.pseudo && !salle.joueurs.some(x => x.id === h.owner && x.id !== j.id));
         if(libre){ libre.owner = j.id; Base.toast(`${j.avatar} ${j.pseudo} retrouve ${libre.nom} !`); }
         else Base.toast(`${j.avatar} ${j.pseudo} est arrivé !`);
-        rendreSalle(); diffuser(); if(G && enJeu) sync();
+        if(G && enJeu && G.mjRetour && G.mjRetour === j.pseudo){ G.mj = j.id; G.mjPseudo = j.pseudo; G.mjRetour = ""; log("sys", `🎭 ${j.pseudo} reprend son rôle de maître du jeu.`); }
+        cleHaut = ""; rendreLobby(); diffuser(); if(G && enJeu) sync();
       },
-      surDepart(j){ Base.toast(`${j.pseudo} est parti (son héros reste avec toi).`); rendreSalle(); if(G && enJeu) sync(); },
+      surDepart(j){
+        Base.toast(`${j.pseudo} est parti${enJeu ? " (son héros reste avec toi)" : ""}.`);
+        if(!enJeu && L){
+          if(!L.reprise) L.heros = L.heros.filter(h => h.owner !== j.id);
+          if(L.cfg.mj === j.id) L.cfg.mj = salle.moi;
+        }
+        if(G && enJeu && G.mj === j.id){ G.mj = salle.moi; G.mjRetour = j.pseudo; log("sys", `🎭 Le maître du jeu (${j.pseudo}) est parti : l'hôte reprend le rôle en attendant son retour.`); }
+        cleHaut = ""; rendreLobby(); diffuser(); if(G && enJeu) sync();
+      },
       surMessage: recuHote
     });
     mode = "ligne";
     L.heros.forEach(h => { if(h.owner === "hote") h.owner = salle.moi; });
-    rendreSalle(); diffuser();
+    if(L.cfg.mj === "hote") L.cfg.mj = salle.moi;
+    ouvrirLobby(); diffuser();
   }catch(e){
     salle = null;
-    $("salleBox").innerHTML = `<p>❌ ${esc(e.message)}</p><button class="btn ghost" id="sRet">← Retour</button>`;
+    $("lobHaut").innerHTML = `<p>❌ ${esc(e.message)}</p><button class="btn ghost" id="sRet">← Retour</button>`;
     $("sRet").onclick = () => ecran("eMenu");
   }
 }
-function nettoyerHero(h, j){
-  const u = L.u, U = UNIV[u];
+function nettoyerHero(h, j, u){
+  const U = UNIV[u];
   if(!h || typeof h !== "object" || !U) return null;
   const C = U.classes.find(c => c.id === h.cls); if(!C) return null;
   const st = {}; for(const s of STATS) st[s] = clamp(parseInt(h.st && h.st[s]) || 10, 3, 20);
-  const x = {id: String(h.id || uid()).slice(0, 12), u, nom: String(h.nom || j.pseudo).slice(0, 20), ori: String(h.ori || "").slice(0, 30), cls: C.id, emo: C.emo, st,
-    niv: clamp(parseInt(h.niv) || 1, 1, 10), xp: clamp(parseInt(h.xp) || 0, 0, 99999), owner: j.id, pseudo: j.pseudo, x: -1, y: -1};
+  const x = {id: String(h.id || uid()).slice(0, 12), u, nom: String(h.nom || "").slice(0, 20), ori: String(h.ori || "").slice(0, 30), cls: C.id, emo: C.emo, st,
+    niv: clamp(parseInt(h.niv) || 1, 1, 10), xp: clamp(parseInt(h.xp) || 0, 0, 99999), bg: String(h.bg || "").slice(0, 400), owner: j.id, pseudo: j.pseudo, x: -1, y: -1};
   x.pvMax = pvMax(x); x.pv = x.pvMax;
   return x;
 }
+function ajouterHeroEnJeu(hh, j){
+  const h = nettoyerHero(hh, j, G.u); if(!h) return;
+  if(!h.nom) h.nom = j.pseudo;
+  if(G.heros.some(x => x.id === h.id || x.owner === j.id) || G.mj === j.id) return;
+  h.coul = couleurLibre(G.heros);
+  G.heros.push(h); integrer(h);
+  if(G.combat){ G.combat.ordre.push({k: "h", id: h.id}); G.combat.uses[h.id] = classe(h).cap.n; }
+  log("sys", `🎉 ${h.emo} ${h.nom} rejoint l'aventure !`);
+  Base.toast(`${h.emo} ${h.nom} rejoint l'aventure !`);
+  sync();
+}
 function recuHote(m, j){
   if(m.t === "etat?"){ diffuser(); return; }
-  if(m.t === "hero"){
-    const h = nettoyerHero(m.h, j); if(!h) return;
-    const liste = L.heros, i = liste.findIndex(x => x.id === h.id || (!enJeu && x.owner === j.id));
-    if(i >= 0 && !enJeu){ h.coul = liste[i].coul; liste[i] = h; }
-    else if(i >= 0) return;
-    else{
-      h.coul = COUL[liste.length % 8]; liste.push(h);
-      if(G && enJeu){
-        const p = G.heros.find(x => x.x >= 0), q = p ? caseLibreProche(p.x, p.y, h) : null;
-        if(q){ h.x = q[0]; h.y = q[1]; }
-        if(G.combat) { G.combat.ordre.push({k: "h", id: h.id}); G.combat.uses[h.id] = classe(h).cap.n; }
-        log("sys", `🎉 ${h.emo} ${h.nom} rejoint l'aventure !`);
-      }
-    }
-    Base.toast(`${h.emo} ${h.nom} est prêt !`);
-    rendreSalle(); if(G && enJeu) sync(); else diffuser();
-    return;
-  }
+  if(m.t === "brouillon"){ if(!enJeu) majBrouillon(m.h || {}, j); return; }
+  if(m.t === "hero"){ if(G && enJeu) ajouterHeroEnJeu(m.h, j); return; }
   if(!G || !enJeu) return;
+  if(m.t === "mj"){ if(j.id === G.mj) mjAppliquer(m.c); return; }
   const h = m.h ? hero(m.h) : null, aLui = h && h.owner === j.id;
   if(m.t === "action" && aLui) soumettreAction(h.id, m.txt);
   else if(m.t === "jet"){ const jt = G.jets[m.k]; if(jt && hero(jt.h) && hero(jt.h).owner === j.id) lancerJet(m.k); }
@@ -1009,45 +1541,46 @@ function recuHote(m, j){
 }
 
 /* ---------- En ligne : invité ---------- */
-let dejaPropose = false;
 async function rejoindre(code){
   code = String(code || "").trim().toUpperCase();
   if(!code) return;
   $("msgMenu").textContent = "Connexion à la salle…";
   try{
     salle = await Reseau.rejoindre("jdr", code, {
-      surListe(){ if(ecranActuel === "eSalle") rendreSalle(); },
+      surListe(){ if(ecranActuel === "eLobby"){ cleHaut = ""; rendreLobby(); } else if(ecranActuel === "eJeu") rendre(); },
       surMessage: recuInvite,
-      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; G = null; mode = null; enJeu = false; ecran("eMenu"); },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; G = null; L = null; mode = null; enJeu = false; ecran("eMenu"); },
       surHotePerdu(){}
     });
-    mode = "ligne"; GL = {u: null, heros: []}; G = null; enJeu = false; dejaPropose = false;
+    mode = "ligne"; L = null; G = null; enJeu = false; CR = null; lobGauche = "";
     $("msgMenu").textContent = "";
-    ecran("eSalle"); rendreSalle();
+    ecran("eLobby");
+    $("lobHaut").innerHTML = `<p class="attente">Connexion à l'hôte…</p>`;
+    $("lobForm").innerHTML = ""; $("lobTable").innerHTML = ""; $("lobMJ").classList.add("cache");
     salle.envoyer({t: "etat?"});
   }catch(e){ salle = null; $("msgMenu").textContent = "❌ " + e.message; }
 }
-const aMonHero = () => !!salle && (G ? G.heros : GL.heros).some(h => h.owner === salle.moi);
+const aMonHero = () => !!salle && !!G && G.heros.some(h => h.owner === salle.moi);
 function creerMonHero(){
-  const u = G ? G.u : GL.u; if(!u) return;
-  const retour = () => ecran(G ? "eJeu" : "eSalle");
-  ouvrirCreation(u, "Ton héros", h => {
-    salle.envoyer({t: "hero", h}); Base.toast("Héros envoyé à l'hôte ✅");
-    retour(); if(!G) rendreSalle();
-  }, [], retour);
+  if(!G) return;
+  const avant = CR;
+  ouvrirCreation({box: $("crea"), u: G.u, titre: "Ton héros", nom: avant && avant.u === G.u ? avant.nom : "", bg: avant ? avant.bg : "",
+    retour: () => ecran("eJeu"),
+    valide: h => { salle.envoyer({t: "hero", h}); Base.toast("Héros envoyé à l'hôte ✅"); ecran("eJeu"); }});
+  ecran("eCrea");
 }
 function recuInvite(m){
   if(m.t === "lobby"){
-    GL = {u: m.u, heros: m.heros || []};
-    if(ecranActuel === "eSalle") rendreSalle();
-    if(!aMonHero() && !dejaPropose && ecranActuel === "eSalle"){ dejaPropose = true; creerMonHero(); }
+    if(enJeu) return;
+    L = {cfg: m.cfg, heros: m.heros || [], reprise: !!m.reprise};
+    if(ecranActuel === "eLobby") rendreLobby();
     return;
   }
   if(m.t === "etat" && m.G){
     const nouvelle = !G || G.id !== m.G.id;
     if(!nouvelle && m.G.seq <= G.seq) return;
     G = m.G; G.histo = [];
-    if(nouvelle) animVue = G.anim ? G.anim.n : 0;
+    if(nouvelle){ animVue = G.anim ? G.anim.n : 0; MJ.vuCombat = false; }
     enJeu = true;
     G.heros.filter(h => h.owner === salle.moi).forEach(sauverHeros);
     if(ecranActuel !== "eCrea"){ if(ecranActuel !== "eJeu") ecran("eJeu"); else rendre(); }
@@ -1055,45 +1588,7 @@ function recuInvite(m){
   }
 }
 
-function rendreSalle(){
-  const box = $("salleBox"); if(!salle) return;
-  const hote = salle.hote, liste = hote ? L.heros : GL.heros, u = hote ? L.u : GL.u, U = UNIV[u];
-  const lignes = salle.joueurs.map((j, i) => {
-    const hs = liste.filter(h => h.owner === j.id);
-    return `<li>${esc(j.avatar)} <b>${esc(j.pseudo)}</b>${i === 0 ? " 👑" : ""} — ${hs.length ? hs.map(h => `${h.emo} ${esc(h.nom)} <span class="muted">(niv ${h.niv})</span>`).join(", ") : `<span class="muted">crée son héros…</span>`}</li>`;
-  }).join("");
-  const seuls = liste.filter(h => !salle.joueurs.some(j => j.id === h.owner));
-  const orph = seuls.length ? `<p class="muted" style="font-size:.88rem">Héros sans joueur (joués par l'hôte) : ${seuls.map(h => h.emo + " " + esc(h.nom)).join(", ")}</p>` : "";
-  if(hote){
-    box.innerHTML = `<h2 style="margin:0">🌐 Salle en ligne</h2>
-      <p class="muted" style="margin:4px 0">${U ? U.emo + " " + esc(U.nom) : ""} · donne ce code à tes amis (8 joueurs max)</p>
-      <div class="code">${esc(salle.code)}</div>
-      <div class="ligne" style="justify-content:center"><button class="btn ghost petit" id="sCopie">📋 Copier le lien d'invitation</button></div>
-      <ul class="joueurs">${lignes}</ul>${orph}
-      <div class="ligne" style="justify-content:space-between;margin-top:10px">
-        <button class="btn ghost" id="sFermer">✖ Fermer la salle</button>
-        <button class="btn" id="sGo">${G ? "▶️ Reprendre l'aventure" : "🚀 Lancer l'aventure"}</button>
-      </div>`;
-    $("sCopie").onclick = async () => { try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à tes amis 📨"); }catch(e){ Base.fenetre("Lien d'invitation", salle.lien); } };
-    $("sFermer").onclick = () => { salle.quitter(); salle = null; mode = null; ecran("eMenu"); };
-    $("sGo").onclick = () => {
-      if(!L.heros.length){ Base.toast("Il faut au moins un héros."); return; }
-      if(G){ G.heros = L.heros; reprendre(); } else nouvellePartie(L.heros);
-    };
-  }else{
-    box.innerHTML = `<h2 style="margin:0">🌐 Salle ${esc(salle.code)}</h2>
-      <p class="muted" style="margin:4px 0">${U ? U.emo + " " + esc(U.nom) : "En attente des informations de l'hôte…"}</p>
-      <ul class="joueurs">${lignes}</ul>${orph}
-      ${u ? (aMonHero() ? `<p>✅ Ton héros est prêt. L'hôte va lancer l'aventure…</p><button class="btn ghost petit" id="sRefaire">✏️ Changer de héros</button>` : `<button class="btn" id="sCreer">🧙 Créer mon héros</button>`) : `<p class="attente">Connexion à l'hôte…</p>`}
-      <div style="margin-top:12px"><button class="btn ghost" id="sQuitter">← Quitter la salle</button></div>`;
-    if($("sCreer")) $("sCreer").onclick = creerMonHero;
-    if($("sRefaire")) $("sRefaire").onclick = creerMonHero;
-    $("sQuitter").onclick = () => { salle.quitter(); salle = null; mode = null; ecran("eMenu"); };
-  }
-}
-
 /* ---------- Affichage de la partie ---------- */
-let cleAct = "", cleLog = "";
 function rendre(){
   if(!G || ecranActuel !== "eJeu") return;
   const U = UNIV[G.u], j = $("eJeu");
@@ -1101,8 +1596,10 @@ function rendre(){
   j.style.setProperty("--therbe", U.pal.herbe); j.style.setProperty("--teau", U.pal.eau);
   document.documentElement.style.setProperty("--accent", U.pal.accent);
   $("jLieu").textContent = "📍 " + (G.lieu || G.carte || "…");
-  $("jInfo").textContent = U.emo + " " + U.nom + (mode === "ligne" && salle ? " · salle " + salle.code : "");
-  rendreOrdre(); rendreCarte(); rendreEquipe(); rendreLog(); rendreActions();
+  $("jInfo").textContent = U.emo + " " + U.nom + (mode === "ligne" && salle ? " · salle " + salle.code : "") + " · MJ " + nomMJ();
+  rendreOrdre(); rendreCarte(); rendreEquipe(); rendreMjSel(); rendreLog(); rendreActions();
+  $("jMJ").classList.toggle("cache", !estMJ());
+  if(estMJ()) rendreMJ(false);
 }
 function rendreOrdre(){
   const el = $("jOrdre"), c = G.combat;
@@ -1113,25 +1610,38 @@ function rendreOrdre(){
 function zoneVisee(){
   const ok = new Set(), v = new Set(), c = G.combat;
   if(!c || !vise) return {ok, v};
-  const h = acteurCourant(); if(!h || c.ordre[c.i].k !== "h" || !controle(h)) return {ok, v};
-  const C = classe(h), t = C.cap, l = carteL();
+  const o = c.ordre[c.i], a = acteurDe(o); if(!a) return {ok, v};
+  if(o.k === "m"){
+    if(!estMJ() || c.auto) return {ok, v};
+    if(vise === "bouge"){
+      const dist = bfs(a.x, a.y, VIT_M, (x, y) => marchable(x, y) && !heroEn(x, y) && !monstreEn(x, y, a));
+      Object.keys(dist).forEach(k => { const [x, y] = k.split(",").map(Number); if(!occupe(x, y, a)) ok.add(k); });
+    }
+    if(vise === "att") G.heros.forEach(h => { if(h.pv > 0 && h.x >= 0 && dch(a, h) <= a.portee) v.add(h.x + "," + h.y); });
+    return {ok, v};
+  }
+  if(!controle(a)) return {ok, v};
+  const h = a, C = classe(h), t = C.cap, l = carteL();
   if(vise === "bouge") portMarche(h).forEach(k => ok.add(k));
   if(vise === "att" || (vise === "cap" && (t.type === "double" || t.type === "bonus")))
     c.m.forEach(m => { if(m.pv > 0 && dch(h, m) <= C.arme.portee) v.add(m.x + "," + m.y); });
   if(vise === "cap" && t.type === "etourdir") c.m.forEach(m => { if(m.pv > 0 && dch(h, m) <= Math.max(1, t.portee)) v.add(m.x + "," + m.y); });
-  if(vise === "cap" && t.type === "soin") G.heros.forEach(a => { if(a.x >= 0 && dch(h, a) <= t.portee) ok.add(a.x + "," + a.y); });
+  if(vise === "cap" && t.type === "soin") G.heros.forEach(a2 => { if(a2.x >= 0 && dch(h, a2) <= t.portee) ok.add(a2.x + "," + a2.y); });
   if(vise === "cap" && t.type === "zone")
     for(let y = 0; y < l.length; y++) for(let x = 0; x < l[0].length; x++) if(Math.max(Math.abs(x - h.x), Math.abs(y - h.y)) <= t.portee && !BLOQUE.includes(l[y][x])) v.add(x + "," + y);
   return {ok, v};
 }
 function rendreCarte(){
   const box = $("jCarte"), l = carteL();
-  if(!l){ box.innerHTML = `<p class="muted" style="padding:20px;text-align:center;background:var(--card);margin:0">La carte apparaîtra ici.</p>`; box.style.gridTemplateColumns = "1fr"; return; }
+  if(!l){
+    box.innerHTML = `<p class="muted" style="padding:20px;text-align:center;background:var(--card);margin:0">${mjHumain() ? (estMJ() ? "Aucune carte affichée : crée-en une ou choisis-en une dans 🗺️ Cartes (outils du MJ)." : "Le maître du jeu n'a pas encore affiché de carte.") : "La carte apparaîtra ici."}</p>`;
+    box.style.gridTemplateColumns = "1fr"; return;
+  }
   const U = UNIV[G.u], W = l[0].length, z = zoneVisee(), act = acteurCourant();
   box.style.gridTemplateColumns = `repeat(${W},1fr)`;
   const larg = box.clientWidth || (box.parentNode.clientWidth - 24) || 500;
   box.style.fontSize = Math.max(9, Math.floor(larg / W * 0.56)) + "px";
-  const sel = heroSel();
+  const sel = heroSel(), pion = estMJ() && MJ.outil === "deplacer" ? MJ.pion : null;
   let html = "";
   for(let y = 0; y < l.length; y++) for(let x = 0; x < W; x++){
     const ch = l[y][x], k = x + "," + y;
@@ -1139,21 +1649,35 @@ function rendreCarte(){
     const h = heroEn(x, y), m = !h && monstreEn(x, y);
     if(h) inner = `<div class="tk ${h.pv <= 0 ? "ko" : ""} ${act === h || (!G.combat && sel === h) ? "actif" : ""}" style="--tc:${h.coul}" title="${esc(h.nom)}">${h.emo}<i><b style="width:${Math.round(100 * h.pv / h.pvMax)}%"></b></i></div>`;
     else if(m) inner = `<div class="tk m ${act === m ? "actif" : ""}" style="--tc:#ff5a6e" title="${esc(m.nom)}">${m.emo}<i><b style="width:${Math.round(100 * m.pv / m.pvMax)}%"></b></i></div>`;
-    html += `<div class="c ${TUILE[ch] || "sol"}${z.ok.has(k) ? " ok" : ""}${z.v.has(k) ? " vise" : ""}" data-x="${x}" data-y="${y}">${inner}</div>`;
+    const estPion = pion && ((h && pion.k === "h" && pion.id === h.id) || (m && pion.k === "m" && pion.id === m.id));
+    html += `<div class="c ${TUILE[ch] || "sol"}${z.ok.has(k) ? " ok" : ""}${z.v.has(k) ? " vise" : ""}${estPion ? " pion" : ""}" data-x="${x}" data-y="${y}">${inner}</div>`;
   }
   box.innerHTML = html;
 }
-$("jCarte").addEventListener("click", e => { const c = e.target.closest(".c"); if(c) clicCase(+c.dataset.x, +c.dataset.y); });
+$("jCarte").addEventListener("click", e => { const c = e.target.closest(".c"); if(c && c.dataset.x != null) clicCase(+c.dataset.x, +c.dataset.y); });
 function heroSel(){
   if(!G) return null;
   const mien = G.heros.filter(h => controle(h));
   return mien.find(h => h.id === selId) || mien[0] || null;
 }
 function clicCase(x, y){
-  if(!G) return;
+  if(!G || !carteL()) return;
+  if(estMJ() && MJ.outil === "deplacer"){
+    const h = heroEn(x, y), m = !h && monstreEn(x, y);
+    if(h || m){ MJ.pion = {k: h ? "h" : "m", id: (h || m).id}; rendreCarte(); return; }
+    if(MJ.pion){ const p = MJ.pion; mj({t: "place", k: p.k, id: p.id, x, y}); }
+    return;
+  }
   if(G.phase === "combat" && G.combat){
+    const o = G.combat.ordre[G.combat.i];
+    if(o.k === "m"){
+      if(!estMJ() || G.combat.auto || !vise) return;
+      if(vise === "bouge") mj({t: "mcmd", c: {t: "bouge", x, y}});
+      else if(vise === "att"){ const h = heroEn(x, y); if(h) mj({t: "mcmd", c: {t: "att", cible: h.id}}); }
+      return;
+    }
     const h = acteurCourant();
-    if(!h || G.combat.ordre[G.combat.i].k !== "h" || !controle(h) || !vise) return;
+    if(!h || !controle(h) || !vise) return;
     const t = classe(h).cap.type, m = monstreEn(x, y), a = heroEn(x, y);
     let c = null;
     if(vise === "bouge") c = {t: "bouge", x, y};
@@ -1193,11 +1717,22 @@ function rendreEquipe(){
   const U = UNIV[G.u];
   $("jGroupe").innerHTML = `💰 ${G.or} ${esc(U.monnaie)} · 🧪 ${G.potions} potion${G.potions > 1 ? "s" : ""}${G.sac.length ? " · 🎒 " + esc(G.sac.slice(-6).join(", ")) + (G.sac.length > 6 ? "…" : "") : ""}`;
 }
+function rendreMjSel(){
+  const box = $("jMjSel");
+  if(estInvite()){ if(box.innerHTML) box.innerHTML = ""; box.dataset.cle = ""; return; }
+  const opts = [["ia", "🤖 IA"], ...(mode === "ligne" ? salle.joueurs.map(j => [j.id, "🎭 " + j.pseudo]) : [["local", "🎭 Un joueur (cet écran)"]])];
+  const cle = JSON.stringify([opts, G.mj]);
+  if(box.dataset.cle === cle) return;
+  box.dataset.cle = cle;
+  box.innerHTML = `<label class="muted" style="font-weight:800">Maître du jeu : <select id="mjSel" class="mini">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === G.mj ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>`;
+  $("mjSel").onchange = e => setMJ(e.target.value);
+}
 function fiche(h){
   if(!h) return;
   const C = classe(h), t = C.cap, box = Base.el("div");
   box.className = "fiche";
   box.innerHTML = `<p style="margin:0 0 8px"><b>${esc(h.ori)} · ${C.emo} ${esc(C.nom)} · niveau ${h.niv}</b><br><span class="muted">${h.xp} XP${h.niv < 10 ? " / " + XP_NIV(h.niv) + " pour le niveau " + (h.niv + 1) : " (max)"}</span></p>
+    ${h.bg ? `<p style="margin:0 0 8px"><i>📖 ${esc(h.bg)}</i></p>` : ""}
     <table>
       <tr><td>PV</td><td>${h.pv} / ${h.pvMax}</td></tr>
       <tr><td>CA</td><td>${ca(h)}</td></tr>
@@ -1210,7 +1745,7 @@ function fiche(h){
   Base.fenetre(h.emo + " " + h.nom, box, {bouton: "Fermer"});
 }
 function rendreLog(){
-  const last = G.log[G.log.length - 1], cle = G.log.length + "|" + (last ? last.x.length : 0);
+  const last = G.log[G.log.length - 1], cle = G.log.length + "|" + (last ? last.x.length + last.x.slice(0, 20) : 0);
   if(cle === cleLog) return;
   cleLog = cle;
   const box = $("jLog"), bas = box.scrollHeight - box.scrollTop - box.clientHeight < 80 || !box.children.length;
@@ -1222,16 +1757,19 @@ function rendreLog(){
 
 /* Zone d'action : ne se redessine que si quelque chose a changé (garde le texte en cours de frappe) */
 function rendreActions(){
-  const box = $("jAct"), c = G.combat, ph = G.phase;
-  const cle = [ph, G.seq > 0 ? "" : "", JSON.stringify(G.actions || {}), (G.choix || []).join("|"), JSON.stringify(G.jets || []), G.erreur,
-    c ? [c.i, c.round, c.fait.a, c.fait.b, c.uses[(acteurCourant() || {}).id], G.potions, vise].join(",") : "", aMonHero() || mode !== "ligne", enCours].join("#");
+  const box = $("jAct"), c = G.combat, ph = G.phase, moiMJ = estMJ(), cur = acteurCourant();
+  const cle = [ph, JSON.stringify(G.actions || {}), (G.choix || []).join("|"), JSON.stringify(G.jets || []), G.erreur, G.mj, moiMJ, G.heros.length,
+    c ? [c.i, c.round, c.fait.a, c.fait.b, c.auto, cur && c.uses[cur.id], cur && cur.pv, G.potions, vise].join(",") : "", aMonHero() || mode !== "ligne", enCours].join("#");
   if(cle === cleAct) return;
   cleAct = cle;
   const brouillon = $("aTxt") ? $("aTxt").value : "", focus = document.activeElement && document.activeElement.id === "aTxt";
   let html = "";
-  if(mode === "ligne" && salle && !salle.hote && !aMonHero())
+  if(mode === "ligne" && salle && !salle.hote && !aMonHero() && !moiMJ)
     html += `<button class="btn" data-a="creer">🧙 Créer mon héros pour rejoindre l'aventure</button>`;
   if(ph === "ia") html += `<p class="attente">Le maître du jeu prépare la suite…</p>`;
+  else if(ph === "mj") html += moiMJ
+    ? `<p style="margin:0"><b>🎭 À toi, maître du jeu !</b> <span class="muted">Raconte la suite avec tes outils : 📜 Récit, 🎲 Dés, 🗺️ Cartes, 👹 Créatures…</span></p>`
+    : `<p class="attente">🎭 Le maître du jeu prépare la suite…</p>`;
   else if(ph === "erreur"){
     html += `<p>⚠️ Le maître du jeu n'a pas répondu.<br><span class="muted" style="font-size:.85rem">${esc(G.erreur)}</span></p>`;
     if(!estInvite()) html += `<div class="ligne"><button class="btn" data-a="reessayer">🔄 Réessayer</button><a class="btn ghost" href="${Base.RACINE}reglages/" style="text-decoration:none">⚙️ Réglages IA</a></div>`;
@@ -1242,10 +1780,11 @@ function rendreActions(){
       html += `<div><b style="color:${h.coul}">${h.emo} ${esc(h.nom)}</b>, que fais-tu ?${G.heros.length > 1 && att.length > 1 ? ` <span class="muted" style="font-size:.85rem">(en attente : ${att.map(x => esc(x.nom)).join(", ")})</span>` : ""}</div>`;
       if(G.choix.length) html += `<div class="puces">${G.choix.map((x, i) => `<button data-choix="${i}">${esc(x)}</button>`).join("")}</div>`;
       html += `<div class="ligne"><input class="champ" id="aTxt" maxlength="400" placeholder="Décris ton action (ex. : j'examine la porte)" style="flex:1;min-width:160px"><button class="btn" data-a="agir">Agir</button></div>
-        <div class="ligne"><button class="btn ghost petit" data-a="passer">⏭️ Passer</button>${!estInvite() && G.heros.some(x => G.actions[x.id] != null) ? `<button class="btn ghost petit" data-a="forcer">📨 Envoyer au MJ sans attendre</button>` : ""}</div>`;
+        <div class="ligne"><button class="btn ghost petit" data-a="passer">⏭️ Passer</button>${G.mj === "ia" && !estInvite() && G.heros.some(x => G.actions[x.id] != null) ? `<button class="btn ghost petit" data-a="forcer">📨 Envoyer au MJ sans attendre</button>` : ""}</div>`;
     }else if(att.length){
       html += `<p class="attente">En attente de ${att.map(x => esc(x.nom)).join(", ")}…</p>`;
-      if(!estInvite()) html += `<button class="btn ghost petit" data-a="forcer">📨 Envoyer au MJ sans attendre</button>`;
+      if(G.mj === "ia" && !estInvite()) html += `<button class="btn ghost petit" data-a="forcer">📨 Envoyer au MJ sans attendre</button>`;
+      if(moiMJ) html += `<p class="muted" style="font-size:.85rem;margin:0">Tu peux répondre sans attendre avec 📜 Récit.</p>`;
     }
   }
   else if(ph === "jets"){
@@ -1259,7 +1798,7 @@ function rendreActions(){
     });
   }
   else if(ph === "combat" && c){
-    const o = c.ordre[c.i], a = acteurDe(o);
+    const o = c.ordre[c.i], a = cur;
     if(o.k === "h" && controle(a)){
       const C = classe(a), t = C.cap, rest = c.uses[a.id] || 0;
       const instant = ["soin_soi", "soin_groupe", "bouclier"].includes(t.type);
@@ -1272,7 +1811,11 @@ function rendreActions(){
         <button data-a="potion" ${c.fait.a || G.potions <= 0 ? "disabled" : ""}>🧪 Potion (${G.potions})</button>
         <button data-a="fuir" ${c.fait.a ? "disabled" : ""}>🏃 Fuir</button>
         <button data-a="fin">⏭️ Fin du tour</button></div>`;
-    }else html += `<p class="attente">Tour de ${a ? a.emo + " " + esc(a.nom) : "…"}</p>`;
+    }else if(o.k === "m" && moiMJ && !c.auto && a){
+      html += `<div><b>${a.emo} ${esc(a.nom)}</b> : à toi de le jouer, MJ ! <span class="muted" style="font-size:.85rem">❤️ ${a.pv}/${a.pvMax} · ${c.fait.b ? "✔️ déplacé" : "🦶 déplacement dispo"} · ${c.fait.a ? "✔️ attaque faite" : "⚔️ attaque dispo"}</span></div>`;
+      if(vise) html += `<div class="muted" style="font-size:.88rem">👉 ${vise === "bouge" ? "Touche une case bleue." : "Touche un héros en rouge (attaque " + sgn(a.att) + ", " + esc(a.deg) + ")."}</div>`;
+      html += `<div class="puces"><button data-mv="bouge" class="${vise === "bouge" ? "on" : ""}" ${c.fait.b ? "disabled" : ""}>🦶 Déplacer</button><button data-mv="att" class="${vise === "att" ? "on" : ""}" ${c.fait.a ? "disabled" : ""}>⚔️ Attaquer</button><button data-ma="auto" ${c.fait.a ? "disabled" : ""}>🤖 Jouer tout seul</button><button data-ma="fin">⏭️ Fin du tour</button></div>`;
+    }else html += `<p class="attente">Tour de ${a ? a.emo + " " + esc(a.nom) : "…"}${o.k === "m" && !c.auto ? " (joué par le MJ)" : ""}</p>`;
   }
   else if(ph === "fin"){
     html += `<p style="font-weight:800">${G.fin === "victoire" ? "🏆 Bravo, l'aventure est réussie !" : "💀 L'aventure s'achève ici…"}</p>`;
@@ -1296,6 +1839,8 @@ function rendreActions(){
     vise = vise === b.dataset.v ? null : b.dataset.v;
     cleAct = ""; rendreCarte(); rendreActions();
   });
+  box.querySelectorAll("[data-mv]").forEach(b => b.onclick = () => { vise = vise === b.dataset.mv ? null : b.dataset.mv; cleAct = ""; rendreCarte(); rendreActions(); });
+  box.querySelectorAll("[data-ma]").forEach(b => b.onclick = () => mj({t: "mcmd", c: {t: b.dataset.ma}}));
   box.querySelectorAll("[data-a]").forEach(b => b.onclick = () => action(b.dataset.a));
 }
 function agir(txt){
@@ -1315,18 +1860,344 @@ function action(a){
   else if(a === "potion" && h) envoyerCmd(h.id, {t: "potion"});
   else if(a === "fuir" && h) envoyerCmd(h.id, {t: "fuir"});
   else if(a === "fin" && h) envoyerCmd(h.id, {t: "fin"});
-  else if(a === "continuer"){ G.fin = null; G.type = "campagne"; appelerMJ("[SUITE] Les joueurs veulent continuer avec les mêmes héros : lance une nouvelle quête liée à ce qui vient de se passer, avec un nouveau lieu et sa carte."); }
-  else if(a === "nouvelle"){ if(salle){ salle.quitter(); salle = null; } stock.effacer("partie"); G = null; enJeu = false; mode = null; ecran("eMenu"); }
+  else if(a === "continuer"){
+    G.fin = null; G.type = "campagne";
+    if(mjHumain()){ G.phase = "mj"; log("sys", "▶️ L'aventure continue…"); sync(); }
+    else appelerMJ("[SUITE] Les joueurs veulent continuer avec les mêmes héros : lance une nouvelle quête liée à ce qui vient de se passer, avec un nouveau lieu et sa carte.");
+  }
+  else if(a === "nouvelle"){ if(salle){ salle.quitter(); salle = null; } stock.effacer("partie"); G = null; L = null; enJeu = false; mode = null; ecran("eMenu"); }
+}
+
+/* ---------- Outils du MJ : panneau ---------- */
+function rendreMJ(lobby){
+  const box = lobby ? $("lobMJ") : $("jMJ");
+  if(lobby ? !L : !G) return;
+  const u = lobby ? L.cfg.u : G.u, U = UNIV[u], cb = !lobby && G.combat;
+  if(!lobby){ if(cb && !MJ.vuCombat){ MJ.vuCombat = true; MJ.onglet = "combat"; } if(!cb){ MJ.vuCombat = false; if(MJ.onglet === "combat") MJ.onglet = "recit"; } }
+  const tabs = lobby ? [["cartes", "🗺️ Cartes"], ["monstres", "👹 Créatures"], ["notes", "📝 Notes"]]
+    : [["recit", "📜 Récit"], ...(cb ? [["combat", "⚔️ Combat"]] : []), ["des", "🎲 Dés"], ["cartes", "🗺️ Cartes"], ["monstres", "👹 Créatures"], ["groupe", "🎁 Groupe"], ["notes", "📝 Notes"]];
+  if(!tabs.some(t => t[0] === MJ.onglet)) MJ.onglet = tabs[0][0];
+  const cle = JSON.stringify([lobby, u, MJ.onglet, MJ.secret, MJ.js, MJ.jdd, MJ.jh, MJ.rencontre.map(e => e.def.nom + e.n), MJ.auto, MJ.outil, MJ.filtre, MJ.log.length, libV,
+    lobby ? 0 : [G.phase, G.heros.map(h => [h.id, h.pv, h.niv, h.xp]), G.actions, G.or, G.potions, G.sac, Object.keys(G.cartes), G.carte, cb ? [cb.auto, cb.m.map(m => m.pv)] : 0, G.jets.length, G.mj]]);
+  if(cle === cleMJ && box.dataset.l === String(lobby)) return;
+  cleMJ = cle; box.dataset.l = String(lobby);
+  garderFocus(() => {
+    box.innerHTML = `<div style="margin-bottom:8px"><b>🎭 Outils du maître du jeu</b> <span class="muted" style="font-size:.8rem">(visibles seulement par toi)</span></div>
+      <div class="onglets">${tabs.map(([k, t]) => `<button data-tab="${k}" class="${MJ.onglet === k ? "on" : ""}">${t}</button>`).join("")}</div>` + ongletMJ(MJ.onglet, lobby, U, cb);
+    lierMJ(box, lobby, U);
+  });
+}
+const rafraichirMJ = lobby => { cleMJ = ""; rendreMJ(lobby); };
+const pvBoutons = (k, id) => [-5, -1, 1, 5].map(n => `<button class="mini" data-pv="${k}:${esc(id)}:${n}">${n > 0 ? "+" : ""}${n}</button>`).join("");
+const ligneCreature = (m, src, i) => `<div class="mjl"><span class="n">${esc(m.emo)} <b>${esc(m.nom)}</b> <span class="muted">niv ${m.niv} · ❤️${m.pv} 🛡️${m.ca} ⚔️${sgn(m.att)} ${esc(m.deg)}${m.portee > 1 ? " · portée " + m.portee : ""}</span></span>${src === "lib" ? `<button class="mini" data-editm="${i}">✏️</button><button class="mini" data-supm="${i}">🗑️</button>` : ""}<button class="mini" data-ajm="${src}:${i}" title="Ajouter à la rencontre">➕</button></div>`;
+function ongletMJ(t, lobby, U, cb){
+  if(t === "recit"){
+    const att = G.phase === "actions" ? enAttente() : [];
+    return `${G.phase === "actions" ? `<p class="muted" style="margin:0 0 6px;font-size:.85rem">Actions reçues : ${G.heros.filter(h => G.actions[h.id] != null).length}/${vivants().length}${att.length ? " — en attente de " + att.map(h => esc(h.nom)).join(", ") : ""}</p>` : ""}
+      <textarea class="champ" id="mjRecit" maxlength="3000" rows="4" placeholder="Décris la scène, fais parler les PNJ, annonce les conséquences des actions…">${esc(MJ.recit)}</textarea>
+      <input class="champ" id="mjChoix" maxlength="300" placeholder="Suggestions d'actions pour les joueurs, séparées par / (facultatif)" value="${esc(MJ.choix)}" style="margin-top:6px">
+      <div class="ligne" style="margin-top:8px"><button class="btn" data-m="raconter">📢 Raconter aux joueurs</button>${IA.disponible() ? `<button class="btn ghost petit" data-m="iaRecit">✨ Proposer un texte avec l'IA</button>` : ""}</div>
+      ${cb ? `<p class="muted" style="font-size:.82rem">Pendant un combat, ton texte s'ajoute au journal sans arrêter le combat.</p>`
+           : `<div class="sous">Déroulement</div><div class="ligne"><button class="mini" data-m="tour">🔄 Redemander les actions</button><button class="mini" data-m="finV">🏆 Fin : victoire</button><button class="mini" data-m="finD">💀 Fin : défaite</button></div>`}
+      <div class="sous">Histoires des héros</div>${G.heros.map(h => `<div style="font-size:.84rem;margin-bottom:4px"><b>${h.emo} ${esc(h.nom)}</b> <span class="muted">${h.bg ? esc(h.bg) : "(pas d'histoire)"}</span></div>`).join("")}`;
+  }
+  if(t === "combat"){
+    return `<div class="sous" style="margin-top:0">Points de vie</div>` +
+      cb.m.filter(m => m.pv > 0).map(m => `<div class="mjl"><span class="n">${m.emo} ${esc(m.nom)} <span class="muted">${m.pv}/${m.pvMax}</span></span>${pvBoutons("m", m.id)}</div>`).join("") +
+      G.heros.map(h => `<div class="mjl"><span class="n">${h.emo} ${esc(h.nom)} <span class="muted">${h.pv}/${h.pvMax}</span></span>${pvBoutons("h", h.id)}</div>`).join("") +
+      `<label style="display:flex;gap:6px;align-items:center;font-size:.86rem;margin:10px 0"><input type="checkbox" id="mjAutoC" ${cb.auto ? "" : "checked"}> Je joue les monstres moi-même</label>
+      <div class="sous">Terminer le combat</div><div class="ligne"><button class="mini" data-m="fcV">🏆 Victoire</button><button class="mini" data-m="fcF">🏃 Les héros fuient</button><button class="mini" data-m="fcD">💀 Défaite</button></div>
+      <p class="muted" style="font-size:.82rem">Renforts : onglet 👹 Créatures. Déplacer un pion : onglet 🗺️ Cartes.</p>`;
+  }
+  if(t === "des"){
+    const vivs = G.heros.filter(h => h.pv > 0), sel = MJ.jh || vivs.map(h => h.id);
+    return `<div class="sous" style="margin-top:0">Demander un jet aux joueurs</div>
+      <div class="puces">${vivs.map(h => `<button data-jh="${esc(h.id)}" class="${sel.includes(h.id) ? "on" : ""}">${h.emo} ${esc(h.nom)}</button>`).join("")}</div>
+      <div class="puces" style="margin-top:6px">${STATS.map(s => `<button data-js="${s}" class="${MJ.js === s ? "on" : ""}" title="${NOMS_STATS[s]}">${s}</button>`).join("")}</div>
+      <div class="puces" style="margin-top:6px">${[[8, "Facile 8"], [10, "10"], [12, "Moyen 12"], [15, "Dur 15"], [18, "18"], [20, "Extrême 20"]].map(([v, x]) => `<button data-jdd="${v}" class="${MJ.jdd === v ? "on" : ""}">${x}</button>`).join("")}</div>
+      <div class="ligne" style="margin-top:6px"><input class="champ" id="mjPour" maxlength="70" placeholder="Pour quoi ? (ex. : escalader le mur)" value="${esc(MJ.jpour)}" style="flex:1;min-width:150px"><button class="btn petit" data-m="jet" ${cb ? "disabled" : ""}>🎲 Demander</button></div>
+      ${G.phase === "jets" ? `<p class="muted" style="font-size:.85rem">Jets en cours… <button class="mini" data-m="annulerJets">❌ Annuler</button></p>` : ""}
+      <div class="sous">Lancer des dés</div>
+      <div class="puces">${[4, 6, 8, 10, 12, 20, 100].map(f => `<button data-de="${f}">d${f}</button>`).join("")}<button data-m="secret" class="${MJ.secret ? "on" : ""}">🤫 Secret</button></div>
+      ${MJ.log.length ? `<div class="muted" style="font-size:.82rem;margin-top:6px">${MJ.log.slice(-5).reverse().map(esc).join("<br>")}</div>` : ""}`;
+  }
+  if(t === "cartes"){
+    let h = `<div class="ligne"><button class="btn petit" data-m="nouvCarte">➕ Créer une carte</button>${lobby ? "" : `<button class="mini ${MJ.outil === "deplacer" ? "on" : ""}" data-m="outil">🖐️ Déplacer les pions${MJ.outil === "deplacer" ? " (actif)" : ""}</button>`}</div>`;
+    if(!lobby && MJ.outil === "deplacer") h += `<p class="muted" style="font-size:.82rem">Touche un pion sur la carte, puis la case où le poser. Re-touche 🖐️ pour arrêter.</p>`;
+    if(!lobby){
+      const noms = Object.keys(G.cartes);
+      h += `<div class="sous">Cartes de la partie</div>` + (noms.length ? noms.map(n => `<div class="mjl"><span class="n">${n === G.carte ? "📍 " : ""}${esc(n)}</span><button class="mini" data-voir="${esc(n)}" ${cb || n === G.carte ? "disabled" : ""}>👁️ Afficher</button><button class="mini" data-editp="${esc(n)}">✏️</button><button class="mini" data-garder="${esc(n)}" title="Copier dans ma bibliothèque">💾</button></div>`).join("") : `<p class="muted" style="font-size:.85rem">Aucune carte affichée pour l'instant.</p>`);
+    }
+    const noms = Object.keys(lib.cartes);
+    h += `<div class="sous">Ma bibliothèque <span style="font-weight:600">(gardée sur cet appareil)</span></div>` + (noms.length ? noms.map(n => `<div class="mjl"><span class="n">${esc(n)} <span class="muted">${lib.cartes[n][0].length}×${lib.cartes[n].length}</span></span>${lobby ? "" : `<button class="mini" data-montrer="${esc(n)}" ${cb ? "disabled" : ""}>👁️ Afficher</button>`}<button class="mini" data-editl="${esc(n)}">✏️</button><button class="mini" data-supl="${esc(n)}">🗑️</button></div>`).join("") : `<p class="muted" style="font-size:.85rem">Prépare tes cartes à l'avance : elles restent ici d'une partie à l'autre.</p>`);
+    return h;
+  }
+  if(t === "monstres"){
+    const dans = m => MJ.filtre === 0 || (MJ.filtre === 1 && m.niv <= 3) || (MJ.filtre === 2 && m.niv >= 4 && m.niv <= 6) || (MJ.filtre === 3 && m.niv >= 7);
+    const r = MJ.rencontre, lvl = lobby ? 0 : niveauGroupe();
+    let h = `<div class="sous" style="margin-top:0">${cb ? "Renforts à envoyer" : "Rencontre préparée"}</div>`;
+    h += r.length ? r.map((e, i) => `<div class="mjl"><span class="n">${esc(e.def.emo)} ${esc(e.def.nom)} <span class="muted">niv ${e.def.niv}</span></span><button class="mini" data-rn="${i}:-1">−</button><b>${e.n}</b><button class="mini" data-rn="${i}:1">+</button></div>`).join("")
+      : `<p class="muted" style="font-size:.85rem;margin:0">Ajoute des créatures avec ➕ ci-dessous.${lvl ? " Repère : environ une créature de niveau " + lvl + " par héros." : ""}</p>`;
+    if(!lobby){
+      h += `<label style="display:flex;gap:6px;align-items:center;font-size:.86rem;margin:8px 0"><input type="checkbox" id="mjAuto" ${MJ.auto ? "" : "checked"}> Je joue les monstres moi-même (sinon ils jouent seuls)</label>
+        <div class="ligne"><button class="btn petit" data-m="lancerCombat" ${r.length ? "" : "disabled"}>${cb ? "⚠️ Envoyer en renfort" : "⚔️ Lancer le combat"}</button>${r.length ? `<button class="mini" data-m="viderR">Vider</button>` : ""}</div>`;
+      if(!G.carte && !cb) h += `<p class="muted" style="font-size:.8rem">Sans carte affichée, le combat se jouera dans une salle simple.</p>`;
+    }else if(r.length) h += `<p class="muted" style="font-size:.8rem">Tu pourras la lancer pendant la partie.</p>`;
+    h += `<div class="sous">Mes créatures</div><div class="ligne" style="margin-bottom:4px"><button class="mini" data-m="nouvMonstre">➕ Créer une créature</button></div>` + lib.monstres.map((m, i) => ligneCreature(m, "lib", i)).join("");
+    h += `<div class="sous">Bestiaire ${esc(U.nom)}</div><div class="puces" style="margin-bottom:4px">${[[0, "Tous"], [1, "Niv 1-3"], [2, "Niv 4-6"], [3, "Niv 7-10"]].map(([v, x]) => `<button data-filtre="${v}" class="${MJ.filtre === v ? "on" : ""}">${x}</button>`).join("")}</div>` + U.monstres.map((m, i) => dans(m) ? ligneCreature(m, "b", i) : "").join("");
+    return h;
+  }
+  if(t === "groupe"){
+    return `<div class="sous" style="margin-top:0">Points de vie</div>` + G.heros.map(h => `<div class="mjl"><span class="n">${h.emo} ${esc(h.nom)} <span class="muted">❤️ ${h.pv}/${h.pvMax} · niv ${h.niv} · ${h.xp} XP</span></span>${pvBoutons("h", h.id)}<button class="mini" data-fiche="${esc(h.id)}" title="Fiche">📄</button></div>`).join("") +
+      `<div class="ligne" style="margin-top:6px"><button class="mini" data-m="repos">🏕️ Repos complet</button></div>
+      <div class="sous">Expérience</div><div class="ligne"><input class="champ" id="mjXp" type="number" min="1" max="5000" value="${MJ.xp}" style="width:100px"><button class="mini" data-m="xp">⭐ Donner à chaque héros</button></div>
+      <div class="sous">Trésor : 💰 ${G.or} ${esc(U.monnaie)} · 🧪 ${G.potions}</div>
+      <div class="ligne"><input class="champ" id="mjOr" type="number" min="1" value="${MJ.or}" style="width:100px"><button class="mini" data-m="or+">💰 Donner</button><button class="mini" data-m="or-">Retirer</button><button class="mini" data-m="po+">🧪 +1</button><button class="mini" data-m="po-">🧪 −1</button></div>
+      <div class="sous">Sac commun</div><div class="ligne"><input class="champ" id="mjObj" maxlength="60" placeholder="Objet (ex. : clé en argent)" value="${esc(MJ.objet)}" style="flex:1;min-width:140px"><button class="mini" data-m="objet">🎒 Ajouter</button></div>
+      ${G.sac.map((o, i) => `<div class="mjl"><span class="n">${esc(o)}</span><button class="mini" data-ret="${i}">✖</button></div>`).join("")}`;
+  }
+  if(t === "notes") return `<textarea class="champ" id="mjNotes" rows="9" placeholder="Ton scénario, les secrets des PNJ, les pièges, les énigmes… (visible seulement par toi, gardé sur cet appareil)">${esc(stock.lire("mjnotes", ""))}</textarea>`;
+  return "";
+}
+function lierMJ(box, lobby, U){
+  const q = s => box.querySelectorAll(s), re = () => rafraichirMJ(lobby);
+  q("[data-tab]").forEach(b => b.onclick = () => { MJ.onglet = b.dataset.tab; re(); });
+  const ent = (id, f) => { const e = box.querySelector("#" + id); if(e) e.oninput = () => f(e.value); };
+  ent("mjRecit", v => MJ.recit = v); ent("mjChoix", v => MJ.choix = v); ent("mjPour", v => MJ.jpour = v);
+  ent("mjXp", v => MJ.xp = parseInt(v) || 0); ent("mjOr", v => MJ.or = parseInt(v) || 0); ent("mjObj", v => MJ.objet = v);
+  ent("mjNotes", v => stock.ecrire("mjnotes", v));
+  const r = box.querySelector("#mjRecit");
+  if(r) r.addEventListener("keydown", e => { if(e.key === "Enter" && (e.ctrlKey || e.metaKey)) actionMJ("raconter", lobby); });
+  q("[data-jh]").forEach(b => b.onclick = () => {
+    const vivs = G.heros.filter(h => h.pv > 0).map(h => h.id), id = b.dataset.jh;
+    let s = (MJ.jh || vivs).slice();
+    s = s.includes(id) ? s.filter(x => x !== id) : [...s, id];
+    MJ.jh = s; re();
+  });
+  q("[data-js]").forEach(b => b.onclick = () => { MJ.js = b.dataset.js; re(); });
+  q("[data-jdd]").forEach(b => b.onclick = () => { MJ.jdd = +b.dataset.jdd; re(); });
+  q("[data-de]").forEach(b => b.onclick = () => lancerDeMJ(+b.dataset.de));
+  q("[data-filtre]").forEach(b => b.onclick = () => { MJ.filtre = +b.dataset.filtre; re(); });
+  q("[data-ajm]").forEach(b => b.onclick = () => {
+    const [src, i] = b.dataset.ajm.split(":"), def = src === "lib" ? lib.monstres[+i] : U.monstres[+i];
+    if(!def) return;
+    const e = MJ.rencontre.find(x => x.def.id === def.id && x.def.nom === def.nom);
+    if(e) e.n = Math.min(8, e.n + 1); else MJ.rencontre.push({def: {...def}, n: 1});
+    re();
+  });
+  q("[data-rn]").forEach(b => b.onclick = () => {
+    const [i, dv] = b.dataset.rn.split(":").map(Number), e = MJ.rencontre[i]; if(!e) return;
+    e.n += dv; if(e.n <= 0) MJ.rencontre.splice(i, 1); else e.n = Math.min(8, e.n);
+    re();
+  });
+  const au = box.querySelector("#mjAuto"); if(au) au.onchange = () => { MJ.auto = !au.checked; };
+  const ac = box.querySelector("#mjAutoC"); if(ac) ac.onchange = () => mj({t: "auto", v: !ac.checked});
+  q("[data-pv]").forEach(b => b.onclick = () => { const [k, id, n] = b.dataset.pv.split(":"); mj({t: "pv", k, id, n: +n}); });
+  q("[data-voir]").forEach(b => b.onclick = () => mj({t: "voir", nom: b.dataset.voir}));
+  q("[data-montrer]").forEach(b => b.onclick = () => { const n = b.dataset.montrer; mj({t: "carte", nom: n, l: lib.cartes[n]}); });
+  q("[data-editl]").forEach(b => b.onclick = () => editeurCarte({nom: b.dataset.editl, l: lib.cartes[b.dataset.editl], lib: true}, lobby));
+  q("[data-editp]").forEach(b => b.onclick = () => editeurCarte({nom: b.dataset.editp, l: G.cartes[b.dataset.editp], jeu: true}, lobby));
+  q("[data-garder]").forEach(b => b.onclick = () => { lib.cartes[b.dataset.garder] = G.cartes[b.dataset.garder].slice(); saveLib(); Base.toast("Carte copiée dans ta bibliothèque 💾"); re(); });
+  q("[data-supl]").forEach(b => b.onclick = () => { if(!confirm("Supprimer la carte « " + b.dataset.supl + " » de ta bibliothèque ?")) return; delete lib.cartes[b.dataset.supl]; saveLib(); re(); });
+  q("[data-editm]").forEach(b => b.onclick = () => editeurMonstre(+b.dataset.editm, lobby));
+  q("[data-supm]").forEach(b => b.onclick = () => { const m = lib.monstres[+b.dataset.supm]; if(!m || !confirm("Supprimer « " + m.nom + " » ?")) return; lib.monstres.splice(+b.dataset.supm, 1); saveLib(); re(); });
+  q("[data-ret]").forEach(b => b.onclick = () => mj({t: "retirer", i: +b.dataset.ret}));
+  q("[data-fiche]").forEach(b => b.onclick = () => fiche(hero(b.dataset.fiche)));
+  q("[data-m]").forEach(b => b.onclick = () => actionMJ(b.dataset.m, lobby));
+}
+function actionMJ(a, lobby){
+  const re = () => rafraichirMJ(lobby);
+  switch(a){
+    case "raconter": {
+      const txt = MJ.recit.trim(); if(!txt){ Base.toast("Écris d'abord ton texte."); return; }
+      mj({t: "recit", txt, choix: MJ.choix.split("/").map(s => s.trim()).filter(Boolean)});
+      MJ.recit = ""; MJ.choix = ""; re(); return;
+    }
+    case "iaRecit": iaRecit(); return;
+    case "tour": mj({t: "tour"}); return;
+    case "finV": if(confirm("Terminer l'aventure sur une victoire ?")) mj({t: "fin", issue: "victoire"}); return;
+    case "finD": if(confirm("Terminer l'aventure sur une défaite ?")) mj({t: "fin", issue: "defaite"}); return;
+    case "jet": {
+      const hs = (MJ.jh || G.heros.map(h => h.id)).filter(id => hero(id) && hero(id).pv > 0);
+      if(!hs.length){ Base.toast("Choisis au moins un héros."); return; }
+      mj({t: "jets", hs, s: MJ.js, dd: MJ.jdd, pour: MJ.jpour.trim()}); MJ.jpour = ""; re(); return;
+    }
+    case "annulerJets": mj({t: "annulerJets"}); return;
+    case "secret": MJ.secret = !MJ.secret; re(); return;
+    case "nouvCarte": editeurCarte(null, lobby); return;
+    case "outil": MJ.outil = MJ.outil === "deplacer" ? null : "deplacer"; MJ.pion = null; re(); rendreCarte(); return;
+    case "lancerCombat": {
+      if(!MJ.rencontre.length) return;
+      mj({t: "combat", monstres: MJ.rencontre.map(e => ({def: e.def, n: e.n})), auto: MJ.auto});
+      MJ.rencontre = []; re(); return;
+    }
+    case "viderR": MJ.rencontre = []; re(); return;
+    case "nouvMonstre": editeurMonstre(-1, lobby); return;
+    case "repos": mj({t: "repos"}); return;
+    case "xp": if(MJ.xp > 0) mj({t: "xp", n: MJ.xp}); return;
+    case "or+": mj({t: "or", n: Math.abs(MJ.or)}); return;
+    case "or-": mj({t: "or", n: -Math.abs(MJ.or)}); return;
+    case "po+": mj({t: "potion", n: 1}); return;
+    case "po-": mj({t: "potion", n: -1}); return;
+    case "objet": if(MJ.objet.trim()){ mj({t: "objet", nom: MJ.objet}); MJ.objet = ""; re(); } return;
+    case "fcV": mj({t: "fincombat", issue: "victoire"}); return;
+    case "fcF": mj({t: "fincombat", issue: "fuite"}); return;
+    case "fcD": if(confirm("Déclarer la défaite des héros ?")) mj({t: "fincombat", issue: "defaite"}); return;
+  }
+}
+function lancerDeMJ(f){
+  const r = d(f), txt = `d${f} : ${r}`;
+  MJ.log.push((MJ.secret ? "🤫 " : "🎲 ") + txt);
+  if(MJ.secret){ Base.toast("🤫 " + txt + " (seulement toi le vois)"); rafraichirMJ(false); return; }
+  mj({t: "de", r, f, txt: "Le MJ lance un " + txt});
+}
+async function iaRecit(){
+  if(MJ.iaEnCours) return;
+  MJ.iaEnCours = true; Base.toast("✨ L'IA réfléchit…", 5000);
+  try{
+    const raw = await IA.appeler({system: systeme(), json: true, max: 900, messages: [{role: "user", content:
+      `[AIDE AU MJ HUMAIN] Un joueur humain est le maître du jeu. Propose-lui le prochain texte de narration (2 à 5 phrases) et 2 à 4 suggestions d'actions pour les joueurs.${MJ.recit.trim() ? " Ses idées à développer : " + MJ.recit.trim() : ""}\nDerniers événements :\n${recents(14)}\nRéponds seulement en JSON {"recit":"…","choix":["…"]}.`}]});
+    const o = IA.json(raw) || {};
+    if(o.recit){
+      MJ.recit = String(o.recit).slice(0, 3000);
+      MJ.choix = (Array.isArray(o.choix) ? o.choix : []).map(String).slice(0, 4).join(" / ");
+      MJ.onglet = "recit"; rafraichirMJ(false);
+      Base.toast("Proposition prête : relis-la et modifie-la avant d'envoyer.");
+    }else Base.toast("L'IA n'a pas su proposer de texte.");
+  }catch(e){ Base.toast("❌ " + String(e.message || e).slice(0, 100)); }
+  MJ.iaEnCours = false;
+}
+
+/* ---------- Outils du MJ : éditeur de cartes ---------- */
+function editeurCarte(src, lobby){
+  const u = lobby ? L.cfg.u : G.u, U = UNIV[u];
+  const E = {pin: "#", g: (src && src.l ? src.l : genCarte("salle", 14, 9)).map(r => [...r])};
+  const box = Base.el("div");
+  const W = () => E.g[0].length, H = () => E.g.length;
+  const deco = ch => ch === "P" ? "🚩" : ch === "M" ? "💢" : (U.deco[ch] || "");
+  const cellule = (x, y) => { const ch = E.g[y][x], dc = deco(ch); return `<div class="c ${TUILE[ch] || "sol"}" data-x="${x}" data-y="${y}">${dc ? `<span class="deco">${dc}</span>` : ""}</div>`; };
+  box.innerHTML = `
+    <div class="ligne"><input class="champ" id="edNom" maxlength="50" placeholder="Nom du lieu (ex. : Crypte du roi oublié)" value="${esc(src ? src.nom : "")}" style="flex:1;min-width:180px">
+      <span class="muted" style="font-size:.85rem">Taille</span><select class="mini" id="edW"></select><span>×</span><select class="mini" id="edH"></select></div>
+    <div class="sous">Générer automatiquement</div>
+    <div class="puces">${[["vide", "⬜ Vide"], ["salle", "🏠 Salle"], ["foret", "🌲 Extérieur"], ["grotte", "🪨 Grotte"], ["donjon", "🏰 Donjon"]].map(([k, t]) => `<button data-gen="${k}">${t}</button>`).join("")}</div>
+    ${IA.disponible() ? `<div class="ligne" style="margin-top:6px"><input class="champ" id="edIa" maxlength="200" placeholder="Ou décris le lieu à l'IA (ex. : un pont de corde au-dessus d'une rivière)" style="flex:1;min-width:180px"><button class="btn petit" id="edIaGo">✨ Générer</button></div>` : ""}
+    <div class="sous">Pinceau <span style="font-weight:600">(touche ou glisse sur la grille)</span></div>
+    <div class="pal">${SYMBOLES.map(([s, t]) => `<button data-pin="${esc(s)}" class="${s === E.pin ? "on" : ""}"><i class="c ${TUILE[s] || "sol"}">${deco(s)}</i>${t}</button>`).join("")}</div>
+    <div class="carte edit" id="edG" style="margin-top:10px"></div>
+    <p class="muted" style="font-size:.8rem">🚩 = où apparaissent les héros · 💢 = où apparaissent les ennemis au début d'un combat. Les cases mur, eau, arbre, rocher, meuble et coffre bloquent le passage.</p>
+    <div class="ligne" style="justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="edSave">💾 Enregistrer</button>${lobby ? "" : `<button class="btn" id="edShow">👁️ Enregistrer et afficher</button>`}</div>`;
+  const dlg = Base.fenetre("🗺️ " + (src ? "Modifier la carte" : "Nouvelle carte"), box, {bouton: "Fermer"});
+  dlg.style.width = "min(900px,96vw)";
+  dlg.style.setProperty("--tsol", U.pal.sol); dlg.style.setProperty("--tmur", U.pal.mur);
+  dlg.style.setProperty("--therbe", U.pal.herbe); dlg.style.setProperty("--teau", U.pal.eau);
+  dlg.addEventListener("close", () => { if(lobby) rafraichirMJ(true); else if(G && estMJ()) rafraichirMJ(false); });
+  const q = s => box.querySelector(s), gr = q("#edG");
+  function tailles(){
+    q("#edW").innerHTML = rg(6, 18).map(n => `<option ${n === W() ? "selected" : ""}>${n}</option>`).join("");
+    q("#edH").innerHTML = rg(4, 13).map(n => `<option ${n === H() ? "selected" : ""}>${n}</option>`).join("");
+  }
+  function grille(){
+    gr.style.gridTemplateColumns = `repeat(${W()},1fr)`;
+    gr.style.fontSize = Math.max(9, Math.floor((gr.clientWidth || 600) / W() * 0.5)) + "px";
+    let h = ""; for(let y = 0; y < H(); y++) for(let x = 0; x < W(); x++) h += cellule(x, y);
+    gr.innerHTML = h;
+  }
+  function redim(){
+    const w = +q("#edW").value, h = +q("#edH").value;
+    E.g = rg(0, h - 1).map(y => rg(0, w - 1).map(x => (E.g[y] && E.g[y][x]) || ((!x || !y || x === w - 1 || y === h - 1) ? "#" : ".")));
+    grille();
+  }
+  function peindre(el){
+    if(!el || el.dataset.x == null) return;
+    const x = +el.dataset.x, y = +el.dataset.y;
+    if(E.g[y][x] === E.pin) return;
+    E.g[y][x] = E.pin; el.outerHTML = cellule(x, y);
+  }
+  tailles(); setTimeout(grille, 0);
+  q("#edW").onchange = redim; q("#edH").onchange = redim;
+  box.querySelectorAll("[data-gen]").forEach(b => b.onclick = () => { E.g = genCarte(b.dataset.gen, W(), H()).map(r => [...r]); grille(); });
+  box.querySelectorAll("[data-pin]").forEach(b => b.onclick = () => { E.pin = b.dataset.pin; box.querySelectorAll("[data-pin]").forEach(x => x.classList.toggle("on", x === b)); });
+  let enPeinture = false;
+  gr.addEventListener("pointerdown", e => { enPeinture = true; try{ gr.setPointerCapture(e.pointerId); }catch(x){} peindre(e.target.closest(".c")); e.preventDefault(); });
+  gr.addEventListener("pointermove", e => { if(!enPeinture) return; const el = document.elementFromPoint(e.clientX, e.clientY); peindre(el && el.closest && el.closest("#edG .c")); });
+  ["pointerup", "pointercancel"].forEach(t => gr.addEventListener(t, () => enPeinture = false));
+  if(q("#edIaGo")) q("#edIaGo").onclick = async () => {
+    const desc = q("#edIa").value.trim(), btn = q("#edIaGo");
+    if(!desc){ q("#edIa").focus(); return; }
+    btn.disabled = true; btn.textContent = "…";
+    try{
+      const raw = await IA.appeler({json: true, max: 900, messages: [{role: "user", content: desc}],
+        system: `Tu dessines des cartes de jeu de rôle quadrillées vues de dessus. Univers : ${U.nom} (${U.ambiance}). Symboles : # mur . sol , herbe ~ eau T arbre/végétation ^ rocher = meuble/table D porte C coffre S escalier ! danger/feu * objet/indice P départ des héros (2 à 4) M position d'ennemi (2 à 4). Exactement ${H()} lignes de ${W()} caractères. Entoure le lieu de murs (intérieur) ou d'arbres/eau/rochers (extérieur). Les zones de sol doivent être reliées entre elles. Réponds seulement en JSON {"nom":"…","l":["…"]}.`});
+      const c = nettoyerCarte(IA.json(raw), desc.slice(0, 40));
+      if(!c) throw new Error("carte illisible, réessaie");
+      E.g = c.l.map(r => [...r]);
+      if(!q("#edNom").value.trim()) q("#edNom").value = c.nom;
+      tailles(); grille();
+    }catch(e){ Base.toast("❌ " + String(e.message || e).slice(0, 100)); }
+    btn.disabled = false; btn.textContent = "✨ Générer";
+  };
+  function valider(){
+    const nom = q("#edNom").value.trim().slice(0, 50) || "Lieu sans nom";
+    const c = nettoyerCarte({nom, l: E.g.map(r => r.join(""))});
+    if(!c){ Base.toast("Il faut un peu de sol sur la carte."); return null; }
+    lib.cartes[c.nom] = c.l;
+    if(src && src.lib && src.nom !== c.nom) delete lib.cartes[src.nom];
+    saveLib();
+    return c;
+  }
+  q("#edSave").onclick = () => {
+    const c = valider(); if(!c) return;
+    if(src && src.jeu && G) mj({t: "carte", nom: c.nom, l: c.l, voir: false});
+    Base.toast("Carte enregistrée 💾"); dlg.close();
+  };
+  if(q("#edShow")) q("#edShow").onclick = () => {
+    const c = valider(); if(!c) return;
+    if(G && G.combat){ mj({t: "carte", nom: c.nom, l: c.l, voir: false}); Base.toast("Enregistrée. On ne change pas de lieu pendant un combat."); }
+    else mj({t: "carte", nom: c.nom, l: c.l});
+    dlg.close();
+  };
+}
+
+/* ---------- Outils du MJ : créatures personnalisées ---------- */
+const statsAuto = niv => ({pv: Math.round(5 + 6 * niv + 0.9 * niv * niv), ca: 11 + Math.floor(niv / 2), att: 4 + Math.floor(niv * 0.6), deg: niv <= 2 ? "1d8+2" : niv <= 4 ? "2d6+3" : niv <= 6 ? "2d8+3" : niv <= 8 ? "2d10+4" : "3d10+5"});
+function editeurMonstre(i, lobby){
+  const m0 = i >= 0 ? lib.monstres[i] : {nom: "", emo: "👹", niv: 1, ...statsAuto(1), portee: 1};
+  const box = Base.el("div");
+  box.innerHTML = `
+    <div class="ligne"><input class="champ" id="emNom" maxlength="30" placeholder="Nom (ex. : Chef gobelin)" value="${esc(m0.nom)}" style="flex:1;min-width:150px"><input class="champ" id="emEmo" maxlength="4" value="${esc(m0.emo)}" style="width:64px;text-align:center;font-size:1.3rem"></div>
+    <div class="puces" style="margin-top:6px">${EMOS.map(e => `<button data-emo="${e}">${e}</button>`).join("")}</div>
+    <label class="etiquette">Niveau</label>
+    <div class="ligne"><select class="mini" id="emNiv">${rg(1, 10).map(n => `<option ${n === m0.niv ? "selected" : ""}>${n}</option>`).join("")}</select><button class="btn ghost petit" id="emAuto">🪄 Stats conseillées pour ce niveau</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:10px">
+      ${[["emPv", "❤️ Points de vie", m0.pv], ["emCa", "🛡️ Classe d'armure", m0.ca], ["emAtt", "⚔️ Bonus d'attaque", m0.att], ["emDeg", "💥 Dégâts", m0.deg], ["emPo", "🏹 Portée", m0.portee]].map(([id, t, v]) => `<label style="font-size:.78rem;font-weight:800;color:var(--muted)">${t}<input class="champ" id="${id}" value="${esc(v)}" style="padding:6px;margin-top:2px"></label>`).join("")}
+    </div>
+    <p class="muted" style="font-size:.8rem">Dégâts au format 2d6+3 · Portée 1 = corps à corps, plus = attaque à distance.</p>
+    <button class="btn" id="emOk">💾 Enregistrer la créature</button>`;
+  const dlg = Base.fenetre(i >= 0 ? "✏️ Modifier la créature" : "👹 Nouvelle créature", box, {bouton: "Annuler"});
+  dlg.addEventListener("close", () => rafraichirMJ(lobby));
+  const q = s => box.querySelector(s);
+  box.querySelectorAll("[data-emo]").forEach(b => b.onclick = () => q("#emEmo").value = b.dataset.emo);
+  q("#emAuto").onclick = () => { const s = statsAuto(+q("#emNiv").value); q("#emPv").value = s.pv; q("#emCa").value = s.ca; q("#emAtt").value = s.att; q("#emDeg").value = s.deg; };
+  q("#emOk").onclick = () => {
+    const nom = q("#emNom").value.trim(), deg = q("#emDeg").value.replace(/\s/g, "");
+    if(!nom){ Base.toast("Donne un nom à ta créature."); return; }
+    if(!DEG_OK.test(deg)){ Base.toast("Dégâts au format 1d8+2 par exemple."); return; }
+    const x = {id: m0.id || "c" + uid(), nom: nom.slice(0, 30), emo: q("#emEmo").value.trim().slice(0, 4) || "👹", niv: +q("#emNiv").value,
+      pv: clamp(parseInt(q("#emPv").value) || 10, 1, 999), ca: clamp(parseInt(q("#emCa").value) || 12, 5, 30), att: clamp(parseInt(q("#emAtt").value) || 0, -5, 20), deg, portee: clamp(parseInt(q("#emPo").value) || 1, 1, 10)};
+    if(i >= 0) lib.monstres[i] = x; else lib.monstres.push(x);
+    saveLib(); Base.toast("Créature enregistrée 👹"); dlg.close();
+  };
 }
 
 /* ---------- Quitter ---------- */
 bQuit.onclick = () => {
   if(ecranActuel === "eJeu" && !estInvite() && !confirm("Quitter la partie ? Elle est sauvegardée, tu pourras la reprendre depuis le menu.")) return;
   if(ecranActuel === "eJeu" && estInvite() && !confirm("Quitter la partie en ligne ?")) return;
-  if(G && !estInvite()) sauver();
+  if(G && enJeu && !estInvite()) sauver();
   clearTimeout(minut);
   if(salle){ salle.quitter(); salle = null; }
-  G = null; enJeu = false; mode = null; vise = null;
+  G = null; L = null; enJeu = false; mode = null; vise = null; CR = null;
   ecran("eMenu");
 };
 window.addEventListener("resize", () => { if(G && ecranActuel === "eJeu") rendreCarte(); });

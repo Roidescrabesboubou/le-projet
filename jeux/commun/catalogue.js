@@ -58,7 +58,7 @@ window.SALLE_CATALOGUE = [
     slug: "jdr",
     title: "Table de Légendes",
     emoji: "🐉",
-    desc: "Jeu de rôle façon Donjons & Dragons avec une IA maître du jeu : 7 univers (fantasy, space opera, post-apo, horreur 1920, cyberpunk, pirates, Japon des yōkai), création de héros, jets de dés, cartes quadrillées et combats tactiques au tour par tour. Seul ou jusqu'à 8 joueurs, sur un écran ou en ligne.",
+    desc: "Jeu de rôle façon Donjons & Dragons : le maître du jeu est une IA… ou l'un de vous, avec ses outils (éditeur de cartes, créatures, jets, récompenses). 7 univers, création des héros ensemble avec leur histoire, jets de dés, cartes quadrillées et combats tactiques au tour par tour. Seul ou jusqu'à 8 joueurs, sur un écran ou en ligne.",
     tags: ["IA", "Histoire", "Multijoueur", "Solo"],
     colors: ["#c0603a", "#3b2a5c"],
     etat: "dispo",
