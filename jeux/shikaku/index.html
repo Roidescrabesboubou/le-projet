@@ -314,7 +314,7 @@ function ouvrirClassements(){
 function compter(ok){
   if(mode==="semaine"||mode==="mois")return null;
   const cle=mode==="jour"?"statsDaily":"statsFree",s=store.lire(cle,defStats());
-  if(mode==="jour"){const d=parisDay();if(s.last===d)return s;s.last=d;
+  if(mode==="jour"){const d=parisDay();if(s.last===d)return s;s.last=d;(window.__medailles=window.__medailles||[]).push(["shikaku",aides,ok]);   /* médailles 🏅 du défi du jour */
     if(ok){s.streak=s.lastWin===d-1?s.streak+1:1;s.lastWin=d}else s.streak=0}
   else s.streak=ok?s.streak+1:0;
   s.played++;if(ok)s.wins++;

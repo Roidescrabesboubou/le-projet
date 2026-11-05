@@ -176,6 +176,7 @@
            unite: "coup" | "erreur", gagnantsSeulement: true/false,
            reussite: afficher le % de réussite } */
   async function aujourdhui(zone, jeu, jour, o){
+    if(o.moi) (window.__medailles = window.__medailles || []).push([jeu, o.moi.e, o.moi.g]);   /* médailles 🏅 du défi du jour */
     zone.innerHTML = "";
     if(!enLigne) return;
     const box = el("div", null, "sr aj"); zone.appendChild(box);

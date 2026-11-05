@@ -39,6 +39,10 @@ a.card:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.12)}
 .topbar{position:absolute;top:14px;right:16px;z-index:10;display:flex;align-items:center;gap:8px}
 .reglages{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);text-decoration:none;font-size:1.15rem}
 .reglages:hover{transform:rotate(30deg)}
+.md-compteur{height:40px;padding:0 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--text);font:800 .95rem Nunito,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.md-compteur:hover{border-color:#f2b705}
+.defis .md{color:#b07800}
+@media (prefers-color-scheme:dark){.defis .md{color:#f2c94c}}
 .jour{position:absolute;top:10px;left:10px;font-size:.72rem;font-weight:800;padding:4px 10px;border-radius:999px;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .jour.fait{background:#2f9b62}.jour.afaire{background:#e08a1e}
 .defis{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin:-12px 0 22px;font-weight:700;font-size:.92rem}
@@ -53,7 +57,7 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
 </style>
 </head>
 <body>
-<div class="topbar"><a class="reglages" href="reglages/" title="Réglages : pseudo, avatar, clés IA, sauvegarde">⚙️</a><div id="compte"></div></div>
+<div class="topbar"><span id="medailles"></span><a class="reglages" href="reglages/" title="Réglages : pseudo, avatar, clés IA, sauvegarde">⚙️</a><div id="compte"></div></div>
 <main>
   <div class="annonce" id="annonce" hidden></div>
   <section class="hero">
@@ -72,6 +76,7 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
 <script src="jeux/commun/catalogue.js"></script>
 <script src="jeux/commun/compte.js"></script>
 <script src="jeux/commun/groupe.js"></script>
+<script src="jeux/commun/medailles.js"></script>
 <script src="jeux/commun/base.js"></script>
 <script>
 const GAMES = window.SALLE_CATALOGUE;
@@ -118,7 +123,8 @@ function render(){
     el.querySelector("p").textContent = g.desc || "";
     const ej = el.querySelector(".jour");
     if(ej){ const e = etatJour(g.slug); ej.className = "jour " + (e.fait ? "fait" : "afaire");
-      ej.textContent = e.fait ? "✅ Fait aujourd'hui" : e.serie ? `⏳ À faire · 🔥 ${e.serie} en jeu` : "⏳ À faire aujourd'hui"; }
+      const md = medailleDuJour(g.slug);
+      ej.textContent = e.fait ? `✅ Fait aujourd'hui${md ? ` · +${md.m} 🏅` : ""}` : e.serie ? `⏳ À faire · 🔥 ${e.serie} en jeu` : "⏳ À faire aujourd'hui"; }
     const rec = el.querySelector(".record");
     if(rec) rec.textContent = recordDe(g.slug);
     const t = el.querySelector(".tags");
@@ -140,15 +146,23 @@ function jourParis(slug){
   const [sy, sm, sd] = DEBUT_DLE[slug] || [2026, 10, 1];
   return Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(sy, sm, sd)) / 864e5);
 }
+/* Médaille 🏅 gagnée aujourd'hui sur ce défi (ou null) */
+function medailleDuJour(slug){
+  try{ const j = window.Medailles && Medailles.etat()[Medailles.jour()]; return (j && j[slug]) || null; }catch(e){ return null; }
+}
 function etatJour(slug){
+  if(slug === "coupdefeu"){
+    const j = jourParis("coupdefeu");
+    return {fait: !!(lireLS("cdf_jour_fait_" + j, 0) || medailleDuJour(slug)), serie: 0};
+  }
   if(!DLE.includes(slug)) return null;
   const j = jourParis(slug), s = lireLS(slug + "_statsDaily", null) || {};
   const dernier = s.lastWin != null ? s.lastWin : s.last;
-  return {fait: s.last === j, serie: s.streak && dernier != null && dernier >= j - 1 ? s.streak : 0};
+  return {fait: s.last === j || !!medailleDuJour(slug), serie: s.streak && dernier != null && dernier >= j - 1 ? s.streak : 0};
 }
 function renderDefis(){
   const z = document.getElementById("defis");
-  const l = visibles().filter(g => g.etat !== "bientot" && !g.sansPage && DLE.includes(g.slug));
+  const l = visibles().filter(g => g.etat !== "bientot" && !g.sansPage && etatJour(g.slug));
   if(!l.length){ z.hidden = true; return; }
   const n = l.filter(g => etatJour(g.slug).fait).length;
   z.hidden = false; z.innerHTML = "";
@@ -157,6 +171,14 @@ function renderDefis(){
   const b = document.createElement("div"); b.className = "barre";
   const i = document.createElement("i"); i.style.width = (n / l.length * 100) + "%"; b.appendChild(i);
   z.append(t, b);
+  if(window.Medailles){
+    const T = Medailles.totaux(), a = Medailles.etat()[Medailles.jour()] || {};
+    const m = document.createElement("span"); m.className = "md";
+    m.textContent = `🏅 +${T.auj} aujourd'hui` + (a._tous ? "" : ` · tous faits : +20 🏅`);
+    const bm = document.createElement("button"); bm.textContent = "🏆 Classement"; bm.onclick = () => Medailles.fenetreClassement();
+    const br = document.createElement("button"); br.textContent = "ℹ️ Médailles"; br.onclick = () => Medailles.fenetreRegles();
+    z.append(m, bm, br);
+  }
   if(n < l.length && active !== "Quotidien" && (filters.textContent || "").includes("Quotidien")){
     const bt = document.createElement("button"); bt.textContent = "Voir les jeux quotidiens";
     bt.onclick = () => { active = "Quotidien"; renderFilters(); render(); renderDefis(); };
@@ -223,6 +245,12 @@ addEventListener("pageshow", e => { if(e.persisted){ render(); renderDefis(); } 
 let jourVu = jourParis("wordle");
 setInterval(() => { const j = jourParis("wordle"); if(j !== jourVu){ jourVu = j; render(); renderDefis(); } }, 60000);
 Compte.surChangement(() => tout());
+/* Médailles 🏅 : compteur en haut + mise à jour des défis */
+(function attendreMedailles(){
+  if(!window.Medailles) return setTimeout(attendreMedailles, 200);
+  Medailles.compteur(document.getElementById("medailles"));
+  Medailles.surChangement(() => { render(); renderDefis(); });
+})();
 </script>
 </body>
 </html>

@@ -959,6 +959,7 @@ function finPartie(gagne){
   R.phase = "fin";
   stock.effacer("partie");
   if(R.mode === "jour" && R.j != null) stock.ecrire("jour_fait_" + R.j, Math.max(stock.lire("jour_fait_" + R.j, 0), res.k));
+  if(R.mode === "jour" && R.premier) (window.__medailles=window.__medailles||[]).push(["coupdefeu",res.lv,gagne]);   /* médailles 🏅 du défi du jour */
   // Record local (affiché sur l'accueil)
   const best = stock.lire("best", {k:0, lv:0, plat:0});
   if(res.k > best.k){ best.k = res.k; best.lv = res.lv; }
@@ -1152,6 +1153,7 @@ function finPartieSilencieuse(){
   res.k = cleClass(res.lv, res.s);
   stock.effacer("partie");
   if(R.mode === "jour" && R.j != null) stock.ecrire("jour_fait_" + R.j, Math.max(stock.lire("jour_fait_" + R.j, 0), res.k));
+  if(R.mode === "jour" && R.premier) (window.__medailles=window.__medailles||[]).push(["coupdefeu",res.lv,false]);   /* médailles 🏅 du défi du jour */
   const nom = Base.joueur.pseudo();
   if(nom && Classement.enLigne && res.s > 0) envoyer({...res, gagne:false}, nom, el("div"));
   R = null;

@@ -499,6 +499,46 @@
           }
         }
       }
+    },
+    "medailles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$j": {
+          "$cle": {
+            ".write": "auth != null && auth.uid === $uid && $j.matches(/^[0-9]{1,5}$/) && !data.exists() && newData.exists()",
+            ".validate": "$cle.matches(/^_(tous|parfait|serie)$/) ? (newData.isNumber() && newData.val() >= 0 && newData.val() <= 20) : ($cle.matches(/^[a-z0-9-]{1,30}$/) && newData.hasChildren(['m', 'e', 'g']) && newData.child('m').isNumber() && newData.child('m').val() >= 0 && newData.child('m').val() <= 10 && newData.child('e').isNumber() && newData.child('e').val() >= 0 && newData.child('e').val() <= 500 && newData.child('g').isBoolean())"
+          }
+        }
+      }
+    },
+    "medailles_classement": {
+      ".read": true,
+      ".indexOn": [
+        "t",
+        "w"
+      ],
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['n', 't', 'w', 'sw', 'd']) && newData.child('t').val() >= (data.exists() ? data.child('t').val() : 0) && newData.child('t').val() <= (data.exists() ? data.child('t').val() : 0) + 3000",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "w": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+        },
+        "sw": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2000"
+        },
+        "d": {
+          ".validate": "newData.val() == now"
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
     }
   }
 }
