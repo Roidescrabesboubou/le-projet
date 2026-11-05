@@ -25,6 +25,16 @@
    ============================================================ */
 window.SALLE_CATALOGUE = [
   {
+    slug: "arene",
+    title: "Arène Éclair",
+    emoji: "⚡",
+    desc: "Un FPS nerveux en 3D : 5 armes (pistolet, mitraillette, pompe, sniper, lance-roquettes), double saut, dash, tremplins et rocket-jump. Réapparition en 2 secondes, le premier à 10 ou 20 frags gagne. Contre des bots ou en ligne jusqu'à 8.",
+    tags: ["Action", "Multijoueur", "Solo"],
+    colors: ["#ff8a1f", "#3ad6ff"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "manufacture",
     title: "Manufacture",
     emoji: "🏭",
