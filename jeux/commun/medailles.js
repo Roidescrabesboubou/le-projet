@@ -114,12 +114,16 @@
       if(s){
         try{
           const enl = (await db(`medailles/${s.uid}`)) || {};
-          // médailles gagnées sans compte sur cet appareil : on les ajoute au compte
+          // médailles gardées sur cet appareil (sans compte, ou pendant que le
+          // serveur était injoignable) : on les ajoute au compte, sans rien perdre
           const invite = L("salle_medailles_invite", {}) || {};
-          for(const [j, entree] of Object.entries(invite)){
-            for(const [k, v] of Object.entries(entree || {})){
-              if(enl[j] && enl[j][k] != null) continue;
-              try{ await db(`medailles/${s.uid}/${j}/${k}`, {method: "PUT", body: v}); (enl[j] = enl[j] || {})[k] = v; }catch(e){}
+          for(const source of [jours, invite]){
+            for(const [j, entree] of Object.entries(source || {})){
+              for(const [k, v] of Object.entries(entree || {})){
+                if(enl[j] && enl[j][k] != null) continue;
+                (enl[j] = enl[j] || {})[k] = v;
+                try{ await db(`medailles/${s.uid}/${j}/${k}`, {method: "PUT", body: v}); }catch(e){}
+              }
             }
           }
           E("salle_medailles_invite", {});
@@ -166,8 +170,15 @@
     const m = gain(slug, e, g);
     await ecrire(J, slug, {m, e, g});
     const lignes = [[`${(parSlug[slug] && titre(slug))} ${detail(slug, e, g)}`, m]];
-    // Bonus de la journée
-    const act = actifs(), auj = jours[J];
+    const reste = await bonus(J, lignes);
+    await majClassement();
+    notifier();
+    if(!silencieux) celebrer(lignes, reste);
+    return {m, lignes, reste};
+  }
+  /* Bonus de la journée (ajoute les lignes gagnées, renvoie le nb de défis restants) */
+  async function bonus(J, lignes){
+    const act = actifs(), auj = jours[J] || {};
     const faits = act.filter(d => auj[d.slug]);
     if(act.length && faits.length === act.length){
       if(!auj._tous){
@@ -177,10 +188,29 @@
       }
       if(!auj._parfait && faits.every(d => auj[d.slug].g)){ await ecrire(J, "_parfait", BONUS_PARFAIT); lignes.push(["💯 Tous réussis", BONUS_PARFAIT]); }
     }
-    await majClassement();
-    notifier();
-    if(!silencieux) celebrer(lignes, act.length - faits.length);
-    return {m, lignes, reste: act.length - faits.length};
+    return act.length - faits.length;
+  }
+
+  /* Correction du 5 novembre : une partie du jour de Coup de Feu quittée puis
+     relancée avec « Partie du jour » était abandonnée (journée 1 → 2 🏅) et la
+     vraie partie gagnée ne comptait pas. Ce jour-là seulement, une victoire du
+     jour remplace la médaille de participation. */
+  async function corriger(){
+    const J = 4, CLE = "salle_medailles_corr_" + J;
+    if(jour() !== J) return;
+    const c = jours[J] && jours[J].coupdefeu;
+    if(!c || c.g || L(CLE + "_" + cleLocale(), 0)) return;
+    const k = L("cdf_jour_fait_" + J, 0), lv = Math.floor(k / 1e9);
+    if(lv < 8) return;
+    const v = {m: 10, e: lv, g: true}, lignes = [[`${titre("coupdefeu")} 8 journées tenues (correction)`, 10 - (c.m || 0)]];
+    (jours[J] = jours[J] || {}).coupdefeu = v;
+    E(cleLocale(), jours);
+    E(CLE + "_" + cleLocale(), 1);
+    const s = session();
+    if(s && enLigne) try{ await db(`medailles/${s.uid}/${J}/coupdefeu`, {method: "PUT", body: v}); }catch(e){}
+    const reste = await bonus(J, lignes);
+    await majClassement(); notifier();
+    celebrer(lignes, reste, "🔧 Médailles corrigées");
   }
 
   /* ---------- Rattrapage ----------
@@ -198,6 +228,8 @@
       const d = jourDuJeu(slug), st = L(slug + "_statsDaily", null) || {};
       const fini = st.last === d, gagne = st.lastWin === d;
       if(slug === "coupdefeu"){
+        const p = L("cdf_jour_premier_" + d, null);
+        if(p && p.lv) return {e: p.lv, g: !!p.g};
         const k = L("cdf_jour_fait_" + d, 0); if(!k) return null;
         const lv = Math.floor(k / 1e9); return {e: lv, g: lv >= 8};
       }
@@ -233,6 +265,7 @@
         if(res){ lignes.push(...res.lignes); reste = res.reste; }
       }
       if(lignes.length) celebrer(lignes, reste, "🕐 Défis déjà faits aujourd'hui");
+      await corriger();
     }).catch(err => console.warn("[Médailles] rattrapage :", err));
     return file;
   }

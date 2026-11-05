@@ -959,7 +959,8 @@ function finPartie(gagne){
   R.phase = "fin";
   stock.effacer("partie");
   if(R.mode === "jour" && R.j != null) stock.ecrire("jour_fait_" + R.j, Math.max(stock.lire("jour_fait_" + R.j, 0), res.k));
-  if(R.mode === "jour" && R.premier) (window.__medailles=window.__medailles||[]).push(["coupdefeu",res.lv,gagne]);   /* médailles 🏅 du défi du jour */
+  if(R.mode === "jour" && R.j != null && R.premier) stock.ecrire("jour_premier_" + R.j, {lv:res.lv, g:!!gagne});
+  if(R.mode === "jour" && R.premier && R.j === jourParis()) (window.__medailles=window.__medailles||[]).push(["coupdefeu",res.lv,gagne]);   /* médailles 🏅 du défi du jour */
   // Record local (affiché sur l'accueil)
   const best = stock.lire("best", {k:0, lv:0, plat:0});
   if(res.k > best.k){ best.k = res.k; best.lv = res.lv; }
@@ -1139,6 +1140,11 @@ function rendreMenu(){
 }
 function lancer(mode){
   const sauv = stock.lire("partie", null);
+  // La partie du jour déjà commencée : on la reprend au lieu de l'abandonner
+  if(mode === "jour" && sauv && sauv.mode === "jour" && sauv.j === jourParis()){
+    Base.toast("On reprend ta partie du jour 👨‍🍳");
+    $("bReprendre").click(); return;
+  }
   if(sauv && !confirm("Une partie est en cours : la commencer à nouveau l'abandonne (elle sera comptée comme terminée). Continuer ?")) return;
   if(sauv){ R = sauv; finPartieSilencieuse(); }
   if(mode === "jour"){
@@ -1153,7 +1159,8 @@ function finPartieSilencieuse(){
   res.k = cleClass(res.lv, res.s);
   stock.effacer("partie");
   if(R.mode === "jour" && R.j != null) stock.ecrire("jour_fait_" + R.j, Math.max(stock.lire("jour_fait_" + R.j, 0), res.k));
-  if(R.mode === "jour" && R.premier) (window.__medailles=window.__medailles||[]).push(["coupdefeu",res.lv,false]);   /* médailles 🏅 du défi du jour */
+  if(R.mode === "jour" && R.j != null && R.premier) stock.ecrire("jour_premier_" + R.j, {lv:res.lv, g:false});
+  if(R.mode === "jour" && R.premier && R.j === jourParis()) (window.__medailles=window.__medailles||[]).push(["coupdefeu",res.lv,false]);   /* médailles 🏅 du défi du jour */
   const nom = Base.joueur.pseudo();
   if(nom && Classement.enLigne && res.s > 0) envoyer({...res, gagne:false}, nom, el("div"));
   R = null;
