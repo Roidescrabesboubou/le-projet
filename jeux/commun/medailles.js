@@ -159,7 +159,7 @@
     file = file.then(() => traiter(slug, Math.max(0, Math.min(500, Math.round(+e || 0))), !!g)).catch(err => { console.warn("[Médailles]", err); return null; });
     return file;
   }
-  async function traiter(slug, e, g){
+  async function traiter(slug, e, g, silencieux){
     await charger();
     const J = jour();
     if(jours[J] && jours[J][slug]) return null;                       // déjà compté aujourd'hui
@@ -179,8 +179,62 @@
     }
     await majClassement();
     notifier();
-    celebrer(lignes, act.length - faits.length);
-    return {m, lignes};
+    if(!silencieux) celebrer(lignes, act.length - faits.length);
+    return {m, lignes, reste: act.length - faits.length};
+  }
+
+  /* ---------- Rattrapage ----------
+     Défis du jour déjà terminés sur cet appareil mais sans médaille
+     (par ex. joués avant l'arrivée des médailles) : on lit le résultat
+     enregistré par le jeu lui-même. Seulement pour aujourd'hui. */
+  const DEBUTS = {anidle: [2026, 10, 3], motscroises: [2026, 10, 4], motsfleches: [2026, 10, 4], shikaku: [2026, 10, 4]};
+  function jourDuJeu(slug){
+    const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date()).split("-").map(Number);
+    const [sy, sm, sd] = DEBUTS[slug] || [2026, 10, 1];
+    return Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(sy, sm, sd)) / 864e5);
+  }
+  function resultatDuJour(slug){
+    try{
+      const d = jourDuJeu(slug), st = L(slug + "_statsDaily", null) || {};
+      const fini = st.last === d, gagne = st.lastWin === d;
+      if(slug === "coupdefeu"){
+        const k = L("cdf_jour_fait_" + d, 0); if(!k) return null;
+        const lv = Math.floor(k / 1e9); return {e: lv, g: lv >= 8};
+      }
+      if(["wordle", "paysdle", "loldle", "anidle", "onepiecedle", "pokedle"].includes(slug)){
+        const sv = L(slug + "_daily", null);
+        if(!fini || !sv || sv.day !== d || !Array.isArray(sv.guesses)) return null;
+        return {e: sv.guesses.length, g: ["wordle", "paysdle"].includes(slug) ? gagne : true};
+      }
+      if(slug === "connexions"){
+        const sv = L("connexions_daily", null);
+        if(!sv || sv.day !== d || !sv.over) return null;
+        return {e: (sv.attempts || []).filter(a => !a.ok).length, g: !!sv.won};
+      }
+      if(["sudoku", "motscroises", "motsfleches", "shikaku"].includes(slug)){
+        const sv = L(slug + "_jour", null);
+        if(!sv || !sv.fini || !fini) return null;
+        if(sv.jour != null && sv.jour !== d) return null;
+        const e = slug === "sudoku" ? (sv.erreurs || 0) + (sv.indices || 0) : slug === "shikaku" ? (sv.aides || 0) : (sv.indices || 0);
+        return {e, g: !!sv.gagne};
+      }
+    }catch(e){}
+    return null;
+  }
+  function rattraper(){
+    file = file.then(async () => {
+      const J = jour(), lignes = [];
+      let reste = 0;
+      for(const d of actifs()){
+        if(jours[J] && jours[J][d.slug]) continue;
+        const r = resultatDuJour(d.slug);
+        if(!r) continue;
+        const res = await traiter(d.slug, r.e, r.g, true);
+        if(res){ lignes.push(...res.lignes); reste = res.reste; }
+      }
+      if(lignes.length) celebrer(lignes, reste, "🕐 Défis déjà faits aujourd'hui");
+    }).catch(err => console.warn("[Médailles] rattrapage :", err));
+    return file;
   }
 
   const titre = slug => { const g = (window.SALLE_CATALOGUE || []).find(x => x.slug === slug); return g ? g.title : slug; };
@@ -211,9 +265,10 @@
 .md-regles{border-collapse:collapse;width:100%;font-size:.9rem;margin:6px 0}`;
   document.head.appendChild(css);
 
-  function celebrer(lignes, reste){
+  function celebrer(lignes, reste, entete){
     document.querySelectorAll(".md-pop").forEach(n => n.remove());
     const p = el("div", null, "md-pop");
+    if(entete){ const h = el("div", entete); h.style.cssText = "font-weight:800;margin-bottom:4px"; p.appendChild(h); }
     lignes.forEach(([t, n]) => { const l = el("div", null, "md-l"); l.append(el("span", t), el("b", `+${n} 🏅`)); p.appendChild(l); });
     const T = totaux();
     const tot = el("div", null, "md-tot"); tot.append(el("span", "Aujourd'hui"), el("span", `${T.auj} 🏅`)); p.appendChild(tot);
@@ -326,7 +381,7 @@
     afficher();
   }
 
-  window.Medailles = {DEFIS, gain, jour, semaine, defi, charger, totaux, actifs, panneau, compteur, fenetreClassement, fenetreRegles, etat: () => jours,
+  window.Medailles = {DEFIS, gain, rattraper, resultatDuJour, jour, semaine, defi, charger, totaux, actifs, panneau, compteur, fenetreClassement, fenetreRegles, etat: () => jours,
     surChangement: f => { ecouteurs.push(f); }};
 
   /* Démarrage : charge, se recharge si le compte change, traite les défis signalés avant le chargement */
@@ -336,9 +391,10 @@
     await charge("catalogue.js", () => window.SALLE_CATALOGUE);
     await charge("compte.js", () => window.Compte);
     let uid = (session() || {}).uid;
-    if(window.Compte && Compte.surChangement) Compte.surChangement(s => { const u = (s || {}).uid; if(u !== uid){ uid = u; syncPromesse = null; charger(); } });
+    if(window.Compte && Compte.surChangement) Compte.surChangement(s => { const u = (s || {}).uid; if(u !== uid){ uid = u; syncPromesse = null; charger().then(rattraper); } });
     await charger();
     const attente = window.__medailles || []; window.__medailles = {push: a => defi(...a)};
     attente.forEach(a => defi(...a));
+    rattraper();
   })();
 })();
