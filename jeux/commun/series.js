@@ -165,9 +165,14 @@
     if(!enLigne) return;
     const cle = "salle_res_" + jeu;
     if(lire(cle, null) === jour) return;
+    // temps passé depuis la 1re ouverture du jeu aujourd'hui (noté par medailles.js), pour la modération
+    const t0 = +lire("salle_vu_" + jeu + "_" + new Intl.DateTimeFormat("en-CA", {timeZone:"Europe/Paris", year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date()), 0);
+    const t = t0 ? Math.max(0, Math.min(86400, Math.round((Date.now() - t0) / 1000))) : null;
     try{
-      const r = await fetchT(`${URL_BASE}/resultats/${jeu}/${idJoueur()}.json`,
-        {method:"PUT", body:JSON.stringify({j:jour, e:Math.max(0, Math.min(500, e|0)), g:!!g, d:{".sv":"timestamp"}})});
+      const corps = {j:jour, e:Math.max(0, Math.min(500, e|0)), g:!!g, d:{".sv":"timestamp"}};
+      const url = `${URL_BASE}/resultats/${jeu}/${idJoueur()}.json`;
+      let r = await fetchT(url, {method:"PUT", body:JSON.stringify(t != null ? {...corps, t} : corps)});
+      if(!r.ok && t != null) r = await fetchT(url, {method:"PUT", body:JSON.stringify(corps)});   // anciennes règles sans « t »
       if(r.ok || r.status === 401) ecrire(cle, jour); // 401 = déjà envoyé aujourd'hui
     }catch(err){}
   }

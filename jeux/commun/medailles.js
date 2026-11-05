@@ -61,6 +61,18 @@
     return Math.floor((Date.UTC(y, m - 1, d) - START) / 864e5);
   }
   const semaine = j => Math.floor((j + 6) / 7);    // semaines du lundi au dimanche
+  const dateParis = () => new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date());
+  /* Temps passé sur un défi : depuis la 1re ouverture du jeu aujourd'hui (en secondes) */
+  function duree(slug){
+    const t0 = +localStorage.getItem("salle_vu_" + slug + "_" + dateParis());
+    return t0 ? Math.max(0, Math.min(86400, Math.round((Date.now() - t0) / 1000))) : null;
+  }
+  (function noterOuverture(){
+    const m = location.pathname.match(/\/jeux\/([a-z0-9-]+)\//);
+    if(!m) return;
+    const k = "salle_vu_" + m[1] + "_" + dateParis();
+    try{ if(!localStorage.getItem(k)) localStorage.setItem(k, String(Date.now())); }catch(e){}
+  })();
 
   /* ---------- Stockage ---------- */
   const L = (k, d) => { try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } };
@@ -102,6 +114,7 @@
   }
 
   async function db(chemin, opts){ return Compte.db(chemin, opts); }
+  const versServeur = (cle, v) => cle[0] === "_" ? v : {m: v.m, e: v.e, g: v.g, ...(v.t != null ? {t: v.t} : {}), d: SV};
 
   /* Charge les médailles (compte en ligne ou appareil) */
   function charger(){
@@ -114,6 +127,10 @@
       if(s){
         try{
           const enl = (await db(`medailles/${s.uid}`)) || {};
+          // remise à zéro décidée par un admin : on oublie aussi la copie de l'appareil
+          const raz = await db(`medailles_raz/${s.uid}`).catch(() => null);
+          const vu = L("salle_medailles_raz_vu_" + s.uid, 0);
+          if(raz && raz > vu){ jours = {}; E("salle_medailles_invite", {}); E("salle_medailles_raz_vu_" + s.uid, raz); }
           // médailles gardées sur cet appareil (sans compte, ou pendant que le
           // serveur était injoignable) : on les ajoute au compte, sans rien perdre
           const invite = L("salle_medailles_invite", {}) || {};
@@ -122,14 +139,14 @@
               for(const [k, v] of Object.entries(entree || {})){
                 if(enl[j] && enl[j][k] != null) continue;
                 (enl[j] = enl[j] || {})[k] = v;
-                try{ await db(`medailles/${s.uid}/${j}/${k}`, {method: "PUT", body: v}); }catch(e){}
+                try{ await db(`medailles/${s.uid}/${j}/${k}`, {method: "PUT", body: versServeur(k, v)}); }catch(e){}
               }
             }
           }
           E("salle_medailles_invite", {});
           jours = enl; enLigne = true;
           E(cleLocale(), jours);
-          await majClassement();
+          majClassement();
         }catch(e){ /* hors ligne ou règles pas à jour : on garde la copie locale */ }
       }
       notifier();
@@ -138,12 +155,23 @@
     return syncPromesse;
   }
 
-  async function majClassement(){
+  let tClass = null, dernierEnvoi = 0, essaisClass = 0;
+  function majClassement(){
+    clearTimeout(tClass);
+    tClass = setTimeout(envoyerClassement, Math.max(300, dernierEnvoi + 2600 - Date.now()));
+  }
+  async function envoyerClassement(){
     const s = session(); if(!s || !enLigne) return;
+    dernierEnvoi = Date.now();
     const T = totaux();
     try{
-      await db(`medailles_classement/${s.uid}`, {method: "PUT", body: {n: String(s.pseudo || "Joueur").slice(0, 16), t: T.t, w: T.w, sw: T.sw, d: SV}});
-    }catch(e){}
+      // la base n'accepte pas plus de +160 🏅 par envoi : on rattrape en plusieurs fois si besoin
+      const avant = await db(`medailles_classement/${s.uid}`).catch(() => null);
+      const t = Math.min(T.t, avant && avant.t != null ? avant.t + 160 : 3000);
+      if(avant && avant.t === t && avant.w === T.w && avant.sw === Math.min(T.sw, t)) return;
+      await db(`medailles_classement/${s.uid}`, {method: "PUT", body: {n: String(s.pseudo || "Joueur").slice(0, 16), t, w: T.w, sw: Math.min(T.sw, t), d: SV}});
+      if(t < T.t) majClassement();
+    }catch(e){ if(essaisClass++ < 2) setTimeout(majClassement, 2600); }
   }
 
   async function ecrire(J, cle, valeur){
@@ -151,7 +179,7 @@
     E(cleLocale(), jours);
     const s = session();
     if(s && enLigne){
-      try{ await db(`medailles/${s.uid}/${J}/${cle}`, {method: "PUT", body: valeur}); }
+      try{ await db(`medailles/${s.uid}/${J}/${cle}`, {method: "PUT", body: versServeur(cle, valeur)}); }
       catch(e){ console.warn("[Médailles] non enregistrée en ligne :", e.message); }
     }
   }
@@ -167,8 +195,8 @@
     await charger();
     const J = jour();
     if(jours[J] && jours[J][slug]) return null;                       // déjà compté aujourd'hui
-    const m = gain(slug, e, g);
-    await ecrire(J, slug, {m, e, g});
+    const m = gain(slug, e, g), t = silencieux ? null : duree(slug);
+    await ecrire(J, slug, t != null ? {m, e, g, t} : {m, e, g});
     const lignes = [[`${(parSlug[slug] && titre(slug))} ${detail(slug, e, g)}`, m]];
     const reste = await bonus(J, lignes);
     await majClassement();
@@ -207,7 +235,7 @@
     E(cleLocale(), jours);
     E(CLE + "_" + cleLocale(), 1);
     const s = session();
-    if(s && enLigne) try{ await db(`medailles/${s.uid}/${J}/coupdefeu`, {method: "PUT", body: v}); }catch(e){}
+    if(s && enLigne) try{ await db(`medailles/${s.uid}/${J}/coupdefeu`, {method: "PUT", body: versServeur("coupdefeu", v)}); }catch(e){}
     const reste = await bonus(J, lignes);
     await majClassement(); notifier();
     celebrer(lignes, reste, "🔧 Médailles corrigées");
@@ -414,7 +442,7 @@
     afficher();
   }
 
-  window.Medailles = {DEFIS, gain, rattraper, resultatDuJour, jour, semaine, defi, charger, totaux, actifs, panneau, compteur, fenetreClassement, fenetreRegles, etat: () => jours,
+  window.Medailles = {DEFIS, gain, rattraper, resultatDuJour, jour, semaine, defi, charger, totaux, actifs, panneau, compteur, fenetreClassement, fenetreRegles, etat: () => jours, duree,
     surChangement: f => { ecouteurs.push(f); }};
 
   /* Démarrage : charge, se recharge si le compte change, traite les défis signalés avant le chargement */

@@ -73,6 +73,7 @@ body.en-glisse,body.en-glisse *{cursor:grabbing!important;user-select:none!impor
 
 <script src="../jeux/commun/catalogue.js"></script>
 <script src="../jeux/commun/compte.js"></script>
+<script src="moderation.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const main = $("main");
@@ -348,6 +349,10 @@ async function panel(){
   }catch(e){
     zc.innerHTML = ""; zc.appendChild(el("p", "Impossible de lire les comptes : " + e.message, "hint"));
   }
+
+  /* Modération */
+  const pm = el("div", "", "panel"); main.appendChild(pm);
+  Moderation(pm);
 }
 
 /* On ne relance que si l'utilisateur ou ses droits changent (sinon boucle) */
