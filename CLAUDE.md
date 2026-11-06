@@ -58,8 +58,6 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 - `quiz`, `dessin`, `telephone`, `blindtest` et les `-dle` ont encore leur propre en-tête et leur propre réseau : à passer sur `base.js` et `reseau.js`.
 
 ## Reste à faire
-Urgent (moi) : publier dans Firebase les dernières règles (`moderation_vu`), sinon l'alerte sur Roidescrabes reste affichée.
-
 Tests réels à faire (seulement testé avec un relais simulé) :
 - Partie en ligne sur deux appareils : Bataille Laser, L'Imposteur, Devine ta Catégorie, Bataille navale.
 - Extraits Deezer dans le Quiz.
