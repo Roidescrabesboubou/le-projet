@@ -8,7 +8,7 @@ En ligne : https://roidescrabesboubou.github.io/le-projet/ (GitHub Pages, mise �
 - Chaque mise à jour est commitée et poussée sur `main` (pas de branche, pas de PR).
 - HTML, CSS et JavaScript « vanilla » : pas de framework, pas de npm, pas d'étape de build.
 - Un jeu = un dossier `jeux/<slug>/`, avec parfois un fichier de données à côté (`mots.js`, `questions.js`…).
-- Git n'est pas dans le PATH sur ce PC : utiliser celui de GitHub Desktop (`%LOCALAPPDATA%\GitHubDesktop\app-*\resources\app\git\cmd\git.exe`, prendre la version la plus récente).
+- Git : `C:\Program Files\Git\cmd\git.exe` (Git pour Windows, identifiants GitHub enregistrés).
 - Quand `firebase-regles.json` change, rappelle-moi de recoller les règles dans la console Firebase (projet `salle-de-jeux`) et de cliquer sur **Publier** : ce n'est pas automatique.
 
 ## Structure
