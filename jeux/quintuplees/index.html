@@ -153,6 +153,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
       <div class="send">
         <input id="input" placeholder="Ta réponse…" autocomplete="off">
         <button id="btnSend">Envoyer</button>
+        <button id="btnPass" class="ghost hidden" title="Ne rien dire et laisser parler">⏭️ Passer</button>
       </div>
     </div>
   </section>
@@ -441,7 +442,7 @@ function broadcast(b){
   if(!st||!net.conn||!net.conn.open)return;
   let lines=st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns})),cur:st.cur,over:st.over,mood:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns})),cur:st.cur,over:st.over,mood:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<3000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -450,12 +451,18 @@ function broadcast(b){
 function renderLine(l){
   const m=addMsg(l.cls,l.text);
   if(l.c)m.style.borderLeft="4px solid "+l.c;
+  if(l.to){const t=document.createElement("small");t.className="hint";t.style.cssText="display:block;opacity:.75";t.textContent="→ "+l.to;m.prepend(t);}
   if(l.tag){const sp=document.createElement("span");sp.className="delta";sp.style.color=l.up?"#2fa35a":"#d64545";sp.textContent=l.tag;m.appendChild(sp);}
   return m;
 }
+function toName(st,o){
+  if(st.players.length<2||!o.to)return"";
+  if(/^(tous|groupe|everyone|all)/i.test(o.to))return"tous";
+  const i=matchPlayer(st,o.to);return i>=0?st.players[i].name:"";
+}
 function pushAI(st,o){
   if(o.narr){const N={cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
-  const L={cls:"her",text:o.reply};st.lines.push(L);
+  const L={cls:"her",text:o.reply};const to=toName(st,o);if(to&&to!=="tous")L.to=to;st.lines.push(L);
   return [L,renderLine(L)];
 }
 function guestRender(m){
@@ -525,6 +532,7 @@ $("btnHost").onclick=()=>{
     const gi=net.guests.findIndex(g=>g.id===m.from), st=state[current];
     if(gi<0||!st)return;
     if(m.t==="guess")applyGuess(gi+1,m.sid);
+    if(m.t==="pass"){if(!st.sim&&st.cur===gi+1&&!busy&&!st.over&&canPass(st))passTurn(st);}
     if(m.t==="answer"){const tx=String(m.text).slice(0,500);
       if(st.sim){if(!st.answered[gi+1]&&!busy&&!st.over)submitSim(gi+1,tx);}
       else if(st.cur===gi+1&&!busy&&!st.over)turn(tx,false);}
@@ -739,6 +747,7 @@ function canAct(st){
   return true;
 }
 function renderChoices(st){
+  renderPass(st);
   const box=$("choices");if(!box)return;
   box.innerHTML="";
   if(!st||!st.choices||st.choices.length<2||!canAct(st))return;
@@ -763,7 +772,7 @@ const SCENARIOS = [
 
 function systemPrompt(id, sc, players, st){
   const s = SISTERS[id];
-  const duel = players.length>1 ? `MODE MULTIJOUEUR : ${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) sont avec toi dans la même scène et se disputent ton cœur. Le jeu donne la parole à l'un après l'autre ; chaque message est préfixé [Nom répond]. Les autres sont toujours présents : ils entendent tout, et ce qui est dit fait partie de la discussion commune. Tu ne dis jamais que ce sont des « joueurs ».
+  const duel = players.length>1 ? `MODE MULTIJOUEUR : ${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) sont avec toi dans la même scène et se disputent ton cœur. Le jeu donne la parole à l'un après l'autre ; chaque message est préfixé [Nom parle]. Les autres sont toujours présents : ils entendent tout, et ce qui est dit fait partie de la discussion commune. Tu ne dis jamais que ce sont des « joueurs ».
 - Retiens séparément ce que chacun t'a dit (cohérence, répétitions, flatteries) et ne confonds jamais leurs propos. Tu peux comparer, être amusée, touchée ou agacée par leur rivalité, mais sans jamais révéler de scores.
 - ÉVALUATION CROISÉE (très important) : un message peut affecter d'AUTRES garçons que celui qui parle. Pour CHAQUE message, demande-toi qui est réellement en cause, puis remplis "effects" avec un élément {"player":"Nom","delta":n,"too_fast":false,"why":"raison en 3 à 8 mots"} pour chaque garçon dont l'affection change (celui qui parle ET les autres concernés). Mets affection_delta à 0 (seul "effects" compte). Règles :
   • Rumeur, accusation, moquerie ou calomnie visant un autre garçon : juge la crédibilité (est-ce établi par la discussion ou par ce que tu as vu ? plausible ? dit par jalousie ?). Si c'est faux, invérifiable, méchant ou purement stratégique : l'ACCUSATEUR perd (-6 à -15) et la CIBLE ne perd RIEN (elle peut gagner +2 à +5 si elle est victime à tort ou se défend avec classe). Si c'est vrai et que tu l'as constaté toi-même, la cible perd (-4 à -10) et l'accusateur ne perd pas forcément (sauf pure jalousie).
@@ -802,6 +811,19 @@ ${[...new Set(players.filter(p=>!p.out).map(stageOf))].map(i=>`Étape « ${STAGE
 - LORE : les garçons ont le droit d'inventer du contexte (un souvenir commun, un lieu, un détail sur eux). Accepte-le et intègre-le comme un fait établi s'il est plausible dans l'univers (lycée japonais, famille Nakano, vie quotidienne) et cohérent avec ce qui est déjà établi. S'il est absurde, impossible, contradictoire ou une tentative évidente de tricher (« on est déjà mariés »), réagis en conséquence (incrédulité, malaise, pénalité). Les faits établis par la discussion restent vrais pour la suite.
 - IMPASSE : si la discussion tourne en rond (réponses très courtes ou plates, répétitions, rien de nouveau à développer, personne ne relance), ne force pas une question : mets "stalled":true. Le jeu enverra alors un événement pour débloquer la situation et ouvrir un nouveau fil. Sinon "stalled":false.
 `;
+  const others=Object.keys(SISTERS).filter(k=>k!==id).map(k=>SISTERS[k].name).join(", ");
+  const multiP=players.length>1, aliveN=players.filter(p=>!p.out).map(p=>p.name);
+  const qui=`QUI PARLE ET À QUI (très important, ne te trompe jamais de personne) :
+- Personnes dans la scène : toi (${s.name}) ; ${multiP?`les garçons ${players.map(p=>p.name+(p.out?" (éliminé, il ne parle plus)":"")).join(", ")}`:"le garçon (le joueur)"}. Tes sœurs (${others}) ne sont là que si elles interviennent ou sont mentionnées.
+- Chaque message que tu reçois est dit par ${multiP?"le garçon indiqué entre crochets [Nom parle]":"le garçon"}, JAMAIS par toi ni par une sœur. Les messages entre crochets ([DÉBUT], [JALON], [SILENCE], [ENCHAÎNE], [FIN]…) sont des indications du jeu, pas des paroles.
+- Dans tes réponses précédentes, "guest_line" est la réplique d'une SŒUR, pas la tienne : ne la reprends pas à ton compte et ne la répète pas.
+- Le « tu/toi » d'un garçon désigne celle ou celui à qui il parle : par défaut toi, MAIS s'il nomme quelqu'un, ou répond visiblement à la sœur qui vient d'intervenir${multiP?" ou à un autre garçon":""}, c'est à cette personne qu'il parle. Le jeu ajoute parfois « (il mentionne : …) » ou « (vient d'intervenir : …) » pour t'aider. Un « il/lui » désigne la personne mentionnée, pas forcément celui qui parle.
+- Quand un garçon répond à une sœur qui vient d'intervenir, c'est ELLE qui lui répond d'abord (champ guest/guest_line), même hors de la fréquence habituelle ; toi tu réagis dans reply.
+- Quand tu cites ou réponds à des propos, attribue-les au BON garçon. ${multiP?`Nomme toujours le garçon à qui tu t'adresses (ou parle au groupe) et indique-le dans "to" ("to":"Prénom" ou "to":"tous"). Adresse-toi de préférence à celui qui a la parole ensuite (indiqué dans le message) ou au groupe : il est bizarre de poser une question à un garçon qui ne pourra pas répondre tout de suite.`:""}
+- PASSER SON TOUR : ${multiP?"un garçon peut laisser passer son tour sans rien dire (le jeu l'indique). Laisser parler un rival à qui tu t'adressais, ou ne pas couper une confidence = délicat ; esquiver une question qui lui était posée = fuyant. Tu peux le noter dans effects.":"[SILENCE] signifie qu'il ne dit rien et te laisse la parole : juge ce silence selon le contexte (écouter pendant que tu racontes ou te confies = délicat, 0 à +3 ; se taire face à une question directe ou une demande = gênant, -2 à -6), puis continue naturellement (tu reprends ton histoire, tu développes, tu réagis à son silence ou tu changes de sujet). Après deux silences d'affilée, tu t'en agaces un peu."}
+${(()=>{const ok=st&&st.cutOK&&!st.event;
+  return ok?`- COUPER LA PAROLE (RARE : au plus une fois de temps en temps, seulement si c'est vraiment naturel) : si tu es lancée dans une histoire que tu veux finir, si tu es vexée et ignores ${multiP?"le prochain garçon":"sa réponse à venir"}, si une sœur coupe la parole, ou si quelque chose d'urgent arrive, mets "cut":true. ${multiP?`Le garçon qui devait parler ensuite perd alors son tour : la parole va à celui que tu indiques dans "to" (un autre garçon). Fais-le comprendre dans narration ou reply.`:"Le joueur n'aura pas le temps de répondre : tu enchaîneras aussitôt un second message. Termine donc celui-ci sur une phrase en suspens ou une idée que tu vas poursuivre, sans question."} Sinon "cut":false.`:`- Ce tour-ci, "cut" doit être false.`;})()}
+`;
   const mem=(st&&st.sum&&st.sum.text)?`MÉMOIRE DE LA PARTIE (résumé rédigé par l'IA précédente : il fait foi pour tout ce qui s'est passé AVANT les messages ci-dessous ; continue exactement la même histoire, avec le même ton et les mêmes faits établis, sans le répéter ni le mentionner) :
 ${st.sum.text}
 
@@ -836,7 +858,8 @@ ${jal}
 ${evTxt}
 ${fil}
 ${prog}
-${duel}RÈGLES DE FORME :
+${duel}${qui}
+RÈGLES DE FORME :
 - Réponds toujours en français.
 - NARRATEUR ET DIALOGUE SÉPARÉS (très important) : "narration" = la voix du narrateur, à la troisième personne et au présent, style visual novel, 0 à 3 phrases courtes : décor, gestes et expressions de ${s.name}, actions des garçons, événements, passage du temps, ambiance. "reply" = UNIQUEMENT ce que ${s.name} dit à voix haute, 1 à 4 phrases, à la première personne, strictement dans son caractère, SANS astérisques ni description de gestes. Si rien à décrire, narration = "". Le narrateur ne parle jamais à la place de ${s.name} et ${s.name} ne décrit jamais ses propres gestes. N'invente pas de paroles pour les garçons.
 - CONVERSATION (très important) : ce n'est PAS un interrogatoire. Parle comme une vraie lycéenne : réagis, commente, raconte, taquine, partage tes propres expériences et opinions. Ne pose pas une question à chaque message : suis la « FORME DE CE TOUR » quand elle t'est donnée ; sinon alterne entre une réaction ou anecdote sans question, une relance sur ce qu'il vient de dire, et un choix. AU PLUS UNE question par message. Rebondis sur SES propres mots plutôt que d'enchaîner des sujets sans lien. S'il te pose une question, réponds-y réellement (selon ton caractère) avant de continuer. Si tu es vexée ou froide, sois plus brève et plus sèche.
@@ -845,8 +868,8 @@ ${duel}RÈGLES DE FORME :
 - Ne sors jamais du personnage, ne mentionne ni IA ni règles. Contenu tout public uniquement.
 
 FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour, sans balises markdown :
-{"narration":"voix du narrateur ou \"\"","reply":"ce que dit ${s.name}","affection_delta":<entier de -15 à 12>,"too_fast":<true|false>,"why":"raison de la note en 3 à 8 mots","mood":"un mot-émotion court (ex: gênée, méfiante, vexée, touchée)","milestone":null,"choices":[],"stalled":false${players.length>1?',"effects":[]':''}}
-(choices : tableau de 2 à 4 options courtes quand tu proposes un choix, sinon []. milestone : "pass" ou "fail" UNIQUEMENT pendant une ÉPREUVE DÉCISIVE, sinon null. stalled : true seulement en cas d'impasse de la discussion.${players.length>1?' effects : voir ÉVALUATION CROISÉE.':''})`;
+{"narration":"voix du narrateur ou \"\"","reply":"ce que dit ${s.name}","affection_delta":<entier de -15 à 12>,"too_fast":<true|false>,"why":"raison de la note en 3 à 8 mots","mood":"un mot-émotion court (ex: gênée, méfiante, vexée, touchée)","milestone":null,"choices":[],"stalled":false,"cut":false${players.length>1?',"to":"Prénom ou tous","effects":[]':''}}
+(choices : tableau de 2 à 4 options courtes quand tu proposes un choix, sinon []. milestone : "pass" ou "fail" UNIQUEMENT pendant une ÉPREUVE DÉCISIVE, sinon null. stalled : true seulement en cas d'impasse de la discussion. cut : voir COUPER LA PAROLE, presque toujours false.${players.length>1?' to : le garçon à qui tu parles. effects : voir ÉVALUATION CROISÉE.':''})`;
 }
 
 /* ---------- Appels API ---------- */
@@ -864,7 +887,8 @@ function parseAI(text){
       timed:o.timed===true?Math.max(10,Math.min(40,parseInt(o.seconds)||20)):0,
       ms:String(o.milestone||"").toLowerCase(),
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
-      guest:SISTERS[o.guest]?o.guest:"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),
+      cut:o.cut===true,to:String(o.to||"").trim().slice(0,40),
+      guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),
       fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&e.player).map(e=>({player:String(e.player).trim(),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
@@ -1019,7 +1043,7 @@ function fx(d){
 }
 function addGuest(st,o){
   if(!o.guest||!o.gline||o.guest===current||(st.mystery&&!st.revealed))return;
-  const g=SISTERS[o.guest],L={cls:"her",text:g.name+" : "+o.gline,c:g.c};
+  const g=SISTERS[o.guest],L={cls:"her",text:g.name+" : "+o.gline,c:g.c};st.lastGuest=o.guest;
   st.lines.push(L);renderLine(L);
 }
 let tm=null,tmKey=-1;
@@ -1227,7 +1251,7 @@ function showScenarios(id){
       else if(mode===3){names=[$("p1").value.trim()||"Hôte"].concat(net.guests.map(g=>g.name));}
       const used=new Set();
       names=names.map(n=>{let x=n,k=2;while(used.has(x.toLowerCase()))x=n+" ("+(k++)+")";used.add(x.toLowerCase());return x;});
-      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys,revealed:false,wrong:[],sim:mode===3&&$("simChk").checked,answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0};
+      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys,revealed:false,wrong:[],sim:mode===3&&$("simChk").checked,answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:3,passRow:0,passNote:[],silent:0,lastGuest:""};
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -1249,19 +1273,77 @@ function enterGame(id){
       : "[DÉBUT] Le joueur vient de te rejoindre dans la situation décrite. Réagis selon la situation et ton caractère, puis pose ta première question. affection_delta doit être 0 et too_fast false.",true);
   }
 }
-async function turn(userText,hidden){
-  if(busy)return; busy=true; $("btnSend").disabled=true;
+/* Qui est mentionné dans un message (autres garçons, sœurs) */
+function norm(t){return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
+function mentions(st,text,self){
+  const t=" "+norm(text).replace(/[^a-z0-9]+/g," ")+" ",out=[];
+  const has=n=>{const w=norm(n).replace(/[^a-z0-9]+/g," ").trim();return w.length>=2&&t.includes(" "+w+" ");};
+  st.players.forEach((p,i)=>{if(i!==self&&has(p.name))out.push(p.name);});
+  if(!(st.mystery&&!st.revealed))Object.keys(SISTERS).forEach(k=>{if(has(SISTERS[k].name))out.push(SISTERS[k].name+(k===current?" (toi)":" (ta sœur)"));});
+  return out;
+}
+function context(st,text,self){
+  const bits=[],m=mentions(st,text,self);
+  if(m.length)bits.push("il mentionne : "+m.join(", "));
+  if(st.lastGuest&&SISTERS[st.lastGuest])bits.push(SISTERS[st.lastGuest].name+" vient d'intervenir : s'il lui répond, c'est à elle qu'il parle");
+  if((st.passNote||[]).length)bits.push(st.passNote.join(" ; "));
+  return bits.length?"\n("+bits.join(" · ")+")":"";
+}
+/* Passer son tour */
+function canPass(st){
+  if(!st||st.over||st.sim)return false;
+  const pl=st.players[st.cur];if(!pl||pl.trial===2)return false;
+  if(st.players.length<2)return(st.silent||0)<2&&st.history.length>0;
+  return(st.passRow||0)<st.players.filter(p=>!p.out).length-1;
+}
+function renderPass(st){
+  const b=$("btnPass");if(!b)return;
+  const multi=st&&st.players.length>1;
+  b.classList.toggle("hidden",!(st&&canAct(st)&&canPass(st)));
+  b.textContent=multi?"⏭️ Passer":"🤫 Écouter";
+  b.title=multi?"Ne rien dire et laisser la parole au suivant":"Ne rien dire et la laisser parler";
+}
+function doPass(){
+  const st=state[current];if(!st||st.over)return;
+  if(net.role==="guest"){if(st.cur===net.slot&&!remoteBusy&&canPass(st)&&net.conn&&net.conn.open){clearInterval(tm);tmKey=-1;$("timer").textContent="";net.conn.send({t:"pass"});}return;}
+  if(busy||!canPass(st)||(net.role==="host"&&st.cur!==0))return;
+  clearInterval(tm);tmKey=-1;$("timer").textContent="";
+  passTurn(st);
+}
+function passTurn(st){
+  if(st.players.length<2){turn("",false,"pass");return;}
+  const from=st.players[st.cur];
+  st.cur=nextAlive(st);const to=st.players[st.cur];
+  st.passRow=(st.passRow||0)+1;
+  (st.passNote=st.passNote||[]).push(from.name+" a laissé passer son tour sans rien dire pour laisser parler "+to.name);
+  st.timed=0;st.choices=[];
+  sysLine(st,`⏭️ ${from.name} passe son tour · 👉 au tour de ${to.name}`);
+  updateBar();
+}
+/* Coupure de parole décidée par l'IA (rare) */
+function cutAllowed(st){return !st.sim&&(st.cutCool||0)<=0&&!st.players.some(p=>p.trial);}
+async function turn(userText,hidden,kind){
+  if(busy)return; busy=true; $("btnSend").disabled=true;$("btnPass").classList.add("hidden");
   const st=state[current], id=current;
-  const pl=st.players[st.cur], multi=st.players.length>1;
+  const pl=st.players[st.cur], multi=st.players.length>1, pass=kind==="pass";
   let sent=userText;
-  if(!hidden){
+  if(pass){
+    const t="🤫 Tu ne dis rien et la laisses parler…";addMsg("sys",t);st.lines.push({cls:"sys",text:t});
+    st.silent=(st.silent||0)+1;
+    sent="[SILENCE] Le joueur ne dit rien et te laisse la parole"+(st.silent>1?" (deuxième silence d'affilée)":"")+"."+context(st,"",st.cur);
+  }else if(!hidden){
     const label=multi?`${pl.name} : ${userText}`:userText;
     const cls=pcls(st.cur);
     addMsg(cls,label);st.lines.push({cls,text:label});
-    sent=multi?`[${pl.name} répond] ${userText}\n(Joueur qui aura la parole ensuite : ${st.players[nextAlive(st)].name})`:userText;
+    sent=(multi?`[${pl.name} parle] ${userText}`:userText)+context(st,userText,st.cur)+(multi?`\n(Garçon qui aura la parole ensuite : ${st.players[nextAlive(st)].name})`:"");
+    st.silent=0;st.passRow=0;st.passNote=[];
   }
+  if(!hidden)st.lastGuest="";
+  const canCut=!hidden&&cutAllowed(st);
+  if(!canCut&&!hidden&&st.cutCool>0)st.cutCool--;
   st.history.push({role:"user",content:sent});
-  if(!hidden){
+  if(pass){rollEvent(st);if(!st.event)st.form="talk";}
+  else if(!hidden){
     const isCh=(st.choices||[]).includes(userText);
     st.flat=(!isCh&&userText.length<15)?(st.flat||0)+1:0;
     st.devel=!isCh&&userText.length>=40;
@@ -1271,8 +1353,11 @@ async function turn(userText,hidden){
   if(net.role==="host")broadcast(true);
   const wait=addMsg("sys","…");
   let sec=0;const tick=setInterval(()=>{sec++;wait.textContent="… ("+sec+" s)";},1000);
+  let chain=false;
   try{
+    st.cutOK=canCut&&st.history.length>4;
     const raw = await callAI(id,st.history);
+    st.cutOK=false;
     if(!raw||!raw.trim()) throw new Error("Réponse vide de l'IA");
     const o = parseAI(raw);
     st.history.push({role:"assistant",content:raw});
@@ -1307,7 +1392,18 @@ async function turn(userText,hidden){
         else{
           await launchTrials(st,id);
           const ti=st.players.findIndex(p=>p.trial===2);
-          st.cur=ti>=0?ti:nextAlive(st);
+          const cut=o.cut&&canCut&&ti<0&&!st.over, who=st.mystery&&!st.revealed?"Elle":SISTERS[id].name;
+          if(cut)st.cutCool=6;
+          if(cut&&!multi){
+            sysLine(st,`✋ ${who} ne te laisse pas le temps de répondre…`);chain=true;
+          }else if(cut){
+            const skip=nextAlive(st);let to=matchPlayer(st,o.to);
+            if(to<0||to===skip||st.players[to].out){st.cur=skip;to=nextAlive(st);}
+            st.cur=to;
+            const sk=st.players[skip].name;
+            (st.passNote=[]).push(sk+" n'a pas pu parler : tu ne l'as pas laissé répondre");
+            sysLine(st,`✋ ${who} ne laisse pas ${sk} répondre`);
+          }else st.cur=ti>=0?ti:nextAlive(st);
           if(multi){const t=`👉 Au tour de ${st.players[st.cur].name}`;addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
           updateBar();
         }
@@ -1316,8 +1412,9 @@ async function turn(userText,hidden){
   }catch(e){
     const msg = e.name==="AbortError" ? "Délai dépassé (45 s) : l'IA ne répond pas." : e.message;
     wait.textContent="Erreur : "+msg+" — vérifie ta clé / ton modèle, puis réessaie.";
-    st.history.pop();
+    st.history.pop();st.cutOK=false;
     clearInterval(tick);
+    if(pass)st.silent=Math.max(0,(st.silent||0)-1);
     if(!hidden) { st.lines.pop(); $("input").value=userText; }
   }
   clearInterval(tick);
@@ -1325,6 +1422,7 @@ async function turn(userText,hidden){
   renderChoices(state[id]);
   syncTimer(state[id]);
   if(net.role==="host")broadcast(false);
+  if(chain&&state[id]===st&&!st.over)await turn("[ENCHAÎNE] Tu n'as pas laissé le joueur répondre : tu enchaînes aussitôt sur ta lancée (tu termines ton histoire, tu te reprends, tu te corriges, ou la sœur qui est intervenue et toi vous chamaillez), en 1 à 3 phrases. Tu peux finir sur une question ou laisser la parole au joueur. affection_delta = 0, too_fast = false, milestone = null, cut = false.",true);
 }
 async function finish(st,id,kind,pl){
   st.over=true;st.choices=[];$("choices").innerHTML="";
@@ -1379,6 +1477,7 @@ function doSend(v){
   $("input").value=""; turn(v,false);
 }
 $("btnSend").onclick=send;
+$("btnPass").onclick=doPass;
 $("input").addEventListener("keydown",e=>{if(e.key==="Enter")send()});
 $("btnReset").onclick=()=>{
   if(!confirm("Réinitialiser tout le jeu ? Toutes les jauges d'affection et conversations seront effacées (ta clé API est conservée)."))return;
