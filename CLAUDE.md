@@ -54,7 +54,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 - Emplacement « Bientôt » : « Encore un autre »
 
 ## Dette technique (à traiter en priorité quand on touche ces jeux)
-- `quintuplees` a encore son propre code IA et utilise ntfy.sh : à migrer vers `ia.js` et `reseau.js` en premier.
+- `quintuplees` a encore son propre code IA : à migrer vers `ia.js` (le réseau est déjà passé sur `reseau.js`, ntfy.sh abandonné : quota quotidien épuisé).
 - `quiz`, `dessin`, `telephone`, `blindtest` et les `-dle` ont encore leur propre en-tête et leur propre réseau : à passer sur `base.js` et `reseau.js`.
 
 ## Reste à faire
