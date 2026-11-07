@@ -24,6 +24,7 @@ jeux/commun/        code partagé
   garde.js            bloque les jeux cachés, charge groupe.js
   reseau.js           salles en ligne (code ou lien), relais MQTT public
   ia.js               appels IA avec les clés des Réglages
+  dle.js/dle.css      moteur commun des -dle à tableau (loldle, onepiecedle, pokedle, anidle) : chaque jeu = une config
   classement.js, series.js, medailles.js, jetons.js, compte.js, groupe.js, cartes.js
 jeux/<slug>/        un dossier par jeu
 ```
@@ -55,7 +56,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Dette technique (à traiter en priorité quand on touche ces jeux)
 - `quintuplees` a encore son propre code IA : à migrer vers `ia.js` (le réseau est déjà passé sur `reseau.js`, ntfy.sh abandonné : quota quotidien épuisé).
-- `quiz`, `dessin`, `telephone`, `blindtest` et les `-dle` ont encore leur propre en-tête et leur propre réseau : à passer sur `base.js` et `reseau.js`.
+- `quiz`, `dessin`, `telephone`, `blindtest`, `wordle` et `paysdle` ont encore leur propre en-tête (et réseau pour les jeux en ligne) : à passer sur `base.js` et `reseau.js`. Les -dle à tableau sont faits (moteur `dle.js`).
 
 ## Reste à faire
 Tests réels à faire (seulement testé avec un relais simulé) :
