@@ -344,7 +344,7 @@ function fenetreFin(s,tab){
   if(mode==="jour"){
     const p=Base.el("button","📋 Partager","btn ghost petit");p.style.marginTop="8px";
     p.onclick=async()=>{const t=`📐 Shikaku du jour\n⏱️ ${formatTemps(secondes)}${aides?` · 💡 ${aides}`:""}`;
-      try{await navigator.clipboard.writeText(t);Base.toast("Résultat copié !")}catch(e){Base.toast(t)}};
+      Base.partager(t)};
     r.appendChild(p);
   }
   r.appendChild(zone);

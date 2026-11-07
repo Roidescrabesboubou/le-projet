@@ -56,7 +56,8 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Dette technique (à traiter en priorité quand on touche ces jeux)
 - `quintuplees` a encore son propre code IA : à migrer vers `ia.js` (le réseau est déjà passé sur `reseau.js`, ntfy.sh abandonné : quota quotidien épuisé).
-- `quiz`, `dessin`, `telephone`, `blindtest`, `wordle` et `paysdle` ont encore leur propre en-tête (et réseau pour les jeux en ligne) : à passer sur `base.js` et `reseau.js`. Les -dle à tableau sont faits (moteur `dle.js`).
+- `quiz`, `dessin`, `telephone`, `blindtest` ont encore leur propre en-tête et leur propre réseau : à passer sur `base.js` et `reseau.js`. (Tous les défis du jour sont passés sur `base.js`.)
+- Défis du jour : utiliser `Base.jour`, `Base.rng`, `Base.melanger`, `Base.avantMinuit`, `Base.partager` plutôt que les recopier. Ne jamais changer une date de départ ou une graine : ça change la grille du jour.
 
 ## Reste à faire
 Tests réels à faire (seulement testé avec un relais simulé) :

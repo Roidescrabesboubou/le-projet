@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Paysdle</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../commun/base.css">
 <style>
 :root{--bg:#eef5f7;--card:#fff;--text:#16242c;--muted:#66767f;--line:#d6e3e8;--soft:#e2edf1;
   --ok:#2fa36b;--mid:#e3a12b;--no:#d65151;--accent:#1f7fb8}
@@ -14,12 +13,6 @@
 body{margin:0;font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
   background-image:radial-gradient(circle at 12% 6%,rgba(31,127,184,.15),transparent 40%),radial-gradient(circle at 88% 25%,rgba(47,163,107,.13),transparent 40%)}
 button{font:inherit;cursor:pointer;color:inherit}
-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
-header a{color:var(--muted);text-decoration:none;font-weight:700;white-space:nowrap}
-header h1{font-family:Fredoka,sans-serif;font-size:1.35rem;margin:0;text-align:center;flex:1}
-.icons{display:flex;gap:4px}
-.icons button{background:transparent;border:0;font-size:1.25rem;padding:6px;border-radius:10px}
-.icons button:hover{background:var(--soft)}
 main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
 .modes{display:flex;justify-content:center;gap:6px}
 .modes button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-weight:700;font-size:.9rem}
@@ -77,9 +70,6 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
 .bnext{margin-top:12px;border:0;border-radius:12px;padding:10px 18px;font-weight:800;background:var(--accent);color:#fff}
 .bres{font-weight:700;margin-top:10px;min-height:1.3em}
 .bsum{display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:.9rem;text-align:left;max-width:360px;margin-left:auto;margin-right:auto}
-#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;z-index:50;pointer-events:none}
-#toast div{background:var(--text);color:var(--bg);padding:9px 16px;border-radius:10px;font-weight:700;animation:fade 2.2s forwards}
-@keyframes fade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:40}
 .modal.hidden{display:none}
 .box{background:var(--card);border-radius:20px;padding:22px;max-width:430px;width:100%;position:relative;max-height:90vh;overflow:auto}
@@ -105,14 +95,6 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
 </style>
 </head>
 <body>
-<header>
-  <a href="../../">← Jeux</a>
-  <h1>🌍 Paysdle</h1>
-  <div class="icons">
-    <button id="bHelp" title="Règles">❓</button>
-    <button id="bStats" title="Statistiques">📊</button>
-  </div>
-</header>
 <main>
   <div class="modes">
     <button id="mDaily" class="on">📅 Pays du jour</button>
@@ -139,7 +121,6 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
   <div class="head" id="head" hidden><span>Pays</span><span>Distance</span><span>Direction</span><span>Proximité</span></div>
   <div id="list"></div>
 </main>
-<div id="toast"></div>
 
 <div class="modal hidden" id="mdEnd"><div class="box">
   <button class="close" data-close>✕</button>
@@ -158,31 +139,16 @@ main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
   <div id="srZone"></div>
 </div></div>
 
-<div class="modal hidden" id="mdHelp"><div class="box help">
-  <button class="close" data-close>✕</button>
-  <h2>Comment jouer</h2>
-  <p>Trouve le pays mystère en <b>8 essais</b>. Après chaque proposition, tu obtiens :</p>
-  <ul>
-    <li>📏 la <b>distance</b> entre les capitales des deux pays ;</li>
-    <li>🧭 la <b>direction</b> dans laquelle chercher (➡️ = plus à l'est) ;</li>
-    <li>🎯 la <b>proximité</b> en % (100 % = trouvé) ;</li>
-    <li>des indices : <b>continent</b>, <b>population</b> (⬆️ plus peuplé / ⬇️ moins peuplé) et <b>langue</b> principale.</li>
-  </ul>
-  <p>Après 3 et 6 essais, tu peux révéler un indice supplémentaire.</p>
-  <p>⭐ Une fois la partie finie, <b>4 questions bonus</b> t'attendent : la silhouette du pays, son drapeau, sa capitale et un pays voisin.</p>
-  <p>📅 Le <b>pays du jour</b> change automatiquement à minuit. ♾️ La <b>partie libre</b> est illimitée.</p>
-</div></div>
-
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
 <script src="pays.js"></script>
 <script src="formes.js"></script>
 <script src="../commun/classement.js"></script>
 <script src="../commun/series.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const store={get(k,d){try{const v=localStorage.getItem("paysdle_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
-             set(k,v){try{localStorage.setItem("paysdle_"+k,JSON.stringify(v))}catch(e){}}};
+const store=Base.stock("paysdle_"),toast=Base.toast;
 const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z]/g,"");
-function toast(t){const d=document.createElement("div");d.textContent=t;$("toast").appendChild(d);setTimeout(()=>d.remove(),2300);}
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const flag=(iso,w=40,cls="fimg")=>`<img class="${cls}" src="https://flagcdn.com/w${w}/${iso.toLowerCase()}.png" alt="" loading="lazy">`;
 const BY={};PAYS.forEach(p=>BY[p.nom]=p);
@@ -191,8 +157,8 @@ const MAX=8;
 
 /* ---------- Pays du jour ---------- */
 const START=Date.UTC(2026,10,1);
-function parisDay(){const [y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);}
-function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const parisDay=()=>Base.jour(START);
+const rng=Base.rng;
 const ORDER=(()=>{const a=[...ANSWERS].sort(),r=rng(777);for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;})();
 const dailyName=d=>ORDER[((d%ORDER.length)+ORDER.length)%ORDER.length];
 
@@ -301,29 +267,29 @@ function guess(name){
 
 /* ---------- Sauvegarde & stats ---------- */
 function save(){
-  if(mode==="daily")store.set("daily",{day:parisDay(),guesses,shown,bonus});
-  else store.set("free",{answer:answer.nom,guesses,over,shown,bonus});
+  if(mode==="daily")store.ecrire("daily",{day:parisDay(),guesses,shown,bonus});
+  else store.ecrire("free",{answer:answer.nom,guesses,over,shown,bonus});
 }
 function recordStats(){
-  const key=mode==="daily"?"statsDaily":"statsFree",s=store.get(key,defStats());
+  const key=mode==="daily"?"statsDaily":"statsFree",s=store.lire(key,defStats());
   if(mode==="daily"){const d=parisDay();if(s.last===d)return;s.streak=won?(s.lastWin===d-1?s.streak+1:1):0;if(won)s.lastWin=d;s.last=d;}
   else s.streak=won?s.streak+1:0;
   s.played++;if(won){s.wins++;s.dist[guesses.length-1]++;}
-  s.best=Math.max(s.best,s.streak);store.set(key,s);
+  s.best=Math.max(s.best,s.streak);store.ecrire(key,s);
   if(mode==="daily")Series.envoyer("paysdle",s,parisDay());
 }
 
 /* ---------- Modes ---------- */
 function startDaily(){
   mode="daily";const d=parisDay();answer=BY[dailyName(d)];
-  const sv=store.get("daily",null),ok=sv&&sv.day===d;
+  const sv=store.lire("daily",null),ok=sv&&sv.day===d;
   guesses=ok?sv.guesses.filter(n=>BY[n]):[];shown=ok&&sv.shown?sv.shown:{h1:false,h2:false};bonus=ok&&sv.bonus?sv.bonus:[];
   won=guesses.includes(answer.nom);over=won||guesses.length>=MAX;
-  $("sub").textContent=`Pays n°${d+1} · ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",timeZone:"Europe/Paris"})}`;
+  $("sub").textContent=`Pays n°${d+1} · ${Base.dateDuJour()}`;
   setBtns();draw(false);
 }
 function startFree(fresh){
-  mode="free";const sv=store.get("free",null);
+  mode="free";const sv=store.lire("free",null);
   if(!fresh&&sv&&BY[sv.answer]&&!sv.over){answer=BY[sv.answer];guesses=sv.guesses;shown=sv.shown||{h1:false,h2:false};bonus=sv.bonus||[];}
   else{let n;do{n=ANSWERS[Math.floor(Math.random()*ANSWERS.length)];}while(answer&&n===answer.nom);answer=BY[n];guesses=[];shown={h1:false,h2:false};bonus=[];}
   won=false;over=false;save();
@@ -392,9 +358,9 @@ $("bBonus").onclick=()=>{closeAll();drawBonus();$("bonus").scrollIntoView({behav
 
 /* ---------- Fin ---------- */
 function showEnd(){
-  const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
+  const s=store.lire(mode==="daily"?"statsDaily":"statsFree",defStats());
   const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
-  if(mode==="daily")Series.panneau($("srZone"),"paysdle",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
+  if(mode==="daily")Series.panneau($("srZone"),"paysdle",store.lire("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
   if(mode==="daily")Series.aujourdhui($("ajZone"),"paysdle",jourAuj,{moi:over?{e:guesses.length,g:won}:null,unite:"coup",gagnantsSeulement:true,reussite:true});else $("ajZone").innerHTML="";
   $("endTitle").textContent=!over?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?`🎉 Trouvé en ${guesses.length} essai${guesses.length>1?"s":""} !`:"😢 Perdu…";
   const bonusFini=bonus.length>=questions().length;
@@ -415,26 +381,29 @@ $("bShare").onclick=async()=>{
   const lines=guesses.map(n=>{const r=info(n),full=Math.round(r.prox/20);return"🟩".repeat(full)+"⬜".repeat(5-full)+" "+r.arr;});
   const bl=bonus.length?`\nBonus : ${bonus.map(b=>b?"⭐":"✖️").join("")}${"▫️".repeat(4-bonus.length)}`:"";
   const txt=`${head} ${won?guesses.length:"X"}/${MAX}\n${lines.join("\n")}${bl}\n\n${location.href.split("#")[0]}`;
-  try{await navigator.clipboard.writeText(txt);toast("Résultat copié !");}
-  catch(e){if(navigator.share)navigator.share({text:txt}).catch(()=>{});else toast("Copie impossible");}
+  Base.partager(txt);
 };
 function tick(){
-  const p=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(new Date()).split(":").map(Number);
-  let left=86400-(p[0]*3600+p[1]*60+p[2]);if(left>=86400)left=0;
-  const f=n=>String(n).padStart(2,"0");
-  $("countdown").textContent=`${f(Math.floor(left/3600))}:${f(Math.floor(left/60)%60)}:${f(left%60)}`;
+  $("countdown").textContent=Base.avantMinuit();
   if(mode==="daily"&&answer&&answer.nom!==dailyName(parisDay())){closeAll();startDaily();toast("Nouveau pays du jour !");}
 }
 setInterval(tick,1000);
 function closeAll(){document.querySelectorAll(".modal").forEach(m=>m.classList.add("hidden"));}
 document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m||e.target.hasAttribute("data-close"))closeAll();}));
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll();});
-$("bHelp").onclick=()=>$("mdHelp").classList.remove("hidden");
-$("bStats").onclick=showEnd;
+const bStats=Base.el("button","📊","b-ico");bStats.title="Statistiques";bStats.onclick=showEnd;
+Base.entete({titre:"Paysdle",emoji:"🌍",boutons:[bStats],aide:`<div class="help"><p>Trouve le pays mystère en <b>8 essais</b>. Après chaque proposition, tu obtiens :</p>
+  <ul>
+    <li>📏 la <b>distance</b> entre les capitales des deux pays ;</li>
+    <li>🧭 la <b>direction</b> dans laquelle chercher (➡️ = plus à l'est) ;</li>
+    <li>🎯 la <b>proximité</b> en % (100 % = trouvé) ;</li>
+    <li>des indices : <b>continent</b>, <b>population</b> (⬆️ plus peuplé / ⬇️ moins peuplé) et <b>langue</b> principale.</li>
+  </ul>
+  <p>Après 3 et 6 essais, tu peux révéler un indice supplémentaire.</p>
+  <p>⭐ Une fois la partie finie, <b>4 questions bonus</b> t'attendent : la silhouette du pays, son drapeau, sa capitale et un pays voisin.</p>
+  <p>📅 Le <b>pays du jour</b> change automatiquement à minuit. ♾️ La <b>partie libre</b> est illimitée.</p></div>`});
 
 startDaily();tick();
-if(!store.get("seenHelp",false)){store.set("seenHelp",true);$("mdHelp").classList.remove("hidden");}
 </script>
-<script src="../commun/garde.js"></script>
 </body>
 </html>

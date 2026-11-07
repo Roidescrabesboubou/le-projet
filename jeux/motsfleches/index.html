@@ -109,10 +109,7 @@ function generer(seed){
 
 /* ---------- Partie ---------- */
 const START=Date.UTC(2026,10,4);
-function parisDay(){
-  const[y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);
-  return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);
-}
+const parisDay=()=>Base.jour(START);
 const defStats=()=>({played:0,wins:0,streak:0,best:0,lastWin:null,last:null,temps:null});
 let mode="jour",G=null,seed=0,lettres={},reveles={},faux={},secondes=0,indices=0,fini=false,gagne=false,sel=null,dirSel="H",plein=false;
 const signature=()=>G.mots.map(m=>m.mot).join();
@@ -291,7 +288,7 @@ function fenetreFin(s){
   if(mode==="jour"){
     const p=document.createElement("button");p.className="btn ghost petit";p.textContent="📋 Partager";
     p.onclick=async()=>{const t=`🏹 Mots fléchés du jour\n⏱️ ${formatTemps(secondes)}${indices?` · 💡 ${indices}`:""}`;
-      try{await navigator.clipboard.writeText(t);Base.toast("Résultat copié !")}catch(e){Base.toast(t)}};
+      Base.partager(t)};
     acts.appendChild(p);
     const n=document.createElement("p");n.className="muted";n.style.margin="0 0 10px";n.textContent="Nouvelle grille à minuit.";r.appendChild(n);
   }

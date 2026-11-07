@@ -13,6 +13,9 @@
        (le pseudo du compte s'il est connecté, sinon celui des Réglages)
    Base.record(slug, valeur, {mieux:"haut"|"bas", texte})
      → mémorise le record du joueur ; il s'affiche sur la carte de l'accueil
+   Défis du jour : Base.jour(Date.UTC(...)) n° du jour (heure de Paris),
+     Base.avantMinuit() « hh:mm:ss », Base.dateDuJour(), Base.rng(graine),
+     Base.melanger(tableau, rng), Base.partager(texte)
    ============================================================ */
 (function(){
   const src = (document.currentScript && document.currentScript.src) || "";
@@ -115,5 +118,29 @@
     return h;
   }
 
-  window.Base = {RACINE, stock, joueur, record, records, fenetre, aide, toast, entete, el};
+  /* ---------- Défis du jour (heure de Paris) ---------- */
+  const PARIS = {timeZone: "Europe/Paris"};
+  /* n° du jour depuis `debut` (Date.UTC), qui change à minuit à Paris */
+  function jour(debut){
+    const [y, m, d] = new Intl.DateTimeFormat("en-CA", {...PARIS, year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date()).split("-").map(Number);
+    return Math.floor((Date.UTC(y, m - 1, d) - debut) / 864e5);
+  }
+  /* temps restant avant minuit à Paris, « hh:mm:ss » */
+  function avantMinuit(){
+    const p = new Intl.DateTimeFormat("fr-FR", {...PARIS, hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false}).format(new Date()).split(":").map(Number);
+    let r = 86400 - (p[0] * 3600 + p[1] * 60 + p[2]); if(r >= 86400) r = 0;
+    const f = n => String(n).padStart(2, "0");
+    return `${f(Math.floor(r / 3600))}:${f(Math.floor(r / 60) % 60)}:${f(r % 60)}`;
+  }
+  const dateDuJour = () => new Date().toLocaleDateString("fr-FR", {...PARIS, weekday:"long", day:"numeric", month:"long"});
+  /* hasard reproductible (mulberry32) : même graine → même suite */
+  function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function melanger(a, r){ r = r || Math.random; a = [...a]; for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  /* copie le résultat (ou le partage sur téléphone) */
+  async function partager(txt){
+    try{ await navigator.clipboard.writeText(txt); toast("Résultat copié !"); }
+    catch(e){ if(navigator.share) navigator.share({text: txt}).catch(() => {}); else toast("Copie impossible"); }
+  }
+
+  window.Base = {RACINE, stock, joueur, record, records, fenetre, aide, toast, entete, el, jour, avantMinuit, dateDuJour, rng, melanger, partager};
 })();

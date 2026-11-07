@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Connexions</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../commun/base.css">
 <style>
 :root{--bg:#f7f3fb;--card:#fff;--text:#1f1a29;--muted:#736a80;--line:#e3dbec;--soft:#ece5f4;
   --tile:#ece4f3;--sel:#4b3f5c;--l0:#f2d36b;--l1:#8fcf72;--l2:#8bb8ea;--l3:#bb8be0;--accent:#7b4fc8}
@@ -14,12 +13,6 @@
 body{margin:0;font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
   background-image:radial-gradient(circle at 12% 6%,rgba(242,211,107,.18),transparent 40%),radial-gradient(circle at 88% 25%,rgba(187,139,224,.16),transparent 40%)}
 button{font:inherit;cursor:pointer;color:inherit}
-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
-header a{color:var(--muted);text-decoration:none;font-weight:700;white-space:nowrap}
-header h1{font-family:Fredoka,sans-serif;font-size:1.35rem;margin:0;text-align:center;flex:1}
-.icons{display:flex;gap:4px}
-.icons button{background:transparent;border:0;font-size:1.25rem;padding:6px;border-radius:10px}
-.icons button:hover{background:var(--soft)}
 main{max-width:600px;margin:0 auto;padding:14px 12px 50px}
 .modes{display:flex;justify-content:center;gap:6px}
 .modes button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-weight:700;font-size:.9rem}
@@ -49,9 +42,6 @@ main{max-width:600px;margin:0 auto;padding:14px 12px 50px}
 .ctrl button{border:1.5px solid var(--text);background:transparent;border-radius:999px;padding:9px 16px;font-weight:800}
 .ctrl button.main{background:var(--text);color:var(--bg)}
 .ctrl button:disabled{opacity:.35;cursor:default}
-#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;z-index:50;pointer-events:none}
-#toast div{background:var(--text);color:var(--bg);padding:9px 16px;border-radius:10px;font-weight:700;animation:fade 2.2s forwards}
-@keyframes fade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:40}
 .modal.hidden{display:none}
 .box{background:var(--card);border-radius:20px;padding:22px;max-width:420px;width:100%;position:relative;max-height:90vh;overflow:auto}
@@ -72,14 +62,6 @@ main{max-width:600px;margin:0 auto;padding:14px 12px 50px}
 </style>
 </head>
 <body>
-<header>
-  <a href="../../">← Jeux</a>
-  <h1>🔗 Connexions</h1>
-  <div class="icons">
-    <button id="bHelp" title="Règles">❓</button>
-    <button id="bStats" title="Statistiques">📊</button>
-  </div>
-</header>
 <main>
   <div class="modes">
     <button id="mDaily" class="on">📅 Grille du jour</button>
@@ -95,7 +77,6 @@ main{max-width:600px;margin:0 auto;padding:14px 12px 50px}
     <button id="bSubmit" class="main">Valider</button>
   </div>
 </main>
-<div id="toast"></div>
 
 <div class="modal hidden" id="mdEnd"><div class="box">
   <button class="close" data-close>✕</button>
@@ -111,32 +92,21 @@ main{max-width:600px;margin:0 auto;padding:14px 12px 50px}
   <div id="srZone"></div>
 </div></div>
 
-<div class="modal hidden" id="mdHelp"><div class="box help">
-  <button class="close" data-close>✕</button>
-  <h2>Comment jouer</h2>
-  <p>La grille contient <b>16 mots</b> cachant <b>4 groupes</b> de 4 mots qui ont quelque chose en commun.</p>
-  <p>Sélectionne 4 mots puis appuie sur <b>Valider</b>. Tu as droit à <b>4 erreurs</b>.</p>
-  <p>Attention aux pièges : certains mots semblent aller dans plusieurs groupes ! Les catégories peuvent être plus subtiles que « fruits » ou « pays » : mots cachés, expressions…</p>
-  <p>Chaque groupe a une couleur selon sa difficulté :</p>
-  <div class="lg"><div class="lv0">🟨 Facile</div><div class="lv1">🟩 Moyen</div><div class="lv2">🟦 Difficile</div><div class="lv3">🟪 Très difficile</div></div>
-  <p>📅 La <b>grille du jour</b> change automatiquement à minuit. ♾️ La <b>partie libre</b> te donne une grille au hasard.</p>
-</div></div>
-
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
 <script src="grilles.js"></script>
 <script src="../commun/classement.js"></script>
 <script src="../commun/series.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const store={get(k,d){try{const v=localStorage.getItem("connexions_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
-             set(k,v){try{localStorage.setItem("connexions_"+k,JSON.stringify(v))}catch(e){}}};
-function toast(t){const d=document.createElement("div");d.textContent=t;$("toast").appendChild(d);setTimeout(()=>d.remove(),2300);}
+const store=Base.stock("connexions_"),toast=Base.toast;
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const EM=["🟨","🟩","🟦","🟪"],LIVES=4;
 
 /* ---------- Grille du jour ---------- */
 const START=Date.UTC(2026,10,1);
-function parisDay(){const [y,m,d]=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);return Math.floor((Date.UTC(y,m-1,d)-START)/864e5);}
-function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const parisDay=()=>Base.jour(START);
+const rng=Base.rng;
 function shuffle(a,r=Math.random){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 const ORDER=shuffle(GRILLES.map((_,i)=>i),rng(1234));
 const dailyIdx=d=>ORDER[((d%ORDER.length)+ORDER.length)%ORDER.length];
@@ -202,14 +172,14 @@ function revealRest(){
 /* ---------- Sauvegarde & stats ---------- */
 function save(){
   const data={gi,order,found,attempts,over,won};
-  if(mode==="daily")store.set("daily",{...data,day:parisDay()});else store.set("free",data);
+  if(mode==="daily")store.ecrire("daily",{...data,day:parisDay()});else store.ecrire("free",data);
 }
 function recordStats(){
-  const key=mode==="daily"?"statsDaily":"statsFree",s=store.get(key,defStats());
+  const key=mode==="daily"?"statsDaily":"statsFree",s=store.lire(key,defStats());
   if(mode==="daily"){const d=parisDay();if(s.last===d)return;s.streak=won?(s.lastWin===d-1?s.streak+1:1):0;if(won)s.lastWin=d;s.last=d;}
   else s.streak=won?s.streak+1:0;
   s.played++;if(won){s.wins++;if(!mistakes())s.perfect++;}
-  s.best=Math.max(s.best,s.streak);store.set(key,s);
+  s.best=Math.max(s.best,s.streak);store.ecrire(key,s);
   if(mode==="daily")Series.envoyer("connexions",s,parisDay());
 }
 function load(data){
@@ -219,13 +189,13 @@ function fresh(i){gi=i;grid=GRILLES[i];order=shuffle(grid.flatMap(g=>g.mots));fo
 
 /* ---------- Modes ---------- */
 function startDaily(){
-  mode="daily";const d=parisDay(),sv=store.get("daily",null),i=dailyIdx(d);
+  mode="daily";const d=parisDay(),sv=store.lire("daily",null),i=dailyIdx(d);
   if(sv&&sv.day===d&&sv.gi===i&&GRILLES[sv.gi])load(sv);else{fresh(i);save();}
-  $("sub").textContent=`Grille n°${d+1} · ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",timeZone:"Europe/Paris"})}`;
+  $("sub").textContent=`Grille n°${d+1} · ${Base.dateDuJour()}`;
   setBtns();draw();if(over)setTimeout(showEnd,400);
 }
 function startFree(newOne){
-  mode="free";const sv=store.get("free",null);
+  mode="free";const sv=store.lire("free",null);
   if(!newOne&&sv&&GRILLES[sv.gi]&&!sv.over)load(sv);
   else{let i;do{i=Math.floor(Math.random()*GRILLES.length);}while(GRILLES.length>1&&(i===gi||i===dailyIdx(parisDay())));fresh(i);save();}
   $("sub").textContent=`Partie libre · grille ${gi+1} sur ${GRILLES.length}`;
@@ -238,9 +208,9 @@ $("mFree").onclick=()=>{closeAll();startFree(false);};
 /* ---------- Fin ---------- */
 function recapText(){return attempts.map(a=>a.groups.map(g=>EM[grid[g].niv]).join("")).join("\n");}
 function showEnd(){
-  const s=store.get(mode==="daily"?"statsDaily":"statsFree",defStats());
+  const s=store.lire(mode==="daily"?"statsDaily":"statsFree",defStats());
   const jourAuj=parisDay();if(mode==="daily")s.streak=Series.courante(s,jourAuj);
-  if(mode==="daily")Series.panneau($("srZone"),"connexions",store.get("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
+  if(mode==="daily")Series.panneau($("srZone"),"connexions",store.lire("statsDaily",null),jourAuj);else $("srZone").innerHTML="";
   if(mode==="daily")Series.aujourdhui($("ajZone"),"connexions",jourAuj,{moi:over?{e:mistakes(),g:won}:null,unite:"erreur",gagnantsSeulement:false,reussite:true});else $("ajZone").innerHTML="";
   $("endTitle").textContent=!over?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?(mistakes()?"🎉 Bravo !":"🌟 Parfait, sans erreur !"):"😢 Perdu…";
   $("recap").innerHTML=over?recapText().replace(/\n/g,"<br>"):"";
@@ -255,26 +225,25 @@ $("bAgain").onclick=()=>{closeAll();startFree(true);};
 $("bShare").onclick=async()=>{
   const head=mode==="daily"?`Connexions n°${parisDay()+1}`:"Connexions (partie libre)";
   const txt=`${head}\n${recapText()}\n\n${location.href.split("#")[0]}`;
-  try{await navigator.clipboard.writeText(txt);toast("Résultat copié !");}
-  catch(e){if(navigator.share)navigator.share({text:txt}).catch(()=>{});else toast("Copie impossible");}
+  Base.partager(txt);
 };
 function tick(){
-  const p=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(new Date()).split(":").map(Number);
-  let left=86400-(p[0]*3600+p[1]*60+p[2]);if(left>=86400)left=0;
-  const f=n=>String(n).padStart(2,"0");
-  $("countdown").textContent=`${f(Math.floor(left/3600))}:${f(Math.floor(left/60)%60)}:${f(left%60)}`;
+  $("countdown").textContent=Base.avantMinuit();
   if(mode==="daily"&&gi!==dailyIdx(parisDay())){closeAll();startDaily();toast("Nouvelle grille du jour !");}
 }
 setInterval(tick,1000);
 function closeAll(){document.querySelectorAll(".modal").forEach(m=>m.classList.add("hidden"));}
 document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m||e.target.hasAttribute("data-close"))closeAll();}));
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll();else if(e.key==="Enter")submit();});
-$("bHelp").onclick=()=>$("mdHelp").classList.remove("hidden");
-$("bStats").onclick=showEnd;
+const bStats=Base.el("button","📊","b-ico");bStats.title="Statistiques";bStats.onclick=showEnd;
+Base.entete({titre:"Connexions",emoji:"🔗",boutons:[bStats],aide:`<div class="help"><p>La grille contient <b>16 mots</b> cachant <b>4 groupes</b> de 4 mots qui ont quelque chose en commun.</p>
+  <p>Sélectionne 4 mots puis appuie sur <b>Valider</b>. Tu as droit à <b>4 erreurs</b>.</p>
+  <p>Attention aux pièges : certains mots semblent aller dans plusieurs groupes ! Les catégories peuvent être plus subtiles que « fruits » ou « pays » : mots cachés, expressions…</p>
+  <p>Chaque groupe a une couleur selon sa difficulté :</p>
+  <div class="lg"><div class="lv0">🟨 Facile</div><div class="lv1">🟩 Moyen</div><div class="lv2">🟦 Difficile</div><div class="lv3">🟪 Très difficile</div></div>
+  <p>📅 La <b>grille du jour</b> change automatiquement à minuit. ♾️ La <b>partie libre</b> te donne une grille au hasard.</p></div>`});
 
 startDaily();tick();
-if(!store.get("seenHelp",false)){store.set("seenHelp",true);$("mdHelp").classList.remove("hidden");}
 </script>
-<script src="../commun/garde.js"></script>
 </body>
 </html>

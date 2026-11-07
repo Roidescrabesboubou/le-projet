@@ -26,7 +26,6 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const pluriel = n => `${n} essai${n > 1 ? "s" : ""}`;
   const maj = s => s[0].toUpperCase() + s.slice(1);
-  function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function cmpSet(a, b){ const A = new Set(a), inter = b.filter(x => A.has(x)).length; return inter === a.length && inter === b.length ? "ok" : inter ? "mid" : "no"; }
   function couleur(name){ let h = 0; for(const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 55% 45%)`; }
   function initiales(name){ const p = name.replace(/[^A-Za-zÀ-ÿ ]/g, "").split(" ").filter(Boolean); return (p.length > 1 ? p[0][0] + p[1][0] : name.slice(0, 2)).toUpperCase(); }
@@ -40,11 +39,8 @@
 
     /* ---------- Réponse du jour ---------- */
     const DEBUT = C.debut || Date.UTC(2026, 10, 1);
-    function parisDay(){
-      const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone:"Europe/Paris", year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date()).split("-").map(Number);
-      return Math.floor((Date.UTC(y, m - 1, d) - DEBUT) / 864e5);
-    }
-    const ORDER = (() => { const a = LISTE.filter(C.jour || (() => true)).map(c => c.name).sort(), r = rng(C.graine); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
+    const parisDay = () => Base.jour(DEBUT);
+    const ORDER = Base.melanger(LISTE.filter(C.jour || (() => true)).map(c => c.name).sort(), Base.rng(C.graine));
     const dailyName = d => ORDER[((d % ORDER.length) + ORDER.length) % ORDER.length];
 
     /* ---------- Comparaison ---------- */
@@ -199,7 +195,7 @@
       const sv = store.lire("daily", null), ok = sv && sv.day === d;
       guesses = ok ? sv.guesses.filter(n => BY[n]) : []; shown = ok && sv.shown ? sv.shown : {h1:false, h2:false};
       over = guesses.includes(answer.name);
-      $("sub").textContent = `${Quoi} n°${d + 1} · ${new Date().toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long", timeZone:"Europe/Paris"})}`;
+      $("sub").textContent = `${Quoi} n°${d + 1} · ${Base.dateDuJour()}`;
       setBtns(); draw(false);
     }
     function startFree(fresh){
@@ -257,14 +253,10 @@
       const head = mode === "daily" ? `${C.titre} n°${parisDay() + 1}` : `${C.titre} (partie libre)`;
       const lines = guesses.slice(-6).map(n => compare(BY[n], answer).map(([c, d]) => d ? (d === "↑" ? "⬆️" : "⬇️") : em[c]).join(""));
       const txt = `${head} — trouvé en ${pluriel(guesses.length)}\n${guesses.length > 6 ? "…\n" : ""}${lines.join("\n")}\n\n${location.href.split("#")[0]}`;
-      try{ await navigator.clipboard.writeText(txt); Base.toast("Résultat copié !"); }
-      catch(e){ if(navigator.share) navigator.share({text: txt}).catch(() => {}); else Base.toast("Copie impossible"); }
+      Base.partager(txt);
     };
     function tick(){
-      const p = new Intl.DateTimeFormat("fr-FR", {timeZone:"Europe/Paris", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false}).format(new Date()).split(":").map(Number);
-      let left = 86400 - (p[0] * 3600 + p[1] * 60 + p[2]); if(left >= 86400) left = 0;
-      const f = n => String(n).padStart(2, "0");
-      $("countdown").textContent = `${f(Math.floor(left / 3600))}:${f(Math.floor(left / 60) % 60)}:${f(left % 60)}`;
+      $("countdown").textContent = Base.avantMinuit();
       if(mode === "daily" && answer && answer.name !== dailyName(parisDay())){ closeAll(); startDaily(); Base.toast(`Nouveau ${C.quoi} du jour !`); }
     }
     setInterval(tick, 1000);
