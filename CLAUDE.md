@@ -32,7 +32,7 @@ jeux/<slug>/        un dossier par jeu
 ## Ajouter un jeu
 1. Copier `jeux/_modele/` vers `jeux/<slug>/`.
 2. Ajouter l'entrée dans `jeux/commun/catalogue.js` (même slug).
-3. S'il a un classement : ajouter le slug dans `firebase-regles.json` (puis Publier dans Firebase).
+3. S'il a un classement : ajouter le slug dans `firebase-regles.json` (puis le publier avec `firebase.cmd deploy --only database`).
 4. Tester, commit, push sur `main`.
 
 L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
