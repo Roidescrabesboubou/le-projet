@@ -450,13 +450,16 @@
             "ou": {
               ".validate": "newData.isString() && newData.val().length <= 40"
             },
+            "pause": {
+              ".validate": "newData.isBoolean()"
+            },
             "$autre": {
               ".validate": false
             }
           }
         },
         "jeu": {
-          ".write": "auth != null && root.child('groupes').child($gid).child('membres').child(auth.uid).exists()",
+          ".write": "auth != null && root.child('groupes').child($gid).child('chef').val() === auth.uid",
           ".validate": "newData.hasChildren(['slug', 'code', 'par', 'pseudo', 'd'])",
           "slug": {
             ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_-]{1,40}$/)"

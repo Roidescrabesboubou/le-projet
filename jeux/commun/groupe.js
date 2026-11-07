@@ -7,9 +7,10 @@
 
    - Amis : demande par pseudo, acceptation, présence en ligne
      et jeu en cours de chaque ami.
-   - Groupe : on invite ses amis une fois ; dès qu'un membre crée
-     une salle dans un jeu multijoueur, les autres membres sont
-     emmenés dans cette salle (?salle=CODE&groupe=1).
+   - Groupe = salon : le chef 👑 choisit le jeu (ou crée une salle
+     en ligne) et tous les membres sont emmenés dans sa salle
+     (?salle=CODE&groupe=1). Un membre « en pause » ⏸️ n'est pas
+     emmené ; il rejoint la dernière salle depuis le panneau.
    Pour un jeu en ligne : appeler Groupe.salleCreee(code) quand
    l'hôte ouvre sa salle (reseau.js le fait tout seul).
    ============================================================ */
@@ -39,6 +40,7 @@
   const enLigne = p => !!(p && p.vu && Date.now() - p.vu < EN_LIGNE);
   const jeuxMulti = () => catalogue().filter(g => (g.tags || []).includes("Multijoueur") && !g.sansPage && g.etat !== "cache" && g.etat !== "bientot");
   const estChef = () => !!(G && moi && G.chef === moi.uid);
+  const enPause = () => !!(G && moi && G.membres && G.membres[moi.uid] && G.membres[moi.uid].pause);
   const membres = () => Object.entries((G && G.membres) || {}).map(([uid, m]) => ({uid, ...m}))
     .sort((a, b) => (b.uid === (G && G.chef)) - (a.uid === (G && G.chef)) || String(a.pseudo).localeCompare(String(b.pseudo)));
   const idAleatoire = () => { const a = new Uint8Array(20), c = "abcdefghijklmnopqrstuvwxyz0123456789"; crypto.getRandomValues(a); return Array.from(a, x => c[x % 36]).join(""); };
@@ -253,7 +255,7 @@
     try{
       if(!autres.length) await db(`groupes/${gid}`, {method: "DELETE"});
       else if(estChef()){
-        const nouveau = autres.find(m => enLigne(m)) || autres[0];
+        const nouveau = autres.find(m => enLigne(m) && !m.pause) || autres.find(m => enLigne(m)) || autres[0];
         await maj({[`groupes/${gid}/chef`]: nouveau.uid, [`groupes/${gid}/membres/${moi.uid}`]: null});
       }else await db(`groupes/${gid}/membres/${moi.uid}`, {method: "DELETE"});
     }catch(e){}
@@ -266,6 +268,13 @@
     quitterLocal();
     if(moi) db(`profils/${moi.uid}`, {method: "PATCH", body: {groupe: null}}).catch(() => {});
   }
+  async function basculerPause(){
+    const p = !enPause();
+    await db(`groupes/${gid}/membres/${moi.uid}/pause`, p ? {method: "PUT", body: true} : {method: "DELETE"});
+    if(G && G.membres[moi.uid]){ if(p) G.membres[moi.uid].pause = true; else delete G.membres[moi.uid].pause; }
+    toast(p ? "⏸️ En pause : le groupe ne t'emmène plus." : "▶️ Tu suis de nouveau le groupe.");
+    dessiner();
+  }
   async function exclure(u){ if(estChef()) await db(`groupes/${gid}/membres/${u}`, {method: "DELETE"}); }
   async function nommerChef(u){ if(estChef()) await db(`groupes/${gid}/chef`, {method: "PUT", body: u}); }
   async function inviter(u){
@@ -276,14 +285,15 @@
   }
   async function refuserInvit(g){ await db(`invitations/${moi.uid}/${g}`, {method: "DELETE"}).catch(() => {}); delete invits[g]; dessiner(); }
 
-  /* Un membre a ouvert une salle : tout le groupe y est invité */
+  /* Le chef a ouvert une salle : tout le groupe y est emmené (un simple membre ne déplace personne) */
   async function salleCreee(code, slug){
     slug = slug || slugPage;
-    if(!moi || !gid || !code || !slug) return false;
+    if(!moi || !gid || !code || !slug || !estChef()) return false;
     E("salle_groupe_vu", String(code).toUpperCase());
     try{
       await db(`groupes/${gid}/jeu`, {method: "PUT", body: {slug, code: String(code).toUpperCase(), par: moi.uid, pseudo: pseudo().slice(0, 16), d: SV}});
-      toast(`📣 Le groupe est invité dans ta salle (${membres().length - 1} ami${membres().length > 2 ? "s" : ""}) !`);
+      const n = membres().filter(m => m.uid !== moi.uid && !m.pause).length;
+      if(n) toast(`📣 ${n} membre${n > 1 ? "s" : ""} du groupe arrive${n > 1 ? "nt" : ""} dans ta salle !`);
       return true;
     }catch(e){
       console.error("[Groupe] salle non annoncée :", e);
@@ -293,7 +303,7 @@
   }
   /* Bouton « Jouer ensemble » : tout le groupe part sur ce jeu, la salle se crée toute seule */
   async function lancerPourGroupe(slug){
-    if(gid && moi){
+    if(gid && moi && estChef()){
       try{
         await db(`groupes/${gid}/jeu`, {method: "PUT", body: {slug, code: "", par: moi.uid, pseudo: pseudo().slice(0, 16), d: SV}});
       }catch(e){ console.error("[Groupe] départ non annoncé :", e); }
@@ -305,14 +315,12 @@
   const salleIci = () => (params.get("salle") || "").toUpperCase();
   function verifierLancement(){
     const j = G && G.jeu;
-    if(!j || !j.slug || j.par === moi.uid) return;
+    if(!j || !j.slug || j.par === moi.uid || j.par !== G.chef) return;
     const cle = cleLancement(j);
     if(L("salle_groupe_vu", "") === cle) return;
     if(Math.abs(Date.now() - (j.d || 0)) > LANCEMENT_VALIDE) return;
-    if(slugPage === j.slug && (!j.code || salleIci() === j.code)){ E("salle_groupe_vu", cle); return; }
-    const refus = L("salle_groupe_refus", null);
-    if(refus && refus.slug === j.slug && Date.now() - refus.t < 3 * 60000){ E("salle_groupe_vu", cle); return; }
-    proposerLancement(j);
+    if(enPause() || (slugPage === j.slug && (!j.code || salleIci() === j.code))){ E("salle_groupe_vu", cle); return; }
+    annoncerDepart(j);
   }
   function allerA(j){
     E("salle_groupe_vu", cleLancement(j));
@@ -455,26 +463,24 @@
       carte(`👋 ${d.pseudo || "Quelqu'un"} veut être ton ami`, [["Accepter", () => accepter(id)], ["Refuser", () => refuser(id), true]], "d-" + id);
     }
   }
-  function proposerLancement(j){
+  /* Le chef lance : départ automatique. Seul « Me mettre en pause » permet de rester. */
+  function annoncerDepart(j){
     const cle = "j-" + cleLancement(j);
     if(notifs.querySelector(`[data-cle="${CSS.escape(cle)}"]`)) return;
-    const enCours = notifs.querySelectorAll('[data-cle^="j-"]');
-    enCours.forEach(n => n.remove());
+    notifs.querySelectorAll('[data-cle^="j-"],[data-cle="attente"]').forEach(n => n.remove());
     const memeJeu = slugPage === j.slug;
-    let n = memeJeu || enCours.length ? 2 : 8;
-    const titre = j.code
-      ? (memeJeu ? `${emojiDe(j.slug)} ${j.pseudo || "Un membre"} a créé la salle : connexion…` : `${emojiDe(j.slug)} ${j.pseudo || "Un membre"} lance ${titreDe(j.slug)} pour le groupe !`)
-      : `${emojiDe(j.slug)} ${j.pseudo || "Un membre"} emmène le groupe sur ${titreDe(j.slug)} !`;
-    const c = carte(titre,
-      [["Rejoindre", () => allerA(j)], ["Pas cette fois", () => { E("salle_groupe_vu", cleLancement(j)); E("salle_groupe_refus", {slug: j.slug, t: Date.now()}); clearInterval(t); }, true]], cle);
+    let n = memeJeu ? 1 : 3, t = 0;
+    const qui = `👑 ${j.pseudo || "Le chef"}`;
+    const c = carte(memeJeu && j.code ? `${emojiDe(j.slug)} ${qui} a ouvert la salle : connexion…` : `${emojiDe(j.slug)} ${qui} emmène le groupe sur ${titreDe(j.slug)} !`,
+      [["⏸️ Me mettre en pause", () => { clearInterval(t); E("salle_groupe_vu", cleLancement(j)); return basculerPause(); }, true]], cle);
     if(!c) return;
     const info = el("small", null, "gr-note"); c.insertBefore(info, c.lastChild);
-    const t = setInterval(() => {
+    const ecrire = () => { info.textContent = `Départ dans ${n} s…`; };
+    ecrire();
+    t = setInterval(() => {
       if(!c.isConnected) return clearInterval(t);
-      info.textContent = `Départ automatique dans ${n} s…`;
-      if(n-- <= 0){ clearInterval(t); c.remove(); allerA(j); }
+      if(--n <= 0){ clearInterval(t); c.remove(); allerA(j); } else ecrire();
     }, 1000);
-    info.textContent = `Départ automatique dans ${n + 1} s…`;
   }
 
   function dessiner(){
@@ -532,7 +538,7 @@
     }
     if(!G){
       P.appendChild(el("h3", "Pas encore de groupe"));
-      P.appendChild(el("p", "Crée un groupe et invite tes amis une seule fois : quand l'un de vous ouvre une salle dans un jeu multijoueur, tout le groupe y est emmené automatiquement.", "gr-note"));
+      P.appendChild(el("p", "Crée un groupe et invite tes amis une seule fois : c'est votre salon. Quand le chef 👑 lance un jeu, tout le groupe y est emmené automatiquement.", "gr-note"));
       P.appendChild(bt("➕ Créer un groupe", async () => { await creer(); onglet = "groupe"; dessiner(); }));
       return;
     }
@@ -551,7 +557,7 @@
       const chef = m.uid === G.chef, c = m.uid === moi.uid;
       const actions = [];
       if(estChef() && !c){ actions.push(bt("👑", () => nommerChef(m.uid), "gris mini")); actions.push(bt("✕", () => exclure(m.uid), "gris mini")); }
-      ul.appendChild(ligneJoueur(m.avatar, (chef ? "👑 " : "") + m.pseudo + (c ? " (toi)" : ""), c ? "Ici · " + lieu() : statut(m), c || enLigne(m), actions));
+      ul.appendChild(ligneJoueur(m.avatar, (chef ? "👑 " : "") + m.pseudo + (c ? " (toi)" : ""), (m.pause ? "⏸️ En pause · " : "") + (c ? "Ici · " + lieu() : statut(m)), c || enLigne(m), actions));
     });
     P.appendChild(ul);
     if(estChef()) P.appendChild(el("p", "👑 = donner le rôle de chef · ✕ = retirer du groupe", "gr-note"));
@@ -573,7 +579,18 @@
     }
 
     P.appendChild(el("h3", "🎮 Jouer ensemble"));
-    P.appendChild(el("p", "Choisis un jeu : tout le groupe y est emmené et la salle se crée toute seule. (Créer une salle en ligne dans un jeu marche aussi.)", "gr-note"));
+    const q = el("div", null, "gr-ligne"); q.style.marginTop = "12px";
+    if(!estChef()){
+      const chef = ms.find(m => m.uid === G.chef);
+      P.appendChild(el("p", enPause()
+        ? "⏸️ Tu es en pause : le groupe ne t'emmène pas. Reprends pour suivre le chef dans ses jeux."
+        : `👑 ${chef ? chef.pseudo : "Le chef"} choisit le jeu : tu seras emmené dans sa salle automatiquement.`, "gr-note"));
+      q.appendChild(bt(enPause() ? "▶️ Reprendre" : "⏸️ Pause", basculerPause, enPause() ? "" : "gris"));
+      q.appendChild(bt("🚪 Quitter le groupe", () => quitter(), "gris"));
+      P.appendChild(q);
+      return;
+    }
+    P.appendChild(el("p", "Choisis un jeu : tout le groupe (sauf ceux en pause) y est emmené et la salle se crée toute seule. Créer une salle en ligne dans un jeu marche aussi.", "gr-note"));
     const grille = el("div", null, "gr-jeux");
     jeuxMulti().forEach(g => {
       const a = el("a"); a.href = `${RACINE}jeux/${g.slug}/?groupe=hote`;
@@ -582,7 +599,6 @@
       grille.appendChild(a);
     });
     P.appendChild(grille);
-    const q = el("div", null, "gr-ligne"); q.style.marginTop = "12px";
     q.appendChild(bt("🚪 Quitter le groupe", () => quitter(), "gris"));
     P.appendChild(q);
   }
@@ -638,7 +654,7 @@
     await relancer();
     autoRejoindre();
     if(params.get("groupe") === "hote") autoCreer();
-    else if(params.get("groupe") === "1" && !params.get("salle") && G && G.jeu && G.jeu.slug === slugPage && !G.jeu.code)
+    else if(params.get("groupe") === "1" && !params.get("salle") && G && G.jeu && G.jeu.slug === slugPage && !G.jeu.code && !enPause())
       carte(`⏳ ${G.jeu.pseudo || "Le chef"} prépare la salle, tu vas y être connecté automatiquement…`, [["OK", () => {}]], "attente");
   }
 
