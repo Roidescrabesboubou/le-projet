@@ -56,7 +56,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Dette technique (à traiter en priorité quand on touche ces jeux)
 - `quintuplees` a encore son propre code IA : à migrer vers `ia.js` (le réseau est déjà passé sur `reseau.js`, ntfy.sh abandonné : quota quotidien épuisé).
-- `quiz`, `dessin`, `telephone`, `blindtest` ont encore leur propre en-tête et leur propre réseau : à passer sur `base.js` et `reseau.js`. (Tous les défis du jour sont passés sur `base.js`.)
+- `quiz`, `dessin`, `telephone`, `blindtest` : la connexion passe par `Reseau.canal` (reseau.js), mais chacun garde son propre protocole (hello/st/bye) et son propre en-tête/thème. Passer sur `base.css` demande de revoir tout leur style (classes `.btn`, `.ghost`, `.row`, `.hidden` en conflit). (Tous les défis du jour sont passés sur `base.js`.)
 - Défis du jour : utiliser `Base.jour`, `Base.rng`, `Base.melanger`, `Base.avantMinuit`, `Base.partager` plutôt que les recopier. Ne jamais changer une date de départ ou une graine : ça change la grille du jour.
 
 ## Reste à faire

@@ -253,7 +253,7 @@ label.l{display:block;font-size:.82rem;font-weight:800;color:var(--muted);margin
   </section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script src="../commun/reseau.js"></script>
 <script src="mots.js"></script>
 <script>
 /* =================================================================
@@ -313,38 +313,15 @@ if(qsRoom)$("codeIn").value=qsRoom.toUpperCase();
 /* =================================================================
    RÉSEAU (relais MQTT public, aucun serveur à installer)
    ================================================================= */
-const BROKERS=[
-  {n:"EMQX",u:"wss://broker.emqx.io:8084/mqtt"},
-  {n:"HiveMQ",u:"wss://broker.hivemq.com:8884/mqtt"},
-  {n:"Mosquitto",u:"wss://test.mosquitto.org:8081/mqtt"}
-];
-const TOPIC="salledejeux-dessin/v1/";
 let mode=null;        // "online" | "local"
-let isHost=false, client=null, topic="", roomCode="", hostSeen=0, joined=false;
+let isHost=false, client=null, roomCode="", hostSeen=0, joined=false;
 let S=null;           // dernier état public connu (tout le monde)
 let G=null;           // état complet (hôte uniquement)
 
-function connectBroker(i){
-  return new Promise((res,rej)=>{
-    if(!window.mqtt)return rej(new Error("bibliothèque réseau non chargée"));
-    const c=mqtt.connect(BROKERS[i].u,{clientId:"dd_"+uid()+uid(),clean:true,connectTimeout:7000,reconnectPeriod:0,keepalive:30});
-    const t=setTimeout(()=>{c.end(true);rej(new Error("délai dépassé"));},8000);
-    c.once("connect",()=>{clearTimeout(t);c.options.reconnectPeriod=2000;res(c);});
-    c.once("error",e=>{clearTimeout(t);c.end(true);rej(e);});
-  });
-}
-function openRoom(c,code){
-  if(isHost&&window.Groupe)Groupe.salleCreee(code);   /* invite le groupe 👥 */
-  client=c;roomCode=code;topic=TOPIC+code;
-  c.subscribe(topic);
-  c.on("message",(tp,buf)=>{if(tp!==topic)return;let m;try{m=JSON.parse(buf.toString());}catch(e){return;}onNet(m);});
-  c.on("offline",()=>banner("⚠️ Connexion perdue… reconnexion en cours"));
-  c.on("connect",()=>{banner("");c.subscribe(topic);});
-}
+const canal=code=>Reseau.canal("dessin",code,{surMessage:onNet,bandeau:banner,surEssai:t=>$("netMsg").textContent=t});
 function pub(m){
   if(mode!=="online"||!client)return;
-  m.from=myId;
-  try{client.publish(topic,JSON.stringify(m));}catch(e){}
+  m.from=myId;client.envoyer(m);
 }
 function banner(t){$("banner").textContent=t;$("banner").classList.toggle("hidden",!t);}
 const DRAW_T=["pt","fill","shape","undo","clear"];
@@ -362,29 +339,17 @@ function onNet(m){
 $("btnCreate").onclick=async()=>{
   if(!needName())return;
   $("netMsg").textContent="Création de la salle…";
-  for(let i=0;i<BROKERS.length;i++){
-    try{
-      const c=await connectBroker(i);
-      const L="ABCDEFGHJKLMNPQRSTUVWXYZ";
-      const code=Array.from({length:4},()=>rnd(L)).join("")+(i+1);
-      mode="online";isHost=true;
-      openRoom(c,code);
-      hostInit([{id:myId,name:myName,av:myAv}]);
-      $("netMsg").textContent="";
-      return;
-    }catch(e){$("netMsg").textContent=`Serveur ${BROKERS[i].n} indisponible, essai suivant…`;}
-  }
-  $("netMsg").textContent="❌ Impossible de joindre un relais en ligne depuis ce réseau. Essaie le mode « un seul écran » ou un autre réseau.";
+  try{client=await canal();}catch(e){$("netMsg").textContent=e.message+" Essaie le mode « un seul écran » ou un autre réseau.";return;}
+  roomCode=client.code;mode="online";isHost=true;
+  hostInit([{id:myId,name:myName,av:myAv}]);
+  $("netMsg").textContent="";
 };
 $("btnJoin").onclick=async()=>{
   if(!needName())return;
-  const code=$("codeIn").value.trim().toUpperCase();
-  const bi=parseInt(code.slice(-1))-1;
-  if(code.length!==5||!BROKERS[bi]){$("netMsg").textContent="Code invalide (5 caractères, ex : KXRT1).";return;}
   $("netMsg").textContent="Connexion…";
   let c;
-  try{c=await connectBroker(bi);}catch(e){$("netMsg").textContent="❌ Relais "+BROKERS[bi].n+" injoignable depuis ce réseau.";return;}
-  mode="online";isHost=false;joined=false;openRoom(c,code);
+  try{c=await canal($("codeIn").value||"?");}catch(e){$("netMsg").textContent=e.message;return;}
+  client=c;roomCode=c.code;mode="online";isHost=false;joined=false;
   $("netMsg").textContent="Recherche de la salle…";
   let tries=0;
   const hello=()=>{
@@ -400,17 +365,7 @@ function needName(){
   store.set("dd_name",myName);return true;
 }
 $("btnTest").onclick=async()=>{
-  const out=$("netMsg");out.textContent="Test des relais…";
-  const res=[];
-  for(let i=0;i<BROKERS.length;i++){
-    try{
-      const c=await connectBroker(i);const tp=TOPIC+"test-"+uid();
-      const ok=await new Promise(r=>{const t=setTimeout(()=>r(false),5000);c.subscribe(tp,()=>c.publish(tp,"ping"));c.on("message",()=>{clearTimeout(t);r(true);});});
-      c.end(true);res.push(BROKERS[i].n+(ok?" ✅":" ⚠️"));
-    }catch(e){res.push(BROKERS[i].n+" ❌");}
-    out.textContent="Relais : "+res.join(" · ");
-  }
-  out.textContent+=res.some(r=>r.includes("✅"))?" — le jeu en ligne fonctionne sur ce réseau.":" — ce réseau bloque le jeu en ligne.";
+  $("netMsg").textContent="Test des relais…";$("netMsg").textContent=await Reseau.tester();
 };
 setInterval(()=>{
   if(mode!=="online"||isHost||!joined)return;

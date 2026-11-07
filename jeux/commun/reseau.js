@@ -25,6 +25,7 @@
      salle.quitter()
    Reseau.codeDansAdresse() → code présent dans ?salle=… (ou "")
    Reseau.tester()          → texte : quels relais marchent sur ce réseau
+   Reseau.canal(jeu, code, o) → canal brut (le jeu gère ses joueurs), voir plus bas
    Les messages dont t commence par « _ » sont réservés au module.
    ============================================================ */
 (function(){
@@ -204,7 +205,35 @@
     return "Relais : " + res.join(" · ") + (res.some(r => r.includes("✅")) ? " — le jeu en ligne fonctionne sur ce réseau." : " — ce réseau bloque le jeu en ligne.");
   }
 
+  /* Canal brut, pour les jeux qui gèrent eux-mêmes leurs joueurs (quiz, dessin, téléphone, blind test).
+     code vide → crée une salle (essaie les relais un par un) ; sinon rejoint ce code.
+     o : {surMessage(m), bandeau(texte), surEssai(texte), qos}
+     Renvoie {code, envoyer(m), end()} ; lève une erreur au texte prêt à afficher. */
+  async function canal(jeu, code, o){
+    o = o || {};
+    let c, i;
+    if(!code){
+      for(i = 0; i < BROKERS.length && !c; i++){
+        try{ c = await connecter(i); }
+        catch(e){ o.surEssai && o.surEssai(`Serveur ${BROKERS[i].n} indisponible, essai suivant…`); }
+      }
+      if(!c) throw new Error("❌ Impossible de joindre un relais en ligne depuis ce réseau.");
+      code = Array.from({length: 4}, () => LETTRES[Math.floor(Math.random() * LETTRES.length)]).join("") + i;
+      try{ if(window.Groupe) Groupe.salleCreee(code); }catch(e){}
+    }else{
+      code = String(code).trim().toUpperCase(); i = parseInt(code.slice(-1)) - 1;
+      if(code.length !== 5 || !BROKERS[i]) throw new Error("Code invalide (5 caractères, ex : KXRT1).");
+      try{ c = await connecter(i); }catch(e){ throw new Error("❌ Relais " + BROKERS[i].n + " injoignable depuis ce réseau."); }
+    }
+    const sujet = "salledejeux-" + jeu + "/v1/" + code, qos = {qos: o.qos || 0}, b = o.bandeau || bandeau;
+    c.subscribe(sujet, qos);
+    c.on("message", (tp, buf) => { if(tp !== sujet) return; let m; try{ m = JSON.parse(buf.toString()); }catch(e){ return; } o.surMessage && o.surMessage(m); });
+    c.on("offline", () => b("⚠️ Connexion perdue… reconnexion en cours"));
+    c.on("connect", () => { b(""); c.subscribe(sujet, qos); });
+    return {code, envoyer(m){ try{ c.publish(sujet, JSON.stringify(m), qos); }catch(e){} }, end(f){ try{ c.end(f); }catch(e){} }};
+  }
+
   const codeDansAdresse = () => (new URLSearchParams(location.search).get("salle") || "").toUpperCase();
 
-  window.Reseau = {creer, rejoindre, tester, codeDansAdresse, BROKERS};
+  window.Reseau = {creer, rejoindre, canal, tester, codeDansAdresse, BROKERS};
 })();
