@@ -9,14 +9,14 @@ En ligne : https://roidescrabesboubou.github.io/le-projet/ (GitHub Pages, mise �
 - HTML, CSS et JavaScript « vanilla » : pas de framework, pas de npm, pas d'étape de build.
 - Un jeu = un dossier `jeux/<slug>/`, avec parfois un fichier de données à côté (`mots.js`, `questions.js`…).
 - Git : `C:\Program Files\Git\cmd\git.exe` (Git pour Windows, identifiants GitHub enregistrés).
-- Quand `firebase-regles.json` change, rappelle-moi de recoller les règles dans la console Firebase (projet `salle-de-jeux`) et de cliquer sur **Publier** : ce n'est pas automatique.
+- Quand `firebase-regles.json` change, publie-le toi-même après le push : `firebase.cmd deploy --only database` (projet `salle-de-jeux-249d2`, déjà connecté, commande autorisée dans `.claude/settings.local.json`), puis dis-moi que c'est publié. Sous PowerShell, toujours `firebase.cmd` / `npm.cmd` (scripts .ps1 bloqués).
 
 ## Structure
 ```
 index.html          accueil : cartes, records, défis du jour, filtres
 admin/              panel admin : afficher/cacher, ordonner, badges, modération (moderation.js)
 reglages/           pseudo, avatar, clés IA, test réseau, sauvegarde
-firebase-regles.json  règles de sécurité Firebase (à publier à la main)
+firebase-regles.json  règles de sécurité Firebase (publiées par firebase.cmd deploy --only database)
 jeux/_modele/       squelette à copier pour chaque nouveau jeu
 jeux/commun/        code partagé
   base.css/base.js    style + en-tête 🏠 ❓ ⚙️, pseudo, records
