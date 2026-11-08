@@ -292,7 +292,9 @@ function jourParis(){
   const [y, m, d] = p.split("-").map(Number);
   return Math.floor((Date.UTC(y, m - 1, d) - START) / 864e5);
 }
-function idJoueur(){
+/* uid anonyme Firebase (voir compte.js), sinon l'ancien identifiant de l'appareil */
+function idJoueur(){ return Classement.uidConnu() || ancienId(); }
+function ancienId(){
   let id = ""; try{ id = JSON.parse(localStorage.getItem("salle_joueur_id")) || ""; }catch(e){}
   if(!/^[a-z0-9]{20}$/.test(id)){
     const a = new Uint8Array(20); crypto.getRandomValues(a);
@@ -1054,13 +1056,13 @@ async function envoyer(res, n, zone){
   }
   if(res.mode === "jour" && res.j != null){
     const corps = {n, lv:res.lv, s:Math.max(1, Math.min(res.s, 1e15)), k:res.k, d:{".sv":"timestamp"}};
-    const url = m => `${CLASSEMENT_URL}/cdf_jour/${res.j}/${m}/${idJoueur()}.json`;
+    const url = m => uid => `cdf_jour/${res.j}/${m}/${uid}`;
     if(res.premier){
-      try{ const r = await fetch(url("premier"), {method:"PUT", body:JSON.stringify(corps)}); if(r.ok) msgs.push("📅 Premier essai du jour enregistré."); }catch(e){}
+      try{ const r = await Classement.ecrireMoi(url("premier"), corps); if(r.ok) msgs.push("📅 Premier essai du jour enregistré."); }catch(e){}
     }
     const mb = stock.lire("jour_envoye_" + res.j, 0);
     if(res.k > mb){
-      try{ const r = await fetch(url("meilleur"), {method:"PUT", body:JSON.stringify(corps)}); if(r.ok){ stock.ecrire("jour_envoye_" + res.j, res.k); msgs.push("📅 Meilleur essai du jour mis à jour."); } }catch(e){}
+      try{ const r = await Classement.ecrireMoi(url("meilleur"), corps); if(r.ok){ stock.ecrire("jour_envoye_" + res.j, res.k); msgs.push("📅 Meilleur essai du jour mis à jour."); } }catch(e){}
     }
   }
   p.remove();
@@ -1090,7 +1092,7 @@ function fenetreClassements(onglet){
   const box = el("div");
   const tabs = el("div", null, "pilules"); tabs.style.marginBottom = "10px";
   const zone = el("div");
-  const j = jourParis(), id = idJoueur();
+  const j = jourParis(), id = idJoueur(), avant = ancienId();
   const T = [
     ["premier", "📅 1er essai"], ["meilleur", "📅 Meilleur essai"], ["semaine", "🗓️ Semaine"], ["web", "🌍 Journée"], ["plat", "🍽️ Gros plat"]
   ];
@@ -1103,7 +1105,7 @@ function fenetreClassements(onglet){
     const corps = el("div");
     try{
       if(!Classement.enLigne) throw new Error("hors ligne");
-      if(k === "premier" || k === "meilleur") liste(corps, await lireJour(j, k), valJour, e => e.id === id);
+      if(k === "premier" || k === "meilleur") liste(corps, await lireJour(j, k), valJour, e => e.id === id || e.id === avant);
       else if(k === "semaine"){
         const l = await Classement.topSemaine("coupdefeu", "k", false);
         liste(corps, l, valJour);

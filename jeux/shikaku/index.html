@@ -261,13 +261,12 @@ function noterTemps(tab,t){
 async function envoyerTemps(){
   const n=Base.joueur.pseudo(),att=store.lire("envois",{});
   if(!n)return;
-  const moi=Series.idJoueur();
   for(const tab of Object.keys(att)){
     try{
-      const r=await fetch(`${urlTableau(tab)}/${moi}.json`,{method:"PUT",body:JSON.stringify({n,t:att[tab],d:{".sv":"timestamp"}})});
+      const r=await Classement.ecrireMoi(uid=>`shikaku/${tab}/${uid}`,{n,t:att[tab],d:{".sv":"timestamp"}});
       let envoye=r.ok;
-      if(!envoye){ // refusé : c'est normal si un meilleur temps y est déjà, depuis un autre appareil
-        const l=await fetch(`${urlTableau(tab)}/${moi}.json`);
+      if(!envoye){ // refusé : c'est normal si un meilleur temps y est déjà
+        const l=await fetch(`${urlTableau(tab)}/${Classement.uidConnu()}.json`);
         const e=l.ok?await l.json():null;
         envoye=!!e&&e.t<=att[tab];
       }
@@ -281,14 +280,14 @@ async function afficherClassement(zone,tab){
   try{
     const r=await fetch(`${urlTableau(tab)}.json?orderBy=${encodeURIComponent('"t"')}&limitToFirst=20`);
     if(!r.ok)throw new Error("HTTP "+r.status);
-    const moi=Series.idJoueur();
+    const moi=Series.idJoueur(),avant=Series.ancienId();
     const l=Object.entries(await r.json()||{}).map(([id,e])=>({...e,id})).filter(e=>typeof e.t==="number"&&typeof e.n==="string")
       .sort((a,b)=>a.t-b.t||a.d-b.d);
     zone.innerHTML="";
     if(!l.length){zone.appendChild(Base.el("p","Personne encore : à toi de prendre la tête !","note"));return}
     const ol=Base.el("ol",null,"lb");
     l.forEach((e,i)=>{
-      const li=Base.el("li",null,e.id===moi?"moi":"");
+      const li=Base.el("li",null,e.id===moi||e.id===avant?"moi":"");
       li.append(Base.el("span",["🥇","🥈","🥉"][i]||i+1,"r"),Base.el("span",e.n,"n"),Base.el("span",formatTemps(e.t),"v"));
       ol.appendChild(li);
     });

@@ -504,7 +504,6 @@ function afficher(){
    eveil/<id joueur> = {n: pseudo, p: meilleur par seconde, t: total, r: rang, dr: date d'arrivée au rang}
    Seuls les meilleurs résultats comptent : effacer sa partie ne fait pas reculer. */
 const URL_CLASSEMENT = (typeof CLASSEMENT_URL === "string" ? CLASSEMENT_URL : "").trim().replace(/\/+$/, "");
-const urlJoueur = () => `${URL_CLASSEMENT}/eveil/${Series.idJoueur()}.json`;
 const requete = (url, o) => fetch(url, {...o, signal: AbortSignal.timeout(8000)});
 let envoiEnCours = false;
 
@@ -513,7 +512,10 @@ async function envoyerClassement(){
   if(!Series.enLigne || !n || envoiEnCours || J.totalTout < 1) return false;
   envoiEnCours = true;
   try{
-    const E = stock.lire("envoi", null) || {};
+    const moiJ = await Classement.joueur();
+    let E = stock.lire("envoi", null) || {};
+    if(E.uid !== moiJ.uid) E = {p: E.p, t: E.t, r: E.r};   // nouvelle entrée (identité anonyme) : la date de rang repart d'aujourd'hui
+    const urlJoueur = () => `${URL_CLASSEMENT}/eveil/${moiJ.uid}.json?auth=${encodeURIComponent(moiJ.jeton)}`;
     const r = Math.max(rangDe(J.totalTout), num(E.r));
     const p = Math.max(J.meilleureProd, num(E.p)), t = Math.max(J.totalTout, num(E.t));
     const nouveauRang = !E.dr || r > E.r;
@@ -521,13 +523,13 @@ async function envoyerClassement(){
     const rep = await requete(urlJoueur(), {method: "PUT", body: JSON.stringify(corps)});
     if(rep.ok){
       const v = await rep.json();
-      stock.ecrire("envoi", {p, t, r, dr: v.dr});
+      stock.ecrire("envoi", {p, t, r, dr: v.dr, uid: moiJ.uid});
       return true;
     }
     // Refusé : la base a peut-être reçu un envoi dont la réponse s'est perdue, on se recale dessus
     const lu = await requete(urlJoueur());
     const srv = lu.ok ? await lu.json() : null;
-    if(srv && typeof srv.dr === "number") stock.ecrire("envoi", {p: srv.p, t: srv.t, r: srv.r, dr: srv.dr});
+    if(srv && typeof srv.dr === "number") stock.ecrire("envoi", {p: srv.p, t: srv.t, r: srv.r, dr: srv.dr, uid: moiJ.uid});
     return false;
   }catch(e){
     return false;
@@ -575,9 +577,9 @@ function ouvrirClassement(){
       if(j !== jeton) return;
       liste.textContent = "";
       if(!l.length){ liste.appendChild(Base.el("p", "Personne n'est encore classé. À toi de prendre la tête !", "note")); return; }
-      const ol = Base.el("ol"), id = Series.idJoueur();
+      const ol = Base.el("ol"), id = Series.idJoueur(), avant = Series.ancienId();
       l.forEach((e, i) => {
-        const li = Base.el("li", null, e.id === id ? "moi" : "");
+        const li = Base.el("li", null, e.id === id || e.id === avant ? "moi" : "");
         li.append(Base.el("span", ["🥇", "🥈", "🥉"][i] || String(i + 1), "r"), Base.el("span", e.n, "n"), Base.el("span", CLASSEMENTS[onglet].valeur(e), "v"));
         ol.appendChild(li);
       });

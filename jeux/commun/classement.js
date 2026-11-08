@@ -59,6 +59,27 @@ const CLASSEMENT_URL = "https://salle-de-jeux-249d2-default-rtdb.europe-west1.fi
     return t;
   }
 
+  /* ---------- Identité du joueur (anonyme Firebase, voir compte.js) ---------- */
+  async function joueur(){
+    for(let i = 0; i < 80 && !(window.Compte && Compte.anonyme); i++) await new Promise(ok => setTimeout(ok, 100));
+    if(!(window.Compte && Compte.anonyme)) throw new Error("Identité indisponible");
+    return Compte.anonyme();
+  }
+  /* uid déjà connu sur cet appareil (sans attendre), pour surligner « moi » */
+  function uidConnu(){
+    try{ return (JSON.parse(localStorage.getItem("salle_anonyme")) || {}).uid || ""; }catch(e){ return ""; }
+  }
+  /* Écrit (PUT) sous l'uid du joueur : chemin(uid) → "series/wordle/<uid>" */
+  async function ecrireMoi(chemin, corps){
+    const j = await joueur();
+    return fetchT(`${BASE}/${chemin(j.uid)}.json?auth=${encodeURIComponent(j.jeton)}`, {method:"PUT", body:JSON.stringify(corps)});
+  }
+  /* n° de semaine (lundi → dimanche, heure de Paris), le même que les médailles */
+  function semaine(){
+    const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone:"Europe/Paris", year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date()).split("-").map(Number);
+    return Math.floor((Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(2026, 10, 1)) / 864e5) + 6) / 7);
+  }
+
   /* Top 10 mondial d'un jeu (asc = le plus petit gagne, ex. un temps) */
   async function top(cle, champ, asc){
     const q = `orderBy=${encodeURIComponent('"'+champ+'"')}&${asc ? "limitToFirst" : "limitToLast"}=10`;
@@ -66,17 +87,33 @@ const CLASSEMENT_URL = "https://salle-de-jeux-249d2-default-rtdb.europe-west1.fi
     if(!r.ok) throw new Error("HTTP " + r.status);
     return trier(propre(await r.json(), champ), champ, asc).slice(0, 10);
   }
-  /* Top 10 de la semaine : tous les scores envoyés depuis lundi, triés ici */
+  /* Top 10 de la semaine : meilleur score de chaque joueur cette semaine
+     (scores_semaine/<jeu>/<uid>, avec w = n° de semaine), plus les anciens
+     scores envoyés depuis lundi (scores/<jeu>, triés par date). */
   async function topSemaine(cle, champ, asc){
-    const q = `orderBy=${encodeURIComponent('"d"')}&startAt=${debutSemaine()}&limitToLast=1000`;
-    const r = await fetchT(`${BASE}/scores/${cle}.json?${q}`);
-    if(!r.ok) throw new Error("HTTP " + r.status);
-    return trier(propre(await r.json(), champ), champ, asc).slice(0, 10);
+    const q1 = `orderBy=${encodeURIComponent('"w"')}&equalTo=${semaine()}`;
+    const q2 = `orderBy=${encodeURIComponent('"d"')}&startAt=${debutSemaine()}&limitToLast=300`;
+    const [a, b] = await Promise.allSettled([fetchT(`${BASE}/scores_semaine/${cle}.json?${q1}`), fetchT(`${BASE}/scores/${cle}.json?${q2}`)]);
+    const ok = x => x.status === "fulfilled" && x.value.ok;
+    if(!ok(a) && !ok(b)) throw new Error("Classement de la semaine indisponible");
+    const l = [...(ok(a) ? propre(await a.value.json(), champ) : []), ...(ok(b) ? propre(await b.value.json(), champ) : [])];
+    const parId = {};
+    l.forEach(e => { if(!parId[e.id] || meilleur(e, parId[e.id], champ, asc)) parId[e.id] = e; });
+    return trier(Object.values(parId), champ, asc).slice(0, 10);
   }
+  /* Enregistre le score du joueur : son record de tous les temps (scores/<jeu>/<uid>)
+     et son record de la semaine (scores_semaine/<jeu>/<uid>). Les règles refusent
+     un score moins bon que celui déjà enregistré : ce n'est pas une erreur. */
   async function ajouter(cle, entree){
-    const r = await fetchT(`${BASE}/scores/${cle}.json`, {method:"POST", body:JSON.stringify({...entree, d:{".sv":"timestamp"}})});
-    if(!r.ok) throw new Error("HTTP " + r.status);
-    return (await r.json()).name;
+    const corps = {...entree, d:{".sv":"timestamp"}};
+    const j = await joueur();
+    const [a, b] = await Promise.allSettled([
+      ecrireMoi(uid => `scores/${cle}/${uid}`, corps),
+      ecrireMoi(uid => `scores_semaine/${cle}/${uid}`, {...corps, w: semaine()})
+    ]);
+    const reseau = x => x.status === "rejected" || (!x.value.ok && x.value.status !== 401 && x.value.status !== 403);
+    if(reseau(a) && reseau(b)) throw new Error("Envoi impossible");
+    return j.uid;
   }
   const qualifie = (l, champ, asc, v) => l.length < 10 || meilleur({[champ]:v}, l[l.length-1], champ, asc);
 
@@ -212,5 +249,5 @@ const CLASSEMENT_URL = "https://salle-de-jeux-249d2-default-rtdb.europe-west1.fi
     setTimeout(() => inp.focus(), 50);
   }
 
-  window.Classement = { enLigne, top, topSemaine, debutSemaine, ajouter, qualifie, tableau, finDePartie };
+  window.Classement = { enLigne, top, topSemaine, debutSemaine, ajouter, qualifie, tableau, finDePartie, joueur, uidConnu, ecrireMoi, semaine };
 })();

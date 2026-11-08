@@ -40,8 +40,13 @@
   const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
   const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt != null) e.textContent = txt; if(cls) e.className = cls; return e; };
 
-  /* Identifiant anonyme et stable de ce joueur (sur cet appareil) */
+  /* Identifiant du joueur sur cet appareil : son uid anonyme Firebase
+     (voir compte.js) s'il est déjà connu, sinon l'ancien identifiant local */
   function idJoueur(){
+    const u = window.Classement && Classement.uidConnu && Classement.uidConnu();
+    return u || ancienId();
+  }
+  function ancienId(){
     let id = lire("salle_joueur_id", "");
     if(!/^[a-z0-9]{20}$/.test(id)){
       const a = new Uint8Array(20); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => a[i] = Math.random() * 256);
@@ -72,7 +77,7 @@
     const st = Math.max(0, Math.min(s.streak || 0, jour + 1));
     const corps = { n, s: st, b: Math.max(st, Math.min(s.best || 0, jour + 1)), j: jour, d: {".sv":"timestamp"} };
     try{
-      const r = await fetchT(`${URL_BASE}/series/${jeu}/${idJoueur()}.json`, {method:"PUT", body:JSON.stringify(corps)});
+      const r = await Classement.ecrireMoi(uid => `series/${jeu}/${uid}`, corps);
       return r.ok;
     }catch(e){ return false; }
   }
@@ -119,9 +124,9 @@
         l = l.slice(0, 10);
         liste.innerHTML = "";
         if(!l.length){ liste.appendChild(el("p", onglet === "s" ? "Aucune série en cours pour l'instant. Sois le premier !" : "Aucun record pour l'instant.", "note")); return; }
-        const ol = el("ol"), me = idJoueur();
+        const ol = el("ol"), me = idJoueur(), avant = ancienId();
         l.forEach((e, i) => {
-          const li = el("li", null, e.id === me ? "moi" : "");
+          const li = el("li", null, e.id === me || e.id === avant ? "moi" : "");
           const v = onglet === "s" ? e.s : e.b;
           li.append(el("span", ["🥇","🥈","🥉"][i] || String(i + 1), "r"), el("span", e.n, "n"), el("span", `🔥 ${v} j`, "v"));
           ol.appendChild(li);
@@ -170,9 +175,7 @@
     const t = t0 ? Math.max(0, Math.min(86400, Math.round((Date.now() - t0) / 1000))) : null;
     try{
       const corps = {j:jour, e:Math.max(0, Math.min(500, e|0)), g:!!g, d:{".sv":"timestamp"}};
-      const url = `${URL_BASE}/resultats/${jeu}/${idJoueur()}.json`;
-      let r = await fetchT(url, {method:"PUT", body:JSON.stringify(t != null ? {...corps, t} : corps)});
-      if(!r.ok && t != null) r = await fetchT(url, {method:"PUT", body:JSON.stringify(corps)});   // anciennes règles sans « t »
+      const r = await Classement.ecrireMoi(uid => `resultats/${jeu}/${uid}`, t != null ? {...corps, t} : corps);
       if(r.ok || r.status === 401) ecrire(cle, jour); // 401 = déjà envoyé aujourd'hui
     }catch(err){}
   }
@@ -221,5 +224,5 @@
 .aj-grid small{color:var(--muted);font-size:.72rem}`;
   document.head.appendChild(css2);
 
-  window.Series = { enLigne, envoyer, panneau, courante, idJoueur, aujourdhui };
+  window.Series = { enLigne, envoyer, panneau, courante, idJoueur, ancienId, aujourdhui };
 })();

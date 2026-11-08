@@ -247,19 +247,25 @@
         const banni = idBan ? (idBan === "uid" ? ban[x.id] : banId[x.id]) : false;
         [`${i + 1}. ${x.n || "?"}${banni ? " ⛔" : ""}`, fmt(x[ch], u) + (pb.length ? " ⚠️ " + pb.join(", ") : ""), heure(x.d)].forEach(v => tr.appendChild(el("td", v)));
         const td = el("td"); td.style.whiteSpace = "nowrap";
-        td.appendChild(bouton("🗑️", "ghost", async b => { await db(`${chemin}/${x.id}`, {method: "DELETE"}); b.closest("tr").remove(); toast("Score supprimé"); }, `Supprimer le score de ${x.n || "?"} ?`));
+        td.appendChild(bouton("🗑️", "ghost", async b => { await db(`${chemin}/${x.id}`, {method: "DELETE"}); if(chemin.startsWith("scores/")) await db(`scores_semaine/${chemin.slice(7)}/${x.id}`, {method: "DELETE"}).catch(() => {}); b.closest("tr").remove(); toast("Score supprimé"); }, `Supprimer le score de ${x.n || "?"} ?`));
         if(idBan) td.appendChild(boutonBan(idBan === "uid" ? "bannis" : "bannis_id", x.id, x.n || "?", !!banni, () => records(zone)));
         tr.appendChild(td); tb.appendChild(tr);
       });
       box.appendChild(t); zone.appendChild(box);
     };
     const liste = o => Object.entries(o || {}).map(([id, v]) => ({id, ...v}));
-    SCORES.forEach(([jeu, ch, u], i) => bloc(`${titre(jeu.replace(/_.*$/, ""))}${jeu.includes("_") ? " · " + jeu.split("_")[1] : ""}`, liste(par[i]).filter(x => typeof x[ch] === "number"), ch, u, `scores/${jeu}`, null));
+    SCORES.forEach(([jeu, ch, u], i) => bloc(`${titre(jeu.replace(/_.*$/, ""))}${jeu.includes("_") ? " · " + jeu.split("_")[1] : ""}`, liste(par[i]).filter(x => typeof x[ch] === "number"), ch, u, `scores/${jeu}`, "id"));
     const k = SCORES.length;
     bloc(`${titre("coupdefeu")} · partie du jour (1er essai)`, liste(par[k]), "k", "k", `cdf_jour/${jourAuj()}/premier`, "id");
     bloc(`${titre("coupdefeu")} · partie du jour (meilleur essai)`, liste(par[k + 1]), "k", "k", `cdf_jour/${jourAuj()}/meilleur`, "id");
     bloc(`${titre("blackjack")} · jetons`, liste(par[k + 2]), "s", "pts", "blackjack", "uid");
     bloc(`${titre("roulette")} · jetons`, liste(par[k + 3]), "s", "pts", "roulette", "uid");
+    /* Top de la semaine (scores_semaine/<jeu>/<uid>, w = n° de semaine comme les médailles) */
+    const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date()).split("-").map(Number);
+    const w = Math.floor((Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(2026, 10, 1)) / 864e5) + 6) / 7);
+    const sem = await Promise.all(SCORES.map(([jeu]) => db(`scores_semaine/${jeu}`, {auth: false, query: `orderBy=${encodeURIComponent('"w"')}&equalTo=${w}`}).catch(() => null)));
+    SCORES.forEach(([jeu, ch, u], i) => bloc(`📅 Semaine · ${titre(jeu.replace(/_.*$/, ""))}${jeu.includes("_") ? " · " + jeu.split("_")[1] : ""}`,
+      liste(sem[i]).filter(x => typeof x[ch] === "number").sort((a, b) => u === "ms" ? a[ch] - b[ch] : b[ch] - a[ch]).slice(0, 15), ch, u, `scores_semaine/${jeu}`, "id"));
     if(!zone.querySelector(".mo-l")) zone.appendChild(el("p", "Aucun score pour l'instant.", "mo-mut"));
   }
 

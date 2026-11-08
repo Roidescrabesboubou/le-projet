@@ -172,6 +172,40 @@ const FIREBASE = {
 
   function deconnecter(){ session = null; ecrire(null); notifier(); }
 
+  /* ---------- Joueur anonyme (sans compte) ----------
+     Chaque appareil reçoit une identité Firebase anonyme : les classements
+     publics (séries, résultats du jour, scores, Éveil, Shikaku, Coup de Feu)
+     sont rangés sous son uid, et les règles n'autorisent que lui à modifier
+     son entrée. Nécessite le fournisseur « Anonyme » dans Authentication. */
+  const AKEY = "salle_anonyme";
+  let anon = (() => { try{ return JSON.parse(localStorage.getItem(AKEY)) || null; }catch(e){ return null; } })();
+  let anonEnCours = null;
+  const ecrireAnon = a => { anon = a; try{ a ? localStorage.setItem(AKEY, JSON.stringify(a)) : localStorage.removeItem(AKEY); }catch(e){} };
+  async function anonyme(){
+    if(anonEnCours) return anonEnCours;
+    anonEnCours = (async () => {
+      if(anon && anon.exp - Date.now() > 60000) return {uid: anon.uid, jeton: anon.id};
+      if(anon && anon.refresh){
+        const r = await fetchT(`https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(KEY)}`, {
+          method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(anon.refresh)
+        });
+        const j = await r.json().catch(() => ({}));
+        if(r.ok){
+          ecrireAnon({uid: j.user_id || anon.uid, id: j.id_token, refresh: j.refresh_token, exp: Date.now() + (parseInt(j.expires_in) || 3600) * 1000});
+          return {uid: anon.uid, jeton: anon.id};
+        }
+        if(!/TOKEN|USER_NOT_FOUND|USER_DISABLED/.test((j.error && j.error.message) || "")) throw erreur(j.error && j.error.message);
+        ecrireAnon(null);   // identité perdue (supprimée côté Firebase) : on en recrée une
+      }
+      const j = await auth("signUp", {returnSecureToken: true});
+      ecrireAnon({uid: j.localId, id: j.idToken, refresh: j.refreshToken, exp: Date.now() + (parseInt(j.expiresIn) || 3600) * 1000});
+      return {uid: anon.uid, jeton: anon.id};
+    })().finally(() => { anonEnCours = null; });
+    return anonEnCours;
+  }
+  const uidAnonyme = () => (anon && anon.uid) || "";
+
 
   /* Réglages du site (jeux cachés, badges, annonce) : lecture publique */
   let cacheReglages = null;
@@ -329,7 +363,7 @@ const FIREBASE = {
   window.Compte = {
     pret: !!KEY, DB, RACINE,
     session: () => session,
-    jeton, db, actualiser, inscrire, connecter, deconnecter,
+    jeton, db, actualiser, inscrire, connecter, deconnecter, anonyme, uidAnonyme,
     reglages, etatDe, trier, cleDePseudo, bouton, ouvrir,
     surChangement: f => { ecouteurs.push(f); }
   };

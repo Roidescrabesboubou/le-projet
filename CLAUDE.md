@@ -39,6 +39,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Choix techniques
 - **Firebase** (projet `salle-de-jeux`) : comptes, classements (top semaine remis à zéro le lundi 0 h, heure de Paris, et tous les temps), séries, médailles, groupes, jetons, état des jeux réglé dans l'admin.
+- **Joueurs sans compte** : identité Firebase anonyme (`Compte.anonyme()`, fournisseur « Anonyme » activé dans Authentication). Séries, résultats du jour, scores, Éveil, Shikaku, Coup de Feu sont rangés sous cet uid (`Classement.ecrireMoi`) : personne ne peut modifier l'entrée d'un autre. `scores/<jeu>/<uid>` = record de tous les temps, `scores_semaine/<jeu>/<uid>` = record de la semaine (champ `w`).
 - **IA** : appels directs depuis le navigateur, la clé reste dans le navigateur. Gemini en principal, Claude Haiku 5.5 en secours automatique. Les jeux `ia: true` sont réservés aux comptes autorisés (sauf invités venus par un lien de salle).
 - **En ligne** : pas de serveur à moi. Salles avec code/lien via un relais public ; c'est l'hôte qui fait tourner la partie.
 - **Sources externes** : Deezer (extraits 30 s) et AnimeThemes (openings). Spotify écarté (plus d'extraits depuis fin 2024). ZoneSons écarté tant qu'ils n'ont pas donné leur accord.
