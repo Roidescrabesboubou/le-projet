@@ -43,6 +43,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 - **Joueurs sans compte** : identité Firebase anonyme (`Compte.anonyme()`, fournisseur « Anonyme » activé dans Authentication). Séries, résultats du jour, scores, Éveil, Shikaku, Coup de Feu sont rangés sous cet uid (`Classement.ecrireMoi`) : personne ne peut modifier l'entrée d'un autre. `scores/<jeu>/<uid>` = record de tous les temps, `scores_semaine/<jeu>/<uid>` = record de la semaine (champ `w`).
 - **IA** : appels directs depuis le navigateur, la clé reste dans le navigateur. Gemini en principal, Claude Haiku 5.5 en secours automatique. Les jeux `ia: true` sont réservés aux comptes autorisés (sauf invités venus par un lien de salle).
 - **En ligne** : pas de serveur à moi. Salles avec code/lien via un relais public ; c'est l'hôte qui fait tourner la partie.
+  L'Arène Éclair essaie en plus une connexion directe WebRTC (invité ↔ hôte, l'hôte fait suivre) : le relais ne sert qu'à se trouver, et reste en secours si le direct échoue. Indicateur « ⚡ Direct / 🌐 Relais ». À étendre à `reseau.js` si ça marche bien.
 - **Sources externes** : Deezer (extraits 30 s) et AnimeThemes (openings). Spotify écarté (plus d'extraits depuis fin 2024). ZoneSons écarté tant qu'ils n'ont pas donné leur accord.
 - **Casino** : 1 000 jetons au premier passage ; sous 50 jetons, 500 offerts le lendemain ; aucun autre moyen d'en gagner.
 
@@ -63,6 +64,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Reste à faire
 Tests réels à faire (seulement testé avec un relais simulé) :
+- Arène Éclair en ligne sur deux appareils (connexion directe WebRTC, dont un en 4G).
 - Partie en ligne sur deux appareils : Bataille Laser, L'Imposteur, Devine ta Catégorie, Bataille navale, Freestyle (calage du son entre téléphones).
 - Extraits Deezer dans le Quiz.
 - Ressenti souris de l'Arène Éclair.

@@ -61,6 +61,9 @@ kbd{background:var(--soft);border:1px solid var(--line);border-radius:6px;paddin
 #armes span.on{border-color:var(--accent);background:rgba(255,138,31,.28)}
 #score{left:50%;top:12px;transform:translateX(-50%);background:rgba(10,8,20,.55);border-radius:999px;padding:6px 16px;font-weight:800;white-space:nowrap;font-size:.95rem}
 #flux{right:14px;top:12px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:.88rem;font-weight:700}
+#net{left:14px;top:12px;background:rgba(10,8,20,.55);border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:800;opacity:.85}
+#net:empty{display:none}
+body.tactile #net{top:auto;bottom:10px;left:50%;transform:translateX(-50%)}
 #flux div{background:rgba(10,8,20,.6);border-radius:8px;padding:3px 9px;animation:apparait .2s}
 #flux div.moi{border:1px solid var(--accent)}
 @keyframes apparait{from{transform:translateX(20px);opacity:0}}
@@ -148,6 +151,7 @@ body.en-jeu .gr-btn,body.en-jeu .gr-panneau{display:none!important}
     <p class="code" id="code"></p>
     <button class="btn ghost petit" id="copier">🔗 Copier le lien d'invitation</button>
     <ul class="liste" id="listeJ" style="justify-content:center"></ul>
+    <p class="muted" id="netSalle" style="margin:0;font-size:.85rem"></p>
     <div id="optsHote">
       <span class="etiq">Objectif</span><div class="pilules" data-opt="obj"></div>
       <span class="etiq">Bots en renfort</span><div class="pilules" data-opt="botsL"></div>
@@ -186,6 +190,7 @@ body.en-jeu .gr-btn,body.en-jeu .gr-panneau{display:none!important}
   <div class="hud" id="bouclier"></div>
   <div class="hud" id="score"></div>
   <div class="hud" id="flux"></div>
+  <div class="hud" id="net"></div>
   <div class="hud" id="annonce"></div>
   <div class="hud" id="mortTxt"></div>
   <div class="hud" id="dashI"></div>
@@ -1282,7 +1287,145 @@ function envoyerPaquet(){
   if(sortie.h.length) m.h = sortie.h.splice(0);
   if(sortie.k.length) m.k = sortie.k.splice(0);
   if(estHote && (scV !== scEnvoye || Tg - dernierSc > 2)){ m.sc = sc; scEnvoye = scV; dernierSc = Tg; }
-  salle.envoyer(m);
+  m.src = monId; m.q = ++seqEnvoi;
+  if(diffuser(m)) salle.envoyer(m);     // relais MQTT seulement si quelqu'un n'est pas en direct
+}
+
+/* ================================================================
+   CONNEXION DIRECTE (WebRTC)
+   Le relais MQTT sert à se trouver (échange des adresses), puis les paquets de jeu
+   passent en direct entre chaque invité et l'hôte, qui fait suivre aux autres.
+   Deux canaux : « rapide » (positions, un paquet perdu n'est pas renvoyé)
+   et « sur » (tirs, touches, frags, scores). Si le direct ne marche pas, on reste sur le relais.
+   ================================================================ */
+const ICE = [{urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}, {urls: "stun:stun.cloudflare.com:3478"}];
+const pairs = new Map();            // id du joueur distant → {pc, rapide, sur, ouvert}
+let seqEnvoi = 0, rtcEssais = 0;
+const vusSeq = new Map();
+function rtcOuvert(id){ const p = pairs.get(id); return !!(p && p.ouvert); }
+function fermerPair(id, sansRetry){
+  const p = pairs.get(id); if(!p) return;
+  pairs.delete(id); try{ p.pc.close(); }catch(e){}
+  majReseauUI();
+  // un invité retente deux fois si la connexion directe tombe
+  if(!sansRetry && !estHote && salle && !salle.ferme && rtcEssais < 3) setTimeout(() => { if(salle && !salle.ferme && !pairs.size) rtcAppeler(); }, 4000);
+}
+function fermerPairs(){ for(const id of [...pairs.keys()]) fermerPair(id, true); rtcEssais = 0; vusSeq.clear(); }
+function attendreIce(pc){
+  return new Promise(ok => {
+    if(pc.iceGatheringState === "complete") return ok();
+    const t = setTimeout(ok, 2500);
+    pc.addEventListener("icegatheringstatechange", () => { if(pc.iceGatheringState === "complete"){ clearTimeout(t); ok(); } });
+  });
+}
+function creerPair(id, initiateur){
+  fermerPair(id, true);
+  const pc = new RTCPeerConnection({iceServers: ICE});
+  const p = {pc, rapide: null, sur: null, ouvert: false};
+  pairs.set(id, p);
+  const etat = () => { p.ouvert = !!(p.rapide && p.sur && p.rapide.readyState === "open" && p.sur.readyState === "open"); majReseauUI(); };
+  const brancher = dc => {
+    if(dc.label === "rapide") p.rapide = dc; else p.sur = dc;
+    dc.onopen = etat;
+    dc.onclose = () => { if(pairs.get(id) === p) fermerPair(id); };
+    dc.onmessage = ev => { let m; try{ m = JSON.parse(ev.data); }catch(e){ return; } try{ recuDirect(m, id); }catch(e){ console.warn("Paquet direct ignoré", e); } };
+    if(dc.readyState === "open") etat();
+  };
+  if(initiateur){ brancher(pc.createDataChannel("rapide", {ordered: false, maxRetransmits: 0})); brancher(pc.createDataChannel("sur")); }
+  else pc.ondatachannel = ev => brancher(ev.channel);
+  pc.onconnectionstatechange = () => { if(["failed", "closed"].includes(pc.connectionState) && pairs.get(id) === p) fermerPair(id); };
+  return p;
+}
+async function rtcAppeler(){            // invité → hôte
+  const h = salle && salle.joueurs[0];
+  if(!window.RTCPeerConnection || !h || estHote) return;
+  rtcEssais++;
+  const p = creerPair(h.id, true);
+  try{
+    await p.pc.setLocalDescription(await p.pc.createOffer());
+    await attendreIce(p.pc);
+    if(salle && pairs.get(h.id) === p) salle.envoyer({t: "rtc", a: h.id, ty: "offre", sdp: p.pc.localDescription.sdp});
+  }catch(e){ fermerPair(h.id); }
+}
+async function rtcSignal(m, de){
+  if(!window.RTCPeerConnection || !salle || m.a !== salle.moi || typeof m.sdp !== "string") return;
+  try{
+    if(m.ty === "offre" && estHote){
+      const p = creerPair(de, false);
+      await p.pc.setRemoteDescription({type: "offer", sdp: m.sdp});
+      await p.pc.setLocalDescription(await p.pc.createAnswer());
+      await attendreIce(p.pc);
+      if(salle && pairs.get(de) === p) salle.envoyer({t: "rtc", a: de, ty: "reponse", sdp: p.pc.localDescription.sdp});
+    }else if(m.ty === "reponse" && !estHote){
+      const p = pairs.get(de);
+      if(p && p.pc.signalingState === "have-local-offer") await p.pc.setRemoteDescription({type: "answer", sdp: m.sdp});
+    }
+  }catch(e){ fermerPair(de); }
+}
+function envoiDirect(p, m, txt){
+  const dc = m.s || m.h || m.k || m.sc ? p.sur : p.rapide;
+  if(!dc || dc.readyState !== "open") return false;
+  if(dc === p.rapide && dc.bufferedAmount > 64000) return true;    // ligne saturée : on saute cette position, la suivante arrive
+  try{ dc.send(txt); return true; }catch(e){ return false; }
+}
+// envoie un paquet en direct ; renvoie true s'il faut aussi le publier sur le relais
+function diffuser(m, sauf){
+  if(!salle) return false;
+  const txt = JSON.stringify(m);
+  let relais = false;
+  if(estHote){
+    for(const j of salle.joueurs.slice(1)){
+      if(j.id === sauf || j.id === m.src) continue;
+      const p = pairs.get(j.id);
+      if(!(p && p.ouvert && envoiDirect(p, m, txt))) relais = true;
+    }
+  }else{
+    const h = salle.joueurs[0], p = h && pairs.get(h.id);
+    if(!(p && p.ouvert && envoiDirect(p, m, txt))) relais = true;
+  }
+  return relais;
+}
+// un même paquet ne doit jamais être traité deux fois (sinon une touche compterait double)
+function dejaVu(m){
+  if(typeof m.q !== "number" || !m.src) return false;
+  let s = vusSeq.get(m.src); if(!s) vusSeq.set(m.src, s = new Set());
+  if(s.has(m.q)) return true;
+  s.add(m.q);
+  if(s.size > 400) for(const q of s){ if(q < m.q - 200) s.delete(q); }
+  return false;
+}
+function recuDirect(m, id){
+  if(!m || m.t !== "p") return;
+  if(estHote){
+    m.src = id; if(dejaVu(m)) return;
+    surPaquet(m, id);
+    if(diffuser(m, id)) salle.envoyer(m);      // fait suivre aux autres invités (relais pour ceux qui ne sont pas en direct)
+  }else{
+    const src = m.src || id; if(src === monId || dejaVu(m)) return;
+    surPaquet(m, src);
+  }
+}
+function recuRelais(m, de){            // paquet de jeu arrivé par le relais MQTT
+  if(estHote){
+    m.src = de; if(dejaVu(m)) return;
+    surPaquet(m, de);
+    diffuser(m, de);                           // aux invités en direct (ceux du relais l'ont déjà reçu)
+  }else{
+    const h = salle && salle.joueurs[0];
+    if(h && rtcOuvert(h.id)) return;           // en direct, tout arrive par l'hôte
+    const src = m.src || de; m.src = src; if(src === monId || dejaVu(m)) return;
+    surPaquet(m, src);
+  }
+}
+let netTxt = "";
+function majReseauUI(){
+  let t = "";
+  if(salle){
+    if(estHote){ const inv = salle.joueurs.slice(1); if(inv.length){ const n = inv.filter(j => rtcOuvert(j.id)).length; t = n === inv.length ? "⚡ Tous en direct" : `⚡ ${n}/${inv.length} en direct · 🌐 relais`; } }
+    else{ const h = salle.joueurs[0]; t = h && rtcOuvert(h.id) ? "⚡ Direct" : "🌐 Relais"; }
+  }
+  if(t !== netTxt){ netTxt = t; $("net").textContent = t; }
+  majSalle();
 }
 /* Horloge de chaque expéditeur : on range ses positions selon l'heure où il les a envoyées
    (et pas l'heure d'arrivée, qui varie avec le relais), puis on les rejoue avec un petit retard
@@ -1422,7 +1565,9 @@ function quitterPartie(){
   $("jeu").classList.add("cache"); $("accueil").classList.remove("cache");
   document.body.classList.remove("en-jeu");
   $("pause").classList.add("cache"); $("fin").classList.add("cache");
+  fermerPairs();
   if(salle){ salle.quitter(); salle = null; }
+  majReseauUI();
   stock.ecrire("stats", STATS); majStats();
   ecran("menu");
 }
@@ -1619,7 +1764,13 @@ function majSalle(){
   if(!salle) return;
   $("code").textContent = salle.code;
   const l = $("listeJ"); l.innerHTML = "";
-  for(const j of salle.joueurs){ const li = document.createElement("li"); li.textContent = (j.avatar || "😀") + " " + j.pseudo + (j.id === salle.moi ? " (toi)" : ""); l.appendChild(li); }
+  const hoteId = salle.joueurs[0] && salle.joueurs[0].id;
+  for(const j of salle.joueurs){
+    const direct = estHote ? j.id !== salle.moi && rtcOuvert(j.id) : j.id === hoteId && rtcOuvert(j.id);
+    const li = document.createElement("li"); li.textContent = (j.avatar || "😀") + " " + j.pseudo + (j.id === salle.moi ? " (toi)" : "") + (direct ? " ⚡" : "");
+    if(direct) li.title = "Connecté en direct"; l.appendChild(li);
+  }
+  $("netSalle").textContent = netTxt ? netTxt + " (⚡ = connexion directe)" : "";
   $("optsHote").classList.toggle("cache", !estHote);
   $("optsInvite").classList.toggle("cache", estHote);
 }
@@ -1644,7 +1795,7 @@ $("creer").onclick = async () => {
       max: 8,
       surEssai: t => $("msgLigne").textContent = t,
       surArrivee(j){
-        majSalle();
+        majReseauUI();
         if(enJeu){
           const ci = Math.max(-1, ...[...roster.values()].map(r => r.ci)) + 1;
           roster.set(j.id, {nom: j.pseudo, ci, bot: false});
@@ -1655,7 +1806,7 @@ $("creer").onclick = async () => {
         }else{ envoyerOpts(); Base.toast(j.avatar + " " + j.pseudo + " a rejoint la salle"); }
       },
       surDepart(j){
-        majSalle();
+        fermerPair(j.id, true); majReseauUI();
         if(enJeu && roster.has(j.id)){
           roster.delete(j.id); delete sc[j.id]; scV++;
           appliquerRoster([...roster].map(([id, r]) => [id, r.nom, r.ci, r.bot ? 1 : 0]));
@@ -1664,7 +1815,8 @@ $("creer").onclick = async () => {
         Base.toast(j.pseudo + " a quitté la salle.");
       },
       surMessage(m, j){
-        if(m.t === "p") surPaquet(m, j.id);
+        if(m.t === "p") recuRelais(m, j.id);
+        else if(m.t === "rtc") rtcSignal(m, j.id);
         else if(m.t === "etat?"){ if(enJeu) salle.envoyer(cfgPartie(false)); else envoyerOpts(); }
       }
     });
@@ -1689,7 +1841,8 @@ async function rejoindre(code){
   try{
     salle = await Reseau.rejoindre("arene", code, {
       surMessage(m){
-        if(m.t === "p") surPaquet(m, m.de);
+        if(m.t === "p") recuRelais(m, m.de);
+        else if(m.t === "rtc"){ const hote = salle.joueurs[0]; if(hote && m.de === hote.id) rtcSignal(m, m.de); }
         else if(m.t === "go"){
           const hote = salle.joueurs[0]; if(hote && m.de !== hote.id) return;
           if(m.n === partie && enJeu){ appliquerRoster(m.r); if(m.sc) sc = m.sc; majScore(); }
@@ -1698,16 +1851,17 @@ async function rejoindre(code){
         else if(m.t === "fin"){ if(m.n === partie) terminer(m); }
         else if(m.t === "opts"){ optsRecues = m; afficherOptsInvite(); }
       },
-      surListe(){ majSalle(); },
+      surListe(){ majReseauUI(); if(!estHote && !pairs.size && !rtcEssais) rtcAppeler(); },
       surHotePerdu(){ Base.toast("⚠️ L'hôte ne répond plus…"); },
-      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; if(enJeu) quitterPartie(); else ecran("pLigne"); }
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); fermerPairs(); salle = null; majReseauUI(); if(enJeu) quitterPartie(); else ecran("pLigne"); }
     });
     estHote = false; monId = salle.moi; $("msgLigne").textContent = "";
-    afficherOptsInvite(); majSalle(); ecran("pSalle");
+    afficherOptsInvite(); majReseauUI(); ecran("pSalle");
     salle.envoyer({t: "etat?"});
+    if(salle.joueurs.length && !pairs.size && !rtcEssais) rtcAppeler();
   }catch(e){ salle = null; $("msgLigne").textContent = "❌ " + e.message; }
 }
-$("quitterSalle").onclick = () => { if(salle){ salle.quitter(); salle = null; } ecran("pLigne"); };
+$("quitterSalle").onclick = () => { fermerPairs(); if(salle){ salle.quitter(); salle = null; } majReseauUI(); ecran("pLigne"); };
 $("copier").onclick = async () => {
   try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à tes amis 📨"); }
   catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
