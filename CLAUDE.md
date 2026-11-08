@@ -49,7 +49,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 ## Les jeux (slug → nom)
 - IA : `quintuplees` Les Quintuplées (v12.4), `jdr` Table de Légendes (jusqu'à 8 joueurs, MJ IA ou joueur)
 - Défis du jour (séries, pastille « x / 12 ») : `wordle` Mot du jour, `loldle`, `anidle`, `onepiecedle`, `pokedle`, `electrodle` Électrodle (appareils de la maison), `paysdle`, `connexions`, `motscroises`, `motsfleches`, `sudoku`, `shikaku`
-- Party / en ligne : `dessin`, `telephone`, `quiz` (Culture G, manches spéciales), `blindtest`, `imposteur`, `categorie`, `encheres`
+- Party / en ligne : `dessin`, `telephone`, `quiz` (Culture G, manches spéciales), `blindtest`, `imposteur`, `categorie`, `encheres`, `freestyle` (prod de rap synthétisée, boule sur 4 temps, rimes ; salle en ligne synchronisée sur l'horloge de l'hôte, lignes à se répartir)
 - Duels / plateau : `puissance4`, `bataille` (navale), `laser` (Bataille Laser), `mainmise` (façon Monopoly)
 - Casino : `poker`, `blackjack`, `roulette`
 - Solo / gestion / action : `arene` (Arène Éclair, FPS), `manufacture`, `rocade`, `defense` (Défense du Château), `coupdefeu` (Coup de Feu), `eveil`, `blocs`, `labyrinthe` (Souris gourmande), `demineur`
@@ -63,9 +63,10 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Reste à faire
 Tests réels à faire (seulement testé avec un relais simulé) :
-- Partie en ligne sur deux appareils : Bataille Laser, L'Imposteur, Devine ta Catégorie, Bataille navale.
+- Partie en ligne sur deux appareils : Bataille Laser, L'Imposteur, Devine ta Catégorie, Bataille navale, Freestyle (calage du son entre téléphones).
 - Extraits Deezer dans le Quiz.
 - Ressenti souris de l'Arène Éclair.
+- Freestyle : juge au micro (reconnaissance vocale) et rendu des prods à l'oreille.
 - Glisser-déposer de l'admin au doigt.
 
 Décisions en attente :
