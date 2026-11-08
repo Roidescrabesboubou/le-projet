@@ -25,29 +25,54 @@
 .vol input{width:90px;accent-color:var(--accent)}
 .gros{font-family:Fredoka,sans-serif;font-size:2.6rem;margin:6px 0}
 #fin audio{width:100%;margin:10px 0}
+.codeSalle{font-family:Fredoka,sans-serif;font-size:2rem;letter-spacing:3px}
+#codeSalle{width:110px;text-transform:uppercase;text-align:center;font-weight:800;letter-spacing:2px}
+#finScores{display:flex;flex-direction:column;gap:6px;max-width:360px;margin:10px auto}
+#finScores div{display:flex;justify-content:space-between;padding:8px 12px;border:2px solid var(--line);border-radius:12px;font-weight:800}
+#finScores div.moi{border-color:var(--accent)}
 .cache{display:none!important}
 </style>
 </head>
 <body>
 <main class="b-page">
 
+  <!-- Salle en ligne -->
+  <section class="b-carte cache" id="salleCarte" style="text-align:center">
+    <p style="margin:0">Salle <b id="salleCode" class="codeSalle">…</b></p>
+    <button class="btn ghost petit" id="copierLien">🔗 Copier le lien</button>
+    <div id="joueurs" class="pilules" style="margin:12px 0"></div>
+    <p class="muted" id="salleInfo" style="margin:6px 0"></p>
+    <button class="btn ghost petit" id="quitter">Quitter la salle</button>
+  </section>
+
   <!-- Réglages -->
   <section class="b-carte" id="accueil" style="text-align:center">
     <p class="muted" style="margin-top:0">La boule tape les 4 temps de chaque ligne. Pose le mot affiché sur le <b>4ᵉ temps</b> : il rime avec celui de la ligne suivante.</p>
 
-    <div class="reglage"><h3>🎧 La prod</h3><div class="pilules" id="choixProd"></div></div>
-    <div class="reglage"><h3>⏱️ Vitesse</h3><div class="pilules" id="choixVitesse"></div></div>
-    <div class="reglage"><h3>📏 Durée</h3><div class="pilules" id="choixDuree"></div></div>
+    <div class="reglage hote-seul"><h3>🎧 La prod</h3><div class="pilules" id="choixProd"></div></div>
+    <div class="reglage hote-seul"><h3>⏱️ Vitesse</h3><div class="pilules" id="choixVitesse"></div></div>
+    <div class="reglage hote-seul"><h3>📏 Durée</h3><div class="pilules" id="choixDuree"></div></div>
 
     <div class="options">
       <label id="optJuge"><input type="checkbox" id="juge"><span>🎤 <b>Juge au micro</b><small>Le jeu écoute et compte les mots que tu places dans le temps.</small></span></label>
       <label><input type="checkbox" id="enreg"><span>🔴 <b>Enregistrer ma prise</b><small>Réécoute (et télécharge) ton freestyle sur la prod à la fin.</small></span></label>
-      <label><input type="checkbox" id="theme" checked><span>💡 <b>Thème imposé</b><small>Un sujet tiré au hasard pour t'aider à démarrer.</small></span></label>
+      <label class="hote-seul"><input type="checkbox" id="theme" checked><span>💡 <b>Thème imposé</b><small>Un sujet tiré au hasard pour t'aider à démarrer.</small></span></label>
     </div>
 
-    <div class="lancer">
+    <div class="lancer hote-seul">
       <button class="btn" id="go">▶ Lancer la prod</button>
       <button class="btn ghost" id="ecoute">🔈 Écouter la prod</button>
+    </div>
+  </section>
+
+  <!-- Multijoueur -->
+  <section class="b-carte" id="multi" style="text-align:center">
+    <h3 style="margin:0 0 6px">👥 À plusieurs, chacun sur son téléphone</h3>
+    <p class="muted" style="margin:0 0 10px">Même prod, mêmes lignes, en même temps pour tout le monde. Touchez une ligne pour la prendre : répartissez-vous les rimes comme vous voulez.</p>
+    <div class="lancer">
+      <button class="btn ghost" id="creer">Créer une salle</button>
+      <input class="champ" id="codeSalle" placeholder="CODE" maxlength="5" autocomplete="off">
+      <button class="btn ghost" id="rejoindre">Rejoindre</button>
     </div>
   </section>
 
@@ -67,6 +92,7 @@
   <section class="b-carte cache" id="fin" style="text-align:center">
     <p class="gros" id="finTitre">🎤 Bien joué !</p>
     <p id="finTexte" class="muted"></p>
+    <div id="finScores"></div>
     <div id="finAudio"></div>
     <div class="lancer">
       <button class="btn" id="rejouer">🔁 Rejouer</button>
@@ -77,6 +103,7 @@
 
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
 <script src="rimes.js"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -91,6 +118,7 @@ Base.entete({
            <li>Sur le <b>4ᵉ temps</b>, place le mot affiché.</li>
            <li>Les lignes vont par deux : leurs mots riment (même couleur). Regarde la ligne d'après pour préparer ta rime !</li>
            <li>Avec le <b>juge au micro</b>, chaque mot posé dans le temps rapporte un point.</li>
+           <li><b>À plusieurs</b> : crée une salle, tes potes la rejoignent avec le code. Tout le monde a la même prod et les mêmes lignes. Touchez une ligne pour la prendre (ou la rendre) : son nom s'affiche dessus et le juge ne compte que tes lignes.</li>
          </ul>`
 });
 
@@ -231,14 +259,15 @@ function cloche(t, m, v = .07){
   o.connect(g); o2.connect(g2); g.connect(maitre); g2.connect(maitre);
   [o, o2].forEach(x => { x.start(t); x.stop(t + 1); });
 }
-let vinyle = null;
+
 function lancerVinyle(){
   const n = ctx.sampleRate * 2, b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
   for(let i = 0; i < n; i++) d[i] = Math.random() < .0009 ? (Math.random() * 2 - 1) : (Math.random() * 2 - 1) * .015;
-  vinyle = ctx.createBufferSource(); vinyle.buffer = b; vinyle.loop = true;
+  const vinyle = ctx.createBufferSource(); vinyle.buffer = b; vinyle.loop = true;
   const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 3000; f.Q.value = .5;
   const g = ctx.createGain(); g.gain.value = .35;
   vinyle.connect(f); f.connect(g); g.connect(maitre); vinyle.start();
+  return vinyle;
 }
 
 /* Programme une double-croche (pas absolu s). */
@@ -272,29 +301,39 @@ function jouerPas(s, t, prod, finale){
 /* ================= Partie ================= */
 let partie = null, bpm = 90;
 
-function tirerLignes(){
-  const groupes = Base.melanger(RIMES.map((g, i) => i));
-  return {groupes, pos: 0, recents: []};
+function tirerLignes(r){
+  return {groupes: Base.melanger(RIMES.map((g, i) => i), r), pos: 0};
 }
+/* Les mots sont tirés avec une graine : tous les joueurs d'une salle ont les mêmes. */
 function motLigne(L){
   const p = partie;
   while(p.mots.length <= L){
     const paire = p.mots.length / 2;
-    if(p.tirage.pos >= p.tirage.groupes.length) p.tirage = tirerLignes();
+    if(p.tirage.pos >= p.tirage.groupes.length) p.tirage = tirerLignes(p.rng);
     const gi = p.tirage.groupes[p.tirage.pos++];
     const dispo = RIMES[gi].filter(m => !p.utilises.has(m));
-    const deux = Base.melanger(dispo.length >= 2 ? dispo : RIMES[gi]).slice(0, 2);
+    const deux = Base.melanger(dispo.length >= 2 ? dispo : RIMES[gi], p.rng).slice(0, 2);
     deux.forEach(m => { p.utilises.add(m); p.mots.push({mot: m, groupe: gi, paire, etat: null}); });
   }
   return p.mots[L];
 }
 
-async function demarrer(ecouteSeule){
+function cfgDepuisChoix(ecouteSeule){
+  return {prod: choix.prod, vitesse: choix.vitesse, duree: ecouteSeule ? 0 : +choix.duree,
+    theme: !ecouteSeule && $("theme").checked ? THEMES[Math.floor(Math.random() * THEMES.length)] : null,
+    graine: Math.floor(Math.random() * 1e9)};
+}
+
+/* debut = instant de départ (Date.now() local, en ms) ; sinon tout de suite. */
+async function demarrer(ecouteSeule, cfg, debut){
   initAudio();
   if(ctx.state === "suspended") await ctx.resume();
-  const prod = PRODS[choix.prod];
-  bpm = prod.bpm * VITESSES[choix.vitesse].k;
-  const duree = ecouteSeule ? 0 : +choix.duree;
+  cfg = cfg || cfgDepuisChoix(ecouteSeule);
+  const prod = PRODS[cfg.prod];
+  bpm = prod.bpm * VITESSES[cfg.vitesse].k;
+
+  // une partie encore en cours (l'hôte relance) : on la coupe sans écran de fin
+  if(partie && !partie.fini){ partie.remplacee = true; partie.tFin = tempsCourant(); terminer(true); }
 
   const juge = !ecouteSeule && $("juge").checked && !!Reco;
   const enreg = !ecouteSeule && $("enreg").checked && !!window.MediaRecorder;
@@ -304,34 +343,39 @@ async function demarrer(ecouteSeule){
     catch(e){ Base.toast("Micro refusé : pas d'enregistrement"); }
   }
 
-  partie = {prod, duree, juge, ecouteSeule, mots: [], utilises: new Set(), tirage: tirerLignes(),
-    pas: 0, t0: ctx.currentTime + .25, points: 0, serie: 0, meilleureSerie: 0, fini: false,
-    theme: $("theme").checked && !ecouteSeule ? THEMES[Math.floor(Math.random() * THEMES.length)] : null,
-    micro, enregistreur: null, morceaux: [], reco: null, flash: []};
+  const lat = ctx.outputLatency || 0;
+  const t0 = ctx.currentTime + Math.max(.25, ((debut || 0) - Date.now()) / 1000) - lat;
+  const p = partie = {prod, duree: cfg.duree, juge, ecouteSeule, ronde: cfg.graine, rng: Base.rng(cfg.graine),
+    mots: [], utilises: new Set(), pas: 0, t0, points: 0, serie: 0, meilleureSerie: 0, fini: false,
+    theme: cfg.theme, prises: {}, micro, enregistreur: null, morceaux: [], reco: null, flash: [], vinyle: null};
+  p.tirage = tirerLignes(p.rng);
+  if(debut && t0 + lat < ctx.currentTime) p.pas = Math.ceil((ctx.currentTime - t0) / (60 / bpm / 4)); // arrivé en retard : on rattrape
+  scores = {ronde: p.ronde, liste: {}};
 
   maitre.gain.cancelScheduledValues(ctx.currentTime);
   maitre.gain.setValueAtTime(.0001, ctx.currentTime);
   maitre.gain.exponentialRampToValueAtTime(.9, ctx.currentTime + .1);
-  if(prod.vinyle) lancerVinyle();
+  if(prod.vinyle) p.vinyle = lancerVinyle();
 
   if(micro){
     enregDest = ctx.createMediaStreamDestination();
     sortie.connect(enregDest);
     ctx.createMediaStreamSource(micro).connect(enregDest);
     const r = new MediaRecorder(enregDest.stream);
-    r.ondataavailable = e => { if(e.data.size) partie.morceaux.push(e.data); };
-    r.start(); partie.enregistreur = r;
+    r.ondataavailable = e => { if(e.data.size) p.morceaux.push(e.data); };
+    r.start(); p.enregistreur = r;
   }
   if(juge) lancerJuge();
 
-  $("accueil").classList.add("cache"); $("fin").classList.add("cache"); $("scene").classList.remove("cache");
+  ecran("scene");
   $("score").textContent = juge ? "🎯 0" : "";
-  $("entendu").textContent = juge ? "Le juge écoute…" : ecouteSeule ? "Écoute de la prod — appuie sur Stop pour revenir." : "";
-  $("stop").textContent = ecouteSeule ? "⏹ Retour" : "⏹ Stop";
+  $("entendu").textContent = juge ? "Le juge écoute…" : ecouteSeule ? "Écoute de la prod — appuie sur Stop pour revenir."
+    : enSalle() ? "Touche une ligne pour la prendre (ou la rendre)." : "";
+  $("stop").textContent = ecouteSeule ? "⏹ Retour" : enSalle() && !salle.hote ? "⏹ Sortir" : "⏹ Stop";
   dimensionner();
-  partie.minuteur = setInterval(programmer, 25);
+  p.minuteur = setInterval(programmer, 25);
   programmer();
-  requestAnimationFrame(dessiner);
+  cancelAnimationFrame(idAnim); idAnim = requestAnimationFrame(dessiner);
 }
 
 function programmer(){
@@ -358,32 +402,42 @@ function terminer(manuel){
   const p = partie; if(!p || p.fini) return;
   p.fini = true; clearInterval(p.minuteur);
   const attente = manuel ? 0 : Math.max(0, (p.dernier || ctx.currentTime) - ctx.currentTime) + 1.6;
-  if(manuel){ maitre.gain.cancelScheduledValues(ctx.currentTime); maitre.gain.setTargetAtTime(.0001, ctx.currentTime, .08); }
+  if(manuel && !p.remplacee){ maitre.gain.cancelScheduledValues(ctx.currentTime); maitre.gain.setTargetAtTime(.0001, ctx.currentTime, .08); }
   if(p.reco){ try{ p.reco.onend = null; p.reco.abort(); }catch(e){} }
+  if(p.vinyle && p.remplacee){ try{ p.vinyle.stop(); }catch(e){} }
   setTimeout(() => {
-    if(vinyle){ try{ vinyle.stop(); }catch(e){} vinyle = null; }
-    const fini = () => afficherFin(p, manuel);
+    if(p.vinyle){ try{ p.vinyle.stop(); }catch(e){} }
+    const fini = () => { if(partie === p && !p.remplacee) afficherFin(p, manuel); };
     if(p.enregistreur && p.enregistreur.state !== "inactive"){ p.enregistreur.onstop = fini; p.enregistreur.stop(); }
     else fini();
     if(p.micro) p.micro.getTracks().forEach(tr => tr.stop());
-    if(enregDest){ try{ sortie.disconnect(enregDest); }catch(e){} enregDest = null; }
-    maitre.gain.cancelScheduledValues(ctx.currentTime); maitre.gain.setValueAtTime(.0001, ctx.currentTime);
+    if(enregDest && partie === p){ try{ sortie.disconnect(enregDest); }catch(e){} enregDest = null; }
+    if(partie === p){ maitre.gain.cancelScheduledValues(ctx.currentTime); maitre.gain.setValueAtTime(.0001, ctx.currentTime); }
   }, attente * 1000);
 }
 
+/* Lignes que le juge doit compter pour moi : les miennes et celles que personne n'a prises. */
+const pourMoi = (p, L) => !p.prises[L] || p.prises[L].id === monId();
+
 function afficherFin(p, manuel){
-  if(p.ecouteSeule){ retourAccueil(); return; }
+  if(p.ecouteSeule){ ecran("accueil"); partie = null; return; }
   const lignes = Math.max(0, Math.min(p.duree || Infinity, Math.floor(tempsCourantFige(p) / 4) - 1));
-  $("scene").classList.add("cache"); $("fin").classList.remove("cache");
+  ecran("fin");
   let texte = lignes + " ligne" + (lignes > 1 ? "s" : "") + " sur la prod " + p.prod.nom + ".";
   if(p.juge){
     marquerRates(Infinity);
-    const total = p.duree && !manuel ? p.duree : Math.max(lignes, 1);
+    const n = p.duree && !manuel ? p.duree : Math.max(lignes, 1);
+    let total = 0; for(let L = 0; L < n; L++) if(pourMoi(p, L)) total++;
     $("finTitre").textContent = "🎯 " + p.points + " / " + total;
     texte += " Meilleure série : " + p.meilleureSerie + " mot" + (p.meilleureSerie > 1 ? "s" : "") + " d'affilée.";
-    if(p.duree && !manuel && Base.record("freestyle", p.points, {mieux: "haut", texte: p.points + " rimes posées"})) texte += " 🏆 Nouveau record !";
+    if(!enSalle() && p.duree && !manuel && Base.record("freestyle", p.points, {mieux: "haut", texte: p.points + " rimes posées"})) texte += " 🏆 Nouveau record !";
+    if(enSalle()){
+      scores.liste[salle.moi] = {pseudo: Base.joueur.pseudo() || "Joueur", avatar: Base.joueur.avatar(), points: p.points, total};
+      salle.envoyer({t: "score", ronde: p.ronde, points: p.points, total});
+    }
   } else $("finTitre").textContent = manuel ? "🎤 Coupé !" : "🎤 Bien joué !";
   $("finTexte").textContent = texte;
+  afficherScores();
   const box = $("finAudio"); box.innerHTML = "";
   if(p.morceaux.length){
     const blob = new Blob(p.morceaux, {type: p.morceaux[0].type || "audio/webm"});
@@ -397,15 +451,159 @@ function afficherFin(p, manuel){
 }
 function tempsCourantFige(p){ return p.tFin != null ? p.tFin : tempsCourant(); }
 
-function retourAccueil(){
-  $("scene").classList.add("cache"); $("fin").classList.add("cache"); $("accueil").classList.remove("cache");
-  partie = null;
+/* Écrans : accueil (réglages + salle) / scene / fin */
+function ecran(nom){
+  $("accueil").classList.toggle("cache", nom !== "accueil");
+  $("multi").classList.toggle("cache", nom !== "accueil" || enSalle());
+  $("salleCarte").classList.toggle("cache", nom !== "accueil" || !enSalle());
+  $("scene").classList.toggle("cache", nom !== "scene");
+  $("fin").classList.toggle("cache", nom !== "fin");
+  const invite = enSalle() && !salle.hote;
+  $("rejouer").classList.toggle("cache", invite);
+  $("rejouer").textContent = enSalle() ? "🔁 Relancer pour tout le monde" : "🔁 Rejouer";
+  $("reglages").textContent = invite ? "↩ Retour à la salle" : "⚙️ Changer les réglages";
+  if(nom === "accueil") majSalle();
 }
-$("go").onclick = () => demarrer(false);
+function retourAccueil(){ partie = null; ecran("accueil"); }
+
+$("go").onclick = () => { if(enSalle()) lancerPourTous(); else demarrer(false); };
 $("ecoute").onclick = () => demarrer(true);
-$("stop").onclick = () => { if(partie){ partie.tFin = tempsCourant(); terminer(true); } };
-$("rejouer").onclick = () => demarrer(false);
+$("stop").onclick = () => {
+  if(!partie) return;
+  partie.tFin = tempsCourant(); terminer(true);
+  if(estHote() && !partie.ecouteSeule) salle.envoyer({t: "stop", ronde: partie.ronde});
+};
+$("rejouer").onclick = () => { if(enSalle()) lancerPourTous(); else demarrer(false); };
 $("reglages").onclick = retourAccueil;
+
+/* ================= À plusieurs (salle en ligne) ================= */
+let salle = null, decalage = 0, meilleurRtt = Infinity, scores = {ronde: 0, liste: {}};
+const enSalle = () => !!salle && !salle.ferme;
+const estHote = () => enSalle() && salle.hote;
+const monId = () => enSalle() ? salle.moi : "moi";
+
+function majSalle(){
+  const ok = enSalle(), invite = ok && !salle.hote;
+  document.querySelectorAll(".hote-seul").forEach(n => n.classList.toggle("cache", invite));
+  $("ecoute").classList.toggle("cache", ok);
+  $("go").textContent = ok ? "▶ Lancer pour tout le monde" : "▶ Lancer la prod";
+  if(!ok) return;
+  $("salleCode").textContent = salle.code;
+  const box = $("joueurs"); box.innerHTML = "";
+  salle.joueurs.forEach((j, i) => box.appendChild(Base.el("button", j.avatar + " " + j.pseudo + (i === 0 ? " 👑" : ""))));
+  $("salleInfo").textContent = invite ? "L'hôte choisit la prod et lance. Tu peux régler ton juge et ton enregistrement ci-dessous."
+    : salle.joueurs.length < 2 ? "Donne le code ou le lien à tes potes." : "Choisis la prod puis lance quand tout le monde est là.";
+}
+
+/* Horloge : l'invité mesure l'écart avec l'heure de l'hôte (aller-retour le plus court). */
+function synchroniser(){
+  meilleurRtt = Infinity;
+  for(let i = 0; i < 8; i++) setTimeout(() => { if(enSalle()) salle.envoyer({t: "ping", c: Date.now()}); }, i * 300);
+}
+
+function lancerPourTous(){
+  const cfg = cfgDepuisChoix(false), T = Date.now() + 3000;
+  salle.envoyer({t: "depart", cfg, T});
+  demarrer(false, cfg, T);
+}
+
+function recu(m, j){
+  if(!enSalle() || !m) return;
+  const deHote = salle.joueurs[0] && m.de === salle.joueurs[0].id;
+  if(m.t === "ping" && salle.hote){ salle.envoyer({t: "pong", a: m.de, c: m.c, h: Date.now()}); return; }
+  if(m.t === "pong"){
+    if(m.a !== salle.moi) return;
+    const now = Date.now(), rtt = now - m.c;
+    if(rtt >= 0 && rtt < meilleurRtt){ meilleurRtt = rtt; decalage = m.h + rtt / 2 - now; }
+    return;
+  }
+  if(m.t === "depart" && !salle.hote && deHote){
+    const c = m.cfg || {};
+    if(!PRODS[c.prod] || !VITESSES[c.vitesse] || ![0, 8, 16, 32].includes(c.duree) || typeof c.graine !== "number") return;
+    const cfg = {prod: c.prod, vitesse: c.vitesse, duree: c.duree, graine: c.graine,
+      theme: typeof c.theme === "string" ? c.theme.slice(0, 60) : null};
+    demarrer(false, cfg, +m.T - decalage);
+    return;
+  }
+  if(m.t === "stop" && !salle.hote && deHote){
+    if(partie && !partie.fini && partie.ronde === m.ronde){ partie.tFin = tempsCourant(); terminer(true); }
+    return;
+  }
+  if(m.t === "prise"){
+    const qui = m.off ? null : {id: m.de, pseudo: String(j && j.pseudo || "?").slice(0, 16), avatar: String(j && j.avatar || "🎤").slice(0, 4)};
+    appliquerPrise(+m.L, qui, m.ronde, m.de);
+    return;
+  }
+  if(m.t === "score" && m.ronde === scores.ronde && j){
+    scores.liste[m.de] = {pseudo: j.pseudo, avatar: j.avatar, points: +m.points || 0, total: +m.total || 0};
+    afficherScores();
+  }
+}
+
+function afficherScores(){
+  const box = $("finScores"); box.innerHTML = "";
+  const l = Object.entries(scores.liste);
+  if(!enSalle() || !l.length) return;
+  l.sort((a, b) => b[1].points - a[1].points).forEach(([id, s], i) => {
+    const d = Base.el("div", null, id === salle.moi ? "moi" : "");
+    d.append(Base.el("span", (i === 0 ? "🥇 " : "") + s.avatar + " " + s.pseudo), Base.el("span", "🎯 " + s.points + " / " + s.total));
+    box.appendChild(d);
+  });
+}
+
+/* Prendre / rendre une ligne */
+function appliquerPrise(L, qui, ronde, de){
+  const p = partie;
+  if(!p || p.ronde !== ronde || !(L >= 0) || (p.duree && L >= p.duree)) return;
+  const a = p.prises[L];
+  if(qui){ if(!a) p.prises[L] = qui; }
+  else if(a && a.id === de) delete p.prises[L];
+}
+function basculerPrise(L){
+  const p = partie, a = p.prises[L];
+  if(a && a.id !== salle.moi){ Base.toast("Ligne déjà prise par " + a.pseudo); return; }
+  const off = !!a;
+  appliquerPrise(L, off ? null : {id: salle.moi, pseudo: Base.joueur.pseudo() || "Joueur", avatar: Base.joueur.avatar()}, p.ronde, salle.moi);
+  salle.envoyer({t: "prise", L, off, ronde: p.ronde});
+}
+
+$("creer").onclick = async () => {
+  initAudio(); ctx.resume();
+  const b = $("creer"); b.disabled = true; b.textContent = "Création…";
+  try{
+    salle = await Reseau.creer("freestyle", {max: 12,
+      surArrivee: majSalle, surDepart: majSalle, surMessage: (m, j) => recu(m, j),
+      surEssai: t => Base.toast(t)});
+    ecran("accueil");
+  }catch(e){ Base.toast(e.message); }
+  b.disabled = false; b.textContent = "Créer une salle";
+};
+$("rejoindre").onclick = async () => {
+  initAudio(); ctx.resume();   // débloque le son pendant le clic (obligatoire sur téléphone)
+  const b = $("rejoindre"); b.disabled = true; b.textContent = "Connexion…";
+  try{
+    const s = await Reseau.rejoindre("freestyle", $("codeSalle").value, {
+      surMessage: m => recu(m, s0().joueurs.find(j => j.id === m.de)),
+      surListe: () => { if(!$("accueil").classList.contains("cache")) majSalle(); },
+      surFermeture: () => {
+        Base.toast("L'hôte a fermé la salle");
+        salle = null;
+        if(partie && !partie.fini){ partie.tFin = tempsCourant(); terminer(true); }
+        else if(!$("accueil").classList.contains("cache")) ecran("accueil");
+      }
+    });
+    salle = s; ecran("accueil"); synchroniser();
+  }catch(e){ Base.toast(e.message); }
+  b.disabled = false; b.textContent = "Rejoindre";
+};
+const s0 = () => salle || {joueurs: []};
+$("codeSalle").onkeydown = e => { if(e.key === "Enter") $("rejoindre").click(); };
+$("quitter").onclick = () => { if(salle) salle.quitter(); salle = null; ecran("accueil"); };
+$("copierLien").onclick = () => Base.partager(salle.lien);
+{
+  const code = Reseau.codeDansAdresse();
+  if(code){ $("codeSalle").value = code; $("rejoindre").textContent = "Rejoindre " + code; }
+}
 
 /* ================= Juge (reconnaissance vocale) ================= */
 const normaliser = s => s.toLowerCase().replace(/œ/g, "oe").replace(/æ/g, "ae").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]+/g, " ").trim();
@@ -433,7 +631,7 @@ function verifier(mots){
   const L0 = Math.floor(t / 4) - 2;
   for(let L = Math.max(0, L0); L <= L0 + 2; L++){
     if(p.duree && L >= p.duree) break;
-    const m = motLigne(L); if(m.etat) continue;
+    const m = motLigne(L); if(m.etat || !pourMoi(p, L)) continue;
     const [a, b] = fenetre(L); if(t < a || t > b) continue;
     const cible = normaliser(m.mot);
     if(mots.some(x => x === cible || x === cible + "s" || x === cible + "x" || (cible.length > 4 && x.length > 3 && cible.startsWith(x) && cible.length - x.length <= 1))){
@@ -449,13 +647,13 @@ function marquerRates(t){
   for(let i = Math.max(0, t === Infinity ? 0 : L - 2); i <= L; i++){
     if(p.duree && i >= p.duree) break;
     const m = motLigne(i);
-    if(!m.etat && t > fenetre(i)[1]){ m.etat = "rate"; p.serie = 0; $("score").textContent = "🎯 " + p.points; }
+    if(!m.etat && pourMoi(p, i) && t > fenetre(i)[1]){ m.etat = "rate"; p.serie = 0; $("score").textContent = "🎯 " + p.points; }
   }
 }
 
 /* ================= Dessin ================= */
 const toile = $("toile"), c2 = toile.getContext("2d");
-let W = 0, H = 0;
+let W = 0, H = 0, geo = null, idAnim = 0;
 function dimensionner(){
   const r = toile.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
   W = r.width; H = r.height; toile.width = W * dpr; toile.height = H * dpr;
@@ -478,6 +676,7 @@ function dessiner(){
   const yRef = H * .5;
   const defile = ligneCour + lisse((frac - .8) / .2);
   const yLigne = L => yRef + (L - defile) * ecart;
+  geo = {yLigne, h: hauteurLigne, defile};
 
   // fond qui pulse sur les temps
   const pulse = Math.max(0, 1 - (dansMesure % 1) * 3);
@@ -489,7 +688,10 @@ function dessiner(){
   // en-tête de scène
   c2.textAlign = "left"; c2.textBaseline = "top"; c2.fillStyle = "#a6a2cc"; c2.font = "700 14px Nunito, sans-serif";
   c2.fillText(p.prod.emoji + " " + p.prod.nom + " · " + Math.round(bpm) + " bpm", 14, 12);
-  if(p.theme){ c2.textAlign = "right"; c2.fillStyle = "#ffc93c"; c2.fillText("💡 Thème : " + p.theme, W - 14, 12); }
+  if(p.theme){
+    const th = "💡 Thème : " + p.theme, etroit = c2.measureText(th).width + c2.measureText(p.prod.nom + " · 000 bpm").width + 60 > W;
+    c2.textAlign = etroit ? "left" : "right"; c2.fillStyle = "#ffc93c"; c2.fillText(th, etroit ? 14 : W - 14, etroit ? 32 : 12);
+  }
 
   // lignes visibles
   const derniere = p.duree ? p.duree : Infinity;
@@ -542,7 +744,7 @@ function dessiner(){
   else if(ligneCour < 0) $("compteur").textContent = "Prépare-toi…";
   else $("compteur").textContent = "Fin !";
 
-  if(!$("scene").classList.contains("cache")) requestAnimationFrame(dessiner);
+  if(!$("scene").classList.contains("cache")) idAnim = requestAnimationFrame(dessiner);
 }
 
 function dessinerLigne(L, y, marge, seg, h, tempsActif, p, derniere){
@@ -557,10 +759,10 @@ function dessinerLigne(L, y, marge, seg, h, tempsActif, p, derniere){
       c2.font = `800 ${Math.round(h * .45)}px Fredoka, Nunito, sans-serif`; c2.textAlign = "center"; c2.textBaseline = "middle";
       c2.fillText(L < 0 ? String(s + 1) : ["🎤", "Fin", "du", "son"][s], x + seg / 2, y + 1);
     }
-    if(L < 0){ c2.fillStyle = "#a6a2cc"; c2.font = "700 13px Nunito, sans-serif"; c2.fillText("Écoute la prod, ça part à la ligne suivante !", marge + seg * 2, haut - 14); }
+    if(L < 0){ c2.fillStyle = "#a6a2cc"; c2.font = "700 13px Nunito, sans-serif"; c2.fillText(enSalle() ? "Touchez les lignes pour vous les répartir !" : "Écoute la prod, ça part à la ligne suivante !", marge + seg * 2, haut - 14); }
     return;
   }
-  const m = motLigne(L), coul = PALETTE[m.paire % PALETTE.length];
+  const m = motLigne(L), coul = PALETTE[m.paire % PALETTE.length], prise = p.prises[L];
   for(let s = 0; s < 4; s++){
     const x = marge + seg * s, mot = s === 3;
     arrondi(x + 3, haut, seg - 6, h, 12);
@@ -582,12 +784,33 @@ function dessinerLigne(L, y, marge, seg, h, tempsActif, p, derniere){
         const k = (performance.now() - fl.t0) / 600;
         if(k < 1){ c2.strokeStyle = `rgba(126,224,129,${1 - k})`; c2.lineWidth = 3; arrondi(x + 3 - k * 14, haut - k * 14, seg - 6 + k * 28, h + k * 28, 14); c2.stroke(); }
       }
+    } else if(s === 0 && prise){
+      // ligne prise : avatar + pseudo du rappeur dans la 1re case
+      let taille = Math.round(h * .3); c2.font = `800 ${taille}px Nunito, sans-serif`;
+      let txt = prise.avatar + " " + prise.pseudo;
+      while(c2.measureText(txt).width > seg - 14 && txt.length > 3) txt = txt.slice(0, -2) + "…";
+      c2.fillStyle = prise.id === monId() ? "#ffc93c" : "#e6e1ff"; c2.fillText(txt, x + seg / 2, y + 1);
     } else {
       c2.fillStyle = s === tempsActif ? "#fff" : "#5c5580"; c2.font = `700 ${Math.round(h * .3)}px Nunito, sans-serif`;
       c2.fillText("• " + (s + 1) + " •", x + seg / 2, y + 1);
     }
   }
+  if(prise && prise.id === monId()){
+    c2.strokeStyle = "#ffc93c"; c2.lineWidth = 2; c2.setLineDash([6, 5]);
+    arrondi(marge - 2, haut - 5, seg * 4 + 4, h + 10, 16); c2.stroke(); c2.setLineDash([]);
+  }
 }
+
+/* À plusieurs : toucher une ligne pour la prendre ou la rendre. */
+toile.addEventListener("pointerdown", e => {
+  const p = partie;
+  if(!p || p.fini || p.ecouteSeule || !enSalle() || !geo) return;
+  const y = e.clientY - toile.getBoundingClientRect().top;
+  for(let L = Math.max(0, Math.floor(geo.defile) - 1); L <= Math.floor(geo.defile) + 3; L++){
+    if(p.duree && L >= p.duree) break;
+    if(Math.abs(y - geo.yLigne(L)) <= geo.h / 2 + 14){ basculerPrise(L); break; }
+  }
+});
 </script>
 </body>
 </html>
