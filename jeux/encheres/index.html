@@ -389,9 +389,9 @@ function dessiner(){
     b.classList.toggle("actif", G.phase === "vente" && G.tour === j);
 
     const eq = $("eq" + j), liste = fin ? G.equipes[j].slice().sort((x, y) => y.p - x.p) : G.equipes[j];
-    const lignes = liste.map(p => `<li><span class="n">${esc(p.n)}</span><span class="v">${voirForce ? "⚡" + p.p + " · " : ""}${p.prix} 💰</span></li>`).join("");
+    const lignes = liste.map(p => `<li><span class="n">${esc(p.n)}</span><span class="v">${voirForce ? "⚡" + esc(p.p) + " · " : ""}${esc(p.prix)} 💰</span></li>`).join("");
     eq.innerHTML = `<h3>${esc(G.noms[j])}</h3>` + (lignes ? `<ul>${lignes}</ul>` : `<p class="vide">Personne pour l'instant</p>`) +
-      (fin ? `<div class="total">⚡ ${G.res.t[j]}</div>` : "");
+      (fin ? `<div class="total">⚡ ${esc(G.res.t[j])}</div>` : "");
   }
 
   $("vente").classList.toggle("cache", fin);

@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Réglages</title>
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <link rel="stylesheet" href="../jeux/commun/base.css">
 <style>
 .b-page{max-width:640px}
@@ -12,9 +14,9 @@ section.b-carte > p.muted{margin:0 0 10px;font-size:.9rem}
 .ligne{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .ligne .champ{flex:1;min-width:160px}
 .avatars{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;margin-top:6px}
-.avatars button{font-size:1.5rem;height:44px;border:1px solid var(--line);background:var(--bg);border-radius:12px}
+.avatars button{font-size:1.5rem;height:44px;border:2px solid var(--line);background:var(--bg);border-radius:12px}
 .avatars button.on{outline:3px solid var(--accent);border-color:transparent}
-.four{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+.four{border:2px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
 .four summary{cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:8px;list-style:none}
 .four summary::-webkit-details-marker{display:none}
 .four .etat{font-weight:700;font-size:.85rem;color:var(--muted)}

@@ -578,7 +578,7 @@ function dessinerCombat(){
   const nomAdv = v.noms[o];
   $("tAdv").textContent = mode === "local" ? `🎯 Eaux de ${nomAdv}` : mode === "ordi" ? "🎯 Eaux de l'ordi" : `🎯 Eaux de ${nomAdv}`;
   $("tMoi").textContent = mode === "local" ? `🛡️ Flotte de ${v.noms[p]}` : "🛡️ Ta flotte";
-  $("fAdv").innerHTML = v.restantAdv.map(b => `<span class="${b.coule ? "k" : ""}">${b.n} (${b.t})</span>`).join("");
+  $("fAdv").innerHTML = v.restantAdv.map(b => `<span class="${b.coule ? "k" : ""}">${Base.esc(b.n)} (${Base.esc(b.t)})</span>`).join("");
   const mesCoules = (v.flotteMoi || []).filter(b => b.cases.every(c => v.tirsAdv[c] >= 2)).length;
   $("fMoi").innerHTML = `<span>${5 - mesCoules} navire${5 - mesCoules > 1 ? "s" : ""} à flot</span>`;
   const touches = v.tirsMoi.filter(t => t === 2 || t === 3).length;

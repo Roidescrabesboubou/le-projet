@@ -744,12 +744,12 @@ function dessinerDes(){
   }
 }
 function dessinerJoueurs(){
-  $("joueurs").innerHTML = G.joueurs.map((j, i) => `<div class="joueur${i === G.tour && G.phase !== "fin" ? " actif" : ""}${j.faillite ? " mort" : ""}" style="--o:${j.couleur}">
+  $("joueurs").innerHTML = G.joueurs.map((j, i) => `<div class="joueur${i === G.tour && G.phase !== "fin" ? " actif" : ""}${j.faillite ? " mort" : ""}" style="--o:${esc(j.couleur)}">
     <span class="av">${esc(j.avatar)}</span>
     <span class="n">${esc(j.nom)}${j.bot ? " 🤖" : ""}${j.enCellule ? " 🔒" : ""}${j.passes ? " 🎫" : ""}</span>
     <small>${casesDe(i).length} 🏢</small>
     <span class="a">${m(j.argent)}</span></div>`).join("")
-    + `<p class="muted" style="margin:8px 0 0;font-size:.8rem;text-align:center">Manche ${G.limite ? Math.min(G.manche, G.limite) + " / " + G.limite : G.manche}</p>`;
+    + `<p class="muted" style="margin:8px 0 0;font-size:.8rem;text-align:center">Manche ${G.limite ? esc(Math.min(G.manche, G.limite)) + " / " + esc(G.limite) : esc(G.manche)}</p>`;
 }
 /* Le joueur dont cet appareil montre les boutons */
 function vue(){
@@ -784,9 +784,9 @@ function dessinerActions(){
   }else if(G.phase === "lancer"){
     h = `<div class="tete">${mode === "ligne" ? "À toi de jouer !" : "À " + esc(j.nom) + " de jouer !"}</div>`;
     if(j.enCellule){
-      h += bouton(`🎲 Tenter un double (essai ${j.essais + 1}/3)`, {type: "lancer"})
+      h += bouton(`🎲 Tenter un double (essai ${esc(j.essais + 1)}/3)`, {type: "lancer"})
         + bouton(`💸 Payer ${m(T.regles.amende)} et sortir`, {type: "payerCellule"}, "bleu", j.argent < T.regles.amende);
-      if(j.passes) h += bouton(`🎫 Utiliser un passe (${j.passes})`, {type: "passe"}, "bleu");
+      if(j.passes) h += bouton(`🎫 Utiliser un passe (${esc(j.passes)})`, {type: "passe"}, "bleu");
     }else h += bouton("🎲 Lancer les dés", {type: "lancer"});
     h += boutonEchange();
   }else if(G.phase === "achat"){

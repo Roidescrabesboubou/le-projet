@@ -685,7 +685,7 @@ function renderLobby(){
   $("setSum").classList.toggle("hidden",host);
   if(host)renderSettings();
   else{
-    const s=S.set,t=v=>v?v+" s":"sans limite";
+    const s=S.set,t=v=>v?esc(v)+" s":"sans limite";
     $("setSum").innerHTML=`<div>🏁 Départ : <b>${s.start==="mots"?"mot tiré au hasard":"phrase libre"}</b></div>
       <div>✍️ Écrire : <b>${t(s.tWrite)}</b> · 🎨 Dessiner : <b>${t(s.tDraw)}</b></div>
       ${s.start==="mots"?`<div>📚 Thèmes : ${esc(s.themes.join(", ")||"aucun")}</div>`:""}`;

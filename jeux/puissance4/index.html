@@ -261,7 +261,7 @@ function dessiner(){
     const deja = k.firstChild;
     if(!v){ if(deja) k.innerHTML = ""; }
     else if(!deja || !deja.classList.contains("j" + v)){
-      k.innerHTML = `<div class="jeton j${v}"></div>`;
+      k.innerHTML = `<div class="jeton j${Number(v)}"></div>`;
       if(anime && i === G.dernier){
         const r = Math.floor(i / C), j = k.firstChild;
         j.style.setProperty("--de", `calc(${-(r + 1) * 100}% - ${r + 1} * var(--g) - 10px)`);
@@ -415,7 +415,7 @@ $("creer").onclick = async () => {
       },
       surMessage(m){
         if(m.t === "etat?") diffuser();
-        if(m.t === "coup" && G && G.tour === 2 && !G.fin){ if(jouer(m.col)){ dessiner(); } diffuser(); }
+        if(m.t === "coup" && G && G.tour === 2 && !G.fin){ if(jouer(Number(m.col))){ dessiner(); } diffuser(); }
         if(m.t === "rejouer" && G && G.fin){ nouvelleManche(); dessiner(); diffuser(); }
       }
     });

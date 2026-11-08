@@ -233,7 +233,7 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&am
 const uid = () => Math.random().toString(36).slice(2, 10);
 const d = n => 1 + Math.floor(Math.random() * n);
 const mod = v => Math.floor((v - 10) / 2);
-const sgn = n => (n >= 0 ? "+" : "") + n;
+const sgn = n => (n >= 0 ? "+" : "") + esc(n);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rg = (a, b) => Array.from({length: b - a + 1}, (_, i) => a + i);
 const COUL = ["#e86a92", "#5b6bd0", "#3aa76d", "#f2a03d", "#9b59d0", "#22a7b8", "#d9534f", "#8a6d3b"];
@@ -291,7 +291,7 @@ const classe = h => { const U = UNIV[h.u] || UNIV.fantasy; return U.classes.find
 const hero = id => G && G.heros.find(h => h.id === id);
 const vivants = () => G.heros.filter(h => h.pv > 0);
 function pvMax(h){ const C = classe(h), m = mod(h.st.CON); return Math.max(h.niv, C.dv + m + (h.niv - 1) * Math.max(1, Math.ceil(C.dv / 2) + 1 + m)); }
-function ca(h){ const C = classe(h); return C.ca + Math.min(C.dex, mod(h.st.DEX)) + (G && G.combat ? G.combat.bouclier : 0); }
+function ca(h){ const C = classe(h); return C.ca + Math.min(C.dex, mod(h.st.DEX)) + (G && G.combat ? Number(G.combat.bouclier) || 0 : 0); }
 const attB = h => PRO(h.niv) + mod(h.st[classe(h).arme.stat]);
 const degTxt = h => { const C = classe(h), m = mod(h.st[C.arme.stat]); return C.arme.de + (m ? sgn(m) : ""); };
 const bonusTxt = b => STATS.filter(s => b[s]).map(s => s + " +" + b[s]).join(", ");
@@ -389,7 +389,7 @@ function dessinerConfig(){
   for(const [k, U] of Object.entries(UNIV)){
     const t = document.createElement("div");
     t.className = "tuile" + (cfg.u === k ? " on" : "");
-    t.innerHTML = `<span class="gros">${U.emo}</span><b>${esc(U.nom)}</b><small>${esc(U.ambiance)}</small>`;
+    t.innerHTML = `<span class="gros">${esc(U.emo)}</span><b>${esc(U.nom)}</b><small>${esc(U.ambiance)}</small>`;
     t.onclick = () => { cfg.u = k; dessinerConfig(); };
     box.appendChild(t);
   }
@@ -453,7 +453,7 @@ function changeCrea(){ clearTimeout(tCR); if(CR && CR.change) CR.change(heroDeCr
 function changeCreaBientot(){ clearTimeout(tCR); tCR = setTimeout(changeCrea, 350); }
 function resumeClasse(h){
   const C = classe(h), t = C.cap;
-  return `<b>${C.emo} ${esc(C.nom)}</b> — ${esc(C.desc)}<br>
+  return `<b>${esc(C.emo)} ${esc(C.nom)}</b> — ${esc(C.desc)}<br>
     ❤️ PV ${pvMax(h)} · 🛡️ CA ${ca(h)} · ⚔️ ${esc(C.arme.nom)} ${sgn(attB(h))} pour toucher, ${degTxt(h)} dégâts${C.arme.portee > 1 ? " (portée " + C.arme.portee + ")" : " (corps à corps)"}<br>
     ✨ <b>${esc(t.nom)}</b> ×${t.n} par combat : ${esc(t.desc)}<br>
     🎯 Maîtrises : ${C.maitrises.map(s => NOMS_STATS[s]).join(", ")} · 🎒 ${esc(C.kit.join(", "))}`;
@@ -463,7 +463,7 @@ function dessinerCrea(){
   const U = UNIV[CR.u], box = CR.box, h = heroDeCrea();
   if(CR.pret){
     box.innerHTML = `<h2 style="margin:0">${esc(CR.titre)}</h2>
-      <p style="font-size:1.15rem;margin:10px 0 4px"><b>${h.emo} ${esc(h.nom)}</b> · ${esc(h.ori)} · niveau ${h.niv} <span style="color:#3aa76d;font-weight:800">✅ Prêt</span></p>
+      <p style="font-size:1.15rem;margin:10px 0 4px"><b>${esc(h.emo)} ${esc(h.nom)}</b> · ${esc(h.ori)} · niveau ${esc(h.niv)} <span style="color:#3aa76d;font-weight:800">✅ Prêt</span></p>
       <div class="encart">${resumeClasse(h)}<br>${statsTxt(h)}${h.bg ? `<br><i>📖 « ${esc(h.bg)} »</i>` : ""}</div>
       <div class="ligne" style="margin-top:12px"><button class="btn ghost" id="crModif">✏️ Modifier mon héros</button></div>`;
     $("crModif").onclick = () => { CR.pret = false; dessinerCrea(); changeCrea(); };
@@ -472,10 +472,10 @@ function dessinerCrea(){
   const ch = CR.charge;
   const sauves = ch ? [] : stock.lire("heros", []).filter(s => s.u === CR.u && !(CR.exclus || []).includes(s.id)).slice(0, 12);
   const O = U.origines[CR.ori], C = U.classes[CR.cls];
-  let html = `<h2 style="margin:0">${esc(CR.titre)}</h2><p class="muted" style="margin:2px 0 0">${U.emo} ${esc(U.nom)}</p>`;
-  if(sauves.length) html += `<label class="etiquette">Reprendre un héros enregistré</label><div class="puces">${sauves.map(s => `<button data-sv="${esc(s.id)}">${s.emo} ${esc(s.nom)} · niv ${s.niv}</button>`).join("")}</div>`;
+  let html = `<h2 style="margin:0">${esc(CR.titre)}</h2><p class="muted" style="margin:2px 0 0">${esc(U.emo)} ${esc(U.nom)}</p>`;
+  if(sauves.length) html += `<label class="etiquette">Reprendre un héros enregistré</label><div class="puces">${sauves.map(s => `<button data-sv="${esc(s.id)}">${esc(s.emo)} ${esc(s.nom)} · niv ${esc(s.niv)}</button>`).join("")}</div>`;
   if(ch){
-    html += `<div class="encart"><b style="font-size:1.1rem">${h.emo} ${esc(h.nom)}</b> · ${esc(h.ori)} · niveau ${h.niv}<br>${resumeClasse(h)}<br>${statsTxt(h)}</div>
+    html += `<div class="encart"><b style="font-size:1.1rem">${esc(h.emo)} ${esc(h.nom)}</b> · ${esc(h.ori)} · niveau ${esc(h.niv)}<br>${resumeClasse(h)}<br>${statsTxt(h)}</div>
       <button class="btn ghost petit" id="crAutre" style="margin-top:8px">← Créer un nouveau héros à la place</button>`;
   }else{
     html += `<label class="etiquette">Nom du héros</label>
@@ -483,10 +483,10 @@ function dessinerCrea(){
       <label class="etiquette">Origine</label>
       <div class="grille">${U.origines.map((o, i) => `<div class="tuile ${i === CR.ori ? "on" : ""}" data-ori="${i}"><b>${esc(o.nom)}</b><small>${bonusTxt(o.bonus)}<br>${esc(o.desc)}</small></div>`).join("")}</div>
       <label class="etiquette">Classe</label>
-      <div class="grille">${U.classes.map((c, i) => `<div class="tuile ${i === CR.cls ? "on" : ""}" data-cls="${i}"><span class="gros">${c.emo}</span><b>${esc(c.nom)}</b><small>${esc(c.desc)}</small></div>`).join("")}</div>
+      <div class="grille">${U.classes.map((c, i) => `<div class="tuile ${i === CR.cls ? "on" : ""}" data-cls="${i}"><span class="gros">${esc(c.emo)}</span><b>${esc(c.nom)}</b><small>${esc(c.desc)}</small></div>`).join("")}</div>
       <div class="encart">${resumeClasse(h)}</div>
       <label class="etiquette">Caractéristiques <span class="muted">(touche deux cases pour les échanger · ★ = stat principale)</span></label>
-      <div class="stats">${STATS.map((s, i) => `<div class="stat ${CR.sel === i ? "sel" : ""}" data-st="${i}" title="${NOMS_STATS[s]}"><div class="k">${s}${s === C.stat ? " ★" : ""}</div><div class="n">${h.st[s]}</div><div class="m">${sgn(mod(h.st[s]))}${O.bonus[s] ? ` <span class="muted">(+${O.bonus[s]})</span>` : ""}</div></div>`).join("")}</div>
+      <div class="stats">${STATS.map((s, i) => `<div class="stat ${CR.sel === i ? "sel" : ""}" data-st="${i}" title="${NOMS_STATS[s]}"><div class="k">${s}${s === C.stat ? " ★" : ""}</div><div class="n">${esc(h.st[s])}</div><div class="m">${sgn(mod(h.st[s]))}${O.bonus[s] ? ` <span class="muted">(+${O.bonus[s]})</span>` : ""}</div></div>`).join("")}</div>
       <div class="ligne" style="margin-top:8px">
         <button class="btn ghost petit" id="crRanger">🪄 Ranger pour ma classe</button>
         <button class="btn ghost petit" id="crRelancer" ${CR.rel ? "" : "disabled"}>🎲 Relancer les dés (${CR.rel})</button>
@@ -570,7 +570,7 @@ function assurerForm(){
   if(mien && mien.ancien){
     if(lobGauche !== "ancien" + mien.id){
       lobGauche = "ancien" + mien.id; CR = null;
-      box.innerHTML = `<h2 style="margin:0">✅ Tu retrouves ${mien.emo} ${esc(mien.nom)}</h2><p class="muted">Niveau ${mien.niv}. L'hôte va reprendre l'aventure…</p>`;
+      box.innerHTML = `<h2 style="margin:0">✅ Tu retrouves ${esc(mien.emo)} ${esc(mien.nom)}</h2><p class="muted">Niveau ${esc(mien.niv)}. L'hôte va reprendre l'aventure…</p>`;
     }
     return;
   }
@@ -609,12 +609,12 @@ function rendreLobHaut(){
   cleHaut = cle;
   const nomJ = id => (joueurs.find(j => j.id === id) || {}).pseudo || "?";
   const mjNom = c.mj === "ia" ? "🤖 IA" : c.mj === "local" ? "🎭 un joueur (cet écran)" : "🎭 " + esc(nomJ(c.mj));
-  const resume = `${U.emo} <b>${esc(U.nom)}</b> · ${c.type === "campagne" ? "🗺️ Campagne" : "⚡ One-shot"} · ${["🙂 Facile", "⚔️ Normale", "💀 Héroïque"][c.diff]} · MJ : ${mjNom}`;
+  const resume = `${esc(U.emo)} <b>${esc(U.nom)}</b> · ${c.type === "campagne" ? "🗺️ Campagne" : "⚡ One-shot"} · ${["🙂 Facile", "⚔️ Normale", "💀 Héroïque"][c.diff]} · MJ : ${mjNom}`;
   let html = "";
   if(mode === "ligne") html += `<div class="ligne" style="justify-content:space-between"><b>🌐 Salle en ligne <span class="muted">· 8 joueurs max</span></b>${hote ? `<button class="btn ghost petit" id="lCopie">📋 Copier le lien d'invitation</button>` : ""}</div><div class="code">${esc(salle.code)}</div>`;
   if(mode === "ligne" && hote){
     html += `<div class="ligne">
-      ${L.reprise ? `<span style="flex:1">${U.emo} <b>${esc(U.nom)}</b> · reprise de l'aventure</span>` : `<select class="champ" id="lU" style="flex:1;min-width:180px">${Object.entries(UNIV).map(([k, u]) => `<option value="${k}" ${k === c.u ? "selected" : ""}>${u.emo} ${esc(u.nom)}</option>`).join("")}</select>`}
+      ${L.reprise ? `<span style="flex:1">${esc(U.emo)} <b>${esc(U.nom)}</b> · reprise de l'aventure</span>` : `<select class="champ" id="lU" style="flex:1;min-width:180px">${Object.entries(UNIV).map(([k, u]) => `<option value="${k}" ${k === c.u ? "selected" : ""}>${esc(u.emo)} ${esc(u.nom)}</option>`).join("")}</select>`}
       <select class="champ" id="lMJ" style="flex:1;min-width:180px"><option value="ia" ${c.mj === "ia" ? "selected" : ""}>Maître du jeu : 🤖 IA</option>${joueurs.map(j => `<option value="${esc(j.id)}" ${c.mj === j.id ? "selected" : ""}>Maître du jeu : 🎭 ${esc(j.pseudo)}</option>`).join("")}</select></div>`;
     if(!L.reprise){
       html += `<div class="pilules g" id="lType" style="margin-top:8px"></div><div class="pilules g" id="lDiff" style="margin-top:6px"></div>`;
@@ -626,7 +626,7 @@ function rendreLobHaut(){
   html += `<div class="ligne" style="justify-content:space-between;margin-top:12px">` + (mode === "ligne"
     ? (hote ? `<button class="btn ghost" id="lFermer">✖ Fermer la salle</button><button class="btn" id="lGo2">${L.reprise ? "▶️ Reprendre l'aventure" : "🚀 Lancer l'aventure"}</button>`
             : `<button class="btn ghost" id="lQuit">← Quitter la salle</button><span class="muted">L'hôte lancera l'aventure.</span>`)
-    : `<button class="btn ghost" id="lRet">← Changer les réglages</button><span class="muted">${L.heros.length} / ${c.nb} héros</span>`) + `</div>`;
+    : `<button class="btn ghost" id="lRet">← Changer les réglages</button><span class="muted">${L.heros.length} / ${esc(c.nb)} héros</span>`) + `</div>`;
   box.innerHTML = html;
   if($("lCopie")) $("lCopie").onclick = async () => { try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! Envoie-le à tes amis 📨"); }catch(e){ Base.fenetre("Lien d'invitation", salle.lien); } };
   if($("lU")) $("lU").onchange = e => changerCfg({u: e.target.value});
@@ -647,9 +647,9 @@ function changerCfg(p){
 }
 function carteHero(h, tete){
   const C = classe(h);
-  return `<div class="pj" style="--hc:${h.coul || "#aaa"}"><div class="haut">${tete}</div>
-    <div><b>${h.emo} ${esc(h.nom || "(sans nom)")}</b> <span class="muted">${esc(h.ori)} · ${esc(C.nom)} · niv ${h.niv}</span></div>
-    <div class="muted" style="font-size:.78rem">❤️ ${pvMax(h)} · 🛡️ ${ca(h)} · ${STATS.map(s => s + " " + h.st[s]).join(" · ")}</div>
+  return `<div class="pj" style="--hc:${esc(h.coul || "#aaa")}"><div class="haut">${tete}</div>
+    <div><b>${esc(h.emo)} ${esc(h.nom || "(sans nom)")}</b> <span class="muted">${esc(h.ori)} · ${esc(C.nom)} · niv ${esc(h.niv)}</span></div>
+    <div class="muted" style="font-size:.78rem">❤️ ${pvMax(h)} · 🛡️ ${ca(h)} · ${STATS.map(s => s + " " + esc(h.st[s])).join(" · ")}</div>
     ${h.bg ? `<div class="bg">📖 ${esc(h.bg)}</div>` : ""}</div>`;
 }
 function rendreTable(){
@@ -871,7 +871,7 @@ function anim(r, txt, f){
 let tDe = null;
 function montrerDe(a){
   const b = $("de"), f = a.f == null ? 20 : a.f;
-  b.innerHTML = `<div class="d ${f === 20 && a.r === 20 ? "crit" : f === 20 && a.r === 1 ? "rate" : ""}">${a.r}</div><p>${esc(a.txt)}</p>`;
+  b.innerHTML = `<div class="d ${f === 20 && a.r === 20 ? "crit" : f === 20 && a.r === 1 ? "rate" : ""}">${esc(a.r)}</div><p>${esc(a.txt)}</p>`;
   b.classList.remove("cache");
   clearTimeout(tDe); tDe = setTimeout(() => b.classList.add("cache"), 1900);
 }
@@ -1605,7 +1605,7 @@ function rendreOrdre(){
   const el = $("jOrdre"), c = G.combat;
   el.classList.toggle("cache", !c);
   if(!c) return;
-  el.innerHTML = `<span>Round ${c.round}</span>` + c.ordre.map((o, i) => { const a = acteurDe(o); return a && a.pv > 0 ? `<span class="${i === c.i ? "on" : ""}">${a.emo} ${esc(a.nom)}</span>` : ""; }).join("");
+  el.innerHTML = `<span>Round ${esc(c.round)}</span>` + c.ordre.map((o, i) => { const a = acteurDe(o); return a && a.pv > 0 ? `<span class="${i === c.i ? "on" : ""}">${esc(a.emo)} ${esc(a.nom)}</span>` : ""; }).join("");
 }
 function zoneVisee(){
   const ok = new Set(), v = new Set(), c = G.combat;
@@ -1647,8 +1647,8 @@ function rendreCarte(){
     const ch = l[y][x], k = x + "," + y;
     let inner = U.deco[ch] ? `<span class="deco">${U.deco[ch]}</span>` : "";
     const h = heroEn(x, y), m = !h && monstreEn(x, y);
-    if(h) inner = `<div class="tk ${h.pv <= 0 ? "ko" : ""} ${act === h || (!G.combat && sel === h) ? "actif" : ""}" style="--tc:${h.coul}" title="${esc(h.nom)}">${h.emo}<i><b style="width:${Math.round(100 * h.pv / h.pvMax)}%"></b></i></div>`;
-    else if(m) inner = `<div class="tk m ${act === m ? "actif" : ""}" style="--tc:#ff5a6e" title="${esc(m.nom)}">${m.emo}<i><b style="width:${Math.round(100 * m.pv / m.pvMax)}%"></b></i></div>`;
+    if(h) inner = `<div class="tk ${h.pv <= 0 ? "ko" : ""} ${act === h || (!G.combat && sel === h) ? "actif" : ""}" style="--tc:${esc(h.coul)}" title="${esc(h.nom)}">${esc(h.emo)}<i><b style="width:${Math.round(100 * h.pv / h.pvMax)}%"></b></i></div>`;
+    else if(m) inner = `<div class="tk m ${act === m ? "actif" : ""}" style="--tc:#ff5a6e" title="${esc(m.nom)}">${esc(m.emo)}<i><b style="width:${Math.round(100 * m.pv / m.pvMax)}%"></b></i></div>`;
     const estPion = pion && ((h && pion.k === "h" && pion.id === h.id) || (m && pion.k === "m" && pion.id === m.id));
     html += `<div class="c ${TUILE[ch] || "sol"}${z.ok.has(k) ? " ok" : ""}${z.v.has(k) ? " vise" : ""}${estPion ? " pion" : ""}" data-x="${x}" data-y="${y}">${inner}</div>`;
   }
@@ -1702,9 +1702,9 @@ function rendreEquipe(){
   $("jEquipe").innerHTML = G.heros.map(h => {
     const C = classe(h), xpAvant = h.niv > 1 ? XP_NIV(h.niv - 1) : 0, xpPct = h.niv >= 10 ? 100 : Math.round(100 * (h.xp - xpAvant) / (XP_NIV(h.niv) - xpAvant));
     const pct = Math.round(100 * h.pv / h.pvMax), coul = pct > 50 ? "#3aa76d" : pct > 25 ? "#e0a526" : "#e8607a";
-    return `<div class="hc ${(G.combat ? act === h : sel === h) ? "on" : ""}" style="--hc:${h.coul}" data-h="${esc(h.id)}">
-      <b>${h.emo} ${esc(h.nom)}</b> <span class="muted">${esc(C.nom)} niv ${h.niv}${mode === "ligne" && h.pseudo ? " · " + esc(h.pseudo) : ""}</span>
-      <div class="muted">❤️ ${h.pv}/${h.pvMax} · 🛡️ ${ca(h)}${G.combat ? " · ✨×" + (G.combat.uses[h.id] || 0) : ""}${h.pv <= 0 ? " · 💫 à terre" : ""}</div>
+    return `<div class="hc ${(G.combat ? act === h : sel === h) ? "on" : ""}" style="--hc:${esc(h.coul)}" data-h="${esc(h.id)}">
+      <b>${esc(h.emo)} ${esc(h.nom)}</b> <span class="muted">${esc(C.nom)} niv ${esc(h.niv)}${mode === "ligne" && h.pseudo ? " · " + esc(h.pseudo) : ""}</span>
+      <div class="muted">❤️ ${esc(h.pv)}/${esc(h.pvMax)} · 🛡️ ${ca(h)}${G.combat ? " · ✨×" + esc(G.combat.uses[h.id] || 0) : ""}${h.pv <= 0 ? " · 💫 à terre" : ""}</div>
       <div class="barre"><b style="width:${pct}%;background:${coul}"></b></div>
       <div class="barre xp"><b style="width:${clamp(xpPct, 0, 100)}%"></b></div>
     </div>`;
@@ -1715,7 +1715,7 @@ function rendreEquipe(){
     fiche(h);
   });
   const U = UNIV[G.u];
-  $("jGroupe").innerHTML = `💰 ${G.or} ${esc(U.monnaie)} · 🧪 ${G.potions} potion${G.potions > 1 ? "s" : ""}${G.sac.length ? " · 🎒 " + esc(G.sac.slice(-6).join(", ")) + (G.sac.length > 6 ? "…" : "") : ""}`;
+  $("jGroupe").innerHTML = `💰 ${esc(G.or)} ${esc(U.monnaie)} · 🧪 ${esc(G.potions)} potion${G.potions > 1 ? "s" : ""}${G.sac.length ? " · 🎒 " + esc(G.sac.slice(-6).join(", ")) + (G.sac.length > 6 ? "…" : "") : ""}`;
 }
 function rendreMjSel(){
   const box = $("jMjSel");
@@ -1731,15 +1731,15 @@ function fiche(h){
   if(!h) return;
   const C = classe(h), t = C.cap, box = Base.el("div");
   box.className = "fiche";
-  box.innerHTML = `<p style="margin:0 0 8px"><b>${esc(h.ori)} · ${C.emo} ${esc(C.nom)} · niveau ${h.niv}</b><br><span class="muted">${h.xp} XP${h.niv < 10 ? " / " + XP_NIV(h.niv) + " pour le niveau " + (h.niv + 1) : " (max)"}</span></p>
+  box.innerHTML = `<p style="margin:0 0 8px"><b>${esc(h.ori)} · ${esc(C.emo)} ${esc(C.nom)} · niveau ${esc(h.niv)}</b><br><span class="muted">${esc(h.xp)} XP${h.niv < 10 ? " / " + XP_NIV(h.niv) + " pour le niveau " + (h.niv + 1) : " (max)"}</span></p>
     ${h.bg ? `<p style="margin:0 0 8px"><i>📖 ${esc(h.bg)}</i></p>` : ""}
     <table>
-      <tr><td>PV</td><td>${h.pv} / ${h.pvMax}</td></tr>
+      <tr><td>PV</td><td>${esc(h.pv)} / ${esc(h.pvMax)}</td></tr>
       <tr><td>CA</td><td>${ca(h)}</td></tr>
       <tr><td>Arme</td><td>${esc(C.arme.nom)} : ${sgn(attB(h))} pour toucher, ${degTxt(h)} dégâts, ${C.arme.portee > 1 ? "portée " + C.arme.portee : "corps à corps"}</td></tr>
       <tr><td>Talent</td><td>${esc(t.nom)} (×${t.n}/combat) : ${esc(t.desc)}</td></tr>
       <tr><td>Maîtrise</td><td>${sgn(PRO(h.niv))} en ${C.maitrises.join(", ")}</td></tr>
-      ${STATS.map(s => `<tr><td>${NOMS_STATS[s]}</td><td>${h.st[s]} (${sgn(mod(h.st[s]))})</td></tr>`).join("")}
+      ${STATS.map(s => `<tr><td>${NOMS_STATS[s]}</td><td>${esc(h.st[s])} (${sgn(mod(h.st[s]))})</td></tr>`).join("")}
       <tr><td>Équipement</td><td>${esc(C.kit.join(", "))}</td></tr>
     </table>`;
   Base.fenetre(h.emo + " " + h.nom, box, {bouton: "Fermer"});
@@ -1750,8 +1750,8 @@ function rendreLog(){
   cleLog = cle;
   const box = $("jLog"), bas = box.scrollHeight - box.scrollTop - box.clientHeight < 80 || !box.children.length;
   box.innerHTML = G.log.slice(-90).map(e => e.t === "j"
-    ? `<div class="e j" style="--qc:${e.c || "#5b6bd0"}"><b>${esc(e.q)}</b> : ${esc(e.x)}</div>`
-    : `<div class="e ${e.t}">${esc(e.x)}</div>`).join("");
+    ? `<div class="e j" style="--qc:${esc(e.c || "#5b6bd0")}"><b>${esc(e.q)}</b> : ${esc(e.x)}</div>`
+    : `<div class="e ${esc(e.t)}">${esc(e.x)}</div>`).join("");
   if(bas) box.scrollTop = box.scrollHeight;
 }
 
@@ -1777,7 +1777,7 @@ function rendreActions(){
   else if(ph === "actions"){
     const att = enAttente(), mien = att.filter(controle), h = mien[0];
     if(h){
-      html += `<div><b style="color:${h.coul}">${h.emo} ${esc(h.nom)}</b>, que fais-tu ?${G.heros.length > 1 && att.length > 1 ? ` <span class="muted" style="font-size:.85rem">(en attente : ${att.map(x => esc(x.nom)).join(", ")})</span>` : ""}</div>`;
+      html += `<div><b style="color:${esc(h.coul)}">${esc(h.emo)} ${esc(h.nom)}</b>, que fais-tu ?${G.heros.length > 1 && att.length > 1 ? ` <span class="muted" style="font-size:.85rem">(en attente : ${att.map(x => esc(x.nom)).join(", ")})</span>` : ""}</div>`;
       if(G.choix.length) html += `<div class="puces">${G.choix.map((x, i) => `<button data-choix="${i}">${esc(x)}</button>`).join("")}</div>`;
       html += `<div class="ligne"><input class="champ" id="aTxt" maxlength="400" placeholder="Décris ton action (ex. : j'examine la porte)" style="flex:1;min-width:160px"><button class="btn" data-a="agir">Agir</button></div>
         <div class="ligne"><button class="btn ghost petit" data-a="passer">⏭️ Passer</button>${G.mj === "ia" && !estInvite() && G.heros.some(x => G.actions[x.id] != null) ? `<button class="btn ghost petit" data-a="forcer">📨 Envoyer au MJ sans attendre</button>` : ""}</div>`;
@@ -1791,8 +1791,8 @@ function rendreActions(){
     html += `<div><b>🎲 Le MJ demande des jets de dés</b></div>`;
     G.jets.forEach((j, k) => {
       const h = hero(j.h); if(!h) return;
-      const txt = `${h.emo} ${esc(h.nom)} — ${esc(j.pour || "")} <span class="muted">(${NOMS_STATS[j.s]}, difficulté ${j.dd})</span>`;
-      if(j.r != null) html += `<div>${txt} : <b>${j.tot}</b> ${j.ok ? "✅" : "❌"}</div>`;
+      const txt = `${esc(h.emo)} ${esc(h.nom)} — ${esc(j.pour || "")} <span class="muted">(${NOMS_STATS[j.s]}, difficulté ${esc(j.dd)})</span>`;
+      if(j.r != null) html += `<div>${txt} : <b>${esc(j.tot)}</b> ${j.ok ? "✅" : "❌"}</div>`;
       else if(controle(h)) html += `<div class="ligne"><span style="flex:1">${txt}</span><button class="btn petit" data-jet="${k}">🎲 Lancer le d20</button></div>`;
       else html += `<div>${txt} : <span class="muted">en attente…</span></div>`;
     });
@@ -1802,20 +1802,20 @@ function rendreActions(){
     if(o.k === "h" && controle(a)){
       const C = classe(a), t = C.cap, rest = c.uses[a.id] || 0;
       const instant = ["soin_soi", "soin_groupe", "bouclier"].includes(t.type);
-      html += `<div><b style="color:${a.coul}">${a.emo} ${esc(a.nom)}</b>, à toi ! <span class="muted" style="font-size:.85rem">${c.fait.b ? "✔️ déplacé" : "🦶 déplacement dispo"} · ${c.fait.a ? "✔️ action faite" : "⚔️ action dispo"}</span></div>`;
+      html += `<div><b style="color:${esc(a.coul)}">${esc(a.emo)} ${esc(a.nom)}</b>, à toi ! <span class="muted" style="font-size:.85rem">${c.fait.b ? "✔️ déplacé" : "🦶 déplacement dispo"} · ${c.fait.a ? "✔️ action faite" : "⚔️ action dispo"}</span></div>`;
       if(vise) html += `<div class="muted" style="font-size:.88rem">👉 ${vise === "bouge" ? "Touche une case bleue pour t'y déplacer." : vise === "att" ? "Touche un ennemi en rouge." : t.type === "soin" ? "Touche l'allié à soigner." : t.type === "zone" ? "Touche la case visée (explosion autour)." : "Touche un ennemi en rouge."}</div>`;
       html += `<div class="puces">
         <button data-v="bouge" class="${vise === "bouge" ? "on" : ""}" ${c.fait.b ? "disabled" : ""}>🦶 Se déplacer</button>
         <button data-v="att" class="${vise === "att" ? "on" : ""}" ${c.fait.a ? "disabled" : ""}>⚔️ ${esc(C.arme.nom)}</button>
-        <button data-v="cap" data-instant="${instant ? 1 : ""}" class="${vise === "cap" ? "on" : ""}" ${c.fait.a || rest <= 0 ? "disabled" : ""}>✨ ${esc(t.nom)} (${rest})</button>
-        <button data-a="potion" ${c.fait.a || G.potions <= 0 ? "disabled" : ""}>🧪 Potion (${G.potions})</button>
+        <button data-v="cap" data-instant="${instant ? 1 : ""}" class="${vise === "cap" ? "on" : ""}" ${c.fait.a || rest <= 0 ? "disabled" : ""}>✨ ${esc(t.nom)} (${esc(rest)})</button>
+        <button data-a="potion" ${c.fait.a || G.potions <= 0 ? "disabled" : ""}>🧪 Potion (${esc(G.potions)})</button>
         <button data-a="fuir" ${c.fait.a ? "disabled" : ""}>🏃 Fuir</button>
         <button data-a="fin">⏭️ Fin du tour</button></div>`;
     }else if(o.k === "m" && moiMJ && !c.auto && a){
-      html += `<div><b>${a.emo} ${esc(a.nom)}</b> : à toi de le jouer, MJ ! <span class="muted" style="font-size:.85rem">❤️ ${a.pv}/${a.pvMax} · ${c.fait.b ? "✔️ déplacé" : "🦶 déplacement dispo"} · ${c.fait.a ? "✔️ attaque faite" : "⚔️ attaque dispo"}</span></div>`;
+      html += `<div><b>${esc(a.emo)} ${esc(a.nom)}</b> : à toi de le jouer, MJ ! <span class="muted" style="font-size:.85rem">❤️ ${esc(a.pv)}/${esc(a.pvMax)} · ${c.fait.b ? "✔️ déplacé" : "🦶 déplacement dispo"} · ${c.fait.a ? "✔️ attaque faite" : "⚔️ attaque dispo"}</span></div>`;
       if(vise) html += `<div class="muted" style="font-size:.88rem">👉 ${vise === "bouge" ? "Touche une case bleue." : "Touche un héros en rouge (attaque " + sgn(a.att) + ", " + esc(a.deg) + ")."}</div>`;
       html += `<div class="puces"><button data-mv="bouge" class="${vise === "bouge" ? "on" : ""}" ${c.fait.b ? "disabled" : ""}>🦶 Déplacer</button><button data-mv="att" class="${vise === "att" ? "on" : ""}" ${c.fait.a ? "disabled" : ""}>⚔️ Attaquer</button><button data-ma="auto" ${c.fait.a ? "disabled" : ""}>🤖 Jouer tout seul</button><button data-ma="fin">⏭️ Fin du tour</button></div>`;
-    }else html += `<p class="attente">Tour de ${a ? a.emo + " " + esc(a.nom) : "…"}${o.k === "m" && !c.auto ? " (joué par le MJ)" : ""}</p>`;
+    }else html += `<p class="attente">Tour de ${a ? esc(a.emo) + " " + esc(a.nom) : "…"}${o.k === "m" && !c.auto ? " (joué par le MJ)" : ""}</p>`;
   }
   else if(ph === "fin"){
     html += `<p style="font-weight:800">${G.fin === "victoire" ? "🏆 Bravo, l'aventure est réussie !" : "💀 L'aventure s'achève ici…"}</p>`;
@@ -1889,7 +1889,7 @@ function rendreMJ(lobby){
 }
 const rafraichirMJ = lobby => { cleMJ = ""; rendreMJ(lobby); };
 const pvBoutons = (k, id) => [-5, -1, 1, 5].map(n => `<button class="mini" data-pv="${k}:${esc(id)}:${n}">${n > 0 ? "+" : ""}${n}</button>`).join("");
-const ligneCreature = (m, src, i) => `<div class="mjl"><span class="n">${esc(m.emo)} <b>${esc(m.nom)}</b> <span class="muted">niv ${m.niv} · ❤️${m.pv} 🛡️${m.ca} ⚔️${sgn(m.att)} ${esc(m.deg)}${m.portee > 1 ? " · portée " + m.portee : ""}</span></span>${src === "lib" ? `<button class="mini" data-editm="${i}">✏️</button><button class="mini" data-supm="${i}">🗑️</button>` : ""}<button class="mini" data-ajm="${src}:${i}" title="Ajouter à la rencontre">➕</button></div>`;
+const ligneCreature = (m, src, i) => `<div class="mjl"><span class="n">${esc(m.emo)} <b>${esc(m.nom)}</b> <span class="muted">niv ${esc(m.niv)} · ❤️${esc(m.pv)} 🛡️${esc(m.ca)} ⚔️${sgn(m.att)} ${esc(m.deg)}${m.portee > 1 ? " · portée " + esc(m.portee) : ""}</span></span>${src === "lib" ? `<button class="mini" data-editm="${i}">✏️</button><button class="mini" data-supm="${i}">🗑️</button>` : ""}<button class="mini" data-ajm="${src}:${i}" title="Ajouter à la rencontre">➕</button></div>`;
 function ongletMJ(t, lobby, U, cb){
   if(t === "recit"){
     const att = G.phase === "actions" ? enAttente() : [];

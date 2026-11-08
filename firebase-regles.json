@@ -22,7 +22,7 @@
             ".validate": "!$jeu.beginsWith('demineur_') && newData.isNumber() && newData.val() > 0 && newData.val() <= ($jeu.beginsWith('coupdefeu') ? 1000000000000000 : 10000000)"
           },
           "lv": {
-            ".validate": "!$jeu.beginsWith('demineur_') && newData.isNumber() && newData.val() >= 1 && newData.val() <= 999"
+            ".validate": "!$jeu.beginsWith('demineur_') && newData.isNumber() && newData.val() >= 1 && newData.val() <= ($jeu === 'defense' ? 1000000 : 999)"
           },
           "t": {
             ".validate": "$jeu.beginsWith('demineur_') && newData.isNumber() && newData.val() >= 1000 && newData.val() <= 3600000"
@@ -48,7 +48,7 @@
         ],
         "$id": {
           ".write": "($jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && root.child('bannis_id').child($id).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
-          ".validate": "newData.hasChildren(['n', 's', 'b', 'j', 'd']) && newData.child('s').val() <= newData.child('j').val() + 1 && newData.child('b').val() >= newData.child('s').val() && newData.child('b').val() <= newData.child('j').val() + 1 && (!data.exists() || (newData.child('j').val() == data.child('j').val() && newData.child('s').val() <= data.child('s').val() && newData.child('b').val() <= data.child('b').val()) || (newData.child('j').val() == data.child('j').val() + 1 && newData.child('s').val() <= data.child('s').val() + 1 && (newData.child('b').val() <= data.child('b').val() || newData.child('b').val() == newData.child('s').val())) || (newData.child('j').val() > data.child('j').val() + 1 && newData.child('s').val() <= 1 && (newData.child('b').val() <= data.child('b').val() || newData.child('b').val() == newData.child('s').val())))",
+          ".validate": "newData.hasChildren(['n', 's', 'b', 'j', 'd']) && newData.child('s').val() <= newData.child('j').val() + 1 && newData.child('b').val() >= newData.child('s').val() && newData.child('b').val() <= newData.child('j').val() + 1 && (!data.exists() || (newData.child('j').val() == data.child('j').val() && newData.child('s').val() <= data.child('s').val() && newData.child('b').val() <= data.child('b').val()) || (newData.child('j').val() > data.child('j').val() && newData.child('s').val() <= data.child('s').val() + newData.child('j').val() - data.child('j').val() && (newData.child('b').val() <= data.child('b').val() || newData.child('b').val() == newData.child('s').val())))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
           },
@@ -59,7 +59,7 @@
             ".validate": "newData.isNumber() && newData.val() >= 0"
           },
           "j": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + newData.val() * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() + 1) * 86400000"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + (newData.val() + ($jeu === 'anidle' ? 2 : 0)) * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() + ($jeu === 'anidle' ? 2 : 0) + 1) * 86400000"
           },
           "d": {
             ".validate": "newData.val() == now"
@@ -168,7 +168,7 @@
     "rouletteLive": {
       ".read": true,
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".write": "auth != null && ((auth.uid === $uid && newData.exists() && root.child('bannis').child(auth.uid).val() !== true) || (root.child('admins').child(auth.uid).val() === true && !newData.exists()))",
         ".validate": "newData.hasChildren(['n', 'r', 'd'])",
         "n": {
           ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
@@ -202,7 +202,7 @@
           ".write": "($jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/) && $id.matches(/^[a-z0-9]{20}$/) && newData.exists() && (!data.exists() || newData.child('j').val() > data.child('j').val()) && root.child('bannis_id').child($id).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
           ".validate": "newData.hasChildren(['j', 'e', 'g', 'd'])",
           "j": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + newData.val() * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() + 1) * 86400000"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + (newData.val() + ($jeu === 'anidle' ? 2 : 0)) * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() + ($jeu === 'anidle' ? 2 : 0) + 1) * 86400000"
           },
           "e": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
@@ -279,8 +279,9 @@
       }
     },
     "admins": {
-      ".read": "auth != null",
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && root.child('admins').child(auth.uid).val() === true && $uid !== auth.uid",
         ".validate": "newData.isBoolean() && newData.val() === true"
       }
@@ -437,7 +438,7 @@
         "membres": {
           "$uid": {
             ".write": "auth != null && ((auth.uid === $uid && (data.exists() || !newData.exists() || root.child('invitations').child($uid).child($gid).exists())) || (!newData.exists() && root.child('groupes').child($gid).child('chef').val() === auth.uid))",
-            ".validate": "newData.hasChildren(['pseudo'])",
+            ".validate": "$uid === auth.uid && newData.hasChildren(['pseudo'])",
             "pseudo": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
             },
@@ -530,7 +531,7 @@
       ],
       "$uid": {
         ".write": "(auth != null && auth.uid === $uid && root.child('bannis').child(auth.uid).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
-        ".validate": "newData.hasChildren(['n', 't', 'w', 'sw', 'd']) && newData.child('t').val() >= (data.exists() ? data.child('t').val() : 0) && newData.child('t').val() <= (data.exists() ? data.child('t').val() + 160 : 3000) && newData.child('sw').val() <= newData.child('t').val() && (!data.exists() || now >= data.child('d').val() + 2000)",
+        ".validate": "newData.hasChildren(['n', 't', 'w', 'sw', 'd']) && newData.child('sw').val() <= newData.child('t').val() && newData.child('t').val() <= ((now - 1793491200000 + 7200000) / 86400000 + 1) * 160 && newData.child('sw').val() <= ((now - 1793491200000 + 7200000) / 86400000 - (newData.child('w').val() * 7 - 6) + 1) * 160 && (!data.exists() || (newData.child('t').val() <= data.child('t').val() + 160 && now >= data.child('d').val() + 2000))",
         "n": {
           ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
         },

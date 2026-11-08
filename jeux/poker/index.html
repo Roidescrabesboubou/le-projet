@@ -955,7 +955,7 @@ function finEventuelle(){
   if(mode === "ligne" && moiJ) titre = moiJ.place === 1 ? "🏆 Tu remportes la partie !" : `Partie terminée — tu finis ${moiJ.place}e`;
   if(mode === "local" && humainsLocaux.length === 1) titre = humainsLocaux[0].place === 1 ? "🏆 Tu as raflé tous les jetons !" : `Éliminé… tu finis ${humainsLocaux[0].place}e sur ${G.joueurs.length}`;
   v.innerHTML = `<div class="gros">${gagnantHumain ? "🏆" : "🃏"}</div><h2>${esc(titre)}</h2>
-    <ol class="classement">${tri.map(j => `<li><span>${j.place}. ${esc(j.avatar)} ${esc(j.nom)}</span><span>${j.place === 1 ? "💰 " + fmt(j.jetons) : ""}</span></li>`).join("")}</ol>`;
+    <ol class="classement">${tri.map(j => `<li><span>${esc(j.place)}. ${esc(j.avatar)} ${esc(j.nom)}</span><span>${j.place === 1 ? "💰 " + fmt(j.jetons) : ""}</span></li>`).join("")}</ol>`;
   const act = document.createElement("div"); act.className = "actions";
   if(!estClient()) act.appendChild(bouton("🔁 Rejouer", "or", () => { v.remove(); rejouer(); }));
   else act.appendChild(Object.assign(document.createElement("p"), {textContent: "L'hôte peut relancer une partie.", className: "muted"}));

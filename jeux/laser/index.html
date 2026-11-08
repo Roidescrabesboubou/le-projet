@@ -448,7 +448,7 @@ function dessinerGrille(el, N, o){
   (o.formes || []).forEach((f, i) => { if(f) carte[f.y * N + f.x] = {f, i}; });
   const marq = {};
   (o.tirs || []).forEach(t => {
-    const lab = t.e === t.s ? t.n + "↩" : String(t.n);
+    const lab = t.e === t.s ? Base.esc(t.n) + "↩" : Base.esc(t.n);
     marq[t.e] = {lab, c: t.c};
     if(t.s >= 0 && t.s !== t.e) marq[t.s] = {lab, c: t.c};
   });
@@ -682,7 +682,7 @@ function journal(el, tirs, N, formes, grille, videTxt){
   if(!tirs.length){ const s = document.createElement("span"); s.className = "vide"; s.textContent = videTxt; el.appendChild(s); return; }
   [...tirs].reverse().forEach(t => {
     const b = document.createElement("button");
-    b.innerHTML = pastille(t.c) + `<span>#${t.n} · ${texteTir(t, N)}</span>`;
+    b.innerHTML = pastille(t.c) + `<span>#${Base.esc(t.n)} · ${texteTir(t, N)}</span>`;
     if(formes && formes.every(Boolean)){
       b.className = "voir"; b.title = "Voir le chemin";
       b.onclick = () => { dessinerLaser(grille, N, tracer(formes, t.e, N).pts, true); marquerPorts(grille, [t.e, t.s]); };

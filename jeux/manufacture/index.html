@@ -321,7 +321,7 @@ function dessinerPlateau(){
     const danger = isoles[b.j].has(c);
     h += `<circle cx="${x}" cy="${y}" r="${b.b === "qg" ? 23 : 19}" fill="${coul}" stroke="${danger ? "#ffd23c" : "#fff"}" stroke-width="${danger ? 4 : 2}" stroke-dasharray="${danger ? "5 3" : "none"}" pointer-events="none"></circle>`;
     if(b.b === "machine"){
-      h += `<circle cx="${x}" cy="${y}" r="13" fill="var(--${b.coul})" pointer-events="none"></circle><text x="${x}" y="${y}" font-size="12" font-weight="800" fill="#fff">${ROMAIN[b.tier]}</text>`;
+      h += `<circle cx="${x}" cy="${y}" r="13" fill="var(--${esc(b.coul)})" pointer-events="none"></circle><text x="${x}" y="${y}" font-size="12" font-weight="800" fill="#fff">${ROMAIN[b.tier]}</text>`;
     } else {
       const ic = {qg:"🏠", ext:"⛏️", centrale:"🔥", auto:"🤖"}[b.b];
       h += `<text x="${x}" y="${y}" font-size="${b.b === "qg" ? 22 : 18}">${ic}</text>`;
@@ -398,7 +398,7 @@ function rendre(){
   for(let i = 1; i <= M.PISTE; i++) piste += `<i class="${i <= G.piste ? "on" : ""} ${M.BONUS_PISTE[i] ? "bonus" : ""}" title="Case ${i}"></i>`;
   $("iPiste").innerHTML = piste;
   const vu = vuJ == null ? (mode === "ligne" ? moi : G.tour) : vuJ;
-  $("chips").innerHTML = G.joueurs.map((p, i) => `<button class="chip ${i === G.tour && !G.fini ? "tour" : ""} ${i === vu ? "vu" : ""}" data-j="${i}" style="border-left-color:${COUL_J[i]}">${esc(p.avatar || "")} ${esc(p.nom)} · ${p.prestige}⭐</button>`).join("");
+  $("chips").innerHTML = G.joueurs.map((p, i) => `<button class="chip ${i === G.tour && !G.fini ? "tour" : ""} ${i === vu ? "vu" : ""}" data-j="${i}" style="border-left-color:${COUL_J[i]}">${esc(p.avatar || "")} ${esc(p.nom)} · ${esc(p.prestige)}⭐</button>`).join("");
   $("chips").querySelectorAll("button").forEach(b => b.onclick = () => { vuJ = +b.dataset.j === (mode === "ligne" ? moi : G.tour) ? null : +b.dataset.j; onglet = "usine"; rendre(); });
 
   dessinerPlateau();
@@ -434,16 +434,16 @@ function rendre(){
 function vueUsine(j){
   const p = G.joueurs[j], e = M.energieDe(G, j), mien = peutJouer() && j === G.tour;
   let h = `<div class="jauges">
-    <span class="jauge">⭐ ${p.prestige}</span>
-    <span class="jauge ${e < 0 ? "mal" : ""}" title="Vapeur disponible">💨 ${e}</span>
-    <span class="jauge" title="Tourbe">🍂 ${p.tourbe}</span>
-    <span class="jauge" title="Vitesse des tapis">⏩ ${M.vitesseDe(p)}</span>
-    <span class="jauge" title="Récolte par production">⛏️ ${COUL.map(c => M.recolteDe(G, j, c)).join("/")}</span>
-    <span class="jauge" title="Jetons d'action par tour">🎟️ ${M.jetonsDe(p)}</span>
+    <span class="jauge">⭐ ${esc(p.prestige)}</span>
+    <span class="jauge ${e < 0 ? "mal" : ""}" title="Vapeur disponible">💨 ${esc(e)}</span>
+    <span class="jauge" title="Tourbe">🍂 ${esc(p.tourbe)}</span>
+    <span class="jauge" title="Vitesse des tapis">⏩ ${esc(M.vitesseDe(p))}</span>
+    <span class="jauge" title="Récolte par production">⛏️ ${esc(COUL.map(c => M.recolteDe(G, j, c)).join("/"))}</span>
+    <span class="jauge" title="Jetons d'action par tour">🎟️ ${esc(M.jetonsDe(p))}</span>
     ${M.depots(G, j).some(g => g.some(c => G.batiments[c].b === "ext")) ? `<span class="jauge mal" title="Extracteurs non reliés au comptoir">⚠️ dépôt isolé</span>` : ""}
   </div>`;
   for(const c of COUL){
-    h += `<div class="ligne"><header><span>${{b:"🌲 Bois",s:"🏜️ Sable",f:"⛰️ Fer"}[c]}</span><span class="muted">${p.reserve[c] ? `+${p.reserve[c]} en réserve` : ""}</span></header><div class="machines">`;
+    h += `<div class="ligne"><header><span>${{b:"🌲 Bois",s:"🏜️ Sable",f:"⛰️ Fer"}[c]}</span><span class="muted">${p.reserve[c] ? `+${esc(p.reserve[c])} en réserve` : ""}</span></header><div class="machines">`;
     for(let t = 1; t <= 3; t++){
       const on = p.machines[c + t], ferme = p.vannes[c + t];
       h += `<div class="machine ${on ? "on" : ""}"><small><span>${ROMAIN[t]} ${NOMS[c][t-1]}</span>${mien ? `<button class="vanne" data-vanne="${c}${t}" title="${ferme ? "Vanne fermée : les cubes restent ici" : "Vanne ouverte"}">${ferme ? "🛑" : "🚰"}</button>` : ferme ? "🛑" : ""}</small><div class="segs">`;
@@ -455,7 +455,7 @@ function vueUsine(j){
     }
     h += `</div></div>`;
   }
-  h += `<div class="ligne"><header><span>🤖 Assembleur ${p.machines.auto ? "" : "(à construire)"}</span><span class="muted">Exposés : ${p.vitrine}</span></header><div class="segs">${p.auto.map(n => `<div class="seg" style="min-height:24px">${`<i class="bloc a t3"></i>`.repeat(n)}</div>`).join("")}</div></div>`;
+  h += `<div class="ligne"><header><span>🤖 Assembleur ${p.machines.auto ? "" : "(à construire)"}</span><span class="muted">Exposés : ${esc(p.vitrine)}</span></header><div class="segs">${p.auto.map(n => `<div class="seg" style="min-height:24px">${`<i class="bloc a t3"></i>`.repeat(n)}</div>`).join("")}</div></div>`;
   const plans = p.plans.map(id => M.PLANS.find(x => x.id === id)).map(x => `<div class="carte possede"><span><b>${x.nom}</b><small>${x.txt}</small></span></div>`).join("");
   if(plans) h += `<h3 class="sec">📐 Plans réalisés</h3><div class="liste">${plans}</div>`;
   if(p.main.length){
@@ -573,13 +573,13 @@ function finDePartie(){
   finVue = true;
   const lignes = G.scores.map(s => {
     const p = G.joueurs[s.j], fin = Object.values(s.fin).reduce((a, b) => a + b, 0);
-    return `<tr><td>${G.gagnants.includes(s.j) ? "🏆 " : ""}<b style="color:${COUL_J[s.j]}">${esc(p.nom)}</b>${s.majs.length ? `<br><small class="muted">${s.majs.join(", ")}</small>` : ""}</td><td>${s.base}</td><td>${fin}</td><td>${s.maj}</td><td><b>${s.total}</b></td></tr>`;
+    return `<tr><td>${G.gagnants.includes(s.j) ? "🏆 " : ""}<b style="color:${COUL_J[s.j]}">${esc(p.nom)}</b>${s.majs.length ? `<br><small class="muted">${esc(s.majs.join(", "))}</small>` : ""}</td><td>${esc(s.base)}</td><td>${esc(fin)}</td><td>${esc(s.maj)}</td><td><b>${esc(s.total)}</b></td></tr>`;
   }).join("");
   const moiI = mode === "ligne" ? moi : G.joueurs.findIndex(p => !p.bot);
   const score = G.scores.find(s => s.j === moiI);
   if(score) Base.record("manufacture", score.total, {mieux: "haut", texte: score.total + " ⭐"});
   const titre = G.gagnants.length > 1 ? "🤝 Égalité !" : `🏆 ${esc(G.joueurs[G.gagnants[0]].nom)} gagne !`;
-  feuille(titre, `<p class="muted" style="margin:0 0 8px">L'Exposition ouvre ses portes après ${G.manche} manche${G.manche > 1 ? "s" : ""}.</p>
+  feuille(titre, `<p class="muted" style="margin:0 0 8px">L'Exposition ouvre ses portes après ${esc(G.manche)} manche${G.manche > 1 ? "s" : ""}.</p>
     <table class="scores"><tr><th></th><th>Partie</th><th>Plans</th><th>Majorités</th><th>Total</th></tr>${lignes}</table>`,
     [["Voir le plateau", () => {}]], false);
 }

@@ -435,8 +435,8 @@ function rendre(){
 
   /* barre du haut */
   const trouves = V.J.filter(j => j.fini === "trouve").length;
-  h += `<div class="barre">` + (V.phase === "ecriture" ? `<span>✍️ Catégories secrètes</span>` : `<span>🔄 Tour ${V.tour}</span><span class="muted">🎯 ${trouves}/${V.J.length} ont trouvé</span>`) +
-    `<span class="esp"></span>${V.limite ? `<span class="muted">${V.limite} essais max</span>` : ""}</div>`;
+  h += `<div class="barre">` + (V.phase === "ecriture" ? `<span>✍️ Catégories secrètes</span>` : `<span>🔄 Tour ${esc(V.tour)}</span><span class="muted">🎯 ${trouves}/${V.J.length} ont trouvé</span>`) +
+    `<span class="esp"></span>${V.limite ? `<span class="muted">${esc(V.limite)} essais max</span>` : ""}</div>`;
 
   /* joueurs */
   h += `<div class="joueurs">` + V.ordre.map(id => {
@@ -475,7 +475,7 @@ function saisieProposition(nom, moi){
 }
 function propoHtml(p, prop){
   return `<p class="muted" style="margin:10px 0 0">${prop.type === "perso" ? esc(p.nom) + " propose le personnage :" : esc(p.nom) + " pense que sa catégorie est :"}</p>
-    <div class="propo ${prop.type}">${prop.type === "devine" ? "« " + esc(prop.txt) + " »" : esc(prop.txt)}</div>`;
+    <div class="propo ${esc(prop.type)}">${prop.type === "devine" ? "« " + esc(prop.txt) + " »" : esc(prop.txt)}</div>`;
 }
 function boutonsVote(type, niv, choisi){
   return `<div class="votes">` + Object.keys(CHOIX[type]).filter(k => niv !== 2 || k !== "peu").map(k =>
@@ -486,9 +486,9 @@ function dernierHtml(vj){
   const j = vj(d.id);
   if(d.type === "abandon") return `<div class="verdict non"><small>${esc(j.avatar)} ${esc(j.nom)} abandonne</small><b>🏳️ Sa catégorie était « ${esc(j.cat)} »</b></div>`;
   const [ico, lab] = etiquette(d.type, d.res, V.niv);
-  let h = `<div class="verdict ${d.res}"><small>${esc(j.avatar)} ${esc(j.nom)} ${d.type === "devine" ? "a tenté « " + esc(d.txt) + " »" : "a proposé " + esc(d.txt)}</small><b>${ico} ${lab}</b>`;
+  let h = `<div class="verdict ${esc(d.res)}"><small>${esc(j.avatar)} ${esc(j.nom)} ${d.type === "devine" ? "a tenté « " + esc(d.txt) + " »" : "a proposé " + esc(d.txt)}</small><b>${ico} ${lab}</b>`;
   if(d.det){
-    const t = ["oui", "peu", "non"].filter(k => d.det[k]).map(k => d.det[k] + " " + CHOIX[d.type][k][0]).join(" · ");
+    const t = ["oui", "peu", "non"].filter(k => d.det[k]).map(k => esc(d.det[k]) + " " + CHOIX[d.type][k][0]).join(" · ");
     if(t) h += `<div class="det">Votes : ${t}</div>`;
   }
   if(d.type === "devine" && d.res === "oui") h += `<div class="det">🎉 Sa catégorie : « ${esc(j.cat)} »</div>`;
@@ -557,7 +557,7 @@ function panneauLigne(vj, moi, dansPartie){
     if(V.cur === moi){
       if(!V.prop){
         if(attente && attente.m.t === "prop" && attente.m.cle === V.cle) return h + `<div class="gros">⏳</div><h3>Envoi…</h3>`;
-        return h + `<p class="muted">Tour ${V.tour} · essai n°${moiJ.essais + 1}${V.limite ? "/" + V.limite : ""}</p>
+        return h + `<p class="muted">Tour ${esc(V.tour)} · essai n°${esc(moiJ.essais + 1)}${V.limite ? "/" + esc(V.limite) : ""}</p>
           <h3>🎤 À toi de jouer !</h3><p class="muted">Cite un personnage, ou tente de deviner ta catégorie.</p>` + saisieProposition(moiJ.nom, true) + fin;
       }
       const att = V.votants.filter(id => !V.aVote.includes(id)).map(id => esc(vj(id).nom)).join(", ");
@@ -583,15 +583,15 @@ function panneauLigne(vj, moi, dansPartie){
 function carnets(vj, moi){
   return `<div class="carnets">` + V.ordre.map(id => {
     const j = vj(id), cat = catPour(j);
-    let etat = j.essais + " essai" + (j.essais > 1 ? "s" : "");
+    let etat = esc(j.essais) + " essai" + (j.essais > 1 ? "s" : "");
     if(j.parti) etat = "🚪 parti";
-    else if(j.fini === "trouve") etat = "🎯 trouvé en " + j.essais;
+    else if(j.fini === "trouve") etat = "🎯 trouvé en " + esc(j.essais);
     else if(j.fini === "perdu") etat = "🏳️ " + etat;
     const ligneCat = cat ? `<div class="cat">🏷️ ${esc(cat)}</div>`
       : `<div class="cat cache2">${id === moi ? "🙈 Ta catégorie est secrète" : "🔒 Catégorie cachée"}</div>`;
     const hist = j.hist.length ? j.hist.map(e => {
       const ico = etiquette(e.type, e.res, V.niv)[0];
-      return e.type === "devine" ? `<span class="h ${e.res} devine">💭 « ${esc(e.txt)} » ${ico}</span>` : `<span class="h ${e.res}">${ico} ${esc(e.txt)}</span>`;
+      return e.type === "devine" ? `<span class="h ${esc(e.res)} devine">💭 « ${esc(e.txt)} » ${ico}</span>` : `<span class="h ${esc(e.res)}">${ico} ${esc(e.txt)}</span>`;
     }).join("") : `<span class="vide">Aucun personnage proposé</span>`;
     return `<div class="carnet${id === V.cur ? " actif" : ""}"><div class="tete"><span class="n">${esc(j.avatar)} ${esc(j.nom)}${id === moi ? " (toi)" : ""}</span><span class="muted">${etat}</span></div>${ligneCat}<div class="hist">${hist}</div></div>`;
   }).join("") + `</div>`;
@@ -602,9 +602,9 @@ function finale(vj){
   const l = V.J.slice().sort((a, b) => (a.fini === "trouve" ? 0 : 1) - (b.fini === "trouve" ? 0 : 1) || (a.rang || 99) - (b.rang || 99) || a.essais - b.essais);
   h += `<table class="tab">` + l.map(j => {
     const g = V.gains ? V.gains[j.id] : 0, med = j.fini === "trouve" ? (["🥇", "🥈", "🥉"][j.rang - 1] || "🎯") : "🏳️";
-    return `<tr><td>${med} ${esc(j.avatar)} ${esc(j.nom)}${j.parti ? " 🚪" : ""}<br><small>${j.fini === "trouve" ? "trouvé en " + j.essais + " essai" + (j.essais > 1 ? "s" : "") : "pas trouvé (" + j.essais + " essai" + (j.essais > 1 ? "s" : "") + ")"}</small></td>
+    return `<tr><td>${med} ${esc(j.avatar)} ${esc(j.nom)}${j.parti ? " 🚪" : ""}<br><small>${j.fini === "trouve" ? "trouvé en " + esc(j.essais) + " essai" + (j.essais > 1 ? "s" : "") : "pas trouvé (" + esc(j.essais) + " essai" + (j.essais > 1 ? "s" : "") + ")"}</small></td>
       <td>« ${esc(j.cat)} »<br><small>${j.auto ? "idée tirée au hasard" : "écrite par " + esc(vj(j.par).nom)}</small></td>
-      <td>${g ? `<span class="plus">+${g}</span>` : "0"}</td></tr>`;
+      <td>${g ? `<span class="plus">+${esc(g)}</span>` : "0"}</td></tr>`;
   }).join("") + `</table>`;
   return h;
 }
@@ -613,7 +613,7 @@ function tableauScores(){
   const lignes = V.J.map(j => ({j, s: scores[cle(j)] || 0})).sort((a, b) => b.s - a.s);
   if(!lignes.some(l => l.s)) return "";
   return `<div class="b-carte"><b>🏆 Scores cumulés</b><table class="tab">` + lignes.map((l, i) =>
-    `<tr><td>${["🥇", "🥈", "🥉"][i] || ""} ${esc(l.j.avatar)} ${esc(l.j.nom)}</td><td></td><td>${l.s} pts</td></tr>`).join("") + `</table></div>`;
+    `<tr><td>${["🥇", "🥈", "🥉"][i] || ""} ${esc(l.j.avatar)} ${esc(l.j.nom)}</td><td></td><td>${esc(l.s)} pts</td></tr>`).join("") + `</table></div>`;
 }
 function apresFin(G){
   G.J.forEach(j => { const k = mode === "local" ? j.nom : j.id; scores[k] = (scores[k] || 0) + (G.gains[j.id] || 0); });

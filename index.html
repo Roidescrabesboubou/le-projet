@@ -4,66 +4,115 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Salle de jeux</title>
+<meta name="description" content="Des mini-jeux à lancer dans le navigateur : défis du jour, parties entre amis en ligne, casino, jeux avec IA.">
+<meta name="theme-color" content="#1d1a3a">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta property="og:title" content="Salle de jeux">
+<meta property="og:description" content="Des mini-jeux à lancer dans le navigateur, seul ou entre amis.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#fbf6ef;--card:#fff;--text:#22192b;--muted:#776c80;--line:#ecdfd2;--accent:#e86a92;--soon:#c9bfd2}
-@media (prefers-color-scheme:dark){:root{--bg:#17131c;--card:#231d2b;--text:#f3ecf6;--muted:#a99bb3;--line:#352c40;--soon:#4a4055}}
+/* Salle de jeux — accueil. Idée : une boîte de jeux. Bords encrés, ombres pleines
+   « en carton » décalées vers le bas, tuiles de lettres pour le titre. */
+:root{
+  --bg:#eef0fa;--card:#fff;--text:#1d1a3a;--muted:#5c5880;--line:#d5d8ec;--soft:#e2e5f5;
+  --encre:#1d1a3a;--accent:#ff4f7b;--jeton:#ffc23d;--ok:#1f9a66;--soon:#c7c9dd;
+  --bord:var(--encre);--ombre:0 4px 0 var(--encre);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#13112a;--card:#1f1c3c;--text:#f1efff;--muted:#a6a2cc;--line:#36325f;--soft:#2a2650;
+  --encre:#06051a;--bord:#4b467d;--soon:#3b3760;
+}}
 *{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
 body{margin:0;font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
-  background-image:radial-gradient(circle at 15% 10%,rgba(232,106,146,.12),transparent 40%),radial-gradient(circle at 85% 30%,rgba(91,107,208,.12),transparent 40%)}
-main{max-width:980px;margin:0 auto;padding:48px 16px 40px}
-.hero{text-align:center;margin-bottom:36px}
-.hero .logo{font-size:3rem;line-height:1}
-h1{font-family:Fredoka,sans-serif;font-size:clamp(2rem,6vw,3.2rem);margin:10px 0 6px;letter-spacing:.5px}
-.hero p{color:var(--muted);margin:0 auto;max-width:520px}
-.filters{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:22px 0 28px}
-.filters button{font:inherit;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 16px}
-.filters button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
-.card{position:relative;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;text-decoration:none;color:inherit;transition:transform .18s,box-shadow .18s}
-a.card:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.12)}
-.cover{height:130px;display:flex;align-items:center;justify-content:center;font-size:3.4rem;background:linear-gradient(135deg,var(--c1),var(--c2))}
-.body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px;flex:1}
-.body h2{font-family:Fredoka,sans-serif;font-size:1.25rem;margin:0}
-.body p{margin:0;color:var(--muted);font-size:.92rem;flex:1}
-.tags{display:flex;gap:6px;flex-wrap:wrap}
-.tags span{font-size:.75rem;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
-.play{align-self:flex-start;margin-top:4px;font-weight:700;background:var(--accent);color:#fff;border-radius:10px;padding:8px 16px}
-.badge{position:absolute;top:10px;right:10px;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;background:#fff;color:#22192b}
-.card.soon{opacity:.75}
-.card.soon .cover{background:var(--soon);filter:grayscale(.4)}
-.card.soon .play{background:transparent;color:var(--muted);border:1px dashed var(--muted)}
-.empty{text-align:center;color:var(--muted);padding:30px}
+  background-image:radial-gradient(var(--line) 1.2px,transparent 1.3px);background-size:22px 22px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+main{max-width:1060px;margin:0 auto;padding:24px 16px 48px}
 
-.topbar{position:absolute;top:14px;right:16px;z-index:10;display:flex;align-items:center;gap:8px}
-.reglages{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);text-decoration:none;font-size:1.15rem}
-.reglages:hover{transform:rotate(30deg)}
-.md-compteur{height:40px;padding:0 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--text);font:800 .95rem Nunito,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
-.md-compteur:hover{border-color:#f2b705}
-.defis .md{color:#b07800}
-@media (prefers-color-scheme:dark){.defis .md{color:#f2c94c}}
-.jour{position:absolute;top:10px;left:10px;font-size:.72rem;font-weight:800;padding:4px 10px;border-radius:999px;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-.jour.fait{background:#2f9b62}.jour.afaire{background:#e08a1e}
-.defis{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin:-12px 0 22px;font-weight:700;font-size:.92rem}
+/* ---------- Haut de page ---------- */
+.topbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;max-width:1060px;margin:0 auto;padding:14px 16px 0}
+.reglages{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--card);border:2px solid var(--line);text-decoration:none;font-size:1.1rem;transition:transform .2s}
+.reglages:hover{transform:rotate(40deg)}
+.md-compteur{height:40px;padding:0 12px;border-radius:12px;background:var(--card);border:2px solid var(--line);color:var(--text);font:800 .95rem Nunito,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.md-compteur:hover{border-color:var(--jeton)}
+.topbar .cp-btn{border-width:2px;height:40px}
+
+.hero{text-align:center;margin:6px 0 26px}
+.tuiles{display:flex;justify-content:center;flex-wrap:wrap;gap:clamp(4px,1vw,8px);margin:0 0 18px;padding:0;font-size:clamp(1.5rem,6.2vw,3.3rem)}
+.tuiles .mot{display:flex;gap:inherit}
+.tuiles .mot+.mot{margin-left:clamp(8px,2.4vw,22px)}
+.tuile{display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.4em;border-radius:.22em;
+  font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;line-height:1;color:#fff;
+  background:var(--t);border:3px solid var(--encre);box-shadow:0 .12em 0 var(--encre);transform:rotate(var(--r));
+  text-shadow:0 2px 0 rgba(0,0,0,.2);animation:pose .5s cubic-bezier(.3,1.5,.5,1) both;animation-delay:calc(var(--i) * 45ms)}
+@keyframes pose{from{opacity:0;transform:translateY(-.8em) rotate(calc(var(--r) * -3))}}
+@media (prefers-reduced-motion:reduce){.tuile{animation:none}}
+.hero p{color:var(--muted);margin:0 auto;max-width:34em;font-size:1.05rem;line-height:1.5}
+
+/* ---------- Annonce de l'admin ---------- */
+.annonce{margin:0 auto 24px;max-width:720px;padding:12px 18px;border-radius:14px;background:var(--jeton);color:#1d1a3a;border:2px solid var(--encre);box-shadow:var(--ombre);text-align:center;font-weight:800;white-space:pre-wrap}
+
+/* ---------- Filtres : une barre collante ---------- */
+.filters{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:0 -16px 18px;padding:10px 16px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.filters button{font:inherit;font-weight:800;font-size:.9rem;cursor:pointer;border:2px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:5px 14px;white-space:nowrap}
+.filters button:hover{border-color:var(--text)}
+.filters button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+@media (max-width:640px){
+  .filters{position:sticky;top:0;z-index:20;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
+  .filters::-webkit-scrollbar{display:none}
+}
+
+/* ---------- Défis du jour ---------- */
+.defis{display:flex;justify-content:center;align-items:center;gap:10px 14px;flex-wrap:wrap;margin:0 0 26px;padding:12px 16px;border-radius:16px;
+  background:var(--card);border:2px solid var(--line);font-weight:800;font-size:.92rem}
 .defis[hidden]{display:none}
-.defis .barre{width:140px;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
-.defis .barre i{display:block;height:100%;background:#2f9b62;border-radius:99px}
-.defis button{font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:4px 12px}
-.record{font-size:.82rem;font-weight:700;color:var(--text);background:var(--bg);border-radius:10px;padding:5px 9px;align-self:flex-start}
-.annonce{margin:0 auto 24px;max-width:720px;padding:12px 18px;border-radius:14px;background:var(--card);border:2px dashed var(--accent);text-align:center;font-weight:700;white-space:pre-wrap}
-.card.hidden-admin{opacity:.6;outline:2px dashed var(--muted)}
-footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
+.defis .barre{width:150px;height:12px;border-radius:99px;background:var(--soft);border:2px solid var(--line);overflow:hidden}
+.defis .barre i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.defis .md{color:#9a6200}
+@media (prefers-color-scheme:dark){.defis .md{color:var(--jeton)}}
+.defis button{font:inherit;font-size:.82rem;font-weight:800;cursor:pointer;border:2px solid var(--line);background:var(--bg);color:var(--text);border-radius:999px;padding:4px 12px}
+.defis button:hover{border-color:var(--text)}
+
+/* ---------- Cartes de jeux ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px 18px}
+.card{position:relative;display:flex;flex-direction:column;background:var(--card);border:2px solid var(--bord);border-radius:20px;overflow:hidden;text-decoration:none;color:inherit;
+  box-shadow:var(--ombre);transition:transform .15s,box-shadow .15s}
+a.card:hover{transform:translateY(-3px);box-shadow:0 7px 0 var(--encre)}
+a.card:active{transform:translateY(2px);box-shadow:0 2px 0 var(--encre)}
+.cover{height:120px;display:flex;align-items:center;justify-content:center;font-size:3.6rem;border-bottom:2px solid var(--bord);
+  background:radial-gradient(rgba(255,255,255,.22) 1.5px,transparent 1.6px) 0 0/14px 14px,linear-gradient(135deg,var(--c1),var(--c2))}
+a.card .cover{transition:font-size .15s}
+a.card:hover .cover{font-size:4rem}
+.body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.body h2{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.28rem;letter-spacing:-.01em;margin:0}
+.body p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.45;flex:1}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tags span{font-size:.74rem;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--soft);color:var(--muted)}
+.play{align-self:flex-start;margin-top:4px;font-weight:800;background:var(--accent);color:#fff;border:2px solid var(--encre);border-radius:999px;padding:6px 16px;box-shadow:0 3px 0 var(--encre)}
+.badge{position:absolute;top:10px;right:10px;font-size:.72rem;font-weight:800;padding:3px 10px;border-radius:999px;background:#fff;color:#1d1a3a;border:2px solid #1d1a3a;transform:rotate(3deg)}
+.jour{position:absolute;top:10px;left:10px;font-size:.72rem;font-weight:800;padding:3px 10px;border-radius:999px;color:#fff;border:2px solid #1d1a3a}
+.jour.fait{background:var(--ok)}.jour.afaire{background:#d36a00}
+.record{font-size:.82rem;font-weight:800;color:var(--text);background:var(--soft);border-radius:10px;padding:5px 9px;align-self:flex-start}
+.card.soon{border-style:dashed;border-color:var(--muted);box-shadow:none}
+.card.soon .cover{background:var(--soon);filter:grayscale(.5);border-bottom:2px dashed var(--muted)}
+.card.soon .play{background:transparent;color:var(--muted);border:2px dashed var(--muted);box-shadow:none}
+.card.hidden-admin{opacity:.6;outline:3px dashed var(--muted);outline-offset:3px}
+.empty{text-align:center;color:var(--muted);padding:30px;grid-column:1/-1}
+footer{text-align:center;color:var(--muted);font-size:.9rem;font-weight:700;margin-top:44px}
 </style>
 </head>
 <body>
-<div class="topbar"><span id="medailles"></span><a class="reglages" href="reglages/" title="Réglages : pseudo, avatar, clés IA, sauvegarde">⚙️</a><div id="compte"></div></div>
+<div class="topbar"><span id="medailles"></span><a class="reglages" href="reglages/" title="Réglages : pseudo, avatar, clés IA, sauvegarde" aria-label="Réglages">⚙️</a><div id="compte"></div></div>
 <main>
   <div class="annonce" id="annonce" hidden></div>
   <section class="hero">
-    <div class="logo">🎮</div>
-    <h1>Salle de jeux</h1>
-    <p>Une collection de mini-jeux à lancer directement dans ton navigateur. De nouveaux jeux arrivent régulièrement !</p>
+    <h1 class="tuiles" id="titre" aria-label="Salle de jeux">Salle de jeux</h1>
+    <p>Des mini-jeux à lancer tout de suite : un défi par jour, des parties entre amis en ligne, et quelques jeux où l'IA mène la danse.</p>
   </section>
 
   <nav class="filters" id="filters"></nav>
@@ -79,6 +128,20 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
 <script src="jeux/commun/medailles.js"></script>
 <script src="jeux/commun/base.js"></script>
 <script>
+/* Titre en tuiles de lettres (décoratif : les lecteurs d'écran lisent « Salle de jeux ») */
+(function(){
+  const h = document.getElementById("titre"), C = ["#ff4f7b","#f59e0b","#1f9a66","#3d6bff","#8b4dff","#ff6a2b"];
+  h.textContent = ""; let i = 0;
+  "SALLE DE JEUX".split(" ").forEach(m => {
+    const w = document.createElement("span"); w.className = "mot"; w.setAttribute("aria-hidden", "true");
+    for(const c of m){
+      const t = document.createElement("span"); t.className = "tuile"; t.textContent = c;
+      t.style.cssText = `--t:${C[i % C.length]};--r:${[-4,3,-2,4,-3,2,-1][i % 7]}deg;--i:${i}`;
+      w.appendChild(t); i++;
+    }
+    h.appendChild(w);
+  });
+})();
 const GAMES = window.SALLE_CATALOGUE;
 const grid = document.getElementById("grid");
 const filters = document.getElementById("filters");

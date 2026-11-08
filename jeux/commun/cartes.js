@@ -43,7 +43,7 @@
     d.className = "carte" + (c ? (rouge(c) ? " rouge" : "") : " dos") + (o.petite ? " petite" : "") + (o.anim ? " arrive" : "");
     d.setAttribute("aria-label", nom(c));
     if(c){
-      const r = AFF[c[0]] || c[0], s = SYM[c[1]];
+      const r = AFF[c[0]] || String(c[0]).replace(/[&<>"']/g, ""), s = SYM[c[1]] || "";   // carte venue du réseau : rien d'autre que du texte
       d.innerHTML = `<span class="ci">${r}<br>${s}</span><span class="cc">${s}</span><span class="ci bas">${r}<br>${s}</span>`;
     }
     return d;

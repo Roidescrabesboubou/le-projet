@@ -98,9 +98,9 @@
     client.on("message", (tp, buf) => {
       if(tp !== sujet || salle.ferme) return;
       let m; try{ m = JSON.parse(buf.toString()); }catch(e){ return; }
-      if(!m || m.de === moi) return;
+      if(!m || typeof m !== "object" || m.de === moi) return;
       vus[m.de] = Date.now();
-      if(hote) recuHote(m); else recuInvite(m);
+      try{ if(hote) recuHote(m); else recuInvite(m); }catch(e){ console.warn("Message réseau ignoré", e); }   // un message tordu ne doit pas couper la salle
     });
 
     function majListe(){ salle.envoyer({t: "_liste", joueurs: salle.joueurs}); }
@@ -130,10 +130,10 @@
 
     let hoteVu = Date.now(), perduSignale = false;
     function recuInvite(m){
-      if(m.t === "_liste"){ salle.joueurs = m.joueurs || []; hoteVu = Date.now(); o.surListe && o.surListe(salle.joueurs); return; }
+      if(m.t === "_liste"){ salle.joueurs = Array.isArray(m.joueurs) ? m.joueurs.filter(j => j && typeof j === "object") : []; hoteVu = Date.now(); o.surListe && o.surListe(salle.joueurs); return; }
       if(m.t === "_fermeture"){ salle.ferme = true; clearInterval(vie); bandeau("La salle a été fermée par l'hôte."); o.surFermeture && o.surFermeture(); setTimeout(() => client.end(true), 300); return; }
       if(m.t === "_vie"){ if(salle.joueurs[0] && m.de === salle.joueurs[0].id) hoteVu = Date.now(); return; }
-      if(m.t && m.t[0] === "_") { salle._interne && salle._interne(m); return; }
+      if(typeof m.t === "string" && m.t[0] === "_") { salle._interne && salle._interne(m); return; }
       if(salle.joueurs[0] && m.de === salle.joueurs[0].id) hoteVu = Date.now();
       o.surMessage && o.surMessage(m);
     }
@@ -227,7 +227,7 @@
     }
     const sujet = "salledejeux-" + jeu + "/v1/" + code, qos = {qos: o.qos || 0}, b = o.bandeau || bandeau;
     c.subscribe(sujet, qos);
-    c.on("message", (tp, buf) => { if(tp !== sujet) return; let m; try{ m = JSON.parse(buf.toString()); }catch(e){ return; } o.surMessage && o.surMessage(m); });
+    c.on("message", (tp, buf) => { if(tp !== sujet) return; let m; try{ m = JSON.parse(buf.toString()); }catch(e){ return; } if(!m || typeof m !== "object") return; try{ o.surMessage && o.surMessage(m); }catch(e){ console.warn("Message réseau ignoré", e); } });
     c.on("offline", () => b("⚠️ Connexion perdue… reconnexion en cours"));
     c.on("connect", () => { b(""); c.subscribe(sujet, qos); });
     return {code, envoyer(m){ try{ c.publish(sujet, JSON.stringify(m), qos); }catch(e){} }, end(f){ try{ c.end(f); }catch(e){} }};

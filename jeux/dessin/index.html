@@ -421,7 +421,7 @@ function hostHandle(m){
   if(!G)return;
   const p=G.players.find(x=>x.id===m.from);
   if(m.t==="hello"){
-    if(p){p.seen=Date.now();p.name=String(m.name||p.name).slice(0,16);p.av=m.av||p.av;hostBroadcast();sendPrivate(p.id);return;}
+    if(p){p.seen=Date.now();p.name=String(m.name||p.name).slice(0,16);p.av=String(m.av||p.av).slice(0,4);hostBroadcast();sendPrivate(p.id);return;}
     if(G.players.length>=G.set.max)return pub({t:"full",to:m.from});
     G.players.push({id:m.from,name:String(m.name||"Joueur").slice(0,16),av:String(m.av||"🙂").slice(0,4),score:0,guessed:false,pts:0,seen:Date.now()});
     hostChat({t:"chat",kind:"info",text:`${String(m.name||"Joueur").slice(0,16)} a rejoint la partie`});
@@ -613,10 +613,10 @@ function renderLobby(){
   if(host)renderSettings();
   else{
     const s=S.set;
-    $("setSum").innerHTML=`<div>🔁 <b>${s.rounds}</b> manche(s) · ⏱️ <b>${s.time}</b> s · 🎯 <b>${s.choices}</b> mot(s) proposé(s)</div>
+    $("setSum").innerHTML=`<div>🔁 <b>${esc(s.rounds)}</b> manche(s) · ⏱️ <b>${esc(s.time)}</b> s · 🎯 <b>${esc(s.choices)}</b> mot(s) proposé(s)</div>
       <div>💡 Indices : <b>${s.hints?"oui":"non"}</b></div>
       <div>📚 ${s.only?"Uniquement les mots personnalisés":"Thèmes : "+(esc(s.themes.join(", "))||"aucun")}</div>
-      <div>✍️ Mots perso : <b>${s.custom}</b> · Total : <b>${s.pool}</b> mots</div>`;
+      <div>✍️ Mots perso : <b>${esc(s.custom)}</b> · Total : <b>${esc(s.pool)}</b> mots</div>`;
   }
 }
 let setBuilt=false;
@@ -690,7 +690,7 @@ function renderGame(){
   const sorted=S.players.slice().sort((a,b)=>b.score-a.score);
   $("players").innerHTML=sorted.map((p,i)=>`<div class="pl${p.guessed?" found":""}${p.id===S.drawer&&S.phase!=="end"?" drawing":""}">
     <span class="rk">#${i+1}</span><span class="a">${esc(p.av)}</span>
-    <div class="info"><b>${esc(p.name)}${p.id===myId&&!local?" (toi)":""}</b><small>${p.score} pts</small></div>
+    <div class="info"><b>${esc(p.name)}${p.id===myId&&!local?" (toi)":""}</b><small>${esc(p.score)} pts</small></div>
     <span class="ic">${p.id===S.drawer&&S.phase!=="end"?"✏️":p.guessed?"✅":""}</span></div>`).join("");
   $("tools").classList.toggle("hidden",!amDrawer());
   $("chatIn").placeholder=S.phase==="draw"?(S.drawer===myId?"Discute (sans donner le mot !)":(meP()&&meP().guessed?"Discute avec ceux qui ont trouvé…":"Devine ici…")):"Discute ici…";
@@ -702,7 +702,7 @@ function renderWord(){
   if(S.phase==="draw"){
     if(mode==="local"){
       if($("holdWord")&&el.dataset.t==String(S.turnId))return;el.dataset.t=S.turnId;
-      el.innerHTML=`<button class="ghost" id="holdWord">👁️ Maintenir pour voir le mot</button><small>${S.mask.length} caractères — le dessinateur seul doit regarder !</small>`;
+      el.innerHTML=`<button class="ghost" id="holdWord">👁️ Maintenir pour voir le mot</button><small>${esc(S.mask.length)} caractères — le dessinateur seul doit regarder !</small>`;
       const b=$("holdWord"),on=()=>{b.textContent=G.word;},off=()=>{b.textContent="👁️ Maintenir pour voir le mot";};
       b.onpointerdown=on;b.onpointerup=off;b.onpointerleave=off;b.oncontextmenu=e=>e.preventDefault();
       return;
@@ -738,11 +738,11 @@ function renderOverlay(force){
     }
   }else if(S.phase==="reveal"){
     const list=S.players.slice().sort((a,b)=>b.pts-a.pts);
-    h=`<p>Le mot était</p><h3 style="font-size:2rem">${esc(S.word)}</h3><ul class="res">${list.map(p=>`<li><span>${esc(p.av)} ${esc(p.name)}${p.id===S.drawer?" ✏️":""}</span><span class="${p.pts?"p":"z"}">${p.pts?"+"+p.pts:"0"}</span></li>`).join("")}</ul>`;
+    h=`<p>Le mot était</p><h3 style="font-size:2rem">${esc(S.word)}</h3><ul class="res">${list.map(p=>`<li><span>${esc(p.av)} ${esc(p.name)}${p.id===S.drawer?" ✏️":""}</span><span class="${p.pts?"p":"z"}">${p.pts?"+"+esc(p.pts):"0"}</span></li>`).join("")}</ul>`;
   }else if(S.phase==="end"){
     const r=S.players.slice().sort((a,b)=>b.score-a.score);
-    const pod=[r[1],r[0],r[2]].map((p,i)=>p?`<div style="height:${[70,100,50][i]}px"><div class="a">${esc(p.av)}</div><b>${esc(p.name)}</b><br>${["🥈","🥇","🥉"][i]} ${p.score}</div>`:"").join("");
-    h=`<h3>🏆 ${esc(r[0]?r[0].name:"")} gagne la partie !</h3><div class="podium">${pod}</div>${r.length>3?`<ul class="res">${r.slice(3).map((p,i)=>`<li><span>#${i+4} ${esc(p.av)} ${esc(p.name)}</span><span>${p.score}</span></li>`).join("")}</ul>`:""}
+    const pod=[r[1],r[0],r[2]].map((p,i)=>p?`<div style="height:${[70,100,50][i]}px"><div class="a">${esc(p.av)}</div><b>${esc(p.name)}</b><br>${["🥈","🥇","🥉"][i]} ${esc(p.score)}</div>`:"").join("");
+    h=`<h3>🏆 ${esc(r[0]?r[0].name:"")} gagne la partie !</h3><div class="podium">${pod}</div>${r.length>3?`<ul class="res">${r.slice(3).map((p,i)=>`<li><span>#${i+4} ${esc(p.av)} ${esc(p.name)}</span><span>${esc(p.score)}</span></li>`).join("")}</ul>`:""}
       ${isHost?`<div class="opts"><button id="againBtn">🔁 Rejouer</button></div>`:`<p class="hint" style="color:#ddd">L'hôte peut relancer une partie.</p>`}`;
   }
   ov.innerHTML=h;ov.classList.toggle("hidden",!h);
@@ -759,7 +759,7 @@ function renderFound(){
   const box=$("foundList");
   if(S.phase!=="draw"){box.innerHTML=`<p class="hint">${S.phase==="choose"?"Le dessinateur choisit son mot…":"Tour terminé."}</p>`;return;}
   const others=S.players.filter(p=>p.id!==S.drawer);
-  box.innerHTML=others.map(p=>`<button class="${p.guessed?"ghost":"blue"}" data-f="${esc(p.id)}" ${p.guessed?"disabled":""}>${p.guessed?"✅":"🙋"} ${esc(p.av)} ${esc(p.name)} ${p.guessed?"(+"+p.pts+")":"a trouvé !"}</button>`).join("")+
+  box.innerHTML=others.map(p=>`<button class="${p.guessed?"ghost":"blue"}" data-f="${esc(p.id)}" ${p.guessed?"disabled":""}>${p.guessed?"✅":"🙋"} ${esc(p.av)} ${esc(p.name)} ${p.guessed?"(+"+esc(p.pts)+")":"a trouvé !"}</button>`).join("")+
     `<button class="ghost" id="skipTurn">⏭ Personne ne trouve / fin du tour</button>`;
   box.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{const p=G.players.find(x=>x.id===b.dataset.f);if(p)award(p);});
   $("skipTurn").onclick=()=>{if(G.phase==="draw")endTurn("Tour passé.");};

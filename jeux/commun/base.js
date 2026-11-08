@@ -143,4 +143,6 @@
   }
 
   window.Base = {RACINE, stock, joueur, record, records, fenetre, aide, toast, entete, el, jour, avantMinuit, dateDuJour, rng, melanger, partager};
+  // échappe un texte venu d'ailleurs (pseudo, message réseau, IA…) avant de le mettre dans du HTML
+  window.Base.esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 })();

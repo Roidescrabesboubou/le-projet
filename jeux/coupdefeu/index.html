@@ -1042,7 +1042,7 @@ async function envoyer(res, n, zone){
     const okT = a.status === "fulfilled" && Classement.qualifie(a.value, "k", false, res.k);
     const okS = b.status === "fulfilled" && Classement.qualifie(b.value, "k", false, res.k);
     if(okT || okS){
-      await Classement.ajouter("coupdefeu", {n, lv:res.lv, s:Math.min(res.s, 1e15), k:res.k});
+      await Classement.ajouter("coupdefeu", {n, lv:res.lv, s:Math.max(1, Math.min(res.s, 1e15)), k:res.k});
       msgs.push(okT ? "🌍 Tu entres dans le top 10 « journée la plus lointaine » !" : "🗓️ Tu entres dans le top 10 de la semaine !");
     }
   }catch(e){ msgs.push("Classement mondial indisponible pour le moment."); }

@@ -225,10 +225,10 @@ function pilules(titre, options, val, change){
   return b;
 }
 function resumeR(r){
-  const nb = r.nb === "auto" ? "nombre auto" : r.nb + " imposteur" + (r.nb > 1 ? "s" : "");
+  const nb = r.nb === "auto" ? "nombre auto" : esc(r.nb) + " imposteur" + (r.nb > 1 ? "s" : "");
   const ty = {proche: "mot proche", sans: "sans mot (Mr. White)", hasard: "mot proche ou sans mot, au hasard"}[r.type];
   const th = r.themes.length >= Object.keys(MOTS).length ? "tous les thèmes" : r.themes.join(", ");
-  return `🕵️ ${nb} · ${ty}${r.prevenir && r.type !== "sans" ? " · l'imposteur est prévenu" : ""}${r.chrono ? " · ⏱️ " + r.chrono + " s par indice" : ""}<br>📚 ${esc(th)}`;
+  return `🕵️ ${nb} · ${ty}${r.prevenir && r.type !== "sans" ? " · l'imposteur est prévenu" : ""}${r.chrono ? " · ⏱️ " + esc(r.chrono) + " s par indice" : ""}<br>📚 ${esc(th)}`;
 }
 function reglagesUI(box, local, lecture){
   box.innerHTML = "";
@@ -507,7 +507,7 @@ function rendre(){
 
   /* barre du haut */
   const nv = V.J.filter(j => j.vivant).length;
-  h += `<div class="barre"><span>🔄 Tour ${V.tour}</span><span class="muted">${nv}/${V.J.length} en jeu</span><span class="esp"></span>`;
+  h += `<div class="barre"><span>🔄 Tour ${esc(V.tour)}</span><span class="muted">${nv}/${V.J.length} en jeu</span><span class="esp"></span>`;
   if(moi && dansPartie && monSecret && monSecret.mid === V.mid && V.phase !== "fin") h += `<button id="monMot">${vueMot ? "🙈 " + (monSecret.white ? "Aucun mot" : esc(monSecret.mot)) : "👁️ Mon mot"}</button>`;
   h += `<span class="chrono" id="chrono"></span></div>`;
 
@@ -531,7 +531,7 @@ function rendre(){
     h += `<div class="b-carte"><b>📝 Indices</b><div class="indices" style="margin-top:6px">` + ids.map(id => {
       const j = vj(id);
       return `<div class="r"><span class="qui">${esc(j.avatar)} ${esc(j.nom)}</span><span class="mots">` +
-        V.indices.filter(i => i.id === id).map(i => i.txt ? `<span title="Tour ${i.tour}">${esc(i.txt)}</span>` : `<span class="vide" title="Tour ${i.tour}">—</span>`).join("") + `</span></div>`;
+        V.indices.filter(i => i.id === id).map(i => i.txt ? `<span title="Tour ${esc(i.tour)}">${esc(i.txt)}</span>` : `<span class="vide" title="Tour ${esc(i.tour)}">—</span>`).join("") + `</span></div>`;
     }).join("") + `</div></div>`;
   }
   if(V.phase === "fin") h += tableauScores(vj);
@@ -604,10 +604,10 @@ function panneauLigne(vj, moi, dansPartie){
   }
   if(ph === "indices"){
     const id = V.ordre[V.parle], j = vj(id);
-    if(id === moi) return `<p class="muted">Tour ${V.tour} · indice ${V.parle + 1}/${V.ordre.length}</p><h3>🎤 À toi de donner un indice !</h3>
+    if(id === moi) return `<p class="muted">Tour ${esc(V.tour)} · indice ${esc(V.parle + 1)}/${V.ordre.length}</p><h3>🎤 À toi de donner un indice !</h3>
       <p class="muted">${monSecret && monSecret.white ? "Tu n'as pas de mot : bluffe à partir des indices des autres 😏" : "Un mot ou une courte phrase sur ton mot secret."}</p>
       <div class="ligne" style="max-width:440px;margin:10px auto 0"><input class="champ" id="saisie" maxlength="60" placeholder="Ton indice" autocomplete="off"><button class="btn" data-a="indice">Envoyer</button></div>`;
-    return `<p class="muted">Tour ${V.tour} · indice ${V.parle + 1}/${V.ordre.length}</p><div class="gros">${esc(j.avatar)}</div><h3>${esc(j.nom)} cherche son indice…</h3>
+    return `<p class="muted">Tour ${esc(V.tour)} · indice ${esc(V.parle + 1)}/${V.ordre.length}</p><div class="gros">${esc(j.avatar)}</div><h3>${esc(j.nom)} cherche son indice…</h3>
       <p class="muted">Ensuite : ${V.ordre.slice(V.parle + 1).map(x => esc(vj(x).nom)).join(" → ") || "le vote !"}</p>`;
   }
   if(ph === "vote"){
@@ -645,7 +645,7 @@ function verdict(vj){
   let h = "";
   if(V.decompte){
     const c = V.decompte;
-    h += `<p class="muted">Votes : ` + Object.keys(c).sort((a, b) => c[b] - c[a]).map(id => `${esc(vj(id).nom)} ${c[id]}`).join(" · ") + `</p>`;
+    h += `<p class="muted">Votes : ` + Object.keys(c).sort((a, b) => c[b] - c[a]).map(id => `${esc(vj(id).nom)} ${esc(c[id])}`).join(" · ") + `</p>`;
   }
   if(!V.elimine) return h + `<div class="verdict"><b>${esc(V.message || "Personne n'est éliminé.")}</b></div>`;
   const j = vj(V.elimine), r = ROLES[j.role] || ROLES.civil, bon = j.role !== "civil";
@@ -665,7 +665,7 @@ function finale(vj){
   h += `<p class="muted" style="margin:8px 0 0">Thème : ${esc(V.theme)}</p>`;
   h += `<table class="tab">` + V.J.map(j => {
     const r = ROLES[j.role] || ROLES.civil, gain = V.gains && V.gains[j.id];
-    return `<tr><td>${esc(j.avatar)} ${esc(j.nom)}${j.parti ? " 🚪" : ""}</td><td>${r.ico} ${r.nom}${j.role === "under" ? " · " + esc(j.mot) : ""}</td><td>${gain ? `<span class="plus">+${gain}</span>` : "0"}</td></tr>`;
+    return `<tr><td>${esc(j.avatar)} ${esc(j.nom)}${j.parti ? " 🚪" : ""}</td><td>${r.ico} ${r.nom}${j.role === "under" ? " · " + esc(j.mot) : ""}</td><td>${gain ? `<span class="plus">+${esc(gain)}</span>` : "0"}</td></tr>`;
   }).join("") + `</table>`;
   return h;
 }
@@ -674,7 +674,7 @@ function tableauScores(vj){
   const lignes = V.J.map(j => ({j, s: scores[cle(j)] || 0})).sort((a, b) => b.s - a.s);
   if(!lignes.some(l => l.s)) return "";
   return `<div class="b-carte"><b>🏆 Scores cumulés</b><table class="tab">` + lignes.map((l, i) =>
-    `<tr><td>${["🥇", "🥈", "🥉"][i] || ""} ${esc(l.j.avatar)} ${esc(l.j.nom)}</td><td></td><td>${l.s} pts</td></tr>`).join("") + `</table></div>`;
+    `<tr><td>${["🥇", "🥈", "🥉"][i] || ""} ${esc(l.j.avatar)} ${esc(l.j.nom)}</td><td></td><td>${esc(l.s)} pts</td></tr>`).join("") + `</table></div>`;
 }
 function apresFin(G){
   G.J.forEach(j => { const k = mode === "local" ? j.nom : j.id; scores[k] = (scores[k] || 0) + (G.gains[j.id] || 0); });
