@@ -1303,6 +1303,10 @@ const pairs = new Map();            // id du joueur distant → {pc, rapide, sur
 let seqEnvoi = 0, rtcEssais = 0;
 const vusSeq = new Map();
 function rtcOuvert(id){ const p = pairs.get(id); return !!(p && p.ouvert); }
+function toutDirect(){
+  if(!salle || !salle.joueurs.length) return false;
+  return estHote ? salle.joueurs.slice(1).every(j => rtcOuvert(j.id)) : rtcOuvert(salle.joueurs[0].id);
+}
 function fermerPair(id, sansRetry){
   const p = pairs.get(id); if(!p) return;
   pairs.delete(id); try{ p.pc.close(); }catch(e){}
@@ -1417,12 +1421,17 @@ function recuRelais(m, de){            // paquet de jeu arrivé par le relais MQ
     surPaquet(m, src);
   }
 }
-let netTxt = "";
+let netTxt = "", dernierUI = 0;
 function majReseauUI(){
   let t = "";
   if(salle){
-    if(estHote){ const inv = salle.joueurs.slice(1); if(inv.length){ const n = inv.filter(j => rtcOuvert(j.id)).length; t = n === inv.length ? "⚡ Tous en direct" : `⚡ ${n}/${inv.length} en direct · 🌐 relais`; } }
-    else{ const h = salle.joueurs[0]; t = h && rtcOuvert(h.id) ? "⚡ Direct" : "🌐 Relais"; }
+    // qualité de réception : paquets reçus par seconde et retard de lissage (le moins bon des joueurs)
+    const ids = estHote ? salle.joueurs.slice(1).map(j => j.id) : salle.joueurs[0] ? [salle.joueurs[0].id] : [];
+    let ps = Infinity, del = 0;
+    for(const id of ids){ const h = horloges[id]; if(h && h.ps){ ps = Math.min(ps, h.ps); del = Math.max(del, h.delai); } }
+    const q = enJeu && ps < Infinity ? ` · ${ps}/s · ${Math.round(del)} ms` : "";
+    if(estHote){ const n = ids.filter(rtcOuvert).length; if(ids.length) t = (n === ids.length ? "⚡ Tous en direct" : `⚡ ${n}/${ids.length} en direct · 🌐 relais`) + q; }
+    else t = (ids[0] && rtcOuvert(ids[0]) ? "⚡ Direct" : "🌐 Relais") + q;
   }
   if(t !== netTxt){ netTxt = t; $("net").textContent = t; }
   majSalle();
@@ -1434,11 +1443,31 @@ const horloges = {};
 function horloge(de, ts){
   const now = performance.now(), ech = now - ts;
   let h = horloges[de];
-  if(!h) h = horloges[de] = {off: ech, jit: 15, delai: 110};
-  if(ech < h.off) h.off = ech; else h.off += (ech - h.off) * 0.01;     // retard minimal du relais (suit les dérives d'horloge)
-  h.jit += (Math.abs(ech - h.off) - h.jit) * 0.05;
-  h.delai = Math.min(260, Math.max(95, 75 + 2 * h.jit));
-  return ts + h.off;
+  if(!h) h = horloges[de] = {off: ech, jit: 15, delai: 110, n: 0, t0: now, ps: 0};
+  // décalage = plus petit retard jamais vu : il doit rester STABLE, sinon les positions se tassent et ça saccade
+  // (il remonte très lentement, 0,3 ms/s, au cas où la route réseau change)
+  if(ech < h.off) h.off = ech; else h.off += 0.02;
+  h.jit += (Math.max(0, ech - h.off) - h.jit) * 0.05;
+  h.delai = Math.min(260, Math.max(80, (h.ps ? 1000 / h.ps : 66) + 25 + 3 * h.jit));
+  h.n++; if(now - h.t0 >= 1000){ h.ps = Math.round(h.n * 1000 / (now - h.t0)); h.n = 0; h.t0 = now; }
+  const t = ts + h.off;
+  if(h.dern == null || t > h.dern) h.dern = t;
+  return t;
+}
+/* Horloge de lecture de chaque expéditeur : elle avance avec le temps, accélère ou ralentit doucement
+   pour rester « délai » ms derrière, et ne recule JAMAIS. Si un paquet est en retard, les joueurs
+   ralentissent un instant au lieu de partir en avant puis de revenir en arrière. */
+function avancerLecture(now){
+  for(const h of Object.values(horloges)){
+    if(h.dern == null) continue;
+    if(h.lect == null || now - h.tPrec > 1000){ h.lect = now - h.delai; h.tPrec = now; continue; }
+    const dt = now - h.tPrec; h.tPrec = now;
+    const ecart = now - h.delai - h.lect;
+    if(Math.abs(ecart) > 500){ h.lect = now - h.delai; continue; }
+    let l = h.lect + dt * (1 + Math.max(-0.4, Math.min(0.4, ecart / 250)));
+    if(l > h.dern + 40) l = Math.max(h.lect, h.dern + 40);     // pas plus de 40 ms au-delà de la dernière position reçue
+    h.lect = l;
+  }
 }
 function majDistant(a, t, de){
   const [id, x, y, z, yw, pt, w, f] = a;
@@ -1446,18 +1475,25 @@ function majDistant(a, t, de){
   let e = ents.get(id);
   if(!e){ if(!roster.has(id)) return; e = creerEnt(id, false, false); }
   if(e.local) return;
-  const viv = !!(f & 1);
-  if(viv && !e.vivant){ e.buf.length = 0; e.rpos.set(x, y, z); e.yaw = yw; e.pitch = pt; }
-  e.vivant = viv; e.invul = f & 2 ? 1 : 0; e.glisse = !!(f & 4);
-  e.arme = w; e.vu = performance.now(); e.src = de;
-  const b = e.buf, der = b[b.length - 1];
-  if(der && t <= der.t) t = der.t + 1;
-  b.push({t, x, y, z, yw, pt});
+  e.vu = performance.now(); e.src = de;
+  const b = e.buf, recent = !b.length || t > b[b.length - 1].t;
+  if(recent || e.tEtat == null || t > e.tEtat){
+    // l'état (vivant, arme…) ne vient que du paquet le plus récent : un vieux paquet en retard ne le remplace pas
+    e.tEtat = t;
+    const viv = !!(f & 1);
+    if(viv && !e.vivant){ b.length = 0; e.rpos.set(x, y, z); e.yaw = yw; e.pitch = pt; }
+    e.vivant = viv; e.invul = f & 2 ? 1 : 0; e.glisse = !!(f & 4); e.arme = w;
+  }
+  // rangé à sa place dans le temps (un paquet peut arriver après un plus récent) ; doublon ignoré
+  let i = b.length;
+  while(i > 0 && b[i - 1].t > t) i--;
+  if(i > 0 && Math.abs(b[i - 1].t - t) < 0.5) return;
+  b.splice(i, 0, {t, x, y, z, yw, pt});
   if(b.length > 30) b.shift();
 }
 function interpoler(e, now){
   const b = e.buf; if(!b.length) return;
-  const h = horloges[e.src], rt = now - (h ? h.delai : 110);
+  const h = horloges[e.src], rt = h && h.lect != null ? h.lect : now - 110;
   const n = b.length - 1;
   let a, c, f;
   if(rt <= b[0].t){ a = c = b[0]; f = 0; }
@@ -1619,6 +1655,7 @@ function maj(dt){
   }
   // entités distantes : rejouées entre deux positions reçues
   const now = performance.now();
+  avancerLecture(now);
   for(const e of ents.values()){
     if(e.local) continue;
     interpoler(e, now);
@@ -1628,9 +1665,10 @@ function maj(dt){
     if(now - e.vu > 8000 && !roster.has(e.id)) retirerEnt(e);
   }
   majRoquettes(dt);
-  // 15 envois/s ; un tir qui touche ou un frag part tout de suite (au plus 40/s)
-  const urgent = sortie.h.length || sortie.k.length;
-  if(salle && (Tg - dernierEnvoi > 1 / 15 || (urgent && Tg - dernierEnvoi > 1 / 40))){ dernierEnvoi = Tg; envoyerPaquet(); }
+  if(salle && now - dernierUI > 1000){ dernierUI = now; majReseauUI(); }
+  // 15 envois/s par le relais, 30/s quand tout le monde est en direct ; un tir qui touche ou un frag part tout de suite
+  const urgent = sortie.h.length || sortie.k.length, freq = toutDirect() ? 30 : 15;
+  if(salle && (Tg - dernierEnvoi > 1 / freq - 0.002 || (urgent && Tg - dernierEnvoi > 1 / 40))){ dernierEnvoi = Tg; envoyerPaquet(); }
 }
 function rendu(dt){
   // caméra
