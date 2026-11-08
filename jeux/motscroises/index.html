@@ -86,7 +86,7 @@
 
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
-<script src="mots.js"></script>
+<script src="../commun/dico.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const store=Base.stock("motscroises_");
@@ -131,8 +131,8 @@ function poser(cases,bord,mots,w,x,y,d){
   bord.x2=Math.max(bord.x2,x+dx*(w.mot.length-1));bord.y2=Math.max(bord.y2,y+dy*(w.mot.length-1));
   mots.push({mot:w.mot,def:w.def,x,y,d});
 }
-function construire(r){
-  const liste=melange(window.MC_MOTS,r),cases=new Map(),mots=[];
+function construire(r,dico){
+  const liste=melange(dico,r),cases=new Map(),mots=[];
   const bord={x1:0,y1:0,x2:0,y2:0};
   const debut=liste.find(w=>w.mot.length>=6&&w.mot.length<=8);
   poser(cases,bord,mots,debut,0,0,"H");
@@ -165,9 +165,9 @@ function construire(r){
   return{mots,bord,croisements};
 }
 function generer(seed){
-  const r=rng(seed);let top=null;
+  const r=rng(seed),dico=Dico.liste({min:3,max:10,graine:seed});let top=null;
   for(let e=0;e<ESSAIS;e++){
-    const g=construire(r);
+    const g=construire(r,dico);
     const l=g.bord.x2-g.bord.x1+1,h=g.bord.y2-g.bord.y1+1;
     const score=g.mots.length*100+g.croisements*20-l*h-Math.abs(l-h)*5;
     if(!top||score>top.score)top={...g,score,l,h};

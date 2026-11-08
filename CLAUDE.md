@@ -24,6 +24,7 @@ jeux/commun/        code partagé
   garde.js            bloque les jeux cachés, charge groupe.js
   reseau.js           salles en ligne (code ou lien), relais MQTT public
   ia.js               appels IA avec les clés des Réglages
+  dico.js             dictionnaire commun (mot + définitions) : Mot du jour, Mots croisés, Mots fléchés
   dle.js/dle.css      moteur commun des -dle à tableau (loldle, onepiecedle, pokedle, anidle, electrodle) : chaque jeu = une config
   classement.js, series.js, medailles.js, jetons.js, compte.js, groupe.js, cartes.js
 jeux/<slug>/        un dossier par jeu

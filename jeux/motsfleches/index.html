@@ -76,8 +76,7 @@
 
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
-<script src="../motscroises/mots.js"></script>
-<script src="courts.js"></script>
+<script src="../commun/dico.js"></script>
 <script src="generateur.js"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -98,7 +97,7 @@ const cle=(x,y)=>x+","+y;
 const fleche=m=>m.d==="H"?(m.coude?"↳":"▶"):(m.coude?"↴":"▼");
 
 function generer(seed){
-  const g=FlechesGen.generer(COTE,COTE,seed,window.MC_MOTS,window.MF_COURTS);
+  const g=FlechesGen.generer(COTE,COTE,seed,Dico.liste({min:3,defMax:30,graine:seed}),Dico.liste({max:2,defMax:30}));
   const mots=[...g.mots].sort((a,b)=>a.y*100+a.x-b.y*100-b.x||(a.d<b.d?-1:1));
   const cases=new Map(),defs=new Map();
   mots.forEach((m,i)=>{const[dx,dy]=DIR[m.d];

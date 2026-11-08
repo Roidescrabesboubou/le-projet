@@ -47,6 +47,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;justify-conten
 .dist i{display:block;background:var(--no);color:#fff;font-style:normal;text-align:right;padding:2px 7px;border-radius:5px;min-width:22px}
 .dist i.cur{background:var(--ok)}
 .reveal{text-align:center;margin-bottom:12px}
+.reveal .def{display:block;margin-top:4px;font-style:italic;opacity:.8}
 .reveal .w{font-family:Fredoka,sans-serif;font-size:1.8rem;letter-spacing:4px;text-transform:uppercase}
 .actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center}
 .next{text-align:center;color:var(--muted);font-size:.9rem}
@@ -70,7 +71,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;justify-conten
 <div class="modal hidden" id="mdEnd"><div class="box">
   <button class="close" data-close>✕</button>
   <h2 id="endTitle"></h2>
-  <div class="reveal"><small>Le mot était</small><div class="w" id="endWord"></div></div>
+  <div class="reveal"><small>Le mot était</small><div class="w" id="endWord"></div><small id="endDef" class="def"></small></div>
   <div class="stats" id="endStats"></div>
   <b>Répartition des essais</b>
   <div class="dist" id="endDist"></div>
@@ -86,6 +87,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;justify-conten
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
 <script src="mots.js"></script>
+<script src="../commun/dico.js"></script>
 <script src="../commun/classement.js"></script>
 <script src="../commun/series.js"></script>
 <script>
@@ -259,6 +261,7 @@ function showEnd(){
   const won=guesses.includes(answer),fin=over;
   $("endTitle").textContent=!fin?(mode==="daily"?"Statistiques du jour":"Statistiques (partie libre)"):won?"🎉 Bravo !":"😢 Perdu…";
   $("endWord").textContent=fin?answer:"?????";
+  const def=fin&&Dico.def(answer);$("endDef").textContent=def?"« "+def+" »":"";
   $("endStats").innerHTML=statsHTML(s);
   $("endDist").innerHTML=distHTML(s,won?guesses.length-1:-1);
   $("bShare").style.display=fin?"":"none";
