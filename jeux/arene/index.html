@@ -68,7 +68,7 @@ kbd{background:var(--soft);border:1px solid var(--line);border-radius:6px;paddin
 #annonce .s{display:block;font-size:2.4rem;color:#ffcf3a}
 #annonce.on{animation:pop .25s}
 @keyframes pop{from{transform:translateX(-50%) scale(1.5);opacity:0}}
-#mortTxt{left:50%;top:58%;transform:translateX(-50%);text-align:center;font:700 1.4rem Fredoka,sans-serif;text-shadow:0 2px 8px #000}
+#mortTxt{white-space:pre-line;left:50%;top:58%;transform:translateX(-50%);text-align:center;font:700 1.4rem Fredoka,sans-serif;text-shadow:0 2px 8px #000}
 #degat{inset:0;box-shadow:inset 0 0 140px 30px rgba(255,20,40,.75);opacity:0;transition:opacity .35s}
 #mortVoile{inset:0;background:rgba(120,0,20,.35);opacity:0;transition:opacity .3s}
 #lunette{inset:0;display:none;background:radial-gradient(circle at center,transparent 0,transparent 33vmin,rgba(0,0,0,.92) 33.3vmin)}
@@ -312,11 +312,17 @@ for(const s of [1, -1]){
   B(s * -24, 0, s * 25, s * -28, 2.6, s * 29, "caisse"); B(s * -28, 0, s * 25, s * -29.5, 1.3, s * 27, "caisse");
   B(s * 18, 0, s * 26, s * 20, 1.3, s * 28, "caisse"); B(s * -18, 0, s * 26, s * -20, 1.3, s * 28, "caisse");
 }
+// tremplins : on donne le point d'arrivée et la hauteur du sommet, la vitesse de départ est calculée
 const PADS = [
-  {x: 19, z: 17, v: [11, 16, 0]}, {x: 19, z: -17, v: [11, 16, 0]},
-  {x: -19, z: 17, v: [-11, 16, 0]}, {x: -19, z: -17, v: [-11, 16, 0]},
-  {x: 0, z: 17, v: [0, 16, -15.2]}, {x: 0, z: -17, v: [0, 16, 15.2]}
+  {x: 19, z: 17, vers: [28.5, 3, 17], haut: 5.2}, {x: 19, z: -17, vers: [28.5, 3, -17], haut: 5.2},
+  {x: -19, z: 17, vers: [-28.5, 3, 17], haut: 5.2}, {x: -19, z: -17, vers: [-28.5, 3, -17], haut: 5.2},
+  {x: 0, z: 17, vers: [0, 3, 2], haut: 5.5}, {x: 0, z: -17, vers: [0, 3, -2], haut: 5.5}
 ];
+const PAD_R = 1.3;
+for(const p of PADS){
+  const vy = Math.sqrt(2 * GRAV * p.haut), tv = vy / GRAV + Math.sqrt(2 * (p.haut - p.vers[1]) / GRAV);
+  p.v = [(p.vers[0] - p.x) / tv, vy, (p.vers[2] - p.z) / tv]; p.duree = tv; p.flash = 0;
+}
 const SPAWNS = [[28.5, 3, -18], [28.5, 3, 18], [-28.5, 3, -18], [-28.5, 3, 18], [14, 0, 27], [-14, 0, 27], [14, 0, -27], [-14, 0, -27],
   [22, 0, 9], [-22, 0, -9], [12, 0, -18], [-12, 0, 18], [0, 3, 0], [0, 0, 28.5], [0, 0, -28.5], [30.5, 0, 30.5], [-30.5, 0, -30.5], [30.5, 0, -30.5], [-30.5, 0, 30.5]];
 
@@ -324,11 +330,14 @@ const SPAWNS = [[28.5, 3, -18], [28.5, 3, 18], [-28.5, 3, -18], [-28.5, 3, 18], 
 function chev(px, py, pz, b){
   return px + R > b.min[0] && px - R < b.max[0] && pz + R > b.min[2] && pz - R < b.max[2] && py + H > b.min[1] && py < b.max[1];
 }
-function libre(px, py, pz){ for(const b of BOITES) if(chev(px, py, pz, b)) return false; return true; }
+// COLL = boîtes testées pendant un déplacement (seulement celles autour de l'entité, voir physique())
+let COLL = BOITES;
+const PROCHES = [];
+function libre(px, py, pz){ for(const b of COLL) if(chev(px, py, pz, b)) return false; return true; }
 function bougerAxe(e, ax, d){
   const p = e.pos, k = ax === 0 ? "x" : "z";
   p[k] += d;
-  for(const b of BOITES){
+  for(const b of COLL){
     if(!chev(p.x, p.y, p.z, b)) continue;
     const marche = b.max[1] - p.y;
     if(marche > 0 && marche <= 0.62 && (e.sol || e.vel.y <= 0) && libre(p.x, b.max[1] + 0.002, p.z)){ p.y = b.max[1] + 0.002; continue; }
@@ -338,7 +347,7 @@ function bougerAxe(e, ax, d){
 }
 function bougerY(e, d){
   const p = e.pos; p.y += d; e.sol = false;
-  for(const b of BOITES){
+  for(const b of COLL){
     if(!chev(p.x, p.y, p.z, b)) continue;
     if(d <= 0){ p.y = b.max[1]; e.vel.y = 0; e.sol = true; }
     else{ p.y = b.min[1] - H - 0.0005; e.vel.y = 0; }
@@ -388,12 +397,16 @@ const WAYPOINTS = [];
 for(let x = -29; x <= 29; x += 4.5) for(let z = -29; z <= 29; z += 4.5) if(libre(x, 0.01, z) && libre(x, 0.6, z)) WAYPOINTS.push({x, y: 0, z, haut: false});
 for(const s of [1, -1]) for(const z of [-18, -9, 9, 18]) WAYPOINTS.push({x: s * 28.5, y: 3, z, haut: true});
 WAYPOINTS.push({x: 0, y: 3, z: 0, haut: true}, {x: 2.5, y: 3, z: -2.5, haut: true});
+for(const p of PADS) WAYPOINTS.push({x: p.x, y: 0, z: p.z, haut: false});   // les bots prennent aussi les tremplins
 
 /* ================================================================
    RENDU (three.js)
    ================================================================ */
 const renderer = new THREE.WebGLRenderer({antialias: !TACTILE, powerPreference: "high-performance"});
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, TACTILE ? 1.25 : 1.5));
+// résolution dynamique : on baisse la définition si les images mettent trop de temps à venir
+const PR_MAX = Math.min(devicePixelRatio || 1, TACTILE ? 1.25 : 1.5), PR_MIN = Math.min(PR_MAX, 0.6);
+let prActuel = PR_MAX;
+renderer.setPixelRatio(prActuel);
 $("jeu").prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x15112a);
@@ -425,14 +438,27 @@ for(const [k, [c, a]] of Object.entries(STYLES)){
   tex.anisotropy = 4; tex.colorSpace = THREE.SRGBColorSpace;
   const sol = new THREE.Mesh(new THREE.PlaneGeometry(2 * T, 2 * T), new THREE.MeshLambertMaterial({map: tex}));
   sol.rotation.x = -Math.PI / 2; scene.add(sol);
+  // toute la carte fusionnée en 2 objets (faces + arêtes) : 2 appels de dessin au lieu de ~130
+  const ni = geoBoite.toNonIndexed(), fp = ni.attributes.position.array, fn = ni.attributes.normal.array, ap = geoAretes.attributes.position.array;
+  const pos = [], nor = [], col = [], lpos = [], lcol = [], c1 = new THREE.Color(), c2 = new THREE.Color();
   for(const b of BOITES){
     if(b.s === "sol") continue;
-    const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
-    const m = new THREE.Mesh(geoBoite, matsCarte[b.s]);
-    m.scale.set(sx, sy, sz); m.position.set((b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2);
-    scene.add(m);
-    const l = new THREE.LineSegments(geoAretes, matsAretes[b.s]); l.scale.copy(m.scale); l.position.copy(m.position); scene.add(l);
+    const s = [b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]], m = [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2];
+    c1.setHex(STYLES[b.s][0]); c2.setHex(STYLES[b.s][1]);
+    for(let i = 0; i < fp.length; i += 3){
+      pos.push(fp[i] * s[0] + m[0], fp[i + 1] * s[1] + m[1], fp[i + 2] * s[2] + m[2]);
+      nor.push(fn[i], fn[i + 1], fn[i + 2]); col.push(c1.r, c1.g, c1.b);
+    }
+    for(let i = 0; i < ap.length; i += 3){
+      lpos.push(ap[i] * s[0] + m[0], ap[i + 1] * s[1] + m[1], ap[i + 2] * s[2] + m[2]); lcol.push(c2.r, c2.g, c2.b);
+    }
   }
+  const gf = new THREE.BufferGeometry();
+  gf.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); gf.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3)); gf.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  scene.add(new THREE.Mesh(gf, new THREE.MeshLambertMaterial({vertexColors: true})));
+  const ga = new THREE.BufferGeometry();
+  ga.setAttribute("position", new THREE.Float32BufferAttribute(lpos, 3)); ga.setAttribute("color", new THREE.Float32BufferAttribute(lcol, 3));
+  scene.add(new THREE.LineSegments(ga, new THREE.LineBasicMaterial({vertexColors: true, transparent: true, opacity: 0.85})));
   // néons en haut des murs extérieurs
   const neon = new THREE.MeshBasicMaterial({color: 0xff4fa3});
   for(const [x, z, sx, sz] of [[0, -T + 0.05, 2 * T, 0.1], [0, T - 0.05, 2 * T, 0.1], [-T + 0.05, 0, 0.1, 2 * T], [T - 0.05, 0, 0.1, 2 * T]]){
@@ -441,11 +467,27 @@ for(const [k, [c, a]] of Object.entries(STYLES)){
   // tremplins
   const mp = new THREE.MeshBasicMaterial({color: 0x3ad6ff, transparent: true, opacity: 0.85});
   const mr = new THREE.MeshBasicMaterial({color: 0x3ad6ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide});
+  // flèches qui défilent vers la direction du saut
+  const cf = document.createElement("canvas"); cf.width = 64; cf.height = 128;
+  const gf2 = cf.getContext("2d"); gf2.strokeStyle = "#ffffff"; gf2.lineWidth = 9; gf2.lineCap = "round"; gf2.lineJoin = "round";
+  for(const y of [26, 90]){ gf2.beginPath(); gf2.moveTo(12, y + 22); gf2.lineTo(32, y); gf2.lineTo(52, y + 22); gf2.stroke(); }
+  const texFl = new THREE.CanvasTexture(cf); texFl.wrapT = THREE.RepeatWrapping; texFl.repeat.set(1, 1.5);
+  const matFl = new THREE.MeshBasicMaterial({map: texFl, color: 0x0b2440, transparent: true, opacity: 0.9, depthWrite: false});
+  const geoCyl = new THREE.CylinderGeometry(1.2, 1.3, 0.12, 24), geoAnneau = new THREE.RingGeometry(0.8, 1.1, 24), geoFl = new THREE.PlaneGeometry(1.1, 1.6);
+  const arcs = [];
   for(const p of PADS){
-    const d = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.12, 24), mp); d.position.set(p.x, 0.06, p.z); scene.add(d);
-    const a = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.1, 24), mr); a.rotation.x = -Math.PI / 2; a.position.set(p.x, 0.3, p.z); scene.add(a);
+    const d = new THREE.Mesh(geoCyl, mp); d.position.set(p.x, 0.06, p.z); scene.add(d);
+    const a = new THREE.Mesh(geoAnneau, mr); a.rotation.x = -Math.PI / 2; a.position.set(p.x, 0.3, p.z); scene.add(a);
+    const fl = new THREE.Mesh(geoFl, matFl); fl.rotation.order = "YXZ"; fl.rotation.set(-Math.PI / 2, Math.atan2(-p.v[0], -p.v[2]), 0);
+    fl.position.set(p.x, 0.135, p.z); scene.add(fl);
     p.anneau = a;
+    // trajectoire en pointillés jusqu'au point d'arrivée
+    const pt = t => [p.x + p.v[0] * t, 0.2 + p.v[1] * t - GRAV * t * t / 2, p.z + p.v[2] * t];
+    for(let i = 1; i < 34; i += 2) arcs.push(...pt(p.duree * i / 36), ...pt(p.duree * (i + 1) / 36));
   }
+  const ga2 = new THREE.BufferGeometry(); ga2.setAttribute("position", new THREE.Float32BufferAttribute(arcs, 3));
+  scene.add(new THREE.LineSegments(ga2, new THREE.LineBasicMaterial({color: 0x7fe3ff, transparent: true, opacity: 0.6, depthWrite: false})));
+  PADS.texFleches = texFl;
   // étoiles / ciel
   const pts = []; for(let i = 0; i < 400; i++){ const u = Math.random() * Math.PI * 2, v = Math.random() * 0.45 + 0.08; pts.push(Math.cos(u) * Math.cos(v) * 180, Math.sin(v) * 180, Math.sin(u) * Math.cos(v) * 180); }
   const gs = new THREE.BufferGeometry(); gs.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
@@ -505,21 +547,60 @@ const flammeMat = new THREE.MeshBasicMaterial({color: 0xffd27a, transparent: tru
 const flamme = new THREE.Mesh(new THREE.OctahedronGeometry(0.07), flammeMat); flamme.visible = false; scene.add(flamme);
 
 /* ---------- effets : traçantes, étincelles, explosions ---------- */
-const traces = [];
-const matTrace = c => new THREE.LineBasicMaterial({color: c, transparent: true, opacity: 0.9});
+// traçantes : un seul objet pour toutes (couleurs additives qui s'éteignent), aucune création pendant la partie
+const MAX_TR = 240, traces = [];
+const trPos = new Float32Array(MAX_TR * 6), trCol = new Float32Array(MAX_TR * 6);
+const geoTr = new THREE.BufferGeometry();
+geoTr.setAttribute("position", new THREE.BufferAttribute(trPos, 3).setUsage(THREE.DynamicDrawUsage));
+geoTr.setAttribute("color", new THREE.BufferAttribute(trCol, 3).setUsage(THREE.DynamicDrawUsage));
+const lignesTr = new THREE.LineSegments(geoTr, new THREE.LineBasicMaterial({vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+lignesTr.frustumCulled = false; scene.add(lignesTr);
+const couleursCache = {};
+const couleur = h => couleursCache[h] || (couleursCache[h] = new THREE.Color(h));
 function trace(a, b, coul){
-  const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]);
-  const l = new THREE.Line(geo, matTrace(coul)); scene.add(l); traces.push({o: l, t: 0, d: 0.09});
+  if(traces.length >= MAX_TR) traces.shift();
+  traces.push({a, b, c: couleur(coul), t: 0, d: 0.09});
 }
-const parts = [], matsParts = {};
+// particules : un InstancedMesh (1 appel de dessin pour toutes)
+const MAX_P = 400, parts = [];
+const partsMesh = new THREE.InstancedMesh(geoCube, new THREE.MeshBasicMaterial({color: 0xffffff}), MAX_P);
+partsMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); partsMesh.frustumCulled = false;
+partsMesh.setColorAt(0, couleur(0xffffff)); partsMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+partsMesh.count = 0; scene.add(partsMesh);
+const _m4 = new THREE.Matrix4();
 function particules(p, coul, n, force, taille){
-  if(!matsParts[coul]) matsParts[coul] = new THREE.MeshBasicMaterial({color: coul});
-  for(let i = 0; i < n && parts.length < 350; i++){
-    const m = new THREE.Mesh(geoCube, matsParts[coul]); const s = (taille || 0.09) * (0.6 + Math.random() * 0.8);
-    m.scale.set(s, s, s); m.position.set(p[0], p[1], p[2]); scene.add(m);
-    const v = new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.8, Math.random() - 0.5).normalize().multiplyScalar(force * (0.4 + Math.random()));
-    parts.push({o: m, v, t: 0, d: 0.4 + Math.random() * 0.5});
+  const c = couleur(coul);
+  for(let i = 0; i < n && parts.length < MAX_P; i++){
+    let vx = Math.random() - 0.5, vy = Math.random() * 0.8, vz = Math.random() - 0.5;
+    const f = force * (0.4 + Math.random()) / (Math.hypot(vx, vy, vz) || 1);
+    parts.push({x: p[0], y: p[1], z: p[2], vx: vx * f, vy: vy * f, vz: vz * f, s: (taille || 0.09) * (0.6 + Math.random() * 0.8), c, t: 0, d: 0.4 + Math.random() * 0.5});
   }
+}
+function majEffets(dt){
+  let n = 0;
+  for(let i = traces.length - 1; i >= 0; i--){ if((traces[i].t += dt) > traces[i].d) traces.splice(i, 1); }
+  for(const x of traces){
+    const f = 0.9 * (1 - x.t / x.d), o = n * 6;
+    trPos[o] = x.a[0]; trPos[o + 1] = x.a[1]; trPos[o + 2] = x.a[2]; trPos[o + 3] = x.b[0]; trPos[o + 4] = x.b[1]; trPos[o + 5] = x.b[2];
+    trCol[o] = trCol[o + 3] = x.c.r * f; trCol[o + 1] = trCol[o + 4] = x.c.g * f; trCol[o + 2] = trCol[o + 5] = x.c.b * f;
+    n++;
+  }
+  geoTr.setDrawRange(0, n * 2); lignesTr.visible = n > 0;
+  if(n){ geoTr.attributes.position.needsUpdate = true; geoTr.attributes.color.needsUpdate = true; }
+  let k = 0;
+  for(let i = parts.length - 1; i >= 0; i--){
+    const p = parts[i]; p.t += dt;
+    if(p.t > p.d){ parts[i] = parts[parts.length - 1]; parts.pop(); continue; }
+    p.vy -= 14 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    if(p.y < 0.03){ p.y = 0.03; p.vx *= 0.5; p.vy *= 0.5; p.vz *= 0.5; }
+    p.s *= 1 - dt * 1.5;
+  }
+  for(const p of parts){
+    _m4.makeScale(p.s, p.s, p.s).setPosition(p.x, p.y, p.z);
+    partsMesh.setMatrixAt(k, _m4); partsMesh.setColorAt(k, p.c); k++;
+  }
+  partsMesh.count = k;
+  if(k){ partsMesh.instanceMatrix.needsUpdate = true; partsMesh.instanceColor.needsUpdate = true; }
 }
 const boums = [], matBoum = new THREE.MeshBasicMaterial({color: 0xffa040, transparent: true, opacity: 0.8});
 const geoSphere = new THREE.SphereGeometry(1, 16, 12);
@@ -601,7 +682,7 @@ function creerEnt(id, local, bot){
     yaw: 0, pitch: 0, hp: 100, vivant: false, arme: 0, mun: ARMES.map(a => a.chargeur),
     recharge: 0, changement: 0, prochainTir: 0, sol: false, quitteSol: 0, sauts: 0, dashCD: 0, dashT: 0, padT: 0,
     invul: 0, dernDegat: -9, glisseT: 0, glisseCD: 0, oeil: OEIL, glisse: false, respawnA: 0, zoom: false, quiMaTue: "",
-    cible: new THREE.Vector3(), cYaw: 0, cPitch: 0, vu: performance.now(),
+    buf: [], src: null, enPad: false, vu: performance.now(),
     mesh: null
   };
   e.rpos = local ? e.pos : new THREE.Vector3(0, -50, 0);
@@ -631,7 +712,7 @@ function reapparaitre(e){
   const s = choisirSpawn(e);
   e.pos.set(s[0], s[1] + 0.01, s[2]); e.vel.set(0, 0, 0);
   e.yaw = Math.atan2(s[0], s[2]); e.pitch = 0;
-  e.hp = 100; e.vivant = true; e.invul = INVUL; e.glisseT = 0; e.oeil = OEIL; e.mun = ARMES.map(a => a.chargeur); e.recharge = 0; e.changement = 0; e.dashCD = 0; e.sauts = 0; e.zoom = false;
+  e.hp = 100; e.vivant = true; e.invul = INVUL; e.glisseT = 0; e.enPad = false; e.oeil = OEIL; e.mun = ARMES.map(a => a.chargeur); e.recharge = 0; e.changement = 0; e.dashCD = 0; e.sauts = 0; e.zoom = false;
   if(e === moi){ son("spawn", 0.8); majVM(); }
   if(e.ia){ e.ia.cible = null; e.ia.wp = null; e.ia.dernierVu = null; e.arme = Math.floor(Math.random() * 3); }
 }
@@ -658,7 +739,7 @@ function physique(e, inp, dt){
     e.vel.y = SAUT; e.sol = false; e.sauts = 1; e.dernierSaut = Tg; e.glisseT = 0;
     if(e === moi) son("saut", 0.7);
   }else if(!e.sol && inp.sautNouveau && e.sauts < 2 && Tg - (e.dernierSaut || 0) > 0.1){
-    e.vel.y = SAUT2; e.sauts = 2; e.dernierSaut = Tg;
+    e.vel.y = SAUT2; e.sauts = 2; e.dernierSaut = Tg; e.enPad = false;
     // le double saut réoriente l'élan vers la direction voulue
     if(wl > 0.01){ const v = Math.max(vh, VMAX); e.vel.x = wx * v; e.vel.z = wz * v; }
     if(e === moi) son("saut", 0.9);
@@ -671,7 +752,7 @@ function physique(e, inp, dt){
   if(inp.dash && e.dashCD <= 0){
     let dx = wx, dz = wz; if(wl <= 0.01){ dx = -sy; dz = -cy; }
     e.vel.x = dx * DASH; e.vel.z = dz * DASH; e.vel.y = e.sol ? 0 : Math.max(e.vel.y, 1.5);
-    e.dashCD = DASH_CD; e.dashT = 0.18; e.glisseT = 0;
+    e.dashCD = DASH_CD; e.dashT = 0.18; e.glisseT = 0; e.enPad = false;
     if(e === moi){ son("dash", 0.9); fovBoost = 12; }
     else son("dash", volDist([e.pos.x, e.pos.y, e.pos.z]) * 0.6);
   }
@@ -690,27 +771,45 @@ function physique(e, inp, dt){
     if(dl <= acc){ e.vel.x = tx; e.vel.z = tz; } else { e.vel.x += dx / dl * acc; e.vel.z += dz / dl * acc; }
   }else if(wl > 0.01){
     // en l'air : vrai contrôle de trajectoire, sans gagner de vitesse au-delà de l'élan actuel
-    e.vel.x += wx * ACC_AIR * dt; e.vel.z += wz * ACC_AIR * dt;
-    const lim = Math.max(vh, vit), n = Math.hypot(e.vel.x, e.vel.z);
+    // (après un tremplin, contrôle réduit : on retombe bien sur la corniche visée)
+    const ctl = e.enPad ? 0.2 : 1;
+    if(e.enPad && vh > 0.1){
+      // on peut dévier un peu sur le côté, mais pas freiner l'élan du tremplin
+      const ux = e.vel.x / vh, uz = e.vel.z / vh, pr = wx * ux + wz * uz;
+      if(pr < 0){ wx -= pr * ux; wz -= pr * uz; }
+    }
+    e.vel.x += wx * ACC_AIR * ctl * dt; e.vel.z += wz * ACC_AIR * ctl * dt;
+    const lim = e.enPad ? vh : Math.max(vh, vit), n = Math.hypot(e.vel.x, e.vel.z);
     if(n > lim){ e.vel.x *= lim / n; e.vel.z *= lim / n; }
   }
   vh = Math.hypot(e.vel.x, e.vel.z); if(vh > 24){ e.vel.x *= 24 / vh; e.vel.z *= 24 / vh; }
   e.vel.y -= GRAV * dt;
   // intégration avec sous-pas
   const avant = e.sol, vyAvant = e.vel.y, n = Math.ceil(dt / 0.008), h = dt / n;
-  for(let i = 0; i < n; i++){ bougerAxe(e, 0, e.vel.x * h); bougerAxe(e, 2, e.vel.z * h); bougerY(e, e.vel.y * h); }
-  if(e.sol && !avant){ e.sauts = 0; if(e === moi && vyAvant < -6){ atterrissage = Math.min(0.22, -vyAvant * 0.012); son("atterrit", Math.min(1, -vyAvant / 15)); } }
+  // on ne teste que les boîtes autour de l'entité (au lieu des ~65 de la carte à chaque sous-pas)
+  const mg = (Math.abs(e.vel.x) + Math.abs(e.vel.y) + Math.abs(e.vel.z)) * dt + 1.5, p0 = e.pos;
+  PROCHES.length = 0;
+  for(const b of BOITES) if(b.max[0] > p0.x - mg && b.min[0] < p0.x + mg && b.max[2] > p0.z - mg && b.min[2] < p0.z + mg && b.max[1] > p0.y - mg && b.min[1] < p0.y + H + mg) PROCHES.push(b);
+  COLL = PROCHES;
+  for(let i = 0; i < n; i++){
+    bougerAxe(e, 0, e.vel.x * h); bougerAxe(e, 2, e.vel.z * h); bougerY(e, e.vel.y * h);
+    if(e.pos.y < 0.4 && Tg > e.padT) tremplin(e);
+  }
+  COLL = BOITES;
+  if(e.sol){ e.enPad = false; if(!avant){ e.sauts = 0; if(e === moi && vyAvant < -6){ atterrissage = Math.min(0.22, -vyAvant * 0.012); son("atterrit", Math.min(1, -vyAvant / 15)); } } }
   if(!e.sol && avant) e.quitteSol = Tg;
   // hauteur des yeux (plus bas en glissade)
   e.oeil += ((e.glisseT > 0 ? OEIL_G : OEIL) - e.oeil) * Math.min(1, dt * 14);
-  // tremplins
-  for(const p of PADS){
-    if(Tg > e.padT && e.pos.y < 0.4 && Math.hypot(e.pos.x - p.x, e.pos.z - p.z) < 1.25){
-      e.vel.set(p.v[0], p.v[1], p.v[2]); e.sol = false; e.sauts = 1; e.padT = Tg + 0.5; e.dernierSaut = Tg; e.glisseT = 0;
-      son("pad", e === moi ? 1 : volDist([p.x, 0, p.z]));
-    }
-  }
   if(e.pos.y < -20 && e.vivant){ e.hp = 0; tuer(e, e.id, 0, 0); }
+}
+function tremplin(e){
+  for(const p of PADS){
+    if(Math.hypot(e.pos.x - p.x, e.pos.z - p.z) >= PAD_R) continue;
+    e.vel.set(p.v[0], p.v[1], p.v[2]); e.sol = false; e.sauts = 1; e.padT = Tg + 0.6; e.dernierSaut = Tg;
+    e.glisseT = 0; e.dashT = 0; e.enPad = true; p.flash = 1;
+    if(e === moi){ son("pad", 1); fovBoost = 10; } else son("pad", volDist([p.x, 0, p.z]));
+    return;
+  }
 }
 
 /* ================================================================
@@ -784,8 +883,9 @@ function changerArme(e, i){
   e.arme = i; e.changement = 0.22; e.recharge = 0; e.zoom = false;
   if(e === moi) majVM();
 }
+const matRoquette = new THREE.MeshBasicMaterial({color: 0xff6040});
 function lancerRoquette(owner, o, v, auth){
-  const m = new THREE.Mesh(geoSphere, new THREE.MeshBasicMaterial({color: 0xff6040})); m.scale.setScalar(0.14);
+  const m = new THREE.Mesh(geoSphere, matRoquette); m.scale.setScalar(0.14);
   m.position.set(o[0], o[1], o[2]); scene.add(m);
   roquettes.push({owner, p: new THREE.Vector3(...o), v: new THREE.Vector3(...v), auth, o: m, t: 0});
 }
@@ -800,7 +900,7 @@ function majRoquettes(dt){
       if(re.e) { pt[0] -= d[0] * 0.1; pt[1] -= d[1] * 0.1; pt[2] -= d[2] * 0.1; }
       else if(tm < len){ pt[0] -= d[0] * 0.15; pt[1] -= d[1] * 0.15; pt[2] -= d[2] * 0.15; }
       exploser(r, pt, re.e);
-      scene.remove(r.o); r.o.material.dispose(); roquettes.splice(i, 1); continue;
+      scene.remove(r.o); roquettes.splice(i, 1); continue;
     }
     r.p.addScaledVector(r.v, dt); r.o.position.copy(r.p);
     if(Math.random() < 0.7) particules([r.p.x, r.p.y, r.p.z], 0x888888, 1, 0.6, 0.1);
@@ -838,7 +938,7 @@ function emettreTouche(h){
 function recevoirTouche(h){
   const e = ents.get(h.a);
   if(!e || !e.local || !e.vivant || !partieActive) return;
-  if(h.kb){ e.vel.x += h.kb[0]; e.vel.y += h.kb[1]; e.vel.z += h.kb[2]; e.sol = false; }
+  if(h.kb){ e.vel.x += h.kb[0]; e.vel.y += h.kb[1]; e.vel.z += h.kb[2]; e.sol = false; e.enPad = false; }
   if(e.invul > 0 && h.p !== e.id) return;
   if(h.d <= 0) return;
   e.hp -= h.d; e.dernDegat = Tg;
@@ -1164,7 +1264,6 @@ function majHUD(){
   if(!moi.vivant){
     const r = Math.max(0, moi.respawnA - Tg);
     set("mortTxt", partieActive ? `💀 Éliminé par ${moi.quiMaTue}\nRetour dans ${r.toFixed(1)} s` : "");
-    $("mortTxt").style.whiteSpace = "pre-line";
     set("mortVoile", "1", "opacity");
   }else{ set("mortTxt", ""); set("mortVoile", "0", "opacity"); }
 }
@@ -1177,7 +1276,7 @@ function etatCompact(e){
 }
 function envoyerPaquet(){
   if(!salle){ sortie.s.length = sortie.h.length = sortie.k.length = 0; return; }
-  const m = {t: "p", n: partie, e: []};
+  const m = {t: "p", n: partie, ts: Math.round(performance.now()), e: []};
   for(const e of ents.values()) if(e.local) m.e.push(etatCompact(e));
   if(sortie.s.length) m.s = sortie.s.splice(0);
   if(sortie.h.length) m.h = sortie.h.splice(0);
@@ -1185,16 +1284,59 @@ function envoyerPaquet(){
   if(estHote && (scV !== scEnvoye || Tg - dernierSc > 2)){ m.sc = sc; scEnvoye = scV; dernierSc = Tg; }
   salle.envoyer(m);
 }
-function majDistant(a){
+/* Horloge de chaque expéditeur : on range ses positions selon l'heure où il les a envoyées
+   (et pas l'heure d'arrivée, qui varie avec le relais), puis on les rejoue avec un petit retard
+   pour toujours avoir deux positions entre lesquelles glisser : mouvement fluide, sans à-coups. */
+const horloges = {};
+function horloge(de, ts){
+  const now = performance.now(), ech = now - ts;
+  let h = horloges[de];
+  if(!h) h = horloges[de] = {off: ech, jit: 15, delai: 110};
+  if(ech < h.off) h.off = ech; else h.off += (ech - h.off) * 0.01;     // retard minimal du relais (suit les dérives d'horloge)
+  h.jit += (Math.abs(ech - h.off) - h.jit) * 0.05;
+  h.delai = Math.min(260, Math.max(95, 75 + 2 * h.jit));
+  return ts + h.off;
+}
+function majDistant(a, t, de){
   const [id, x, y, z, yw, pt, w, f] = a;
   if(id === monId) return;
   let e = ents.get(id);
   if(!e){ if(!roster.has(id)) return; e = creerEnt(id, false, false); }
   if(e.local) return;
   const viv = !!(f & 1);
-  if(viv && !e.vivant){ e.rpos.set(x, y, z); e.yaw = yw; }
+  if(viv && !e.vivant){ e.buf.length = 0; e.rpos.set(x, y, z); e.yaw = yw; e.pitch = pt; }
   e.vivant = viv; e.invul = f & 2 ? 1 : 0; e.glisse = !!(f & 4);
-  e.cible.set(x, y, z); e.cYaw = yw; e.cPitch = pt; e.arme = w; e.vu = performance.now();
+  e.arme = w; e.vu = performance.now(); e.src = de;
+  const b = e.buf, der = b[b.length - 1];
+  if(der && t <= der.t) t = der.t + 1;
+  b.push({t, x, y, z, yw, pt});
+  if(b.length > 30) b.shift();
+}
+function interpoler(e, now){
+  const b = e.buf; if(!b.length) return;
+  const h = horloges[e.src], rt = now - (h ? h.delai : 110);
+  const n = b.length - 1;
+  let a, c, f;
+  if(rt <= b[0].t){ a = c = b[0]; f = 0; }
+  else if(rt >= b[n].t){
+    // plus de nouvelle position : on prolonge un peu le mouvement (100 ms max) puis on attend
+    a = b[n];
+    const p = n > 0 ? b[n - 1] : null, ex = Math.min(rt - a.t, 100);
+    if(p && a.t > p.t && Math.abs(a.x - p.x) + Math.abs(a.z - p.z) < 6){
+      const k = ex / (a.t - p.t);
+      e.rpos.set(a.x + (a.x - p.x) * k, a.y + Math.max(-0.5, Math.min(0.5, (a.y - p.y) * k)), a.z + (a.z - p.z) * k);
+      if(e.rpos.y < 0) e.rpos.y = 0;
+    }else e.rpos.set(a.x, a.y, a.z);
+    e.yaw = a.yw; e.pitch = a.pt;
+    return;
+  }else{
+    let k = n - 1; while(k > 0 && b[k].t > rt) k--;
+    a = b[k]; c = b[k + 1]; f = (rt - a.t) / (c.t - a.t);
+    if(k > 2) b.splice(0, k - 2);
+  }
+  if(Math.abs(c.x - a.x) + Math.abs(c.y - a.y) + Math.abs(c.z - a.z) > 8){ a = c; f = 0; }   // téléportation (réapparition)
+  e.rpos.set(a.x + (c.x - a.x) * f, a.y + (c.y - a.y) * f, a.z + (c.z - a.z) * f);
+  e.yaw = a.yw + angleDiff(a.yw, c.yw) * f; e.pitch = a.pt + (c.pt - a.pt) * f;
 }
 function tirDistant(ev){
   const e = ents.get(ev.i); if(!e || e.local) return;
@@ -1206,7 +1348,7 @@ function tirDistant(ev){
 }
 function surPaquet(m, de){
   if(m.n !== partie || !enJeu) return;
-  if(m.e) m.e.forEach(majDistant);
+  if(m.e){ const t = typeof m.ts === "number" ? horloge(de, m.ts) : performance.now(); for(const a of m.e) majDistant(a, t, de); }
   if(m.s) m.s.forEach(tirDistant);
   if(m.h) m.h.forEach(h => { const e = ents.get(h.a); if(e && e.local) recevoirTouche(h); });
   if(m.k) m.k.forEach(traiterMort);
@@ -1232,6 +1374,7 @@ function appliquerRoster(r){
 function demarrer(cfg){
   for(const e of [...ents.values()]) retirerEnt(e);
   for(const r of roquettes) scene.remove(r.o); roquettes = [];
+  traces.length = 0; parts.length = 0;
   partie = cfg.n; obj = cfg.obj; diff = cfg.diff;
   sc = cfg.sc && cfg.actif ? cfg.sc : {};
   partieActive = true; enJeu = true; Tg = 0; serie = 0; multi = {n: 0, t: 0};
@@ -1304,8 +1447,9 @@ addEventListener("resize", redimensionner);
 let dernier = performance.now();
 function boucle(t){
   requestAnimationFrame(boucle);
-  const dt = Math.min(0.05, (t - dernier) / 1000); dernier = t;
+  const dtReel = (t - dernier) / 1000, dt = Math.min(0.05, dtReel); dernier = t;
   if(!enJeu) return;
+  if(dtReel < 0.5) ajusterResolution(dtReel);
   if(!pauseSolo) maj(dt);
   rendu(dt);
 }
@@ -1328,16 +1472,20 @@ function maj(dt){
       if(actif && tirMaintenu && partieActive && (A.auto || !tirDejaPart)){ if(tirer(e)) tirDejaPart = true; }
     }else if(e.bot && partieActive) majBot(e, dt);
   }
-  // entités distantes : lissage
-  const k = 1 - Math.exp(-dt * 16), now = performance.now();
+  // entités distantes : rejouées entre deux positions reçues
+  const now = performance.now();
   for(const e of ents.values()){
     if(e.local) continue;
-    if(e.rpos.distanceTo(e.cible) > 6) e.rpos.copy(e.cible); else e.rpos.lerp(e.cible, k);
-    e.yaw += angleDiff(e.yaw, e.cYaw) * k; e.pitch += (e.cPitch - e.pitch) * k;
+    interpoler(e, now);
+    if(e.vivant && e.rpos.y < 0.45 && Tg > e.padT){
+      for(const p of PADS) if(Math.hypot(e.rpos.x - p.x, e.rpos.z - p.z) < PAD_R){ e.padT = Tg + 0.8; p.flash = 1; son("pad", volDist([p.x, 0, p.z])); break; }
+    }
     if(now - e.vu > 8000 && !roster.has(e.id)) retirerEnt(e);
   }
   majRoquettes(dt);
-  if(salle && Tg - dernierEnvoi > 1 / 15){ dernierEnvoi = Tg; envoyerPaquet(); }
+  // 15 envois/s ; un tir qui touche ou un frag part tout de suite (au plus 40/s)
+  const urgent = sortie.h.length || sortie.k.length;
+  if(salle && (Tg - dernierEnvoi > 1 / 15 || (urgent && Tg - dernierEnvoi > 1 / 40))){ dernierEnvoi = Tg; envoyerPaquet(); }
 }
 function rendu(dt){
   // caméra
@@ -1356,7 +1504,8 @@ function rendu(dt){
     }
     if(secousse > 0){ camera.position.x += (Math.random() - 0.5) * secousse; camera.position.y += (Math.random() - 0.5) * secousse; secousse = Math.max(0, secousse - dt * 1.2); }
     const fovCible = moi.zoom ? 26 : REG.fov + Math.min(10, Math.max(0, vit - VMAX) * 0.8) + fovBoost;
-    camera.fov += (fovCible - camera.fov) * Math.min(1, dt * (moi.zoom ? 18 : 10)); camera.updateProjectionMatrix();
+    const fovN = camera.fov + (fovCible - camera.fov) * Math.min(1, dt * (moi.zoom ? 18 : 10));
+    if(Math.abs(fovN - camera.fov) > 0.005){ camera.fov = fovN; camera.updateProjectionMatrix(); }
     fovBoost = Math.max(0, fovBoost - dt * 40);
     // arme en main
     vmRacine.visible = moi.vivant && !moi.zoom;
@@ -1378,16 +1527,28 @@ function rendu(dt){
     e.mesh.userData.mat.emissive.setHex(e.invul > 0 && Math.sin(performance.now() / 70) > 0 ? 0x666666 : 0x000000);
   }
   // effets
-  for(let i = traces.length - 1; i >= 0; i--){ const x = traces[i]; x.t += dt; x.o.material.opacity = Math.max(0, 0.9 * (1 - x.t / x.d)); if(x.t > x.d){ scene.remove(x.o); x.o.geometry.dispose(); x.o.material.dispose(); traces.splice(i, 1); } }
-  for(let i = parts.length - 1; i >= 0; i--){ const p = parts[i]; p.t += dt; p.v.y -= 14 * dt; p.o.position.addScaledVector(p.v, dt); if(p.o.position.y < 0.03){ p.o.position.y = 0.03; p.v.multiplyScalar(0.5); } p.o.scale.multiplyScalar(1 - dt * 1.5); if(p.t > p.d){ scene.remove(p.o); parts.splice(i, 1); } }
+  majEffets(dt);
   for(let i = boums.length - 1; i >= 0; i--){ const b = boums[i]; b.t += dt; const f = b.t / b.d; b.o.scale.setScalar(b.r * (0.3 + 0.8 * f)); b.o.material.opacity = 0.8 * (1 - f); if(f >= 1){ scene.remove(b.o); b.o.material.dispose(); boums.splice(i, 1); } }
-  const pulse = 1 + Math.sin(performance.now() / 180) * 0.15; for(const p of PADS) p.anneau.scale.setScalar(pulse);
+  const pulse = 1 + Math.sin(performance.now() / 180) * 0.15;
+  for(const p of PADS){ p.flash = Math.max(0, p.flash - dt * 2.5); p.anneau.scale.setScalar(pulse + p.flash * 0.9); p.anneau.position.y = 0.3 + p.flash * 1.2; }
+  PADS.texFleches.offset.y -= dt * 1.6;
   // HUD temporisés
   if(toucheT > 0){ toucheT -= dt; if(toucheT <= 0) $("touche").className = "hud off"; }
   if(degatT > 0){ degatT -= dt; if(degatT <= 0) $("degat").style.opacity = 0; }
   if(annonceT > 0){ annonceT -= dt; if(annonceT <= 0) $("annonce").innerHTML = ""; }
   majHUD();
   renderer.render(scene, camera);
+}// résolution dynamique : moyenne du temps d'image sur ~1 s
+let perfT = 0, perfN = 0, perfLent = 0, perfBloque = 0;
+function ajusterResolution(dtReel){
+  if(pauseSolo || document.hidden) return;
+  perfT += dtReel; perfN++;
+  if(perfT < 1) return;
+  const moy = perfT / perfN; perfT = 0; perfN = 0;
+  let pr = prActuel;
+  if(moy > 1 / 48){ if(++perfLent >= 2){ pr = Math.max(PR_MIN, prActuel - 0.15); perfLent = 0; perfBloque = 10; } }
+  else{ perfLent = 0; if(perfBloque > 0) perfBloque--; else if(moy < 1 / 57) pr = Math.min(PR_MAX, prActuel + 0.05); }
+  if(Math.abs(pr - prActuel) > 0.001){ prActuel = pr; renderer.setPixelRatio(pr); redimensionner(); }
 }
 requestAnimationFrame(boucle);
 
