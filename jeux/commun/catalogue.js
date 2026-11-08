@@ -253,6 +253,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "electrodle",
+    title: "Électrodle",
+    emoji: "🔌",
+    desc: "Devine l'appareil de la maison : pièce, catégorie, usage, énergie, prix, poids, année d'invention… Un nouvel appareil chaque jour, plus une partie libre.",
+    tags: ["Quotidien", "Solo"],
+    colors: ["#2f9fd6", "#f2be5c"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "paysdle",
     title: "Paysdle",
     emoji: "🌍",

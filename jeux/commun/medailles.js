@@ -33,6 +33,7 @@
     {slug: "anidle",      u: "coup",    q: e => lin(e, 1, 12)},
     {slug: "onepiecedle", u: "coup",    q: e => lin(e, 1, 12)},
     {slug: "pokedle",     u: "coup",    q: e => lin(e, 1, 12)},
+    {slug: "electrodle",  u: "coup",    q: e => lin(e, 1, 12)},
     {slug: "paysdle",     u: "coup",    q: e => lin(e, 1, 8)},
     {slug: "connexions",  u: "erreur",  q: e => lin(e, 0, 4)},
     {slug: "sudoku",      u: "erreur",  q: e => lin(e, 0, 5)},
@@ -245,7 +246,7 @@
      Défis du jour déjà terminés sur cet appareil mais sans médaille
      (par ex. joués avant l'arrivée des médailles) : on lit le résultat
      enregistré par le jeu lui-même. Seulement pour aujourd'hui. */
-  const DEBUTS = {anidle: [2026, 10, 3], motscroises: [2026, 10, 4], motsfleches: [2026, 10, 4], shikaku: [2026, 10, 4]};
+  const DEBUTS = {anidle: [2026, 10, 3], electrodle: [2026, 10, 8], motscroises: [2026, 10, 4], motsfleches: [2026, 10, 4], shikaku: [2026, 10, 4]};
   function jourDuJeu(slug){
     const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date()).split("-").map(Number);
     const [sy, sm, sd] = DEBUTS[slug] || [2026, 10, 1];
@@ -261,7 +262,7 @@
         const k = L("cdf_jour_fait_" + d, 0); if(!k) return null;
         const lv = Math.floor(k / 1e9); return {e: lv, g: lv >= 8};
       }
-      if(["wordle", "paysdle", "loldle", "anidle", "onepiecedle", "pokedle"].includes(slug)){
+      if(["wordle", "paysdle", "loldle", "anidle", "onepiecedle", "pokedle", "electrodle"].includes(slug)){
         const sv = L(slug + "_daily", null);
         if(!fini || !sv || sv.day !== d || !Array.isArray(sv.guesses)) return null;
         return {e: sv.guesses.length, g: ["wordle", "paysdle"].includes(slug) ? gagne : true};

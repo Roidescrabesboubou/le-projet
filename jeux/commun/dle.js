@@ -1,12 +1,13 @@
 /* ============================================================
    MOTEUR DES JEUX « -DLE » À TABLEAU  →  Dle.lancer(config)
-   Utilisé par loldle, onepiecedle, pokedle, anidle.
+   Utilisé par loldle, onepiecedle, pokedle, anidle, electrodle.
    À inclure après garde.js, base.js, classement.js, series.js
    (+ dle.css après base.css).
 
    config :
      slug, titre, emoji            "loldle", "LoL-dle", "⚔️"
      quoi                          "champion" (sert aux textes : « Champion du jour »…)
+     le, du                        facultatif : "l'appareil", "de l'appareil" (sinon "le " + quoi, "du " + quoi)
      liste                         [{name, ...}]  (cles: noms normalisés acceptés, facultatif)
      graine, debut                 tirage du jour (ne pas changer : ça change la réponse du jour)
      jour(c)                       facultatif : qui peut être la réponse du jour
@@ -35,6 +36,7 @@
     const store = Base.stock(C.slug + "_");
     const LISTE = C.liste, BY = {};
     LISTE.forEach(c => { BY[c.name] = c; if(!c.cles) c.cles = [norm(c.name)]; });
+    const LE = C.le || "le " + C.quoi, DU = C.du || "du " + C.quoi;
     const Quoi = maj(C.quoi), defStats = () => ({played:0, wins:0, streak:0, best:0, total:0, lastWin:null, last:null});
 
     /* ---------- Réponse du jour ---------- */
@@ -60,7 +62,7 @@
     /* ---------- Page ---------- */
     const bStats = Base.el("button", "📊", "b-ico"); bStats.title = "Statistiques";
     Base.entete({titre: C.titre, emoji: C.emoji, boutons: [bStats], aide:
-      `<p>Trouve le ${C.quoi} mystère. Essais illimités : chaque proposition te révèle ses points communs avec la réponse.</p>
+      `<p>Trouve ${LE} mystère. Essais illimités : chaque proposition te révèle ses points communs avec la réponse.</p>
       <ul>
         <li><span class="sq" style="background:var(--ok)"></span> la caractéristique est <b>exactement</b> la même ;</li>
         <li><span class="sq" style="background:var(--mid)"></span> <b>en partie</b> correcte (${C.exemple || "ex : une valeur en commun sur deux"}) ;</li>
@@ -77,7 +79,7 @@
       <div class="panel">
         <h2>${C.question}</h2><p>${C.intro}</p>
         <div class="search" id="search">
-          <input id="inp" placeholder="Nom du ${C.quoi}…" autocomplete="off" spellcheck="false">
+          <input id="inp" placeholder="Nom ${DU}…" autocomplete="off" spellcheck="false">
           <button id="bGo">Valider</button><div id="sugg" hidden></div>
         </div>
         <div class="hints"><button id="h1" disabled></button><button id="h2" disabled></button></div>
@@ -113,7 +115,7 @@
       $("tbl").hidden = $("legend").hidden = !guesses.length;
       $("count").textContent = guesses.length ? pluriel(guesses.length) : "";
       $("inp").disabled = $("bGo").disabled = over;
-      $("inp").placeholder = over ? "Trouvé ! Reviens demain ou lance une partie libre" : `Nom du ${C.quoi}…`;
+      $("inp").placeholder = over ? "Trouvé ! Reviens demain ou lance une partie libre" : `Nom ${DU}…`;
       updateHints();
     }
     const INDICES = [["h1", 5, ...(C.indice1 || ["🔤 Première lettre", a => `🔤 Commence par « ${a.name[0]} »`])], ["h2", 9, ...C.indice2]];

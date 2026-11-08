@@ -80,13 +80,13 @@
     },
     "series": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/)",
+        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|electrodle|sudoku)$/)",
         ".indexOn": [
           "s",
           "b"
         ],
         "$id": {
-          ".write": "($jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/) && auth != null && auth.uid === $id && root.child('bannis').child(auth.uid).val() !== true && newData.exists() && root.child('bannis_id').child($id).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
+          ".write": "($jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|electrodle|sudoku)$/) && auth != null && auth.uid === $id && root.child('bannis').child(auth.uid).val() !== true && newData.exists() && root.child('bannis_id').child($id).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
           ".validate": "newData.hasChildren(['n', 's', 'b', 'j', 'd']) && newData.child('s').val() <= newData.child('j').val() + 1 && newData.child('b').val() >= newData.child('s').val() && newData.child('b').val() <= newData.child('j').val() + 1 && (!data.exists() || (newData.child('j').val() == data.child('j').val() && newData.child('s').val() <= data.child('s').val() && newData.child('b').val() <= data.child('b').val()) || (newData.child('j').val() > data.child('j').val() && newData.child('s').val() <= data.child('s').val() + newData.child('j').val() - data.child('j').val() && (newData.child('b').val() <= data.child('b').val() || newData.child('b').val() == newData.child('s').val())))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
@@ -233,12 +233,12 @@
     },
     "resultats": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/)",
+        ".read": "$jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|electrodle|sudoku)$/)",
         ".indexOn": [
           "j"
         ],
         "$id": {
-          ".write": "($jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|sudoku)$/) && auth != null && auth.uid === $id && root.child('bannis').child(auth.uid).val() !== true && newData.exists() && (!data.exists() || newData.child('j').val() > data.child('j').val()) && root.child('bannis_id').child($id).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
+          ".write": "($jeu.matches(/^(wordle|loldle|paysdle|connexions|onepiecedle|pokedle|anidle|electrodle|sudoku)$/) && auth != null && auth.uid === $id && root.child('bannis').child(auth.uid).val() !== true && newData.exists() && (!data.exists() || newData.child('j').val() > data.child('j').val()) && root.child('bannis_id').child($id).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
           ".validate": "newData.hasChildren(['j', 'e', 'g', 'd'])",
           "j": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + (newData.val() + ($jeu === 'anidle' ? 2 : 0)) * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() + ($jeu === 'anidle' ? 2 : 0) + 1) * 86400000"
@@ -554,7 +554,7 @@
         "$j": {
           "$cle": {
             ".write": "auth != null && auth.uid === $uid && root.child('bannis').child(auth.uid).val() !== true && $j.matches(/^[0-9]{1,5}$/) && !data.exists() && newData.exists()",
-            ".validate": "$cle === '_tous' ? newData.val() === 20 : $cle === '_parfait' ? newData.val() === 10 : $cle === '_serie' ? (newData.isNumber() && newData.val() >= 2 && newData.val() <= 10) : ($cle.matches(/^(wordle|loldle|anidle|onepiecedle|pokedle|paysdle|connexions|sudoku|motscroises|motsfleches|shikaku|coupdefeu)$/) && newData.hasChildren(['m', 'e', 'g', 'd']) && newData.child('g').isBoolean() && newData.child('m').isNumber() && newData.child('e').isNumber() && newData.child('e').val() >= 0 && newData.child('e').val() <= 500 && (newData.child('g').val() === true ? (newData.child('m').val() >= 5 && newData.child('m').val() <= 10) : (newData.child('m').val() >= 2 && newData.child('m').val() <= ($cle === 'coupdefeu' ? 7 : 2))) && newData.child('d').val() == now && (!newData.hasChild('t') || (newData.child('t').isNumber() && newData.child('t').val() >= 0 && newData.child('t').val() <= 86400)))",
+            ".validate": "$cle === '_tous' ? newData.val() === 20 : $cle === '_parfait' ? newData.val() === 10 : $cle === '_serie' ? (newData.isNumber() && newData.val() >= 2 && newData.val() <= 10) : ($cle.matches(/^(wordle|loldle|anidle|onepiecedle|pokedle|electrodle|paysdle|connexions|sudoku|motscroises|motsfleches|shikaku|coupdefeu)$/) && newData.hasChildren(['m', 'e', 'g', 'd']) && newData.child('g').isBoolean() && newData.child('m').isNumber() && newData.child('e').isNumber() && newData.child('e').val() >= 0 && newData.child('e').val() <= 500 && (newData.child('g').val() === true ? (newData.child('m').val() >= 5 && newData.child('m').val() <= 10) : (newData.child('m').val() >= 2 && newData.child('m').val() <= ($cle === 'coupdefeu' ? 7 : 2))) && newData.child('d').val() == now && (!newData.hasChild('t') || (newData.child('t').isNumber() && newData.child('t').val() >= 0 && newData.child('t').val() <= 86400)))",
             "$x": {
               ".validate": "$x.matches(/^(m|e|g|d|t)$/)"
             }

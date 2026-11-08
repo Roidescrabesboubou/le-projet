@@ -24,7 +24,7 @@ jeux/commun/        code partagé
   garde.js            bloque les jeux cachés, charge groupe.js
   reseau.js           salles en ligne (code ou lien), relais MQTT public
   ia.js               appels IA avec les clés des Réglages
-  dle.js/dle.css      moteur commun des -dle à tableau (loldle, onepiecedle, pokedle, anidle) : chaque jeu = une config
+  dle.js/dle.css      moteur commun des -dle à tableau (loldle, onepiecedle, pokedle, anidle, electrodle) : chaque jeu = une config
   classement.js, series.js, medailles.js, jetons.js, compte.js, groupe.js, cartes.js
 jeux/<slug>/        un dossier par jeu
 ```
@@ -47,7 +47,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Les jeux (slug → nom)
 - IA : `quintuplees` Les Quintuplées (v12.4), `jdr` Table de Légendes (jusqu'à 8 joueurs, MJ IA ou joueur)
-- Défis du jour (séries, pastille « x / 11 ») : `wordle` Mot du jour, `loldle`, `anidle`, `onepiecedle`, `pokedle`, `paysdle`, `connexions`, `motscroises`, `motsfleches`, `sudoku`, `shikaku`
+- Défis du jour (séries, pastille « x / 12 ») : `wordle` Mot du jour, `loldle`, `anidle`, `onepiecedle`, `pokedle`, `electrodle` Électrodle (appareils de la maison), `paysdle`, `connexions`, `motscroises`, `motsfleches`, `sudoku`, `shikaku`
 - Party / en ligne : `dessin`, `telephone`, `quiz` (Culture G, manches spéciales), `blindtest`, `imposteur`, `categorie`, `encheres`
 - Duels / plateau : `puissance4`, `bataille` (navale), `laser` (Bataille Laser), `mainmise` (façon Monopoly)
 - Casino : `poker`, `blackjack`, `roulette`

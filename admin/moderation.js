@@ -46,12 +46,12 @@
 
   /* Même barème que jeux/commun/medailles.js */
   const lin = (e, a, b) => Math.max(0, Math.min(1, (b - e) / (b - a)));
-  const Q = {wordle: e => lin(e, 1, 6), loldle: e => lin(e, 1, 12), anidle: e => lin(e, 1, 12), onepiecedle: e => lin(e, 1, 12), pokedle: e => lin(e, 1, 12),
+  const Q = {wordle: e => lin(e, 1, 6), loldle: e => lin(e, 1, 12), anidle: e => lin(e, 1, 12), onepiecedle: e => lin(e, 1, 12), pokedle: e => lin(e, 1, 12), electrodle: e => lin(e, 1, 12),
              paysdle: e => lin(e, 1, 8), connexions: e => lin(e, 0, 4), sudoku: e => lin(e, 0, 5), motscroises: e => lin(e, 0, 5), motsfleches: e => lin(e, 0, 5), shikaku: e => lin(e, 0, 5)};
   const gain = (slug, e, g) => slug === "coupdefeu" ? (g ? 10 : 2 + Math.floor((Math.max(1, e) - 1) * 5 / 8)) : Q[slug] ? (g ? 5 + Math.round(5 * Q[slug](e)) : 2) : null;
   /* Temps minimum crédible pour finir un défi (secondes) */
-  const TMIN = {wordle: 20, loldle: 15, anidle: 15, onepiecedle: 15, pokedle: 15, paysdle: 15, connexions: 40, sudoku: 120, motscroises: 90, motsfleches: 90, shikaku: 30, coupdefeu: 300};
-  const DLE = ["wordle", "loldle", "anidle", "onepiecedle", "pokedle", "paysdle", "connexions", "sudoku"];
+  const TMIN = {wordle: 20, loldle: 15, anidle: 15, onepiecedle: 15, pokedle: 15, electrodle: 15, paysdle: 15, connexions: 40, sudoku: 120, motscroises: 90, motsfleches: 90, shikaku: 30, coupdefeu: 300};
+  const DLE = ["wordle", "loldle", "anidle", "onepiecedle", "pokedle", "electrodle", "paysdle", "connexions", "sudoku"];
   const titre = slug => { const g = (window.SALLE_CATALOGUE || []).find(x => x.slug === slug); return g ? (g.emoji ? g.emoji + " " : "") + g.title : slug; };
 
   function bouton(txt, cls, fn, confirmer){

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Électrodle</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/dle.css">
+<style>
+:root{--accent:#2f9fd6;--fond1:rgba(47,159,214,.14);--fond2:rgba(242,190,92,.14)}
+.av{font-size:1rem}.found .av{font-size:1.5rem}
+</style>
+</head>
+<body>
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
+<script src="../commun/dle.js"></script>
+<script src="appareils.js"></script>
+<script>
+const norm=Dle.norm, liste=s=>s.split(",").map(x=>x.trim()).filter(Boolean);
+const CC={"Gros électro":"#4a7bd0","Petit électro":"#e07a2e","Entretien":"#2fa36b","Chauffage & air":"#d64545",
+  "Beauté & soin":"#c459b5","Multimédia":"#6b5bd0","Bricolage & jardin":"#7a8a2e"};
+const fr=(n,o)=>n.toLocaleString("fr-FR",o);
+
+const APP=APPAREILS.trim().split("\n").map(l=>{
+  const[name,alias,emoji,pieces,cat,usages,energie,format,prix,poids,annee,jour]=l.split("|");
+  return{name,emoji,pieces:liste(pieces),cat,usages:liste(usages),energie:liste(energie),format,
+    prix:+prix,poids:+poids,annee:+annee,jour:jour==="1",cles:[name,...liste(alias)].map(norm)};
+});
+
+window.JEU=Dle.lancer({
+  slug:"electrodle", titre:"Électrodle", emoji:"🔌", quoi:"appareil", le:"l'appareil", du:"de l'appareil", liste:APP, graine:81126, debut:Date.UTC(2026,10,8), jour:c=>c.jour,
+  question:"Devine l'appareil mystère",
+  intro:`${APP.length} appareils de la maison : frigo, grille-pain, aspirateur, sèche-cheveux, console… Tape un nom pour commencer.`,
+  colonnes:[{t:"Pièce",k:"pieces"},{t:"Catégorie",k:"cat"},{t:"Usage",k:"usages"},{t:"Énergie",k:"energie"},{t:"Format",k:"format"},
+    {t:"Prix",k:"prix",num:true,fmt:p=>"≈ "+fr(p)+" €"},
+    {t:"Poids",k:"poids",num:true,fmt:p=>fr(p,{maximumFractionDigits:2})+" kg"},
+    {t:"Inventé",k:"annee",num:true}],
+  avatar:a=>[CC[a.cat]||"#888",a.emoji],
+  sous:a=>a.cat,
+  indice1:["🔤 Première lettre",a=>`🔤 Commence par « ${a.name[0]} »`],
+  indice2:["🖼️ Son emoji",a=>`🖼️ Son emoji : ${a.emoji}`],
+  legende:"↑ ↓ plus cher, plus lourd ou plus récent",
+  exemple:"ex : une pièce en commun sur deux",
+  aide:`<li>↑ / ↓ : l'appareil mystère est <b>plus cher</b>, <b>plus lourd</b> ou <b>inventé plus tard</b> (↑) / l'inverse (↓).</li>
+    <li>Pièce : là où on le range ou l'utilise le plus souvent. « Toute la maison » compte comme une pièce à part.</li>
+    <li>Prix et poids : ordre de grandeur d'un modèle courant. Année : invention de la version électrique grand public (à peu près).</li>`,
+  aideFin:"📅 L'<b>appareil du jour</b> est tiré parmi les plus courants et change à minuit, le même pour tout le monde. ♾️ La <b>partie libre</b> tire n'importe quel appareil."
+});
+</script>
+</body>
+</html>

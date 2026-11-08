@@ -199,11 +199,11 @@ function render(){
 /* Record du joueur sur cet appareil, affiché sur la carte du jeu.
    Les nouveaux jeux passent par Base.record() ; les anciens sont lus ici. */
 function lireLS(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } }
-const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions", "anidle", "motscroises", "sudoku", "shikaku", "motsfleches"];
+const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions", "anidle", "electrodle", "motscroises", "sudoku", "shikaku", "motsfleches"];
 /* Défi du jour : fait ou pas aujourd'hui ?
    Chaque jeu numérote ses jours depuis sa date de lancement (START dans le jeu) :
    indique-la ici si elle n'est pas le 1er novembre 2026. */
-const DEBUT_DLE = {anidle: [2026, 10, 3], motscroises: [2026, 10, 4], shikaku: [2026, 10, 4], motsfleches: [2026, 10, 4]};
+const DEBUT_DLE = {anidle: [2026, 10, 3], electrodle: [2026, 10, 8], motscroises: [2026, 10, 4], shikaku: [2026, 10, 4], motsfleches: [2026, 10, 4]};
 function jourParis(slug){
   const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date()).split("-").map(Number);
   const [sy, sm, sd] = DEBUT_DLE[slug] || [2026, 10, 1];
