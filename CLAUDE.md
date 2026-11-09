@@ -49,6 +49,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Les jeux (slug → nom)
 - IA : `quintuplees` Les Quintuplées (v12.4), `jdr` Table de Légendes (jusqu'à 8 joueurs, MJ IA ou joueur)
+  - `jdr/campagne.js` : campagnes du MJ (cartes + calque d'objets, PNJ avec ressenti par héros et souvenirs, lore, créatures, rencontres, notes), écran « 📚 Mes campagnes », assistant IA du MJ. Tout reste dans le localStorage du MJ (`jdr_camps`) ; export/import JSON. Règle : rien de la campagne n'entre dans `G` (diffusé à tous) sauf une carte affichée, via `pubObjets` (sans objets cachés ni notes secrètes).
 - Défis du jour (séries, pastille « x / 12 ») : `wordle` Mot du jour, `loldle`, `anidle`, `onepiecedle`, `pokedle`, `electrodle` Électrodle (appareils de la maison), `paysdle`, `connexions`, `motscroises`, `motsfleches`, `sudoku`, `shikaku`
 - Party / en ligne : `dessin`, `telephone`, `quiz` (Culture G, manches spéciales), `blindtest`, `imposteur`, `categorie`, `encheres`, `freestyle` (prod de rap synthétisée, boule sur 4 temps, rimes ; salle en ligne synchronisée sur l'horloge de l'hôte, lignes à se répartir)
 - Duels / plateau : `puissance4`, `bataille` (navale), `laser` (Bataille Laser), `mainmise` (façon Monopoly)
@@ -70,6 +71,7 @@ Tests réels à faire (seulement testé avec un relais simulé) :
 - Ressenti souris de l'Arène Éclair.
 - Freestyle : juge au micro (reconnaissance vocale) et rendu des prods à l'oreille.
 - Glisser-déposer de l'admin au doigt.
+- Table de Légendes : assistant IA, PNJ qui parlent, souvenirs des PNJ avec une vraie clé (testés seulement avec des réponses simulées) ; éditeur de carte au doigt.
 
 Décisions en attente :
 - Table de Légendes : lever la restriction « jeu IA » maintenant qu'un joueur peut être MJ ?
