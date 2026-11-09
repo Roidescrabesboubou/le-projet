@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Table de Légendes</title>
 <link rel="stylesheet" href="../commun/base.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
 <style>
-/* Police d'emojis commune : les emojis récents (🪨 🪜 🪦 🪟…) manquent sur Windows 10 et les vieux téléphones,
-   et tous les joueurs voient les mêmes dessins sur la carte */
-body,button,input,select,textarea{font-family:Nunito,"Noto Color Emoji",system-ui,sans-serif}
-h1,h2,h3,.titre{font-family:"Bricolage Grotesque",Nunito,"Noto Color Emoji",sans-serif}
+/* Police d'emojis commune (OpenMoji, style dessiné) : les emojis récents (🪨 🪜 🪦 🪟…) manquent sur Windows 10
+   et les vieux téléphones, et tous les joueurs voient les mêmes dessins sur la carte */
+@font-face{font-family:"OpenMoji";src:url(https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.1.0/font/OpenMoji-color-glyf_colr_0/OpenMoji-color-glyf_colr_0.woff2) format("woff2");font-display:swap;size-adjust:135%}
+body,button,input,select,textarea{font-family:Nunito,"OpenMoji",system-ui,sans-serif}
+h1,h2,h3,.titre{font-family:"Bricolage Grotesque",Nunito,"OpenMoji",sans-serif}
 :root{--accent:#c0603a;--fond1:rgba(192,96,58,.13);--fond2:rgba(91,107,208,.12)}
 .b-page{max-width:1200px}
 .ecran{width:100%;display:flex;flex-direction:column;gap:14px}
