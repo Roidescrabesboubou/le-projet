@@ -114,6 +114,12 @@ textarea.champ{resize:vertical;min-height:58px}
 .pal button{display:flex;align-items:center;gap:5px;border:2px solid var(--line);border-radius:9px;padding:3px 7px 3px 3px;font-size:.8rem;font-weight:700;background:var(--card)}
 .pal button.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
 .pal i{width:22px;height:22px;border-radius:5px;font-style:normal;font-size:.8rem}
+.c .obj{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.c.cachee .deco{opacity:.35}
+.c.cachee{outline:1px dashed rgba(255,255,255,.75);outline-offset:-3px}
+.c.osel{box-shadow:inset 0 0 0 3px #f2c14e}
+.c.pnj .deco{filter:drop-shadow(0 0 3px #fff)}
+.campstats{font-size:.85rem;color:var(--muted);margin-top:6px}
 body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
 </style>
 </head>
@@ -130,6 +136,7 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
         <button class="btn" id="bNouvelle">✨ Nouvelle aventure</button>
         <button class="btn ghost cache" id="bContinuer">📜 Continuer l'aventure</button>
       </div>
+      <div class="ligne" style="justify-content:center;margin-top:8px"><button class="btn ghost" id="bCamp">📚 Préparer mes campagnes (MJ)</button></div>
       <p class="muted" id="infoSauve" style="font-size:.85rem"></p>
     </div>
     <div class="b-carte">
@@ -187,6 +194,15 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
   <!-- ===== Création en cours de partie ===== -->
   <section class="ecran cache" id="eCrea"><div class="b-carte" id="crea"></div></section>
 
+  <!-- ===== Préparation des campagnes (MJ) ===== -->
+  <section class="ecran cache" id="eCamp">
+    <div class="b-carte" id="campHaut"></div>
+    <div class="jeu">
+      <div class="panneau" id="campMJ"></div>
+      <div class="panneau cache" id="campEdit"></div>
+    </div>
+  </section>
+
   <!-- ===== Partie ===== -->
   <section class="ecran cache" id="eJeu">
     <div class="jeu">
@@ -200,6 +216,7 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
           <div class="groupe" id="jMjSel"></div>
         </div>
         <div class="panneau cache" id="jMJ"></div>
+        <div class="panneau cache" id="jEdit"></div>
       </div>
       <div class="panneau">
         <div class="journal" id="jLog"></div>
@@ -215,6 +232,7 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
 <script src="../commun/ia.js"></script>
 <script src="../commun/reseau.js"></script>
 <script src="donnees.js"></script>
+<script src="campagne.js"></script>
 <script>
 /* ============================================================
    TABLE DE LÉGENDES — jeu de rôle, MJ IA ou MJ humain
@@ -281,10 +299,10 @@ let L = null;          // salle d'attente {cfg, heros, reprise}
 let enJeu = false, enCours = false, vise = null, selId = null, animVue = 0, ecranActuel = "eMenu";
 let cfg = Object.assign({u: "fantasy", mode: "local", nb: 1, type: "oneshot", diff: 1, mj: "ia", pitch: ""}, stock.lire("cfg", {}));
 cfg.pitch = "";
-let lib = Object.assign({cartes: {}, monstres: []}, stock.lire("mjlib", {}));
-let libV = 0;
-const saveLib = () => { libV++; stock.ecrire("mjlib", lib); };
-const MJ = {onglet: "recit", recit: "", choix: "", jh: null, js: "DEX", jdd: 12, jpour: "", secret: false, log: [], rencontre: [], auto: true, outil: null, pion: null, filtre: 0, xp: 50, or: 10, objet: "", vuCombat: false};
+// La « bibliothèque » du MJ = sa campagne active (campagne.js), gardée sur son appareil
+const MJ = {onglet: "recit", recit: "", choix: "", jh: null, js: "DEX", jdd: 12, jpour: "", secret: false, log: [], rencontre: [], auto: true, outil: null, pion: null, filtre: 0, xp: 50, or: 10, objet: "", vuCombat: false,
+  pnjSel: null, pnjSit: "", loreSel: null, aQ: "", aR: [], aEnCours: false};
+let ctxMJ = false;     // panneau MJ affiché : false = partie, true = salle d'attente, "prep" = préparation
 
 /* ---------- Héros : calculs ---------- */
 const classe = h => { const U = UNIV[h.u] || UNIV.fantasy; return U.classes.find(c => c.id === h.cls) || U.classes[0]; };
@@ -350,6 +368,7 @@ Base.entete({
    <li><b>Jets de dés</b> : quand l'issue est incertaine, le MJ demande un jet (d20 + modificateur contre une difficulté).</li>
    <li><b>Combats</b> sur la carte, au tour par tour : déplace-toi (🦶), attaque (⚔️), utilise ton talent (✨) ou une potion (🧪).</li>
    <li><b>MJ joueur</b> : il a ses outils (récit, jets, éditeur de cartes, créatures, récompenses) et peut jouer lui-même les monstres. Pas besoin de clé IA.</li>
+   <li><b>📚 Campagnes</b> (bouton du menu) : le MJ prépare à l'avance ses cartes (terrain + objets, PNJ, objets cachés), ses PNJ (caractère, secret, ressenti envers chaque héros, souvenirs), son lore, ses créatures et ses rencontres. En partie, il change de carte quand il veut (hors combat), en prépare une autre pendant que les joueurs jouent, et ses modifications restent dans la campagne. Avec une clé IA : assistant du MJ, PNJ qui parlent et souvenirs mis à jour automatiquement.</li>
    <li>La partie est sauvegardée automatiquement. En ligne, seul l'hôte a besoin d'une clé IA si le MJ est l'IA (⚙️ Réglages).</li>
   </ul>`
 });
@@ -358,8 +377,10 @@ let cleHaut = "", cleMJ = "", cleAct = "", cleLog = "", lobGauche = "";
 function ecran(id){
   document.querySelectorAll(".ecran").forEach(e => e.classList.toggle("cache", e.id !== id));
   ecranActuel = id;
+  if(typeof panOuvert !== "undefined" && panOuvert && panOuvert.ecran !== id) panOuvert.close();
   bQuit.style.display = (id === "eJeu" || id === "eLobby") ? "" : "none";
-  if(id === "eMenu") majMenu();
+  if(id === "eMenu"){ majMenu(); document.documentElement.style.removeProperty("--accent"); }
+  if(id === "eCamp"){ cleMJ = ""; rendreCamp(); }
   if(id === "eLobby"){ cleHaut = ""; cleMJ = ""; }
   if(id === "eJeu"){ cleAct = ""; cleLog = ""; cleMJ = ""; rendre(); }
   window.scrollTo(0, 0);
@@ -695,7 +716,8 @@ function lancerDepuisLobby(){
 
 /* ---------- Cartes ---------- */
 const carteL = () => G && G.carte && G.cartes[G.carte];
-function marchable(x, y){ const l = carteL(); return !!l && y >= 0 && y < l.length && x >= 0 && x < l[0].length && !BLOQUE.includes(l[y][x]); }
+const objetEn = (x, y) => G && G.objets && (G.objets[G.carte] || []).find(o => o.x === x && o.y === y);
+function marchable(x, y){ const l = carteL(); if(!l || y < 0 || y >= l.length || x < 0 || x >= l[0].length || BLOQUE.includes(l[y][x])) return false; const o = objetEn(x, y); return !(o && o.b); }
 const heroEn = (x, y) => G.heros.find(h => h.x === x && h.y === y);
 const monstreEn = (x, y, sauf) => G.combat && G.combat.m.find(m => m !== sauf && m.pv > 0 && m.x === x && m.y === y);
 const occupe = (x, y, sauf) => G.heros.some(h => h !== sauf && h.x === x && h.y === y) || !!monstreEn(x, y, sauf);
@@ -742,9 +764,9 @@ function integrer(h){
 function nettoyerCarte(c, nomDef){
   if(!c) return null;
   let l = Array.isArray(c.l) ? c.l : String(c.l || "").split(/[\n|]/);
-  l = l.map(r => String(r).replace(/\s/g, ".").replace(/[^#.,~T^=DCS!*PM]/g, ".")).filter(r => r.length >= 3).slice(0, 13);
+  l = l.map(r => String(r).replace(/\s/g, ".").replace(/[^#.,~T^=DCS!*PM]/g, ".")).filter(r => r.length >= 3).slice(0, 16);
   if(l.length < 4) return null;
-  const W = clamp(Math.max(...l.map(r => r.length)), 6, 18);
+  const W = clamp(Math.max(...l.map(r => r.length)), 6, 24);
   l = l.map(r => (r + "#".repeat(W)).slice(0, W));
   if(!l.some(r => /[.,DS!*PM]/.test(r))) return null;
   if(!l.some(r => r.includes("P"))){
@@ -758,11 +780,35 @@ function carteDefaut(){
   l[3] = "#P........M#"; l[4] = "#P..=.....M#";
   return l;
 }
+/* Chaque carte garde ses modifications et la place des héros : en y revenant, on retrouve tout comme on l'a laissé */
 function changerCarte(nom){
+  if(G.carte && G.carte !== nom && G.cartes[G.carte]){
+    G.pos[G.carte] = {};
+    G.heros.forEach(h => { if(h.x >= 0) G.pos[G.carte][h.id] = [h.x, h.y]; });
+  }
   G.carte = nom; G.lieu = G.lieu || nom;
   const noms = Object.keys(G.cartes);
-  if(noms.length > 14) noms.filter(n => n !== nom).slice(0, noms.length - 14).forEach(n => delete G.cartes[n]);
-  placerHeros();
+  if(noms.length > 40) noms.filter(n => n !== nom).slice(0, noms.length - 40).forEach(n => { delete G.cartes[n]; delete G.objets[n]; delete G.pos[n]; });
+  const p = G.pos[nom];
+  if(!p){ placerHeros(); return; }
+  G.heros.forEach(h => { h.x = -1; h.y = -1; });
+  G.heros.forEach(h => { const q = p[h.id]; if(q && marchable(q[0], q[1]) && !occupe(q[0], q[1], h)){ h.x = q[0]; h.y = q[1]; } });
+  if(!G.heros.some(h => h.x >= 0)){ placerHeros(); return; }
+  G.heros.forEach(h => { if(h.x < 0) integrer(h); });
+}
+/* Remet un pion sur une case libre (après une modification de la carte) */
+function recaler(a){
+  const l = carteL(); if(!l || a.x < 0) return;
+  if(marchable(a.x, a.y) && !occupe(a.x, a.y, a)) return;
+  const p = caseLibreProche(clamp(a.x, 0, l[0].length - 1), clamp(a.y, 0, l.length - 1), a);
+  if(p){ a.x = p[0]; a.y = p[1]; }
+}
+/* Anciennes sauvegardes et état reçu : champs ajoutés depuis */
+function completerG(g){
+  if(!g) return g;
+  if(!g.objets || typeof g.objets !== "object") g.objets = {};
+  if(!g.pos || typeof g.pos !== "object") g.pos = {};
+  return g;
 }
 
 /* Générateurs de cartes (outils du MJ) */
@@ -1326,8 +1372,9 @@ function mjAppliquer(c){
     case "carte": {
       const k = nettoyerCarte(c, "Lieu"); if(!k) return;
       G.cartes[k.nom] = k.l;
-      if(c.voir !== false && !cb){ changerCarte(k.nom); G.lieu = k.nom; log("sys", `🗺️ ${k.nom}`); }
-      else if(k.nom === G.carte) G.heros.forEach(h => { if(h.x >= 0 && !marchable(h.x, h.y)) integrer(h); });
+      G.objets[k.nom] = nettoyerObjets(c.o, k.l[0].length, k.l.length);
+      if(c.voir !== false && !cb && k.nom !== G.carte){ changerCarte(k.nom); G.lieu = k.nom; log("sys", `🗺️ ${k.nom}`); }
+      else if(k.nom === G.carte){ G.heros.forEach(recaler); if(cb) cb.m.forEach(m => { if(m.pv > 0) recaler(m); }); }
       break;
     }
     case "voir": if(cb || !G.cartes[c.nom]) return; changerCarte(c.nom); G.lieu = c.nom; log("sys", `🗺️ ${c.nom}`); break;
@@ -1403,7 +1450,7 @@ function nouvellePartie(c, heros){
   G = {v: 2, id: uid(), u: c.u, type: c.type, diff: c.diff, pitch: c.pitch || "", mode, mj: c.mj, mjPseudo: "", mjRetour: "",
     heros: heros.map((h, i) => ({...h, coul: h.coul || COUL[i % 8], x: -1, y: -1})),
     or: 10 * heros.length, potions: heros.length + 1, sac: [],
-    lieu: "", cartes: {}, carte: null, log: [], journal: [], histo: [],
+    lieu: "", cartes: {}, objets: {}, pos: {}, carte: null, log: [], journal: [], histo: [],
     phase: "ia", actions: {}, jets: [], combat: null, choix: [], anim: {n: 0}, seq: 0, tours: 0, fin: null, mid: 0};
   if(mode === "ligne") G.mjPseudo = (salle.joueurs.find(j => j.id === c.mj) || {}).pseudo || "";
   if(mode === "ligne" && L) L.heros = G.heros;
@@ -1416,6 +1463,7 @@ function nouvellePartie(c, heros){
   appelerMJ("[DÉBUT] Lance l'aventure : une scène d'ouverture captivante qui réunit le groupe (en t'appuyant sur leurs histoires), un objectif ou un mystère clair, et la carte du premier lieu. Pas de combat ni de jet tout de suite.");
 }
 function reprendre(){
+  completerG(G);
   enJeu = true; animVue = G.anim ? G.anim.n : 0;
   G.heros.forEach(h => { if(h.x == null || h.x < 0) integrer(h); });
   ecran("eJeu");
@@ -1428,7 +1476,7 @@ $("bContinuer").onclick = () => {
   const p = stock.lire("partie", null); if(!p) return;
   if(!p.mj) p.mj = "ia";
   if(p.mj === "ia" && !IA.disponible()){ besoinCle(); return; }
-  G = p;
+  G = completerG(p);
   if(p.mode !== "ligne"){ mode = "local"; if(G.mj !== "ia") G.mj = "local"; reprendre(); return; }
   const box = Base.el("div");
   box.innerHTML = `<p>Cette aventure se jouait en ligne. Comment veux-tu la reprendre ?</p><p class="muted" style="font-size:.88rem">En ligne, chaque ami qui rejoint avec le même pseudo retrouve son héros.</p>`;
@@ -1579,7 +1627,7 @@ function recuInvite(m){
   if(m.t === "etat" && m.G){
     const nouvelle = !G || G.id !== m.G.id;
     if(!nouvelle && m.G.seq <= G.seq) return;
-    G = m.G; G.histo = [];
+    G = completerG(m.G); G.histo = [];
     if(nouvelle){ animVue = G.anim ? G.anim.n : 0; MJ.vuCombat = false; }
     enJeu = true;
     G.heros.filter(h => h.owner === salle.moi).forEach(sauverHeros);
@@ -1642,15 +1690,17 @@ function rendreCarte(){
   const larg = box.clientWidth || (box.parentNode.clientWidth - 24) || 500;
   box.style.fontSize = Math.max(9, Math.floor(larg / W * 0.56)) + "px";
   const sel = heroSel(), pion = estMJ() && MJ.outil === "deplacer" ? MJ.pion : null;
+  const objs = {}; (G.objets[G.carte] || []).forEach(o => objs[o.x + "," + o.y] = o);
   let html = "";
   for(let y = 0; y < l.length; y++) for(let x = 0; x < W; x++){
-    const ch = l[y][x], k = x + "," + y;
-    let inner = U.deco[ch] ? `<span class="deco">${U.deco[ch]}</span>` : "";
+    const ch = l[y][x], k = x + "," + y, o = objs[k];
+    let inner = o ? `<span class="deco">${esc(o.e)}</span>` : U.deco[ch] ? `<span class="deco">${U.deco[ch]}</span>` : "";
     const h = heroEn(x, y), m = !h && monstreEn(x, y);
-    if(h) inner = `<div class="tk ${h.pv <= 0 ? "ko" : ""} ${act === h || (!G.combat && sel === h) ? "actif" : ""}" style="--tc:${esc(h.coul)}" title="${esc(h.nom)}">${esc(h.emo)}<i><b style="width:${Math.round(100 * h.pv / h.pvMax)}%"></b></i></div>`;
-    else if(m) inner = `<div class="tk m ${act === m ? "actif" : ""}" style="--tc:#ff5a6e" title="${esc(m.nom)}">${esc(m.emo)}<i><b style="width:${Math.round(100 * m.pv / m.pvMax)}%"></b></i></div>`;
-    const estPion = pion && ((h && pion.k === "h" && pion.id === h.id) || (m && pion.k === "m" && pion.id === m.id));
-    html += `<div class="c ${TUILE[ch] || "sol"}${z.ok.has(k) ? " ok" : ""}${z.v.has(k) ? " vise" : ""}${estPion ? " pion" : ""}" data-x="${x}" data-y="${y}">${inner}</div>`;
+    if(o && (h || m)) inner = `<span class="obj deco" style="opacity:.5">${esc(o.e)}</span>`; else if(h || m) inner = "";
+    if(h) inner += `<div class="tk ${h.pv <= 0 ? "ko" : ""} ${act === h || (!G.combat && sel === h) ? "actif" : ""}" style="--tc:${esc(h.coul)}" title="${esc(h.nom)}">${esc(h.emo)}<i><b style="width:${Math.round(100 * h.pv / h.pvMax)}%"></b></i></div>`;
+    else if(m) inner += `<div class="tk m ${act === m ? "actif" : ""}" style="--tc:#ff5a6e" title="${esc(m.nom)}">${esc(m.emo)}<i><b style="width:${Math.round(100 * m.pv / m.pvMax)}%"></b></i></div>`;
+    const estPion = pion && ((h && pion.k === "h" && pion.id === h.id) || (m && pion.k === "m" && pion.id === m.id) || (o && pion.k === "o" && pion.id === o.id));
+    html += `<div class="c ${TUILE[ch] || "sol"}${z.ok.has(k) ? " ok" : ""}${z.v.has(k) ? " vise" : ""}${estPion ? " pion" : ""}${o && o.p ? " pnj" : ""}" data-x="${x}" data-y="${y}"${o && o.n ? ` title="${esc(o.n)}"` : ""}>${inner}</div>`;
   }
   box.innerHTML = html;
 }
@@ -1663,9 +1713,18 @@ function heroSel(){
 function clicCase(x, y){
   if(!G || !carteL()) return;
   if(estMJ() && MJ.outil === "deplacer"){
-    const h = heroEn(x, y), m = !h && monstreEn(x, y);
+    const h = heroEn(x, y), m = !h && monstreEn(x, y), o = !h && !m && objetEn(x, y);
     if(h || m){ MJ.pion = {k: h ? "h" : "m", id: (h || m).id}; rendreCarte(); return; }
-    if(MJ.pion){ const p = MJ.pion; mj({t: "place", k: p.k, id: p.id, x, y}); }
+    if(o && !(MJ.pion && MJ.pion.k !== "o")){ MJ.pion = {k: "o", id: o.id}; rendreCarte(); return; }
+    if(!MJ.pion) return;
+    const p = MJ.pion;
+    if(p.k === "o"){
+      // l'objet bouge aussi dans la campagne : la carte reste modifiée pour les prochaines parties
+      MJ.pion = null;
+      majCarteCamp(G.carte, k => { const z = k.o.find(z => z.id === p.id); if(z && !k.o.some(w => w !== z && w.x === x && w.y === y)){ z.x = x; z.y = y; } });
+      return;
+    }
+    mj({t: "place", k: p.k, id: p.id, x, y});
     return;
   }
   if(G.phase === "combat" && G.combat){
@@ -1691,8 +1750,9 @@ function clicCase(x, y){
     return;
   }
   // exploration : toucher son héros le sélectionne, toucher une case libre l'y déplace
-  const ici = heroEn(x, y);
+  const ici = heroEn(x, y), obj = objetEn(x, y);
   if(ici && controle(ici)){ selId = ici.id; rendreCarte(); rendreEquipe(); return; }
+  if(obj && (obj.n || obj.t)) Base.toast(`${obj.e} ${obj.n}${obj.t ? " — " + obj.t : ""}`, 3500);
   const h = heroSel(); if(!h || !marchable(x, y) || occupe(x, y, h)) return;
   if(estInvite()){ salle.envoyer({t: "bouge", h: h.id, x, y}); h.x = x; h.y = y; rendreCarte(); return; }
   h.x = x; h.y = y; sync();
@@ -1869,21 +1929,27 @@ function action(a){
 }
 
 /* ---------- Outils du MJ : panneau ---------- */
+/* lobby : false = partie, true = salle d'attente, "prep" = écran de préparation (sans partie) */
 function rendreMJ(lobby){
-  const box = lobby ? $("lobMJ") : $("jMJ");
-  if(lobby ? !L : !G) return;
-  const u = lobby ? L.cfg.u : G.u, U = UNIV[u], cb = !lobby && G.combat;
+  const prep = lobby === "prep", box = prep ? $("campMJ") : lobby ? $("lobMJ") : $("jMJ");
+  if(prep ? false : lobby ? !L : !G) return;
+  ctxMJ = lobby;
+  const C = camp(), u = prep ? C.u : lobby ? L.cfg.u : G.u, U = UNIV[u] || UNIV.fantasy, cb = !lobby && G.combat;
   if(!lobby){ if(cb && !MJ.vuCombat){ MJ.vuCombat = true; MJ.onglet = "combat"; } if(!cb){ MJ.vuCombat = false; if(MJ.onglet === "combat") MJ.onglet = "recit"; } }
-  const tabs = lobby ? [["cartes", "🗺️ Cartes"], ["monstres", "👹 Créatures"], ["notes", "📝 Notes"]]
-    : [["recit", "📜 Récit"], ...(cb ? [["combat", "⚔️ Combat"]] : []), ["des", "🎲 Dés"], ["cartes", "🗺️ Cartes"], ["monstres", "👹 Créatures"], ["groupe", "🎁 Groupe"], ["notes", "📝 Notes"]];
+  const tabs = lobby ? [["cartes", "🗺️ Cartes"], ["pnj", "🧑 PNJ"], ["lore", "📚 Lore"], ["monstres", "👹 Créatures"], ["notes", "📝 Notes"], ["assistant", "🤖 Assistant IA"]]
+    : [["recit", "📜 Récit"], ...(cb ? [["combat", "⚔️ Combat"]] : []), ["des", "🎲 Dés"], ["cartes", "🗺️ Cartes"], ["pnj", "🧑 PNJ"], ["lore", "📚 Lore"], ["monstres", "👹 Créatures"], ["groupe", "🎁 Groupe"], ["notes", "📝 Notes"], ["assistant", "🤖 Assistant"]];
   if(!tabs.some(t => t[0] === MJ.onglet)) MJ.onglet = tabs[0][0];
-  const cle = JSON.stringify([lobby, u, MJ.onglet, MJ.secret, MJ.js, MJ.jdd, MJ.jh, MJ.rencontre.map(e => e.def.nom + e.n), MJ.auto, MJ.outil, MJ.filtre, MJ.log.length, libV,
-    lobby ? 0 : [G.phase, G.heros.map(h => [h.id, h.pv, h.niv, h.xp]), G.actions, G.or, G.potions, G.sac, Object.keys(G.cartes), G.carte, cb ? [cb.auto, cb.m.map(m => m.pv)] : 0, G.jets.length, G.mj]]);
+  const cle = JSON.stringify([lobby, u, MJ.onglet, MJ.secret, MJ.js, MJ.jdd, MJ.jh, MJ.rencontre.map(e => e.def.nom + e.n), MJ.auto, MJ.outil, MJ.filtre, MJ.log.length, Camp.version, C.id,
+    MJ.pnjSel, MJ.loreSel, MJ.aR.length, MJ.aEnCours,
+    lobby ? 0 : [G.phase, G.heros.map(h => [h.id, h.pv, h.niv, h.xp]), G.actions, G.or, G.potions, G.sac, Object.keys(G.cartes), G.carte, G.objets[G.carte], cb ? [cb.auto, cb.m.map(m => m.pv)] : 0, G.jets.length, G.mj]]);
   if(cle === cleMJ && box.dataset.l === String(lobby)) return;
   cleMJ = cle; box.dataset.l = String(lobby);
+  const camps = Camp.liste();
   garderFocus(() => {
-    box.innerHTML = `<div style="margin-bottom:8px"><b>🎭 Outils du maître du jeu</b> <span class="muted" style="font-size:.8rem">(visibles seulement par toi)</span></div>
-      <div class="onglets">${tabs.map(([k, t]) => `<button data-tab="${k}" class="${MJ.onglet === k ? "on" : ""}">${t}</button>`).join("")}</div>` + ongletMJ(MJ.onglet, lobby, U, cb);
+    box.innerHTML = (prep ? "" : `<div class="ligne" style="margin-bottom:8px;justify-content:space-between"><b>🎭 Outils du maître du jeu</b>
+        <label class="muted" style="font-size:.82rem;font-weight:800">📚 <select class="mini" id="mjCamp">${camps.map(c => `<option value="${esc(c.id)}" ${c.id === C.id ? "selected" : ""}>${esc(c.nom)}</option>`).join("")}<option value="+">➕ Nouvelle campagne…</option></select></label></div>
+        <p class="muted" style="font-size:.78rem;margin:-4px 0 8px">Visible seulement par toi. Tout ce que tu prépares est rangé dans ta campagne, sur cet appareil.</p>`) +
+      `<div class="onglets">${tabs.map(([k, t]) => `<button data-tab="${k}" class="${MJ.onglet === k ? "on" : ""}">${t}</button>`).join("")}</div>` + ongletMJ(MJ.onglet, lobby, U, cb);
     lierMJ(box, lobby, U);
   });
 }
@@ -1922,16 +1988,24 @@ function ongletMJ(t, lobby, U, cb){
       ${MJ.log.length ? `<div class="muted" style="font-size:.82rem;margin-top:6px">${MJ.log.slice(-5).reverse().map(esc).join("<br>")}</div>` : ""}`;
   }
   if(t === "cartes"){
-    let h = `<div class="ligne"><button class="btn petit" data-m="nouvCarte">➕ Créer une carte</button>${lobby ? "" : `<button class="mini ${MJ.outil === "deplacer" ? "on" : ""}" data-m="outil">🖐️ Déplacer les pions${MJ.outil === "deplacer" ? " (actif)" : ""}</button>`}</div>`;
-    if(!lobby && MJ.outil === "deplacer") h += `<p class="muted" style="font-size:.82rem">Touche un pion sur la carte, puis la case où le poser. Re-touche 🖐️ pour arrêter.</p>`;
+    const C = camp();
+    let h = `<div class="ligne"><button class="btn petit" data-m="nouvCarte">➕ Créer une carte</button>${lobby ? "" : `<button class="mini ${MJ.outil === "deplacer" ? "on" : ""}" data-m="outil">🖐️ Déplacer pions et objets${MJ.outil === "deplacer" ? " (actif)" : ""}</button>${G.carte ? `<button class="mini" data-editc="${esc(G.carte)}">✏️ Modifier la carte affichée</button>` : ""}`}</div>`;
+    if(!lobby && MJ.outil === "deplacer") h += `<p class="muted" style="font-size:.82rem">Touche un pion ou un objet sur la carte, puis la case où le poser. Re-touche 🖐️ pour arrêter.</p>`;
+    if(cb) h += `<p class="muted" style="font-size:.82rem">Pendant un combat, tu peux modifier la carte affichée, mais pas changer de lieu.</p>`;
+    const noms = Object.keys(C.cartes);
+    h += `<div class="sous">Cartes de la campagne <span style="font-weight:600">(prépare-les ici pendant que les joueurs jouent : rien n'est montré avant 👁️)</span></div>` + (noms.length ? noms.map(n => {
+      const k = C.cartes[n], caches = k.o.filter(o => o.c).length, affichee = !lobby && n === G.carte;
+      return `<div class="mjl"><span class="n">${affichee ? "📍 " : ""}<b>${esc(n)}</b> <span class="muted">${k.l[0].length}×${k.l.length}${k.o.length ? " · " + k.o.length + " objet" + (k.o.length > 1 ? "s" : "") : ""}${caches ? " (" + caches + " caché" + (caches > 1 ? "s" : "") + ")" : ""}</span></span>${lobby ? "" : `<button class="mini" data-montrer="${esc(n)}" ${cb || affichee ? "disabled" : ""}>👁️ Afficher</button>`}<button class="mini" data-editc="${esc(n)}">✏️</button><button class="mini" data-supl="${esc(n)}">🗑️</button></div>`;
+    }).join("") : `<p class="muted" style="font-size:.85rem">Prépare tes cartes à l'avance : elles restent dans ta campagne, avec leurs objets et leurs modifications.</p>`);
     if(!lobby){
-      const noms = Object.keys(G.cartes);
-      h += `<div class="sous">Cartes de la partie</div>` + (noms.length ? noms.map(n => `<div class="mjl"><span class="n">${n === G.carte ? "📍 " : ""}${esc(n)}</span><button class="mini" data-voir="${esc(n)}" ${cb || n === G.carte ? "disabled" : ""}>👁️ Afficher</button><button class="mini" data-editp="${esc(n)}">✏️</button><button class="mini" data-garder="${esc(n)}" title="Copier dans ma bibliothèque">💾</button></div>`).join("") : `<p class="muted" style="font-size:.85rem">Aucune carte affichée pour l'instant.</p>`);
+      const autres = Object.keys(G.cartes).filter(n => !C.cartes[n]);
+      if(autres.length) h += `<div class="sous">Autres cartes de la partie</div>` + autres.map(n => `<div class="mjl"><span class="n">${n === G.carte ? "📍 " : ""}${esc(n)}</span><button class="mini" data-voir="${esc(n)}" ${cb || n === G.carte ? "disabled" : ""}>👁️ Afficher</button><button class="mini" data-editc="${esc(n)}">✏️</button><button class="mini" data-garder="${esc(n)}" title="Ranger dans la campagne">💾</button></div>`).join("");
     }
-    const noms = Object.keys(lib.cartes);
-    h += `<div class="sous">Ma bibliothèque <span style="font-weight:600">(gardée sur cet appareil)</span></div>` + (noms.length ? noms.map(n => `<div class="mjl"><span class="n">${esc(n)} <span class="muted">${lib.cartes[n][0].length}×${lib.cartes[n].length}</span></span>${lobby ? "" : `<button class="mini" data-montrer="${esc(n)}" ${cb ? "disabled" : ""}>👁️ Afficher</button>`}<button class="mini" data-editl="${esc(n)}">✏️</button><button class="mini" data-supl="${esc(n)}">🗑️</button></div>`).join("") : `<p class="muted" style="font-size:.85rem">Prépare tes cartes à l'avance : elles restent ici d'une partie à l'autre.</p>`);
     return h;
   }
+  if(t === "pnj") return ongletPnj(!lobby);
+  if(t === "lore") return ongletLore(!lobby);
+  if(t === "assistant") return ongletAssistant(!lobby);
   if(t === "monstres"){
     const dans = m => MJ.filtre === 0 || (MJ.filtre === 1 && m.niv <= 3) || (MJ.filtre === 2 && m.niv >= 4 && m.niv <= 6) || (MJ.filtre === 3 && m.niv >= 7);
     const r = MJ.rencontre, lvl = lobby ? 0 : niveauGroupe();
@@ -1942,8 +2016,11 @@ function ongletMJ(t, lobby, U, cb){
       h += `<label style="display:flex;gap:6px;align-items:center;font-size:.86rem;margin:8px 0"><input type="checkbox" id="mjAuto" ${MJ.auto ? "" : "checked"}> Je joue les monstres moi-même (sinon ils jouent seuls)</label>
         <div class="ligne"><button class="btn petit" data-m="lancerCombat" ${r.length ? "" : "disabled"}>${cb ? "⚠️ Envoyer en renfort" : "⚔️ Lancer le combat"}</button>${r.length ? `<button class="mini" data-m="viderR">Vider</button>` : ""}</div>`;
       if(!G.carte && !cb) h += `<p class="muted" style="font-size:.8rem">Sans carte affichée, le combat se jouera dans une salle simple.</p>`;
-    }else if(r.length) h += `<p class="muted" style="font-size:.8rem">Tu pourras la lancer pendant la partie.</p>`;
-    h += `<div class="sous">Mes créatures</div><div class="ligne" style="margin-bottom:4px"><button class="mini" data-m="nouvMonstre">➕ Créer une créature</button></div>` + lib.monstres.map((m, i) => ligneCreature(m, "lib", i)).join("");
+    }else if(r.length) h += `<p class="muted" style="font-size:.8rem">Garde-la avec 💾 pour la lancer pendant la partie.</p>`;
+    if(r.length) h += `<div class="ligne" style="margin-top:6px"><button class="mini" data-m="garderR">💾 Garder cette rencontre</button></div>`;
+    const RC = camp().rencontres;
+    if(RC.length) h += `<div class="sous">Rencontres préparées</div>` + RC.map((x, i) => `<div class="mjl"><span class="n"><b>${esc(x.nom)}</b> <span class="muted">${x.liste.map(e => esc(e.def.emo) + "×" + esc(e.n)).join(" ")}</span></span><button class="mini" data-chargr="${i}">📥 Charger</button><button class="mini" data-supr="${i}">🗑️</button></div>`).join("");
+    h += `<div class="sous">Mes créatures</div><div class="ligne" style="margin-bottom:4px"><button class="mini" data-m="nouvMonstre">➕ Créer une créature</button></div>` + camp().monstres.map((m, i) => ligneCreature(m, "lib", i)).join("");
     h += `<div class="sous">Bestiaire ${esc(U.nom)}</div><div class="puces" style="margin-bottom:4px">${[[0, "Tous"], [1, "Niv 1-3"], [2, "Niv 4-6"], [3, "Niv 7-10"]].map(([v, x]) => `<button data-filtre="${v}" class="${MJ.filtre === v ? "on" : ""}">${x}</button>`).join("")}</div>` + U.monstres.map((m, i) => dans(m) ? ligneCreature(m, "b", i) : "").join("");
     return h;
   }
@@ -1956,7 +2033,7 @@ function ongletMJ(t, lobby, U, cb){
       <div class="sous">Sac commun</div><div class="ligne"><input class="champ" id="mjObj" maxlength="60" placeholder="Objet (ex. : clé en argent)" value="${esc(MJ.objet)}" style="flex:1;min-width:140px"><button class="mini" data-m="objet">🎒 Ajouter</button></div>
       ${G.sac.map((o, i) => `<div class="mjl"><span class="n">${esc(o)}</span><button class="mini" data-ret="${i}">✖</button></div>`).join("")}`;
   }
-  if(t === "notes") return `<textarea class="champ" id="mjNotes" rows="9" placeholder="Ton scénario, les secrets des PNJ, les pièges, les énigmes… (visible seulement par toi, gardé sur cet appareil)">${esc(stock.lire("mjnotes", ""))}</textarea>`;
+  if(t === "notes") return `<textarea class="champ" id="mjNotes" rows="12" placeholder="Ton scénario, les pièges, les énigmes, le plan de la séance… (visible seulement par toi, rangé dans ta campagne)">${esc(camp().notes)}</textarea>`;
   return "";
 }
 function lierMJ(box, lobby, U){
@@ -1965,7 +2042,17 @@ function lierMJ(box, lobby, U){
   const ent = (id, f) => { const e = box.querySelector("#" + id); if(e) e.oninput = () => f(e.value); };
   ent("mjRecit", v => MJ.recit = v); ent("mjChoix", v => MJ.choix = v); ent("mjPour", v => MJ.jpour = v);
   ent("mjXp", v => MJ.xp = parseInt(v) || 0); ent("mjOr", v => MJ.or = parseInt(v) || 0); ent("mjObj", v => MJ.objet = v);
-  ent("mjNotes", v => stock.ecrire("mjnotes", v));
+  let tNotes = null;
+  ent("mjNotes", v => { camp().notes = v.slice(0, 20000); clearTimeout(tNotes); tNotes = setTimeout(() => { Camp.sauver(); cleMJ = ""; }, 600); });
+  const sc = box.querySelector("#mjCamp");
+  if(sc) sc.onchange = () => {
+    if(sc.value === "+"){ const n = prompt("Nom de la nouvelle campagne :", ""); if(n && n.trim()) Camp.creer(n, lobby === "prep" ? camp().u : lobby ? L.cfg.u : G.u); }
+    else Camp.choisir(sc.value);
+    MJ.pnjSel = MJ.loreSel = null; re();
+  };
+  lierCamp(box, !lobby);
+  q("[data-chargr]").forEach(b => b.onclick = () => { const x = camp().rencontres[+b.dataset.chargr]; if(!x) return; MJ.rencontre = x.liste.map(e => ({def: {...e.def}, n: e.n})); re(); });
+  q("[data-supr]").forEach(b => b.onclick = () => { const R = camp().rencontres, x = R[+b.dataset.supr]; if(!x || !confirm("Supprimer la rencontre « " + x.nom + " » ?")) return; R.splice(+b.dataset.supr, 1); Camp.sauver(); re(); });
   const r = box.querySelector("#mjRecit");
   if(r) r.addEventListener("keydown", e => { if(e.key === "Enter" && (e.ctrlKey || e.metaKey)) actionMJ("raconter", lobby); });
   q("[data-jh]").forEach(b => b.onclick = () => {
@@ -1979,7 +2066,7 @@ function lierMJ(box, lobby, U){
   q("[data-de]").forEach(b => b.onclick = () => lancerDeMJ(+b.dataset.de));
   q("[data-filtre]").forEach(b => b.onclick = () => { MJ.filtre = +b.dataset.filtre; re(); });
   q("[data-ajm]").forEach(b => b.onclick = () => {
-    const [src, i] = b.dataset.ajm.split(":"), def = src === "lib" ? lib.monstres[+i] : U.monstres[+i];
+    const [src, i] = b.dataset.ajm.split(":"), def = src === "lib" ? camp().monstres[+i] : U.monstres[+i];
     if(!def) return;
     const e = MJ.rencontre.find(x => x.def.id === def.id && x.def.nom === def.nom);
     if(e) e.n = Math.min(8, e.n + 1); else MJ.rencontre.push({def: {...def}, n: 1});
@@ -1994,13 +2081,12 @@ function lierMJ(box, lobby, U){
   const ac = box.querySelector("#mjAutoC"); if(ac) ac.onchange = () => mj({t: "auto", v: !ac.checked});
   q("[data-pv]").forEach(b => b.onclick = () => { const [k, id, n] = b.dataset.pv.split(":"); mj({t: "pv", k, id, n: +n}); });
   q("[data-voir]").forEach(b => b.onclick = () => mj({t: "voir", nom: b.dataset.voir}));
-  q("[data-montrer]").forEach(b => b.onclick = () => { const n = b.dataset.montrer; mj({t: "carte", nom: n, l: lib.cartes[n]}); });
-  q("[data-editl]").forEach(b => b.onclick = () => editeurCarte({nom: b.dataset.editl, l: lib.cartes[b.dataset.editl], lib: true}, lobby));
-  q("[data-editp]").forEach(b => b.onclick = () => editeurCarte({nom: b.dataset.editp, l: G.cartes[b.dataset.editp], jeu: true}, lobby));
-  q("[data-garder]").forEach(b => b.onclick = () => { lib.cartes[b.dataset.garder] = G.cartes[b.dataset.garder].slice(); saveLib(); Base.toast("Carte copiée dans ta bibliothèque 💾"); re(); });
-  q("[data-supl]").forEach(b => b.onclick = () => { if(!confirm("Supprimer la carte « " + b.dataset.supl + " » de ta bibliothèque ?")) return; delete lib.cartes[b.dataset.supl]; saveLib(); re(); });
+  q("[data-montrer]").forEach(b => b.onclick = () => { const n = b.dataset.montrer, k = camp().cartes[n]; if(k) mj({t: "carte", nom: n, l: k.l, o: pubObjets(k.o)}); });
+  q("[data-editc]").forEach(b => b.onclick = () => editeurCarte(b.dataset.editc, lobby));
+  q("[data-garder]").forEach(b => b.onclick = () => { carteCamp(b.dataset.garder, true); Camp.sauver(); Base.toast("Carte rangée dans ta campagne 💾"); re(); });
+  q("[data-supl]").forEach(b => b.onclick = () => { if(!confirm("Supprimer la carte « " + b.dataset.supl + " » de ta campagne ?")) return; delete camp().cartes[b.dataset.supl]; Camp.sauver(); re(); });
   q("[data-editm]").forEach(b => b.onclick = () => editeurMonstre(+b.dataset.editm, lobby));
-  q("[data-supm]").forEach(b => b.onclick = () => { const m = lib.monstres[+b.dataset.supm]; if(!m || !confirm("Supprimer « " + m.nom + " » ?")) return; lib.monstres.splice(+b.dataset.supm, 1); saveLib(); re(); });
+  q("[data-supm]").forEach(b => b.onclick = () => { const M = camp().monstres, m = M[+b.dataset.supm]; if(!m || !confirm("Supprimer « " + m.nom + " » ?")) return; M.splice(+b.dataset.supm, 1); Camp.sauver(); re(); });
   q("[data-ret]").forEach(b => b.onclick = () => mj({t: "retirer", i: +b.dataset.ret}));
   q("[data-fiche]").forEach(b => b.onclick = () => fiche(hero(b.dataset.fiche)));
   q("[data-m]").forEach(b => b.onclick = () => actionMJ(b.dataset.m, lobby));
@@ -2032,6 +2118,12 @@ function actionMJ(a, lobby){
       MJ.rencontre = []; re(); return;
     }
     case "viderR": MJ.rencontre = []; re(); return;
+    case "garderR": {
+      if(!MJ.rencontre.length) return;
+      const n = prompt("Nom de la rencontre (ex. : Embuscade au pont) :", ""); if(!n || !n.trim()) return;
+      camp().rencontres.push({id: Camp.nid(), nom: n.trim().slice(0, 40), liste: MJ.rencontre.map(e => ({def: {...e.def}, n: e.n}))});
+      Camp.sauver(); Base.toast("Rencontre gardée dans ta campagne 💾"); re(); return;
+    }
     case "nouvMonstre": editeurMonstre(-1, lobby); return;
     case "repos": mj({t: "repos"}); return;
     case "xp": if(MJ.xp > 0) mj({t: "xp", n: MJ.xp}); return;
@@ -2068,45 +2160,104 @@ async function iaRecit(){
   MJ.iaEnCours = false;
 }
 
-/* ---------- Outils du MJ : éditeur de cartes ---------- */
-function editeurCarte(src, lobby){
-  const u = lobby ? L.cfg.u : G.u, U = UNIV[u];
-  const E = {pin: "#", g: (src && src.l ? src.l : genCarte("salle", 14, 9)).map(r => [...r])};
+/* ---------- Panneau d'édition : à côté de la partie (la partie continue), en fenêtre dans la salle d'attente ---------- */
+let panOuvert = null;
+function ouvrirPanneau(titre, box){
+  if(ctxMJ === true){ const d = Base.fenetre(titre, box, {bouton: "Fermer"}); d.style.width = "min(900px,96vw)"; return d; }
+  if(panOuvert) panOuvert.close();
+  const zone = ctxMJ === "prep" ? $("campEdit") : $("jEdit");
+  const p = new EventTarget();
+  const tete = Base.el("div"), x = Base.el("button", "✖ Fermer", "mini");
+  tete.className = "ligne"; tete.style.cssText = "justify-content:space-between;margin-bottom:8px";
+  tete.append(Base.el("b", titre), x);
+  zone.innerHTML = ""; zone.append(tete, box); zone.classList.remove("cache");
+  p.zone = zone; p.style = zone.style; p.ecran = ecranActuel;
+  p.close = () => { if(panOuvert !== p) return; panOuvert = null; zone.classList.add("cache"); zone.innerHTML = ""; p.dispatchEvent(new Event("close")); };
+  x.onclick = p.close;
+  panOuvert = p;
+  setTimeout(() => zone.scrollIntoView({behavior: "smooth", block: "start"}), 30);
+  return p;
+}
+
+/* ---------- Outils du MJ : éditeur de cartes (terrain + objets) ---------- */
+function editeurCarte(nom, lobby){
+  const C = camp(), jeu = !lobby && G && enJeu, u = lobby === "prep" ? C.u : lobby ? L.cfg.u : G.u, U = UNIV[u] || UNIV.fantasy;
+  const k0 = nom ? (C.cartes[nom] || (jeu && G.cartes[nom] ? {l: G.cartes[nom], o: G.objets[nom] || []} : null)) : null;
+  const E = {mode: "sol", pin: "#", emo: "🪑", pnj: null, sel: null, g: (k0 ? k0.l : genCarte("salle", 14, 9)).map(r => [...r]), o: (k0 ? k0.o : []).map(o => ({...o}))};
   const box = Base.el("div");
   const W = () => E.g[0].length, H = () => E.g.length;
   const deco = ch => ch === "P" ? "🚩" : ch === "M" ? "💢" : (U.deco[ch] || "");
-  const cellule = (x, y) => { const ch = E.g[y][x], dc = deco(ch); return `<div class="c ${TUILE[ch] || "sol"}" data-x="${x}" data-y="${y}">${dc ? `<span class="deco">${dc}</span>` : ""}</div>`; };
+  const objEn = (x, y) => E.o.find(o => o.x === x && o.y === y);
+  const cellule = (x, y) => {
+    const ch = E.g[y][x], o = objEn(x, y), dc = o ? esc(o.e) : deco(ch);
+    return `<div class="c ${TUILE[ch] || "sol"}${o && o.c ? " cachee" : ""}${o && o === E.sel ? " osel" : ""}${o && o.p ? " pnj" : ""}" data-x="${x}" data-y="${y}"${o && o.n ? ` title="${esc(o.n)}"` : ""}>${dc ? `<span class="deco">${dc}</span>` : ""}</div>`;
+  };
+  const enDirect = jeu && nom && nom === G.carte;
   box.innerHTML = `
-    <div class="ligne"><input class="champ" id="edNom" maxlength="50" placeholder="Nom du lieu (ex. : Crypte du roi oublié)" value="${esc(src ? src.nom : "")}" style="flex:1;min-width:180px">
+    <div class="ligne"><input class="champ" id="edNom" maxlength="50" placeholder="Nom du lieu (ex. : Crypte du roi oublié)" value="${esc(nom || "")}" style="flex:1;min-width:180px">
       <span class="muted" style="font-size:.85rem">Taille</span><select class="mini" id="edW"></select><span>×</span><select class="mini" id="edH"></select></div>
-    <div class="sous">Générer automatiquement</div>
-    <div class="puces">${[["vide", "⬜ Vide"], ["salle", "🏠 Salle"], ["foret", "🌲 Extérieur"], ["grotte", "🪨 Grotte"], ["donjon", "🏰 Donjon"]].map(([k, t]) => `<button data-gen="${k}">${t}</button>`).join("")}</div>
-    ${IA.disponible() ? `<div class="ligne" style="margin-top:6px"><input class="champ" id="edIa" maxlength="200" placeholder="Ou décris le lieu à l'IA (ex. : un pont de corde au-dessus d'une rivière)" style="flex:1;min-width:180px"><button class="btn petit" id="edIaGo">✨ Générer</button></div>` : ""}
-    <div class="sous">Pinceau <span style="font-weight:600">(touche ou glisse sur la grille)</span></div>
-    <div class="pal">${SYMBOLES.map(([s, t]) => `<button data-pin="${esc(s)}" class="${s === E.pin ? "on" : ""}"><i class="c ${TUILE[s] || "sol"}">${deco(s)}</i>${t}</button>`).join("")}</div>
+    ${enDirect ? `<p class="muted" style="font-size:.82rem;margin:6px 0 0">📍 C'est la carte affichée : tes changements apparaîtront chez les joueurs quand tu enregistres.</p>` : jeu ? `<p class="muted" style="font-size:.82rem;margin:6px 0 0">Les joueurs ne voient rien tant que tu n'affiches pas cette carte. Tu peux continuer à jouer à côté.</p>` : ""}
+    <div class="puces" style="margin-top:10px"><button data-mode="sol" class="on">🧱 Terrain</button><button data-mode="obj">🧩 Objets et PNJ</button></div>
+    <div id="edSol">
+      <div class="sous">Générer automatiquement <span style="font-weight:600">(remplace le terrain)</span></div>
+      <div class="puces">${[["vide", "⬜ Vide"], ["salle", "🏠 Salle"], ["foret", "🌲 Extérieur"], ["grotte", "🪨 Grotte"], ["donjon", "🏰 Donjon"]].map(([k, t]) => `<button data-gen="${k}">${t}</button>`).join("")}</div>
+      ${IA.disponible() ? `<div class="ligne" style="margin-top:6px"><input class="champ" id="edIa" maxlength="200" placeholder="Ou décris le lieu à l'IA (ex. : un pont de corde au-dessus d'une rivière)" style="flex:1;min-width:180px"><button class="btn petit" id="edIaGo">✨ Générer</button></div>` : ""}
+      <div class="sous">Pinceau <span style="font-weight:600">(touche ou glisse sur la grille)</span></div>
+      <div class="pal">${SYMBOLES.map(([s, t]) => `<button data-pin="${esc(s)}" class="${s === E.pin ? "on" : ""}"><i class="c ${TUILE[s] || "sol"}">${deco(s)}</i>${t}</button>`).join("")}</div>
+    </div>
+    <div id="edObjPal" class="cache">
+      <p class="muted" style="font-size:.82rem;margin:6px 0">Choisis un objet puis touche une case vide pour le poser. Touche un objet déjà posé pour le modifier (nom, texte, secret, caché…).</p>
+      ${ASSETS.map(([g, l]) => `<div class="sous" style="margin:6px 0 3px">${g}</div><div class="puces">${l.split(" ").map(e => `<button data-emo="${e}">${e}</button>`).join("")}</div>`).join("")}
+      <div class="ligne" style="margin-top:6px"><span class="muted" style="font-size:.82rem;font-weight:800">Autre emoji :</span><input class="champ" id="edEmo" maxlength="12" placeholder="🦄" style="width:80px;text-align:center;padding:5px"></div>
+      ${C.pnj.length ? `<div class="sous" style="margin:8px 0 3px">PNJ de la campagne</div><div class="puces">${C.pnj.map(p => `<button data-epnj="${esc(p.id)}">${esc(p.emo)} ${esc(p.nom)}</button>`).join("")}</div>` : ""}
+    </div>
     <div class="carte edit" id="edG" style="margin-top:10px"></div>
-    <p class="muted" style="font-size:.8rem">🚩 = où apparaissent les héros · 💢 = où apparaissent les ennemis au début d'un combat. Les cases mur, eau, arbre, rocher, meuble et coffre bloquent le passage.</p>
-    <div class="ligne" style="justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="edSave">💾 Enregistrer</button>${lobby ? "" : `<button class="btn" id="edShow">👁️ Enregistrer et afficher</button>`}</div>`;
-  const dlg = Base.fenetre("🗺️ " + (src ? "Modifier la carte" : "Nouvelle carte"), box, {bouton: "Fermer"});
-  dlg.style.width = "min(900px,96vw)";
+    <div id="edObj" class="encart cache"></div>
+    <p class="muted" style="font-size:.8rem">🚩 = où apparaissent les héros · 💢 = où apparaissent les ennemis au début d'un combat. Murs, eau, arbres, rochers, meubles, coffres (et les objets marqués « bloque ») bloquent le passage. Les objets en pointillés sont cachés aux joueurs.</p>
+    <div class="ligne" style="justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="edSave">💾 Enregistrer${enDirect ? " (en direct)" : ""}</button>${jeu && !enDirect ? `<button class="btn" id="edShow">👁️ Enregistrer et afficher</button>` : ""}</div>`;
+  const dlg = ouvrirPanneau("🗺️ " + (nom ? "Carte : " + nom : "Nouvelle carte"), box);
   dlg.style.setProperty("--tsol", U.pal.sol); dlg.style.setProperty("--tmur", U.pal.mur);
   dlg.style.setProperty("--therbe", U.pal.herbe); dlg.style.setProperty("--teau", U.pal.eau);
-  dlg.addEventListener("close", () => { if(lobby) rafraichirMJ(true); else if(G && estMJ()) rafraichirMJ(false); });
+  dlg.addEventListener("close", () => { if(lobby) rafraichirMJ(lobby); else if(G && estMJ()) rafraichirMJ(false); });
   const q = s => box.querySelector(s), gr = q("#edG");
   function tailles(){
-    q("#edW").innerHTML = rg(6, 18).map(n => `<option ${n === W() ? "selected" : ""}>${n}</option>`).join("");
-    q("#edH").innerHTML = rg(4, 13).map(n => `<option ${n === H() ? "selected" : ""}>${n}</option>`).join("");
+    q("#edW").innerHTML = rg(6, 24).map(n => `<option ${n === W() ? "selected" : ""}>${n}</option>`).join("");
+    q("#edH").innerHTML = rg(4, 16).map(n => `<option ${n === H() ? "selected" : ""}>${n}</option>`).join("");
   }
   function grille(){
     gr.style.gridTemplateColumns = `repeat(${W()},1fr)`;
-    gr.style.fontSize = Math.max(9, Math.floor((gr.clientWidth || 600) / W() * 0.5)) + "px";
+    gr.style.fontSize = Math.max(8, Math.floor((gr.clientWidth || 600) / W() * 0.5)) + "px";
     let h = ""; for(let y = 0; y < H(); y++) for(let x = 0; x < W(); x++) h += cellule(x, y);
     gr.innerHTML = h;
   }
+  const majCase = (x, y) => { const el = gr.querySelector(`[data-x="${x}"][data-y="${y}"]`); if(el) el.outerHTML = cellule(x, y); };
   function redim(){
     const w = +q("#edW").value, h = +q("#edH").value;
     E.g = rg(0, h - 1).map(y => rg(0, w - 1).map(x => (E.g[y] && E.g[y][x]) || ((!x || !y || x === w - 1 || y === h - 1) ? "#" : ".")));
+    E.o = E.o.filter(o => o.x < w && o.y < h);
+    if(E.sel && !E.o.includes(E.sel)) choisirObj(null);
     grille();
+  }
+  function choisirObj(o){
+    const avant = E.sel; E.sel = o;
+    if(avant) majCase(avant.x, avant.y);
+    if(o) majCase(o.x, o.y);
+    const f = q("#edObj");
+    f.classList.toggle("cache", !o);
+    if(!o){ f.innerHTML = ""; return; }
+    f.innerHTML = `<div class="ligne"><span style="font-size:1.5rem">${esc(o.e)}</span><input class="champ" data-o="n" maxlength="40" placeholder="Nom (ex. : Statue du roi)" value="${esc(o.n || "")}" style="flex:1;min-width:140px;padding:6px"></div>
+      <input class="champ" data-o="t" maxlength="200" placeholder="Ce que voit un joueur qui le touche (facultatif)" value="${esc(o.t || "")}" style="margin-top:6px;padding:6px">
+      <input class="champ" data-o="s" maxlength="300" placeholder="🤫 Note secrète pour toi (ex. : levier caché derrière)" value="${esc(o.s || "")}" style="margin-top:6px;padding:6px">
+      <div class="ligne" style="margin-top:6px;font-size:.86rem">
+        <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-o="b" ${o.b ? "checked" : ""}> 🚧 Bloque le passage</label>
+        <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-o="c" ${o.c ? "checked" : ""}> 🙈 Caché aux joueurs</label>
+        <button class="mini" id="edObjSup">🗑️ Retirer</button><button class="mini" id="edObjOk">✔️ OK</button></div>`;
+    f.querySelectorAll("[data-o]").forEach(e => e.oninput = e.onchange = () => {
+      const k = e.dataset.o; o[k] = e.type === "checkbox" ? e.checked : e.value;
+      if(k === "c" || k === "n") majCase(o.x, o.y);
+    });
+    f.querySelector("#edObjSup").onclick = () => { E.o = E.o.filter(z => z !== o); E.sel = null; majCase(o.x, o.y); choisirObj(null); };
+    f.querySelector("#edObjOk").onclick = () => choisirObj(null);
   }
   function peindre(el){
     if(!el || el.dataset.x == null) return;
@@ -2114,12 +2265,39 @@ function editeurCarte(src, lobby){
     if(E.g[y][x] === E.pin) return;
     E.g[y][x] = E.pin; el.outerHTML = cellule(x, y);
   }
+  function poserObj(el){
+    if(!el || el.dataset.x == null) return;
+    const x = +el.dataset.x, y = +el.dataset.y, o = objEn(x, y);
+    if(o){ choisirObj(o === E.sel ? null : o); return; }
+    if(E.o.length >= 80){ Base.toast("80 objets maximum par carte."); return; }
+    let n;
+    if(E.pnj){
+      const ancien = E.o.find(z => z.p === E.pnj.id);
+      if(ancien){ E.o = E.o.filter(z => z !== ancien); majCase(ancien.x, ancien.y); }
+      n = {id: Camp.nid(), x, y, e: E.pnj.emo, n: E.pnj.nom, t: E.pnj.role || "", s: "", b: true, c: false, p: E.pnj.id};
+    }else n = {id: Camp.nid(), x, y, e: E.emo, n: "", t: "", s: "", b: false, c: false, p: ""};
+    E.o.push(n); choisirObj(n);
+  }
   tailles(); setTimeout(grille, 0);
   q("#edW").onchange = redim; q("#edH").onchange = redim;
+  box.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => {
+    E.mode = b.dataset.mode;
+    box.querySelectorAll("[data-mode]").forEach(x => x.classList.toggle("on", x === b));
+    q("#edSol").classList.toggle("cache", E.mode !== "sol"); q("#edObjPal").classList.toggle("cache", E.mode !== "obj");
+    if(E.mode === "sol") choisirObj(null);
+  });
+  const marquer = b => box.querySelectorAll("[data-emo],[data-epnj]").forEach(x => x.classList.toggle("on", x === b));
+  box.querySelectorAll("[data-emo]").forEach(b => b.onclick = () => { E.emo = b.dataset.emo; E.pnj = null; marquer(b); });
+  box.querySelectorAll("[data-epnj]").forEach(b => b.onclick = () => { E.pnj = C.pnj.find(p => p.id === b.dataset.epnj) || null; marquer(b); });
+  q("#edEmo").oninput = e => { const v = e.target.value.trim(); if(v){ E.emo = v.slice(0, 12); E.pnj = null; marquer(null); } };
   box.querySelectorAll("[data-gen]").forEach(b => b.onclick = () => { E.g = genCarte(b.dataset.gen, W(), H()).map(r => [...r]); grille(); });
   box.querySelectorAll("[data-pin]").forEach(b => b.onclick = () => { E.pin = b.dataset.pin; box.querySelectorAll("[data-pin]").forEach(x => x.classList.toggle("on", x === b)); });
   let enPeinture = false;
-  gr.addEventListener("pointerdown", e => { enPeinture = true; try{ gr.setPointerCapture(e.pointerId); }catch(x){} peindre(e.target.closest(".c")); e.preventDefault(); });
+  gr.addEventListener("pointerdown", e => {
+    const c = e.target.closest(".c");
+    if(E.mode === "obj"){ poserObj(c); return; }
+    enPeinture = true; try{ gr.setPointerCapture(e.pointerId); }catch(x){} peindre(c); e.preventDefault();
+  });
   gr.addEventListener("pointermove", e => { if(!enPeinture) return; const el = document.elementFromPoint(e.clientX, e.clientY); peindre(el && el.closest && el.closest("#edG .c")); });
   ["pointerup", "pointercancel"].forEach(t => gr.addEventListener(t, () => enPeinture = false));
   if(q("#edIaGo")) q("#edIaGo").onclick = async () => {
@@ -2127,34 +2305,44 @@ function editeurCarte(src, lobby){
     if(!desc){ q("#edIa").focus(); return; }
     btn.disabled = true; btn.textContent = "…";
     try{
-      const raw = await IA.appeler({json: true, max: 900, messages: [{role: "user", content: desc}],
+      const raw = await IA.appeler({json: true, max: 1200, messages: [{role: "user", content: desc}],
         system: `Tu dessines des cartes de jeu de rôle quadrillées vues de dessus. Univers : ${U.nom} (${U.ambiance}). Symboles : # mur . sol , herbe ~ eau T arbre/végétation ^ rocher = meuble/table D porte C coffre S escalier ! danger/feu * objet/indice P départ des héros (2 à 4) M position d'ennemi (2 à 4). Exactement ${H()} lignes de ${W()} caractères. Entoure le lieu de murs (intérieur) ou d'arbres/eau/rochers (extérieur). Les zones de sol doivent être reliées entre elles. Réponds seulement en JSON {"nom":"…","l":["…"]}.`});
       const c = nettoyerCarte(IA.json(raw), desc.slice(0, 40));
       if(!c) throw new Error("carte illisible, réessaie");
       E.g = c.l.map(r => [...r]);
+      E.o = E.o.filter(o => o.x < W() && o.y < H());
       if(!q("#edNom").value.trim()) q("#edNom").value = c.nom;
       tailles(); grille();
     }catch(e){ Base.toast("❌ " + String(e.message || e).slice(0, 100)); }
     btn.disabled = false; btn.textContent = "✨ Générer";
   };
+  /* Range la carte dans la campagne (avec ses objets, même cachés) */
   function valider(){
-    const nom = q("#edNom").value.trim().slice(0, 50) || "Lieu sans nom";
-    const c = nettoyerCarte({nom, l: E.g.map(r => r.join(""))});
+    const n = q("#edNom").value.trim().slice(0, 50) || "Lieu sans nom";
+    const c = nettoyerCarte({nom: n, l: E.g.map(r => r.join(""))});
     if(!c){ Base.toast("Il faut un peu de sol sur la carte."); return null; }
-    lib.cartes[c.nom] = c.l;
-    if(src && src.lib && src.nom !== c.nom) delete lib.cartes[src.nom];
-    saveLib();
-    return c;
+    if(n !== nom && C.cartes[c.nom] && !confirm(`Une carte « ${c.nom} » existe déjà dans ta campagne. La remplacer ?`)) return null;
+    const W2 = c.l[0].length, H2 = c.l.length;
+    const o = E.o.filter(o => o.x < W2 && o.y < H2).slice(0, 80).map(o => ({id: o.id || Camp.nid(), x: o.x, y: o.y, e: String(o.e || "❓").slice(0, 12), n: String(o.n || "").trim().slice(0, 40),
+      t: String(o.t || "").trim().slice(0, 200), s: String(o.s || "").trim().slice(0, 300), b: !!o.b, c: !!o.c, p: String(o.p || "")}));
+    if(nom && nom !== c.nom) delete C.cartes[nom];
+    C.cartes[c.nom] = {l: c.l, o};
+    Camp.sauver();
+    return c.nom;
   }
   q("#edSave").onclick = () => {
-    const c = valider(); if(!c) return;
-    if(src && src.jeu && G) mj({t: "carte", nom: c.nom, l: c.l, voir: false});
-    Base.toast("Carte enregistrée 💾"); dlg.close();
+    const n = valider(); if(!n) return;
+    if(jeu && (G.cartes[n] || (nom && nom === G.carte))){
+      const k = C.cartes[n];
+      mj({t: "carte", nom: n, l: k.l, o: pubObjets(k.o), voir: !!(nom && nom === G.carte && n !== nom)});
+    }
+    Base.toast(jeu && n === G.carte ? "Carte mise à jour chez les joueurs 🗺️" : "Carte rangée dans ta campagne 💾"); dlg.close();
   };
   if(q("#edShow")) q("#edShow").onclick = () => {
-    const c = valider(); if(!c) return;
-    if(G && G.combat){ mj({t: "carte", nom: c.nom, l: c.l, voir: false}); Base.toast("Enregistrée. On ne change pas de lieu pendant un combat."); }
-    else mj({t: "carte", nom: c.nom, l: c.l});
+    const n = valider(); if(!n) return;
+    const k = C.cartes[n];
+    mj({t: "carte", nom: n, l: k.l, o: pubObjets(k.o), voir: !G.combat});
+    if(G.combat) Base.toast("Enregistrée. On ne change pas de lieu pendant un combat.");
     dlg.close();
   };
 }
@@ -2162,7 +2350,7 @@ function editeurCarte(src, lobby){
 /* ---------- Outils du MJ : créatures personnalisées ---------- */
 const statsAuto = niv => ({pv: Math.round(5 + 6 * niv + 0.9 * niv * niv), ca: 11 + Math.floor(niv / 2), att: 4 + Math.floor(niv * 0.6), deg: niv <= 2 ? "1d8+2" : niv <= 4 ? "2d6+3" : niv <= 6 ? "2d8+3" : niv <= 8 ? "2d10+4" : "3d10+5"});
 function editeurMonstre(i, lobby){
-  const m0 = i >= 0 ? lib.monstres[i] : {nom: "", emo: "👹", niv: 1, ...statsAuto(1), portee: 1};
+  const M = camp().monstres, m0 = i >= 0 ? M[i] : {nom: "", emo: "👹", niv: 1, ...statsAuto(1), portee: 1};
   const box = Base.el("div");
   box.innerHTML = `
     <div class="ligne"><input class="champ" id="emNom" maxlength="30" placeholder="Nom (ex. : Chef gobelin)" value="${esc(m0.nom)}" style="flex:1;min-width:150px"><input class="champ" id="emEmo" maxlength="4" value="${esc(m0.emo)}" style="width:64px;text-align:center;font-size:1.3rem"></div>
@@ -2174,7 +2362,7 @@ function editeurMonstre(i, lobby){
     </div>
     <p class="muted" style="font-size:.8rem">Dégâts au format 2d6+3 · Portée 1 = corps à corps, plus = attaque à distance.</p>
     <button class="btn" id="emOk">💾 Enregistrer la créature</button>`;
-  const dlg = Base.fenetre(i >= 0 ? "✏️ Modifier la créature" : "👹 Nouvelle créature", box, {bouton: "Annuler"});
+  const dlg = ouvrirPanneau(i >= 0 ? "✏️ Modifier la créature" : "👹 Nouvelle créature", box);
   dlg.addEventListener("close", () => rafraichirMJ(lobby));
   const q = s => box.querySelector(s);
   box.querySelectorAll("[data-emo]").forEach(b => b.onclick = () => q("#emEmo").value = b.dataset.emo);
@@ -2185,8 +2373,8 @@ function editeurMonstre(i, lobby){
     if(!DEG_OK.test(deg)){ Base.toast("Dégâts au format 1d8+2 par exemple."); return; }
     const x = {id: m0.id || "c" + uid(), nom: nom.slice(0, 30), emo: q("#emEmo").value.trim().slice(0, 4) || "👹", niv: +q("#emNiv").value,
       pv: clamp(parseInt(q("#emPv").value) || 10, 1, 999), ca: clamp(parseInt(q("#emCa").value) || 12, 5, 30), att: clamp(parseInt(q("#emAtt").value) || 0, -5, 20), deg, portee: clamp(parseInt(q("#emPo").value) || 1, 1, 10)};
-    if(i >= 0) lib.monstres[i] = x; else lib.monstres.push(x);
-    saveLib(); Base.toast("Créature enregistrée 👹"); dlg.close();
+    if(i >= 0) M[i] = x; else M.push(x);
+    Camp.sauver(); Base.toast("Créature enregistrée 👹"); dlg.close();
   };
 }
 
@@ -2200,6 +2388,43 @@ bQuit.onclick = () => {
   G = null; L = null; enJeu = false; mode = null; vise = null; CR = null;
   ecran("eMenu");
 };
+
+/* ---------- Préparation des campagnes (écran à part, sans partie) ---------- */
+function ouvrirCamp(){ MJ.onglet = "cartes"; ecran("eCamp"); }
+function rendreCamp(){
+  const C = camp(), U = UNIV[C.u] || UNIV.fantasy, box = $("campHaut");
+  const e = $("eCamp");
+  e.style.setProperty("--tsol", U.pal.sol); e.style.setProperty("--tmur", U.pal.mur); e.style.setProperty("--therbe", U.pal.herbe); e.style.setProperty("--teau", U.pal.eau);
+  document.documentElement.style.setProperty("--accent", U.pal.accent);
+  const nb = (n, s) => n + " " + s + (n > 1 ? "s" : "");
+  box.innerHTML = `<div class="ligne" style="justify-content:space-between"><h2 style="margin:0">📚 Mes campagnes</h2><button class="btn ghost petit" id="cpRet">← Menu</button></div>
+    <p class="muted" style="font-size:.88rem;margin:6px 0 10px">Prépare tes séances à l'avance : cartes (avec objets et PNJ posés dessus), PNJ avec leur mémoire, lore, créatures, rencontres et notes. Tout reste sur cet appareil ; en partie, choisis la campagne dans tes outils de MJ. Pour changer d'appareil, exporte puis importe le fichier.</p>
+    <div class="ligne">
+      <select class="champ" id="cpSel" style="flex:2;min-width:160px">${Camp.liste().map(c => `<option value="${esc(c.id)}" ${c.id === C.id ? "selected" : ""}>${esc(c.nom)}</option>`).join("")}</select>
+      <input class="champ" id="cpNom" maxlength="40" value="${esc(C.nom)}" placeholder="Nom de la campagne" style="flex:2;min-width:160px">
+      <select class="champ" id="cpU" style="flex:1;min-width:150px">${Object.entries(UNIV).map(([k, u]) => `<option value="${k}" ${k === C.u ? "selected" : ""}>${esc(u.emo)} ${esc(u.nom)}</option>`).join("")}</select>
+    </div>
+    <div class="campstats">${nb(Object.keys(C.cartes).length, "carte")} · ${nb(C.pnj.length, "PNJ").replace("PNJs", "PNJ")} · ${nb(C.lore.length, "entrée")} de lore · ${nb(C.monstres.length, "créature")} · ${nb(C.rencontres.length, "rencontre")}</div>
+    <div class="ligne" style="margin-top:10px"><button class="mini" id="cpNouv">➕ Nouvelle campagne</button><button class="mini" id="cpExp">📤 Exporter</button><button class="mini" id="cpImp">📥 Importer</button><button class="mini" id="cpSup">🗑️ Supprimer</button><input type="file" id="cpFic" accept=".json,application/json" class="cache"></div>`;
+  $("cpRet").onclick = () => ecran("eMenu");
+  $("cpSel").onchange = ev => { Camp.choisir(ev.target.value); MJ.pnjSel = MJ.loreSel = null; if(panOuvert) panOuvert.close(); rendreCamp(); };
+  $("cpNom").onchange = ev => { C.nom = ev.target.value.trim().slice(0, 40) || C.nom; Camp.sauver(); rendreCamp(); };
+  $("cpU").onchange = ev => { C.u = ev.target.value; Camp.sauver(); rendreCamp(); };
+  $("cpNouv").onclick = () => { const n = prompt("Nom de la nouvelle campagne :", ""); if(!n || !n.trim()) return; Camp.creer(n, C.u); if(panOuvert) panOuvert.close(); rendreCamp(); };
+  $("cpExp").onclick = () => Camp.exporter(C);
+  $("cpImp").onclick = () => $("cpFic").click();
+  $("cpFic").onchange = async ev => {
+    const f = ev.target.files[0]; if(!f) return;
+    try{ const c = Camp.importer(JSON.parse(await f.text())); Base.toast(`Campagne « ${c.nom} » importée 📥`); if(panOuvert) panOuvert.close(); rendreCamp(); }
+    catch(x){ Base.toast("❌ " + String(x.message || x).slice(0, 100)); }
+  };
+  $("cpSup").onclick = () => {
+    if(!confirm(`Supprimer définitivement la campagne « ${C.nom} » (cartes, PNJ, lore…) ? Pense à l'exporter avant si tu veux la garder.`)) return;
+    Camp.supprimer(C.id); if(panOuvert) panOuvert.close(); rendreCamp();
+  };
+  rafraichirMJ("prep");
+}
+$("bCamp").onclick = ouvrirCamp;
 window.addEventListener("resize", () => { if(G && ecranActuel === "eJeu") rendreCarte(); });
 
 /* ---------- Démarrage ---------- */
