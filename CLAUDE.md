@@ -52,7 +52,7 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 - IA : `quintuplees` Les Quintuplées (v12.4), `jdr` Table de Légendes (jusqu'à 8 joueurs, MJ IA ou joueur)
   - `jdr/campagne.js` : campagnes du MJ (cartes + calque d'objets, PNJ avec ressenti par héros et souvenirs, lore, créatures, rencontres, notes), écran « 📚 Mes campagnes », assistant IA du MJ. Tout reste dans le localStorage du MJ (`jdr_camps`) ; export/import JSON. Règle : rien de la campagne n'entre dans `G` (diffusé à tous) sauf une carte affichée, via `pubObjets` (sans objets cachés ni notes secrètes).
 - Défis du jour (séries, pastille « x / 12 ») : `wordle` Mot du jour, `loldle`, `anidle`, `onepiecedle`, `pokedle`, `electrodle` Électrodle (appareils de la maison), `paysdle`, `connexions`, `motscroises`, `motsfleches`, `sudoku`, `shikaku`
-- Soirée en ligne (soiree.js, en ligne seulement, 3 à 12) : `quiaditca` Qui a dit ça ?, `emojis` Traduction Emoji, `cadran` Le Cadran (demi-roue de 10 crans entre deux mots)
+- Soirée en ligne (soiree.js, en ligne seulement, 3 à 12) : `quiaditca` Qui a dit ça ?, `emojis` Traduction Emoji, `cadran` Le Cadran (demi-roue de 10 crans entre deux mots, dès 2 joueurs)
 - Party / en ligne : `dessin`, `telephone`, `quiz` (Culture G, manches spéciales), `blindtest`, `imposteur`, `categorie`, `encheres`, `freestyle` (prod de rap synthétisée, boule sur 4 temps, rimes ; salle en ligne synchronisée sur l'horloge de l'hôte, lignes à se répartir)
 - Duels / plateau : `puissance4`, `bataille` (navale), `laser` (Bataille Laser), `mainmise` (façon Monopoly)
 - Casino : `poker`, `blackjack`, `roulette`

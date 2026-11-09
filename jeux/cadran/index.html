@@ -54,7 +54,8 @@ Base.entete({
     <ul><li>À chaque manche, un joueur reçoit un <b>cran secret</b> (de 1 à ${N}).</li>
     <li>Il donne un <b>indice</b> : un mot ou une idée qui, selon lui, tombe pile sur ce cran. Pour le cran 8 de Froid → Chaud : « un bain »…</li>
     <li>Les autres placent l'aiguille où ils pensent que se trouve le cran. Débattez en vocal !</li>
-    <li>Pile sur le cran : <b>3 pts</b> · à 1 cran : <b>2 pts</b> · à 2 crans : <b>1 pt</b>. Celui qui donne l'indice gagne la moyenne des points des autres.</li></ul>`
+    <li>Pile sur le cran : <b>3 pts</b> · à 1 cran : <b>2 pts</b> · à 2 crans : <b>1 pt</b>. Celui qui donne l'indice gagne la moyenne des points des autres.</li>
+    <li>À deux, on joue en équipe : faites le meilleur score possible ensemble !</li></ul>`
 });
 
 const jDe = (G, id) => G.J.find(j => j.id === id);
@@ -75,6 +76,8 @@ function reveler(G){
   l.forEach(([id, v]) => gains[id] = ptsEcart(Math.abs(v - G.cible)));
   if(l.length) gains[G.donneur] = Math.round(l.reduce((s, [id]) => s + gains[id], 0) / l.length);
   for(const id in gains){ const j = jDe(G, id); if(j) j.pts += gains[id]; }
+  // à deux : score d'équipe (points des devineurs sur le maximum possible)
+  if(G.coop){ l.forEach(([id]) => G.equipe += gains[id]); G.max += 3 * l.length; }
   G.res = {gains};
   G.phase = "revele";
 }
@@ -84,7 +87,7 @@ function verifier(G){
 function suivante(G){ G.m++; manche(G); }
 
 Soiree.demarrer({
-  jeu: "cadran", titre: "Le Cadran", emoji: "🎯", min: 3, max: 12,
+  jeu: "cadran", titre: "Le Cadran", emoji: "🎯", min: 2, max: 12,
   hero: {
     texte: `Un demi-cadran va d'un mot à son opposé (Froid → Chaud, Nul → Génial…). Un joueur reçoit un cran secret et donne un indice ; les autres débattent et placent l'aiguille. Pile poil ?`,
     etapes: ["1 · Cran secret", "2 · Un indice", "3 · Placez l'aiguille", "4 · Révélation"]
@@ -95,7 +98,7 @@ Soiree.demarrer({
   nouvelle(joueurs, R){
     let ordre = [];
     for(let t = 0; t < R.tours; t++) ordre = ordre.concat(melanger(joueurs.map(j => j.id)));
-    const G = {hote: joueurs[0].id, J: joueurs.map(j => ({...j, pts: 0})), ordre, m: 0, pioche: melanger(PAIRES)};
+    const G = {hote: joueurs[0].id, J: joueurs.map(j => ({...j, pts: 0})), ordre, m: 0, pioche: melanger(PAIRES), coop: joueurs.length === 2, equipe: 0, max: 0};
     manche(G);
     return G;
   },
@@ -132,7 +135,7 @@ Soiree.demarrer({
   },
   arrivee(G, j){ if(!jDe(G, j.id)) G.J.push({...j, pts: 0}); },
   publique(G){
-    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), m: G.m, nm: G.ordre.length, donneur: G.donneur};
+    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), m: G.m, nm: G.ordre.length, donneur: G.donneur, coop: G.coop, equipe: G.equipe, max: G.max};
     if(G.phase === "placer" || G.phase === "revele"){ V.paire = G.paire; V.indice = G.indice; V.faits = Object.keys(G.choix); }
     if(G.phase === "revele"){ V.cible = G.cible; V.choix = G.choix; V.gains = G.res.gains; }
     return V;
@@ -191,7 +194,7 @@ function rendre(box, c){
   const don = jo(V.donneur), jeDonne = V.donneur === moi;
   let h = "";
 
-  if(V.phase !== "fin") h += `<div class="so-haut"><span>Manche ${Math.min(V.m + 1, V.nm)} / ${V.nm}</span><span>${V.J.filter(j => !j.parti).sort((a, b) => b.pts - a.pts).slice(0, 3).map(j => esc(j.av) + " " + j.pts).join(" · ")}</span></div>`;
+  if(V.phase !== "fin") h += `<div class="so-haut"><span>Manche ${Math.min(V.m + 1, V.nm)} / ${V.nm}</span><span>${V.coop ? `🤝 Équipe : ${V.equipe} / ${V.max}` : V.J.filter(j => !j.parti).sort((a, b) => b.pts - a.pts).slice(0, 3).map(j => esc(j.av) + " " + j.pts).join(" · ")}</span></div>`;
 
   if(V.phase === "indice"){
     h += `<section class="b-carte">`;
@@ -241,7 +244,14 @@ function rendre(box, c){
   }
 
   else if(V.phase === "fin"){
-    h += `<section class="b-carte"><h2 style="text-align:center;margin:0">🏆 Résultats</h2>${podium(V.J, moi)}${c.finHtml()}</section>`;
+    if(V.coop){
+      const t = V.max ? V.equipe / V.max : 0;
+      const avis = t >= .85 ? "🧠 Télépathes ! Vous partagez le même cerveau." : t >= .65 ? "🔥 Belle complicité !" : t >= .4 ? "🙂 Pas mal, ça se travaille." : "😅 Vous ne vivez pas sur la même planète…";
+      h += `<section class="b-carte" style="text-align:center"><h2 style="margin:0">🤝 Score d'équipe</h2>
+        <p class="indice" style="font-size:2.6rem;margin:10px 0 0">${V.equipe} / ${V.max}</p>
+        <p style="font-weight:800;font-size:1.1rem">${avis}</p>
+        <p class="muted">${V.J.map(j => esc(j.av + " " + j.nom)).join(" & ")}</p>${c.finHtml()}</section>`;
+    }else h += `<section class="b-carte"><h2 style="text-align:center;margin:0">🏆 Résultats</h2>${podium(V.J, moi)}${c.finHtml()}</section>`;
     if(rendre.finVue !== V.gid){ rendre.finVue = V.gid; Soiree.confettis(); }
   }
 

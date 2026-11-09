@@ -228,7 +228,7 @@ window.SALLE_CATALOGUE = [
     slug: "cadran",
     title: "Le Cadran",
     emoji: "🎯",
-    desc: "Un demi-cadran va d'un mot à son opposé (Froid → Chaud). Un joueur reçoit un cran secret et donne un indice, les autres débattent et placent l'aiguille. Pile poil ? En ligne, de 3 à 12 joueurs.",
+    desc: "Un demi-cadran va d'un mot à son opposé (Froid → Chaud). Un joueur reçoit un cran secret et donne un indice, les autres débattent et placent l'aiguille. Pile poil ? En ligne, de 2 à 12 joueurs (à deux, en équipe).",
     tags: ["Party", "Multijoueur", "Mots"],
     colors: ["#2f8fce", "#e5484d"],
     etat: "dispo",
