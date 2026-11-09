@@ -91,6 +91,15 @@ textarea.champ{resize:vertical;min-height:58px}
 .ordre span{padding:2px 7px;border-radius:999px;background:var(--soft)}
 .ordre span.on{background:var(--accent);color:#fff}
 .puces{display:flex;flex-wrap:wrap;gap:6px}
+.monde{border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#0002;user-select:none;-webkit-user-select:none}
+.monde svg{display:block;width:100%;height:auto;aspect-ratio:16/10}
+.monde svg [data-l]{cursor:pointer}
+.monde.edit svg{touch-action:none;cursor:crosshair}
+.monde.apercu{cursor:pointer;max-width:520px}
+.mlab{font-family:Nunito,"OpenMoji",sans-serif;font-weight:800;paint-order:stroke;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+.puces.serre{gap:4px}
+.puces.serre button{padding:5px 9px;font-size:.8rem}
+.sw{display:inline-block;width:13px;height:13px;border-radius:50%;vertical-align:-2px;margin-right:5px;border:1px solid rgba(0,0,0,.3)}
 .puces button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 12px;font-size:.88rem;text-align:left;font-weight:700}
 .puces button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .puces button:disabled{opacity:.45;cursor:default}
@@ -213,7 +222,7 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
     <div class="jeu">
       <div class="col">
         <div class="panneau">
-          <div class="lieu"><span id="jLieu"></span><span class="muted" id="jInfo"></span></div>
+          <div class="lieu"><span><span id="jLieu"></span> <button class="mini cache" id="bMonde">🌍 Carte du monde</button></span><span class="muted" id="jInfo"></span></div>
           <div class="ordre cache" id="jOrdre"></div>
           <div class="carte" id="jCarte"></div>
           <div class="equipe" id="jEquipe"></div>
@@ -237,6 +246,7 @@ body.invite-seul #bNouvelle,body.invite-seul #bContinuer{display:none!important}
 <script src="../commun/ia.js"></script>
 <script src="../commun/reseau.js"></script>
 <script src="donnees.js"></script>
+<script src="monde.js"></script>
 <script src="campagne.js"></script>
 <script>
 /* ============================================================
@@ -373,7 +383,7 @@ Base.entete({
    <li><b>Jets de dés</b> : quand l'issue est incertaine, le MJ demande un jet (d20 + modificateur contre une difficulté).</li>
    <li><b>Combats</b> sur la carte, au tour par tour : déplace-toi (🦶), attaque (⚔️), utilise ton talent (✨) ou une potion (🧪).</li>
    <li><b>MJ joueur</b> : il a ses outils (récit, jets, éditeur de cartes, créatures, récompenses) et peut jouer lui-même les monstres. Pas besoin de clé IA.</li>
-   <li><b>📚 Campagnes</b> (bouton du menu) : le MJ prépare à l'avance ses cartes (terrain + objets, PNJ, objets cachés), ses PNJ (caractère, secret, ressenti envers chaque héros, souvenirs), son lore, ses créatures et ses rencontres. En partie, il change de carte quand il veut (hors combat), en prépare une autre pendant que les joueurs jouent, et ses modifications restent dans la campagne. Avec une clé IA : assistant du MJ, PNJ qui parlent et souvenirs mis à jour automatiquement.</li>
+   <li><b>📚 Campagnes</b> (bouton du menu) : le MJ prépare à l'avance la <b>carte du monde</b> (sans quadrillage : continents, mers, forêts, villes ou planètes peints au pinceau, lieux, routes, noms de régions, lieux cachés tant qu'ils ne sont pas découverts), ses cartes de combat (terrain + objets, PNJ, objets cachés), ses PNJ (caractère, secret, ressenti envers chaque héros, souvenirs), son lore, ses créatures et ses rencontres. En partie, il change de carte quand il veut (hors combat), en prépare une autre pendant que les joueurs jouent, et ses modifications restent dans la campagne. Avec une clé IA : assistant du MJ, PNJ qui parlent et souvenirs mis à jour automatiquement.</li>
    <li>La partie est sauvegardée automatiquement. En ligne, seul l'hôte a besoin d'une clé IA si le MJ est l'IA (⚙️ Réglages).</li>
   </ul>`
 });
@@ -813,6 +823,7 @@ function completerG(g){
   if(!g) return g;
   if(!g.objets || typeof g.objets !== "object") g.objets = {};
   if(!g.pos || typeof g.pos !== "object") g.pos = {};
+  if(!g.monde || typeof g.monde !== "object") g.monde = null;
   return g;
 }
 
@@ -1382,6 +1393,16 @@ function mjAppliquer(c){
       else if(k.nom === G.carte){ G.heros.forEach(recaler); if(cb) cb.m.forEach(m => { if(m.pv > 0) recaler(m); }); }
       break;
     }
+    case "monde": {
+      const m = c.m ? Monde.pub(c.m) : null, avant = G.monde;
+      G.monde = m && !Monde.vide(m) ? m : null;
+      const ici = G.monde && G.monde.l.find(x => x.id === G.monde.ici);
+      if(G.monde && !avant) log("sys", "🌍 Le MJ dévoile la carte du monde : touche « 🌍 Carte du monde » en haut pour la voir.");
+      else if(!G.monde && avant) log("sys", "🌍 Le MJ range la carte du monde.");
+      else if(ici && (!avant || avant.ici !== ici.id)) log("sys", `🚩 Le groupe arrive : ${ici.e} ${ici.n}`);
+      else if(G.monde && c.quoi === "maj") log("sys", "🌍 La carte du monde a été mise à jour.");
+      break;
+    }
     case "voir": if(cb || !G.cartes[c.nom]) return; changerCarte(c.nom); G.lieu = c.nom; log("sys", `🗺️ ${c.nom}`); break;
     case "jets": {
       if(cb) return;
@@ -1649,6 +1670,7 @@ function rendre(){
   j.style.setProperty("--therbe", U.pal.herbe); j.style.setProperty("--teau", U.pal.eau);
   document.documentElement.style.setProperty("--accent", U.pal.accent);
   $("jLieu").textContent = "📍 " + (G.lieu || G.carte || "…");
+  $("bMonde").classList.toggle("cache", !G.monde);
   $("jInfo").textContent = U.emo + " " + U.nom + (mode === "ligne" && salle ? " · salle " + salle.code : "") + " · MJ " + nomMJ();
   rendreOrdre(); rendreCarte(); rendreEquipe(); rendreMjSel(); rendreLog(); rendreActions();
   $("jMJ").classList.toggle("cache", !estMJ());
@@ -1941,12 +1963,12 @@ function rendreMJ(lobby){
   ctxMJ = lobby;
   const C = camp(), u = prep ? C.u : lobby ? L.cfg.u : G.u, U = UNIV[u] || UNIV.fantasy, cb = !lobby && G.combat;
   if(!lobby){ if(cb && !MJ.vuCombat){ MJ.vuCombat = true; MJ.onglet = "combat"; } if(!cb){ MJ.vuCombat = false; if(MJ.onglet === "combat") MJ.onglet = "recit"; } }
-  const tabs = lobby ? [["cartes", "🗺️ Cartes"], ["pnj", "🧑 PNJ"], ["lore", "📚 Lore"], ["monstres", "👹 Créatures"], ["notes", "📝 Notes"], ["assistant", "🤖 Assistant IA"]]
-    : [["recit", "📜 Récit"], ...(cb ? [["combat", "⚔️ Combat"]] : []), ["des", "🎲 Dés"], ["cartes", "🗺️ Cartes"], ["pnj", "🧑 PNJ"], ["lore", "📚 Lore"], ["monstres", "👹 Créatures"], ["groupe", "🎁 Groupe"], ["notes", "📝 Notes"], ["assistant", "🤖 Assistant"]];
+  const tabs = lobby ? [["monde", "🌍 Monde"], ["cartes", "🗺️ Cartes"], ["pnj", "🧑 PNJ"], ["lore", "📚 Lore"], ["monstres", "👹 Créatures"], ["notes", "📝 Notes"], ["assistant", "🤖 Assistant IA"]]
+    : [["recit", "📜 Récit"], ...(cb ? [["combat", "⚔️ Combat"]] : []), ["des", "🎲 Dés"], ["monde", "🌍 Monde"], ["cartes", "🗺️ Cartes"], ["pnj", "🧑 PNJ"], ["lore", "📚 Lore"], ["monstres", "👹 Créatures"], ["groupe", "🎁 Groupe"], ["notes", "📝 Notes"], ["assistant", "🤖 Assistant"]];
   if(!tabs.some(t => t[0] === MJ.onglet)) MJ.onglet = tabs[0][0];
   const cle = JSON.stringify([lobby, u, MJ.onglet, MJ.secret, MJ.js, MJ.jdd, MJ.jh, MJ.rencontre.map(e => e.def.nom + e.n), MJ.auto, MJ.outil, MJ.filtre, MJ.log.length, Camp.version, C.id,
     MJ.pnjSel, MJ.loreSel, MJ.aR.length, MJ.aEnCours,
-    lobby ? 0 : [G.phase, G.heros.map(h => [h.id, h.pv, h.niv, h.xp]), G.actions, G.or, G.potions, G.sac, Object.keys(G.cartes), G.carte, G.objets[G.carte], cb ? [cb.auto, cb.m.map(m => m.pv)] : 0, G.jets.length, G.mj]]);
+    lobby ? 0 : [G.phase, G.heros.map(h => [h.id, h.pv, h.niv, h.xp]), G.actions, G.or, G.potions, G.sac, Object.keys(G.cartes), G.carte, G.objets[G.carte], G.monde ? [G.monde.ici, G.monde.l.length] : 0, cb ? [cb.auto, cb.m.map(m => m.pv)] : 0, G.jets.length, G.mj]]);
   if(cle === cleMJ && box.dataset.l === String(lobby)) return;
   cleMJ = cle; box.dataset.l = String(lobby);
   const camps = Camp.liste();
@@ -2008,6 +2030,7 @@ function ongletMJ(t, lobby, U, cb){
     }
     return h;
   }
+  if(t === "monde") return Monde.onglet(!lobby);
   if(t === "pnj") return ongletPnj(!lobby);
   if(t === "lore") return ongletLore(!lobby);
   if(t === "assistant") return ongletAssistant(!lobby);
@@ -2056,6 +2079,7 @@ function lierMJ(box, lobby, U){
     MJ.pnjSel = MJ.loreSel = null; re();
   };
   lierCamp(box, !lobby);
+  Monde.lier(box, !lobby);
   q("[data-chargr]").forEach(b => b.onclick = () => { const x = camp().rencontres[+b.dataset.chargr]; if(!x) return; MJ.rencontre = x.liste.map(e => ({def: {...e.def}, n: e.n})); re(); });
   q("[data-supr]").forEach(b => b.onclick = () => { const R = camp().rencontres, x = R[+b.dataset.supr]; if(!x || !confirm("Supprimer la rencontre « " + x.nom + " » ?")) return; R.splice(+b.dataset.supr, 1); Camp.sauver(); re(); });
   const r = box.querySelector("#mjRecit");
@@ -2403,13 +2427,13 @@ function rendreCamp(){
   document.documentElement.style.setProperty("--accent", U.pal.accent);
   const nb = (n, s) => n + " " + s + (n > 1 ? "s" : "");
   box.innerHTML = `<div class="ligne" style="justify-content:space-between"><h2 style="margin:0">📚 Mes campagnes</h2><button class="btn ghost petit" id="cpRet">← Menu</button></div>
-    <p class="muted" style="font-size:.88rem;margin:6px 0 10px">Prépare tes séances à l'avance : cartes (avec objets et PNJ posés dessus), PNJ avec leur mémoire, lore, créatures, rencontres et notes. Tout reste sur cet appareil ; en partie, choisis la campagne dans tes outils de MJ. Pour changer d'appareil, exporte puis importe le fichier.</p>
+    <p class="muted" style="font-size:.88rem;margin:6px 0 10px">Prépare tes séances à l'avance : carte du monde, cartes (avec objets et PNJ posés dessus), PNJ avec leur mémoire, lore, créatures, rencontres et notes. Tout reste sur cet appareil ; en partie, choisis la campagne dans tes outils de MJ. Pour changer d'appareil, exporte puis importe le fichier.</p>
     <div class="ligne">
       <select class="champ" id="cpSel" style="flex:2;min-width:160px">${Camp.liste().map(c => `<option value="${esc(c.id)}" ${c.id === C.id ? "selected" : ""}>${esc(c.nom)}</option>`).join("")}</select>
       <input class="champ" id="cpNom" maxlength="40" value="${esc(C.nom)}" placeholder="Nom de la campagne" style="flex:2;min-width:160px">
       <select class="champ" id="cpU" style="flex:1;min-width:150px">${Object.entries(UNIV).map(([k, u]) => `<option value="${k}" ${k === C.u ? "selected" : ""}>${esc(u.emo)} ${esc(u.nom)}</option>`).join("")}</select>
     </div>
-    <div class="campstats">${nb(Object.keys(C.cartes).length, "carte")} · ${nb(C.pnj.length, "PNJ").replace("PNJs", "PNJ")} · ${nb(C.lore.length, "entrée")} de lore · ${nb(C.monstres.length, "créature")} · ${nb(C.rencontres.length, "rencontre")}</div>
+    <div class="campstats">${nb(Object.keys(C.cartes).length, "carte")} · ${nb(C.pnj.length, "PNJ").replace("PNJs", "PNJ")} · ${nb(C.lore.length, "entrée")} de lore · ${nb(C.monstres.length, "créature")} · ${nb(C.rencontres.length, "rencontre")}${Monde.vide(C.monde) ? "" : " · 🌍 carte du monde"}</div>
     <div class="ligne" style="margin-top:10px"><button class="mini" id="cpNouv">➕ Nouvelle campagne</button><button class="mini" id="cpExp">📤 Exporter</button><button class="mini" id="cpImp">📥 Importer</button><button class="mini" id="cpSup">🗑️ Supprimer</button><input type="file" id="cpFic" accept=".json,application/json" class="cache"></div>`;
   $("cpRet").onclick = () => ecran("eMenu");
   $("cpSel").onchange = ev => { Camp.choisir(ev.target.value); MJ.pnjSel = MJ.loreSel = null; if(panOuvert) panOuvert.close(); rendreCamp(); };
@@ -2430,6 +2454,7 @@ function rendreCamp(){
   rafraichirMJ("prep");
 }
 $("bCamp").onclick = ouvrirCamp;
+$("bMonde").onclick = () => { if(G && G.monde) Monde.voir(G.monde, G.u); };
 window.addEventListener("resize", () => { if(G && ecranActuel === "eJeu") rendreCarte(); });
 
 /* ---------- Démarrage ---------- */

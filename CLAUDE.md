@@ -50,7 +50,8 @@ L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
 ## Les jeux (slug → nom)
 - IA : `quintuplees` Les Quintuplées (v12.4), `jdr` Table de Légendes (jusqu'à 8 joueurs, MJ IA ou joueur)
-  - `jdr/campagne.js` : campagnes du MJ (cartes + calque d'objets, PNJ avec ressenti par héros et souvenirs, lore, créatures, rencontres, notes), écran « 📚 Mes campagnes », assistant IA du MJ. Tout reste dans le localStorage du MJ (`jdr_camps`) ; export/import JSON. Règle : rien de la campagne n'entre dans `G` (diffusé à tous) sauf une carte affichée, via `pubObjets` (sans objets cachés ni notes secrètes).
+  - `jdr/campagne.js` : campagnes du MJ (cartes + calque d'objets, PNJ avec ressenti par héros et souvenirs, lore, créatures, rencontres, notes), écran « 📚 Mes campagnes », assistant IA du MJ. Tout reste dans le localStorage du MJ (`jdr_camps`) ; export/import JSON. Règle : rien de la campagne n'entre dans `G` (diffusé à tous) sauf une carte affichée, via `pubObjets` (sans objets cachés ni notes secrètes), et la carte du monde montrée, via `Monde.pub` (sans lieux cachés, notes secrètes ni liens).
+  - `jdr/monde.js` : carte du monde de la campagne (`C.monde`), sans quadrillage, en SVG vectoriel : fond selon l'univers, terrains peints au pinceau (taches `[x,y,r,terrain]` fusionnées par un filtre), lieux, décor, routes, noms de régions, 🚩 position du groupe. Onglet « 🌍 Monde » du MJ ; les joueurs la voient avec le bouton « 🌍 Carte du monde » (`G.monde`). Chargé avant campagne.js.
 - Défis du jour (séries, pastille « x / 12 ») : `wordle` Mot du jour, `loldle`, `anidle`, `onepiecedle`, `pokedle`, `electrodle` Électrodle (appareils de la maison), `paysdle`, `connexions`, `motscroises`, `motsfleches`, `sudoku`, `shikaku`
 - Soirée en ligne (soiree.js, en ligne seulement, 3 à 12) : `quiaditca` Qui a dit ça ?, `emojis` Traduction Emoji, `cadran` Le Cadran (demi-roue de 10 crans entre deux mots, dès 2 joueurs)
 - Party / en ligne : `dessin`, `telephone`, `quiz` (Culture G, manches spéciales), `blindtest`, `imposteur`, `categorie`, `encheres`, `freestyle` (prod de rap synthétisée, boule sur 4 temps, rimes ; salle en ligne synchronisée sur l'horloge de l'hôte, lignes à se répartir)
@@ -74,10 +75,9 @@ Tests réels à faire (seulement testé avec un relais simulé) :
 - Freestyle : juge au micro (reconnaissance vocale) et rendu des prods à l'oreille.
 - Glisser-déposer de l'admin au doigt.
 - Qui a dit ça ?, Traduction Emoji, Le Cadran : testés avec le vrai relais mais dans 3 onglets du même navigateur ; reste une vraie soirée sur plusieurs appareils.
-- Table de Légendes : assistant IA, PNJ qui parlent, souvenirs des PNJ avec une vraie clé (testés seulement avec des réponses simulées) ; éditeur de carte au doigt.
+- Table de Légendes : assistant IA, PNJ qui parlent, souvenirs des PNJ avec une vraie clé (testés seulement avec des réponses simulées) ; éditeur de carte et carte du monde au doigt sur un vrai téléphone.
 
 Décisions en attente :
-- Table de Légendes : lever la restriction « jeu IA » maintenant qu'un joueur peut être MJ ?
 - GéoGamer : fournir des captures ou le laisser caché.
 - Blind Test : écrire à ZoneSons, ou monter ma propre base de répliques (YouTube + Firebase).
 - Bataille Laser : ajouter la variante où l'on prédit la sortie du laser ?
