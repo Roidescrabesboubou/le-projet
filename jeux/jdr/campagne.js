@@ -15,7 +15,7 @@ const Camp = (() => {
   const ecrireCle = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } };
   let camps = lire(CLE, null), v = 0;
 
-  const vide = (nom, u) => ({id: nid(), nom: nom || "Ma campagne", u: JDR.UNIV[u] ? u : "fantasy", cartes: {}, monstres: [], pnj: [], lore: [], rencontres: [], notes: "", monde: Monde.reparer(null), maj: Date.now()});
+  const vide = (nom, u) => ({id: nid(), nom: nom || "Ma campagne", u: JDR.UNIV[u] ? u : "fantasy", cartes: {}, monstres: [], pnj: [], lore: [], rencontres: [], notes: "", monde: Monde.reparer(null), mondes: {}, maj: Date.now()});
   function reparer(c){
     if(!c || typeof c !== "object") return null;
     const r = vide(String(c.nom || "Campagne").slice(0, 40), c.u);
@@ -35,6 +35,7 @@ const Camp = (() => {
     r.rencontres = r.rencontres.filter(x => Array.isArray(x.liste));
     r.notes = String(c.notes || "");
     r.monde = Monde.reparer(c.monde);
+    for(const [k, m] of Object.entries(c.mondes && typeof c.mondes === "object" ? c.mondes : {}).slice(0, 30)) r.mondes[String(k).slice(0, 12)] = Monde.reparer(m);
     r.maj = +c.maj || Date.now();
     return r;
   }
@@ -181,6 +182,7 @@ function contexteMJ(jeu){
     const ici = W.l.find(x => x.id === W.ici);
     t += `CARTE DU MONDE${W.nom ? " (" + W.nom + ")" : ""} : ` + W.l.filter(x => x.n).map(x => `${x.n}${x.c ? " (pas encore découvert)" : ""}${x.t ? " : " + x.t.slice(0, 110) : ""}${x.s ? " [secret : " + x.s.slice(0, 110) + "]" : ""}`).join(" ; ").slice(0, 1500) + "\n";
     if(ici) t += `Le groupe se trouve à : ${ici.n}\n`;
+    for(const s of Object.values(C.mondes || {})){ const l = s.l.filter(x => x.n); if(l.length) t += `Carte de ${s.nom || "lieu"} : ${l.map(x => x.n + (x.c ? " (caché)" : "") + (x.s ? " [secret : " + x.s.slice(0, 80) + "]" : "")).join(", ").slice(0, 500)}\n`; }
   }
   if(C.notes.trim()) t += "NOTES DU MJ : " + C.notes.trim().slice(0, 700) + "\n";
   if(recent) t += "DERNIERS ÉVÉNEMENTS :\n" + recent + "\n";

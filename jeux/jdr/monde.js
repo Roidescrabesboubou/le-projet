@@ -10,7 +10,7 @@
    Doit être chargé avant campagne.js (qui répare C.monde au chargement).
    ============================================================ */
 const Monde = (() => {
-  const LARG = 1000, HAUT = 625, MAX = {z: 900, l: 60, d: 200, r: 120};
+  const LARG = 1000, HAUT = 625, MAX = {z: 2000, l: 80, d: 300, r: 150, sous: 30};
   const TERRAINS = {
     profond: {n: "Mer profonde", c: "#3d6fa6"},
     eau: {n: "Eau", c: "#5d9fd6"},
@@ -28,16 +28,36 @@ const Monde = (() => {
     neon: {n: "Néon", c: "#ff3ea5"},
     nebuleuse: {n: "Nébuleuse", c: "#9b5de5", flou: true},
     nebuleuse2: {n: "Nébuleuse bleue", c: "#36b3df", flou: true},
-    asteroides: {n: "Astéroïdes", c: "#7c7066", m: "🪨"}
+    asteroides: {n: "Astéroïdes", c: "#7c7066", m: "🪨"},
+    pave: {n: "Pavés", c: "#bdb4a3"},
+    batiments: {n: "Bâtiments", c: "#a86b4a", m: "🏠"},
+    muraille: {n: "Muraille", c: "#5d554e"},
+    jardin: {n: "Jardins", c: "#7dbd5c", m: "🌳"},
+    champ: {n: "Champs", c: "#d9c25e", m: "🌾"},
+    fleurs: {n: "Fleurs", c: "#efb4c8", m: "🌸"},
+    sable: {n: "Plage", c: "#f1e0a2"},
+    recif: {n: "Récif", c: "#3db8ae"},
+    glace: {n: "Glace", c: "#cdeaf6"},
+    roche: {n: "Roche", c: "#6f6a65"},
+    toundra: {n: "Toundra", c: "#b7c3a6"},
+    savane: {n: "Savane", c: "#cbb56c"},
+    canyon: {n: "Canyon", c: "#b8663b"},
+    cristal: {n: "Cristaux", c: "#9fd6ff", m: "💎"},
+    corruption: {n: "Terre maudite", c: "#4d2b5e"},
+    brume: {n: "Brume", c: "#d3d9e0", flou: true},
+    soleil: {n: "Lumière", c: "#ffcf3a", flou: true},
+    metal: {n: "Station", c: "#98a3b1"},
+    toits: {n: "Toits", c: "#3f4452"},
+    neon2: {n: "Néon bleu", c: "#2fe0ff"}
   };
   const TERR_U = {
-    fantasy: "terre herbe foret montagne eau profond desert neige marais lave ruines",
-    scifi: "nebuleuse nebuleuse2 asteroides terre desert neige lave eau herbe",
-    postapo: "desert terre ruines marais eau herbe montagne lave",
-    horreur: "terre herbe foret marais eau profond montagne neige ruines",
-    cyberpunk: "beton neon eau profond terre herbe ruines",
-    pirates: "terre herbe jungle foret montagne eau profond desert marais lave",
-    japon: "terre herbe foret montagne eau profond neige marais"
+    fantasy: "terre herbe foret montagne eau profond sable desert neige marais lave champ roche ruines pave batiments muraille jardin cristal corruption brume",
+    scifi: "nebuleuse nebuleuse2 soleil asteroides metal terre desert glace lave eau herbe roche cristal canyon brume",
+    postapo: "desert terre ruines canyon marais eau herbe savane montagne roche lave corruption pave batiments brume",
+    horreur: "terre herbe foret marais eau profond montagne neige roche ruines corruption brume pave batiments muraille champ",
+    cyberpunk: "beton toits neon neon2 metal pave eau profond terre herbe jardin ruines brume",
+    pirates: "terre sable herbe jungle foret montagne eau profond recif desert marais lave roche pave batiments brume",
+    japon: "terre herbe foret fleurs montagne eau profond sable neige marais champ roche pave batiments jardin brume"
   };
   const FONDS = {
     parchemin: {n: "📜 Parchemin", c: "#efdfb8", clair: true},
@@ -47,8 +67,11 @@ const Monde = (() => {
     nuit: {n: "🌑 Nuit", c: "#272b37"},
     neon: {n: "🌃 Ville la nuit", c: "#130f24", grille: true},
     washi: {n: "🎴 Papier japonais", c: "#f4ead4", clair: true},
-    neige: {n: "❄️ Toundra", c: "#e6edf3", clair: true}
+    neige: {n: "❄️ Toundra", c: "#e6edf3", clair: true},
+    ville: {n: "🧱 Pavés", c: "#cfc6b4", clair: true},
+    prairie: {n: "🌿 Prairie", c: "#a9c98a", clair: true}
   };
+  const BATIMENTS = "🍺 🏪 ⚒️ 🛏️ 📚 ⛓️ ⚜️ 🚪 🏛️ ⛲ 🏠 🏥 💰 🎭 🗡️ 🧪 🔮 ⚓";
   const FOND_U = {fantasy: "parchemin", scifi: "espace", postapo: "desert", horreur: "nuit", cyberpunk: "neon", pirates: "ocean", japon: "washi"};
   const LIEUX_U = {
     fantasy: "🏰 🏘️ 🏠 🛖 ⛪ 🗼 🏛️ ⛺ 🕳️ 🌋 🏔️ 🌲 🏝️ ⚓ 🌉 ⛲ 🗿 🪦 💀 🐉 ⚔️ ✨",
@@ -73,7 +96,7 @@ const Monde = (() => {
   /* Remet une carte du monde en état (au chargement, à l'import, et côté hôte) */
   function reparer(m){
     m = m && typeof m === "object" ? m : {};
-    const r = {nom: s(m.nom, 40), f: FONDS[m.f] ? m.f : "", z: [], l: [], d: [], r: [], ici: ""};
+    const r = {nom: s(m.nom, 40), f: FONDS[m.f] ? m.f : "", p: s(m.p, 12), z: [], l: [], d: [], r: [], ici: ""};
     for(const z of tab(m.z)){
       if(Array.isArray(z) && TERRAINS[z[3]]) r.z.push([num(z[0], 0, LARG), num(z[1], 0, HAUT), num(z[2], 4, 120), z[3]]);
       if(r.z.length >= MAX.z) break;
@@ -82,7 +105,7 @@ const Monde = (() => {
     for(const x of tab(m.l)){
       if(!x || typeof x !== "object" || !(x.e || x.n)) continue;
       let id = s(x.id, 12) || nid(); if(ids.has(id)) id = nid(); ids.add(id);
-      r.l.push({id, x: num(x.x, 0, LARG), y: num(x.y, 0, HAUT), e: s(x.e, 12), n: s(x.n, 40), g: num(x.g, 1, 3), t: s(x.t, 300), s: s(x.s, 400), c: !!x.c, k: s(x.k, 50), lo: s(x.lo, 12)});
+      r.l.push({id, x: num(x.x, 0, LARG), y: num(x.y, 0, HAUT), e: s(x.e, 12), n: s(x.n, 40), g: num(x.g, 1, 3), t: s(x.t, 300), s: s(x.s, 400), c: !!x.c, k: s(x.k, 50), lo: s(x.lo, 12), sm: s(x.sm, 12)});
       if(r.l.length >= MAX.l) break;
     }
     for(const d of tab(m.d)){
@@ -101,13 +124,36 @@ const Monde = (() => {
     return r;
   }
   /* Version « joueurs » : sans lieux cachés, notes secrètes, liens de cartes ni lore */
-  function pub(m){
+  function pub1(m){
     const r = reparer(m);
-    r.l = r.l.filter(x => !x.c).map(x => ({id: x.id, x: x.x, y: x.y, e: x.e, n: x.n, g: x.g, t: x.t}));
+    delete r.p;
+    r.l = r.l.filter(x => !x.c).map(x => ({id: x.id, x: x.x, y: x.y, e: x.e, n: x.n, g: x.g, t: x.t, sm: x.sm}));
     const ids = new Set(r.l.map(x => x.id));
     r.r = r.r.filter(x => ids.has(x[0]) && ids.has(x[1]));
     if(!ids.has(r.ici)) r.ici = "";
     return r;
+  }
+  /* Carte du monde + cartes des lieux visibles (table = cartes de lieux du MJ, ou m.sous chez l'hôte) */
+  function pub(m, table, maxOctets){
+    const r = pub1(m), T = table && typeof table === "object" ? table : (m && m.sous && typeof m.sous === "object" ? m.sous : {});
+    const sous = {}, file = r.l.map(x => x.sm).filter(Boolean);
+    while(file.length && Object.keys(sous).length < MAX.sous){
+      const id = file.shift();
+      if(sous[id] || !T[id] || typeof T[id] !== "object") continue;
+      sous[id] = pub1(T[id]);
+      sous[id].l.forEach(x => { if(x.sm) file.push(x.sm); });
+    }
+    r.sous = sous;
+    const liens = () => [r, ...Object.values(sous)].forEach(c => c.l.forEach(x => { if(!x.sm || !sous[x.sm]) delete x.sm; }));
+    liens();
+    if(maxOctets){ const ids = Object.keys(sous); while(ids.length && JSON.stringify(r).length > maxOctets) delete sous[ids.pop()]; liens(); }
+    return r;
+  }
+  /* Une carte et toutes celles qu'on atteint par ses lieux (pour supprimer en cascade) */
+  function descendants(id, table){
+    const vus = new Set(), file = [id];
+    while(file.length){ const k = file.shift(); if(vus.has(k) || !table[k]) continue; vus.add(k); table[k].l.forEach(x => { if(x.sm) file.push(x.sm); }); }
+    return [...vus];
   }
   const vide = m => !m || (!m.z.length && !m.l.length && !m.d.length);
   const fondDe = (m, u) => FONDS[m.f] ? m.f : (FOND_U[u] || "parchemin");
@@ -180,6 +226,7 @@ const Monde = (() => {
       if(x.c) h += `<circle cx="${x.x}" cy="${x.y}" r="${Math.round(sz * 0.72)}" fill="none" stroke="${encre}" stroke-width="1.5" stroke-dasharray="4 4"/>`;
       h += `<circle cx="${x.x}" cy="${x.y}" r="${Math.round(sz * 0.62)}" fill="transparent"/>`;
       h += `<text x="${x.x}" y="${x.y}" font-size="${sz}" text-anchor="middle" dominant-baseline="central">${e(x.e)}</text>`;
+      if(x.sm){ const bx = Math.round(x.x - sz * 0.55), by = Math.round(x.y - sz * 0.5), fs = Math.max(12, Math.round(sz * 0.36)); h += `<circle cx="${bx}" cy="${by}" r="${Math.round(fs * 0.72)}" fill="#fffaf0" stroke="#e8442e" stroke-width="2"/><text x="${bx}" y="${by}" font-size="${fs}" text-anchor="middle" dominant-baseline="central">🔍</text>`; }
       if(x.n) h += lab(x.x, Math.round(x.y + sz * 0.62 + [11, 13, 16][g - 1]), x.n, [12, 14, 17][g - 1]);
       h += `</g>`;
       if(o.sel === x.id || o.routeA === x.id) h += `<circle cx="${x.x}" cy="${x.y}" r="${Math.round(sz * 0.8)}" fill="none" stroke="${o.routeA === x.id ? "#2d7be0" : "#e8442e"}" stroke-width="3" stroke-dasharray="7 5"/>`;
@@ -195,29 +242,43 @@ const Monde = (() => {
   /* ---------- Vue des joueurs ---------- */
   function voir(m, u){
     if(!m) return;
-    const box = document.createElement("div");
-    box.innerHTML = `<div class="monde">${svg(m, {u})}</div><div class="encart" id="wvInfo">Touche un lieu pour lire ce que vous en savez.</div>`;
-    const d = Base.fenetre("🌍 " + (m.nom || "Carte du monde"), box, {bouton: "Fermer"});
+    const box = document.createElement("div"), sous = m.sous || {}, pile = [];
+    let cur = m, d = null;
+    function aff(){
+      box.innerHTML = (pile.length ? `<div class="ligne" style="margin-bottom:6px"><button class="mini" id="wvRet">⬅ ${e(pile[pile.length - 1].nom || "Carte du monde")}</button></div>` : "") +
+        `<div class="monde">${svg(cur, {u})}</div><div class="encart" id="wvInfo">Touche un lieu pour lire ce que vous en savez${Object.keys(sous).length ? " (🔍 = on peut y entrer)" : ""}.</div>`;
+      if(d) d.querySelector("h2").textContent = (pile.length ? "🔍 " : "🌍 ") + (cur.nom || "Carte du monde");
+      const r = box.querySelector("#wvRet"); if(r) r.onclick = () => { cur = pile.pop(); aff(); };
+      box.querySelector("svg").addEventListener("click", ev => {
+        const g = ev.target.closest("[data-l]"), x = g && cur.l.find(l => l.id === g.dataset.l);
+        if(!x) return;
+        const info = box.querySelector("#wvInfo"), dedans = x.sm && sous[x.sm];
+        info.innerHTML = `<b>${e(x.e)} ${e(x.n || "")}</b>${cur.ici === x.id ? " · 🚩 vous êtes ici" : ""}<br>${x.t ? e(x.t) : `<span class="muted">On n'en sait pas plus.</span>`}${dedans ? `<div style="margin-top:6px"><button class="mini" id="wvIn">🔍 Entrer : ${e(dedans.nom || x.n || "carte du lieu")}</button></div>` : ""}`;
+        if(dedans) info.querySelector("#wvIn").onclick = () => { pile.push(cur); cur = dedans; aff(); };
+      });
+    }
+    aff();
+    d = Base.fenetre("🌍 " + (m.nom || "Carte du monde"), box, {bouton: "Fermer"});
     d.style.width = "min(1000px,96vw)";
-    box.querySelector("svg").addEventListener("click", ev => {
-      const g = ev.target.closest("[data-l]"), x = g && m.l.find(l => l.id === g.dataset.l);
-      if(x) box.querySelector("#wvInfo").innerHTML = `<b>${e(x.e)} ${e(x.n || "")}</b>${m.ici === x.id ? " · 🚩 vous êtes ici" : ""}<br>${x.t ? e(x.t) : `<span class="muted">On n'en sait pas plus.</span>`}`;
-    });
   }
 
   /* ---------- Côté MJ : contexte ---------- */
   const univ = () => ctxMJ === "prep" ? camp().u : ctxMJ === true ? (L && L.cfg.u) : (G && G.u);
   const enPartie = () => ctxMJ === false && !!G && enJeu;
-  function montrer(M, quoi){
+  /* Envoie toujours tout l'arbre (monde + cartes des lieux visibles), en restant léger pour le relais */
+  function montrer(quoi){
     if(!enPartie()) return;
-    mj({t: "monde", m: pub(M), quoi: quoi || ""});
+    const C = camp(), p = pub(C.monde, C.mondes, 200000), n = C.monde.l.filter(x => x.sm && !x.c).length;
+    mj({t: "monde", m: p, quoi: quoi || ""});
+    if(Object.keys(p.sous).length < Object.keys(pub(C.monde, C.mondes).sous).length) Base.toast("⚠️ Trop lourd : certaines cartes de lieux n'ont pas été envoyées.", 5000);
+    return n;
   }
   function placerGroupe(M, id){
     const x = M.l.find(l => l.id === id); if(!x) return;
     M.ici = id; Camp.sauver();
     if(enPartie() && G.monde){
       if(x.c && confirm(`« ${x.n || "Ce lieu"} » est caché aux joueurs. Le révéler maintenant ?`)){ x.c = false; Camp.sauver(); }
-      if(!x.c) montrer(M, "ici");
+      if(!x.c) montrer("ici");
     }
   }
   function afficherCarteLiee(x){
@@ -236,7 +297,9 @@ const Monde = (() => {
       <div class="ligne" style="margin-top:8px"><button class="btn petit" data-wo="ouvrir">✏️ Modifier la carte du monde</button>${jeu ? `<button class="mini" data-wo="montrer">📢 ${G.monde ? "Mettre à jour chez les joueurs" : "Montrer aux joueurs"}</button>${G.monde ? `<button class="mini" data-wo="retirer">🙈 Ne plus la montrer</button>` : ""}` : ""}</div>`;
     if(jeu && !G.monde) h += `<p class="muted" style="font-size:.8rem">Les joueurs ne la voient pas tant que tu ne la montres pas. Les lieux cachés (🙈) et tes notes secrètes restent pour toi.</p>`;
     const lieux = M.l.filter(x => x.e && x.n);
-    if(lieux.length) h += `<div class="sous">Lieux <span style="font-weight:600">(🚩 = le groupe est ici)</span></div>` + lieux.map(x => `<div class="mjl"><span class="n">${M.ici === x.id ? "🚩 " : ""}${e(x.e)} <b>${e(x.n)}</b>${x.c ? ` <span class="muted">🙈 caché</span>` : ""}${x.k ? ` <span class="muted">· 🗺️ ${e(x.k)}</span>` : ""}</span><button class="mini" data-wici="${e(x.id)}" ${M.ici === x.id ? "disabled" : ""} title="Le groupe est ici">🚩</button>${jeu && x.k && C.cartes[x.k] ? `<button class="mini" data-wcarte="${e(x.id)}" ${G.combat || G.carte === x.k ? "disabled" : ""}>👁️ Sa carte</button>` : ""}${x.lo && C.lore.some(l => l.id === x.lo) ? `<button class="mini" data-wlore="${e(x.lo)}" title="Lore">📚</button>` : ""}</div>`).join("");
+    if(lieux.length) h += `<div class="sous">Lieux <span style="font-weight:600">(🚩 = le groupe est ici)</span></div>` + lieux.map(x => `<div class="mjl"><span class="n">${M.ici === x.id ? "🚩 " : ""}${e(x.e)} <b>${e(x.n)}</b>${x.c ? ` <span class="muted">🙈 caché</span>` : ""}${x.k ? ` <span class="muted">· 🗺️ ${e(x.k)}</span>` : ""}</span><button class="mini" data-wici="${e(x.id)}" ${M.ici === x.id ? "disabled" : ""} title="Le groupe est ici">🚩</button>${jeu && x.k && C.cartes[x.k] ? `<button class="mini" data-wcarte="${e(x.id)}" ${G.combat || G.carte === x.k ? "disabled" : ""}>👁️ Sa carte</button>` : ""}${x.lo && C.lore.some(l => l.id === x.lo) ? `<button class="mini" data-wlore="${e(x.lo)}" title="Lore">📚</button>` : ""}${x.sm && C.mondes[x.sm] ? `<button class="mini" data-wsous="${e(x.sm)}" title="Carte du lieu">🔍</button>` : ""}</div>`).join("");
+    const nS = Object.keys(C.mondes).length;
+    if(nS) h += `<p class="muted" style="font-size:.8rem">🔍 ${nS} carte${nS > 1 ? "s" : ""} de lieu (ville, quartier, île…) : ouvre un lieu dans l'éditeur pour y entrer.</p>`;
     return h;
   }
   function lier(box, jeu){
@@ -244,23 +307,29 @@ const Monde = (() => {
     q("[data-wo]").forEach(b => b.onclick = () => {
       const a = b.dataset.wo;
       if(a === "ouvrir") editeur();
-      else if(a === "montrer"){ if(vide(M)) return; const deja = !!G.monde; montrer(M, deja ? "maj" : "voir"); Base.toast(deja ? "Carte du monde mise à jour chez les joueurs 🌍" : "Carte du monde montrée aux joueurs 🌍"); }
+      else if(a === "montrer"){ if(vide(M)) return; const deja = !!G.monde; montrer(deja ? "maj" : "voir"); Base.toast(deja ? "Carte du monde mise à jour chez les joueurs 🌍" : "Carte du monde montrée aux joueurs 🌍"); }
       else if(a === "retirer") mj({t: "monde", m: null});
     });
     q("[data-wici]").forEach(b => b.onclick = () => { placerGroupe(M, b.dataset.wici); reCamp(); });
     q("[data-wcarte]").forEach(b => b.onclick = () => afficherCarteLiee(M.l.find(x => x.id === b.dataset.wcarte)));
+    q("[data-wsous]").forEach(b => b.onclick = () => editeur(b.dataset.wsous));
     q("[data-wlore]").forEach(b => b.onclick = () => { MJ.loreSel = b.dataset.wlore; MJ.onglet = "lore"; reCamp(); });
   }
 
   /* ---------- Éditeur ---------- */
-  function editeur(){
-    const C = camp(), M = C.monde, u = univ() || C.u, jeu = enPartie();
+  const q0 = (b, s) => b.querySelector(s);
+  /* idCarte : vide = carte du monde, sinon une carte de lieu (C.mondes[id]) */
+  function editeur(idCarte){
+    const C = camp(), M = idCarte ? C.mondes[idCarte] : C.monde, u = univ() || C.u, jeu = enPartie();
+    if(!M){ Base.toast("Cette carte n'existe plus."); return; }
+    const parent = idCarte ? (M.p && C.mondes[M.p] ? M.p : "") : null;
+    const nomParent = parent ? (C.mondes[parent].nom || "Carte du lieu") : (C.monde.nom || "Carte du monde");
     const terrU = (TERR_U[u] || TERR_U.fantasy).split(" "), terr = [...new Set([...terrU, ...Object.keys(TERRAINS)])];
     const lieuxE = (LIEUX_U[u] || LIEUX_U.fantasy).split(" "), decoE = [...new Set([...DECO.split(" "), ...(DECO_U[u] || "").split(" ").filter(Boolean)])];
     const E = {mode: "terrain", tous: false, ter: terr[0], taille: 26, emo: lieuxE[0], deco: decoE[0], dg: 2, rt: 0, sel: null, routeA: null, vb: {x: 0, y: 0, w: LARG}, hist: [], snapSel: null};
     const box = document.createElement("div");
-    box.innerHTML = `
-      <div class="ligne"><input class="champ" id="wNom" maxlength="40" placeholder="Nom du monde (ex. : Royaumes d'Aldoria)" value="${e(M.nom)}" style="flex:1;min-width:170px">
+    box.innerHTML = `${idCarte ? `<div class="ligne" style="margin-bottom:8px"><button class="mini" id="wRet">⬅ ${e(nomParent)}</button><span class="muted" style="font-size:.8rem">Carte d'un lieu, rangée dans la campagne</span></div>` : ""}
+      <div class="ligne"><input class="champ" id="wNom" maxlength="40" placeholder="${idCarte ? "Nom de la carte (ex. : Valcourt, la capitale)" : "Nom du monde (ex. : Royaumes d'Aldoria)"}" value="${e(M.nom)}" style="flex:1;min-width:170px">
         <select class="mini" id="wFond"><option value="">Fond : ${e(FONDS[FOND_U[u] || "parchemin"].n)} (univers)</option>${Object.entries(FONDS).map(([k, F]) => `<option value="${k}" ${M.f === k ? "selected" : ""}>${e(F.n)}</option>`).join("")}</select></div>
       <div class="puces" style="margin-top:8px">${[["terrain", "🖌️ Terrain"], ["lieux", "🏰 Lieux"], ["deco", "🌲 Décor"], ["routes", "🛤️ Routes"], ["gomme", "🧽 Gomme"], ["vue", "🖐️ Déplacer"]].map(([k, t]) => `<button data-wm="${k}" class="${k === E.mode ? "on" : ""}">${t}</button>`).join("")}</div>
       <div id="wOutils" style="margin-top:8px"></div>
@@ -269,7 +338,9 @@ const Monde = (() => {
       <div id="wFiche" class="encart cache"></div>
       <div class="ligne" style="justify-content:flex-end;margin-top:10px">${jeu ? `<button class="btn ghost" id="wMontrer">📢 ${G.monde ? "Mettre à jour chez les joueurs" : "Montrer aux joueurs"}</button>` : ""}<button class="btn" id="wFin">✔️ Terminé</button></div>
       <p class="muted" style="font-size:.78rem">Tout est enregistré au fur et à mesure dans ta campagne. Les lieux cachés (🙈) et les notes secrètes ne sont jamais montrés aux joueurs.</p>`;
-    const dlg = ouvrirPanneau("🌍 Carte du monde", box);
+    const dlg = ouvrirPanneau(idCarte ? "🔍 Carte : " + (M.nom || "lieu") : "🌍 Carte du monde", box);
+    const aller = id => { dlg.close(); editeur(id || null); };
+    if(q0(box, "#wRet")) q0(box, "#wRet").onclick = () => aller(parent);
     if(ctxMJ === true) dlg.style.width = "min(1060px,97vw)";
     if(ctxMJ === "prep") dlg.style.gridColumn = "1 / -1";
     const q = s => box.querySelector(s), sv = q("svg"), fiche = q("#wFiche");
@@ -289,6 +360,7 @@ const Monde = (() => {
       if(E.mode === "terrain") o.innerHTML = `<div class="puces serre">${(E.tous ? terr : terrU.includes(E.ter) ? terrU : [...terrU, E.ter]).map(k => `<button data-wter="${k}" class="${on(k, E.ter)}"><i class="sw" style="background:${TERRAINS[k].c}"></i>${e(TERRAINS[k].n)}</button>`).join("")}<button data-wtous>${E.tous ? "➖ Moins" : "➕ Autres"}</button></div>${tailles}
         <p class="muted" style="font-size:.8rem;margin:6px 0 0">Glisse sur la carte pour peindre. Ce que tu peins en dernier passe par-dessus (de l'eau sur une plaine fait un lac).</p>`;
       else if(E.mode === "lieux") o.innerHTML = `<div class="puces serre">${lieuxE.map(x => `<button data-wemo="${x}" class="${on(x, E.emo)}">${x}</button>`).join("")}<button data-wemo="" class="${on("", E.emo)}">🔤 Nom de région</button></div>
+        <div class="sous" style="margin:6px 0 3px">Bâtiments et quartiers</div><div class="puces serre">${BATIMENTS.split(" ").map(x => `<button data-wemo="${x}" class="${on(x, E.emo)}">${x}</button>`).join("")}</div>
         <div class="ligne" style="margin-top:6px"><span class="muted" style="font-size:.82rem;font-weight:800">Autre emoji :</span><input class="champ" id="wEmo" maxlength="12" placeholder="🦄" style="width:80px;text-align:center;padding:5px"></div>
         <p class="muted" style="font-size:.8rem;margin:6px 0 0">Touche la carte pour poser un lieu. Touche un lieu pour le modifier (nom, description, secret, caché, carte de combat liée…), glisse-le pour le déplacer.</p>`;
       else if(E.mode === "deco") o.innerHTML = `<div class="puces serre">${decoE.map(x => `<button data-wdeco="${x}" class="${on(x, E.deco)}">${x}</button>`).join("")}</div>
@@ -334,6 +406,7 @@ const Monde = (() => {
           <label class="muted" style="font-weight:800">📚 Lore <select class="mini" data-wf="lo"><option value="">— aucun —</option>${lore.map(l => `<option value="${e(l.id)}" ${l.id === x.lo ? "selected" : ""}>${e(l.titre.slice(0, 40))}</option>`).join("")}</select></label></div>
         <div class="ligne" style="margin-top:8px">
           ${x.e ? `<button class="mini" data-wa="ici" ${M.ici === x.id ? "disabled" : ""}>🚩 ${jeu ? "Le groupe est ici" : "Le groupe commence ici"}</button>` : ""}
+          ${x.e ? `<button class="mini" data-wa="sous">${x.sm && C.mondes[x.sm] ? "🔍 Ouvrir la carte de ce lieu" : "➕ Créer la carte de ce lieu"}</button>` : ""}
           ${jeu && x.k && C.cartes[x.k] ? `<button class="mini" data-wa="carte">👁️ Afficher sa carte</button>` : ""}
           ${IA.disponible() ? `<button class="mini" data-wa="ia">✨ Inventer avec l'IA</button>` : ""}
           <button class="mini" data-wa="sup">🗑️ Retirer</button><button class="mini" data-wa="ok">✔️ OK</button></div>`;
@@ -348,7 +421,20 @@ const Monde = (() => {
       fiche.querySelectorAll("[data-wa]").forEach(b => b.onclick = async () => {
         const a = b.dataset.wa;
         if(a === "ok") choisir(null);
+        else if(a === "sous"){
+          if(!x.sm || !C.mondes[x.sm]){
+            if(Object.keys(C.mondes).length >= MAX.sous){ Base.toast(MAX.sous + " cartes de lieux maximum par campagne."); return; }
+            const id = Camp.nid();
+            C.mondes[id] = reparer({nom: x.n || "Lieu", p: idCarte || ""});
+            x.sm = id;
+          }
+          sauver(); aller(x.sm);
+        }
         else if(a === "sup"){
+          if(x.sm && C.mondes[x.sm]){
+            if(!confirm(`« ${x.n || "Ce lieu"} » a sa propre carte. La supprimer définitivement avec le lieu (et les cartes qu'elle contient) ?`)) return;
+            descendants(x.sm, C.mondes).forEach(k => delete C.mondes[k]);
+          }
           instantane();
           M.l = M.l.filter(l => l !== x); M.r = M.r.filter(r => r[0] !== x.id && r[1] !== x.id);
           if(M.ici === x.id) M.ici = "";
@@ -487,7 +573,7 @@ const Monde = (() => {
     q("#wFin").onclick = () => dlg.close();
     if(q("#wMontrer")) q("#wMontrer").onclick = () => {
       if(vide(M)){ Base.toast("La carte est encore vide."); return; }
-      sauver(); const deja = !!G.monde; montrer(M, deja ? "maj" : "voir");
+      sauver(); const deja = !!G.monde; montrer(deja ? "maj" : "voir");
       Base.toast(deja ? "Carte du monde mise à jour chez les joueurs 🌍" : "Carte du monde montrée aux joueurs 🌍");
       q("#wMontrer").textContent = "📢 Mettre à jour chez les joueurs";
     };

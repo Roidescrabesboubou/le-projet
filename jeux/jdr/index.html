@@ -383,7 +383,7 @@ Base.entete({
    <li><b>Jets de dés</b> : quand l'issue est incertaine, le MJ demande un jet (d20 + modificateur contre une difficulté).</li>
    <li><b>Combats</b> sur la carte, au tour par tour : déplace-toi (🦶), attaque (⚔️), utilise ton talent (✨) ou une potion (🧪).</li>
    <li><b>MJ joueur</b> : il a ses outils (récit, jets, éditeur de cartes, créatures, récompenses) et peut jouer lui-même les monstres. Pas besoin de clé IA.</li>
-   <li><b>📚 Campagnes</b> (bouton du menu) : le MJ prépare à l'avance la <b>carte du monde</b> (sans quadrillage : continents, mers, forêts, villes ou planètes peints au pinceau, lieux, routes, noms de régions, lieux cachés tant qu'ils ne sont pas découverts), ses cartes de combat (terrain + objets, PNJ, objets cachés), ses PNJ (caractère, secret, ressenti envers chaque héros, souvenirs), son lore, ses créatures et ses rencontres. En partie, il change de carte quand il veut (hors combat), en prépare une autre pendant que les joueurs jouent, et ses modifications restent dans la campagne. Avec une clé IA : assistant du MJ, PNJ qui parlent et souvenirs mis à jour automatiquement.</li>
+   <li><b>📚 Campagnes</b> (bouton du menu) : le MJ prépare à l'avance la <b>carte du monde</b> (sans quadrillage : continents, mers, forêts, villes ou planètes peints au pinceau, lieux, routes, noms de régions, lieux cachés tant qu'ils ne sont pas découverts, et des cartes de lieux 🔍 imbriquées : la capitale, un quartier, une île…), ses cartes de combat (terrain + objets, PNJ, objets cachés), ses PNJ (caractère, secret, ressenti envers chaque héros, souvenirs), son lore, ses créatures et ses rencontres. En partie, il change de carte quand il veut (hors combat), en prépare une autre pendant que les joueurs jouent, et ses modifications restent dans la campagne. Avec une clé IA : assistant du MJ, PNJ qui parlent et souvenirs mis à jour automatiquement.</li>
    <li>La partie est sauvegardée automatiquement. En ligne, seul l'hôte a besoin d'une clé IA si le MJ est l'IA (⚙️ Réglages).</li>
   </ul>`
 });
@@ -1397,10 +1397,14 @@ function mjAppliquer(c){
       const m = c.m ? Monde.pub(c.m) : null, avant = G.monde;
       G.monde = m && !Monde.vide(m) ? m : null;
       G.mondeV = (G.mondeV || 0) + 1;
-      const ici = G.monde && G.monde.l.find(x => x.id === G.monde.ici);
+      // le groupe a-t-il bougé (sur le monde ou sur la carte d'un lieu) ?
+      const icis = w => { const o = {"": w && w.ici}; if(w) for(const [k, v] of Object.entries(w.sous || {})) o[k] = v.ici; return o; };
+      const ia = icis(avant), ib = icis(G.monde);
+      let ici = null;
+      for(const k in ib){ if(ib[k] && ib[k] !== ia[k]){ const w = k ? G.monde.sous[k] : G.monde; ici = w.l.find(x => x.id === ib[k]) || ici; } }
       if(G.monde && !avant) log("sys", "🌍 Le MJ dévoile la carte du monde : touche « 🌍 Carte du monde » en haut pour la voir.");
       else if(!G.monde && avant) log("sys", "🌍 Le MJ range la carte du monde.");
-      else if(ici && (!avant || avant.ici !== ici.id)) log("sys", `🚩 Le groupe arrive : ${ici.e} ${ici.n}`);
+      else if(ici) log("sys", `🚩 Le groupe arrive : ${ici.e} ${ici.n}`);
       else if(G.monde && c.quoi === "maj") log("sys", "🌍 La carte du monde a été mise à jour.");
       break;
     }
