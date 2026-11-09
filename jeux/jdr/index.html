@@ -1396,6 +1396,7 @@ function mjAppliquer(c){
     case "monde": {
       const m = c.m ? Monde.pub(c.m) : null, avant = G.monde;
       G.monde = m && !Monde.vide(m) ? m : null;
+      G.mondeV = (G.mondeV || 0) + 1;
       const ici = G.monde && G.monde.l.find(x => x.id === G.monde.ici);
       if(G.monde && !avant) log("sys", "🌍 Le MJ dévoile la carte du monde : touche « 🌍 Carte du monde » en haut pour la voir.");
       else if(!G.monde && avant) log("sys", "🌍 Le MJ range la carte du monde.");
@@ -1522,6 +1523,10 @@ $("bContinuer").onclick = () => {
 
 /* ---------- Synchronisation / sauvegarde ---------- */
 let tDiff = null, tSave = null, tLob = null;
+/* La carte du monde part à part (elle peut être lourde) : seulement quand elle change ou qu'on la demande */
+let mondeEnvoye = "", mondeInv = {v: "", m: null};
+const versionMonde = g => g ? g.id + ":" + (g.mondeV || 0) : "";
+function envoyerMonde(){ if(!salle || !salle.hote || !G) return; mondeEnvoye = versionMonde(G); salle.envoyer({t: "monde", v: mondeEnvoye, m: G.monde}); }
 function sync(){
   if(!G) return;
   G.seq = (G.seq || 0) + 1;
@@ -1537,7 +1542,10 @@ function sauver(){
 const pubHero = h => ({id: h.id, u: h.u, nom: h.nom, emo: h.emo, cls: h.cls, ori: h.ori, niv: h.niv, xp: h.xp, st: h.st, bg: h.bg || "", owner: h.owner, pseudo: h.pseudo, pret: !!h.pret, ancien: !!h.ancien, coul: h.coul});
 function diffuser(){
   if(!salle || !salle.hote) return;
-  if(G && enJeu){ const {histo, attente, ...pub} = G; pub.log = G.log.slice(-80); salle.envoyer({t: "etat", G: pub}); }
+  if(G && enJeu){
+    if(versionMonde(G) !== mondeEnvoye) envoyerMonde();
+    const {histo, attente, monde, ...pub} = G; pub.log = G.log.slice(-80); salle.envoyer({t: "etat", G: pub});
+  }
   else if(L) salle.envoyer({t: "lobby", cfg: L.cfg, reprise: !!L.reprise, heros: L.heros.map(pubHero)});
 }
 const diffuserBientot = () => { clearTimeout(tLob); tLob = setTimeout(diffuser, 250); };
@@ -1602,7 +1610,8 @@ function ajouterHeroEnJeu(hh, j){
   sync();
 }
 function recuHote(m, j){
-  if(m.t === "etat?"){ diffuser(); return; }
+  if(m.t === "etat?"){ mondeEnvoye = ""; diffuser(); return; }
+  if(m.t === "monde?"){ if(G && enJeu) envoyerMonde(); return; }
   if(m.t === "brouillon"){ if(!enJeu) majBrouillon(m.h || {}, j); return; }
   if(m.t === "hero"){ if(G && enJeu) ajouterHeroEnJeu(m.h, j); return; }
   if(!G || !enJeu) return;
@@ -1650,10 +1659,18 @@ function recuInvite(m){
     if(ecranActuel === "eLobby") rendreLobby();
     return;
   }
+  if(m.t === "monde"){
+    mondeInv = {v: String(m.v || ""), m: m.m ? Monde.pub(m.m) : null};
+    if(G && versionMonde(G) === mondeInv.v){ G.monde = mondeInv.m; if(ecranActuel === "eJeu") rendre(); }
+    return;
+  }
   if(m.t === "etat" && m.G){
     const nouvelle = !G || G.id !== m.G.id;
     if(!nouvelle && m.G.seq <= G.seq) return;
     G = completerG(m.G); G.histo = [];
+    const vm = versionMonde(G);
+    if(mondeInv.v === vm) G.monde = mondeInv.m;
+    else if(G.mondeV && (mondeInv.demande !== vm || Date.now() - mondeInv.quand > 4000)){ mondeInv.demande = vm; mondeInv.quand = Date.now(); salle.envoyer({t: "monde?"}); }
     if(nouvelle){ animVue = G.anim ? G.anim.n : 0; MJ.vuCombat = false; }
     enJeu = true;
     G.heros.filter(h => h.owner === salle.moi).forEach(sauverHeros);
