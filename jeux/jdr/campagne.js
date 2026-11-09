@@ -402,7 +402,7 @@ function actionCamp(a, jeu, box){
         const libre = Object.keys(dist).filter(c => !pris.has(c) && dist[c] >= 2 && !occupe(...c.split(",").map(Number))).sort((a, b) => dist[a] - dist[b])[0];
         if(!libre){ Base.toast("Pas de place libre sur la carte."); return; }
         const [x, y] = libre.split(",").map(Number);
-        k.o.push({id: Camp.nid(), x, y, e: p.emo, n: p.nom, t: p.role || "", b: true, p: p.id});
+        k.o.push({id: Camp.nid(), x, y, e: p.emo, n: p.nom, t: (p.apparence || "").slice(0, 200), b: true, p: p.id});
         Base.toast("📍 Déplace-le avec 🖐️ (onglet 🗺️ Cartes).");
       });
       reCamp(); return;
@@ -430,7 +430,7 @@ function editeurPnj(id){
   const box = Base.el("div");
   const champ = (k, t, ph, n) => `<label class="etiquette" style="margin-top:8px">${t}</label><textarea class="champ" data-k="${k}" rows="${n || 2}" maxlength="300" placeholder="${esc(ph)}">${esc(p0[k] || "")}</textarea>`;
   box.innerHTML = `
-    <div class="ligne"><input class="champ" data-k="nom" maxlength="30" placeholder="Nom (ex. : Maître Aldric)" value="${esc(p0.nom)}" style="flex:1;min-width:150px"><input class="champ" data-k="emo" maxlength="8" value="${esc(p0.emo)}" style="width:64px;text-align:center;font-size:1.3rem"></div>
+    <div class="ligne"><input class="champ" data-k="nom" maxlength="30" placeholder="Nom (vu par les joueurs si tu le poses sur la carte)" value="${esc(p0.nom)}" style="flex:1;min-width:150px"><input class="champ" data-k="emo" maxlength="8" value="${esc(p0.emo)}" style="width:64px;text-align:center;font-size:1.3rem"></div>
     <div class="puces" style="margin-top:6px">${EMOS_PNJ.map(e => `<button data-emo="${e}">${e}</button>`).join("")}</div>
     <input class="champ" data-k="role" maxlength="50" placeholder="Rôle (ex. : forgeron du village, chef des bandits)" value="${esc(p0.role || "")}" style="margin-top:8px">
     ${champ("apparence", "👁️ Apparence <span class=\"muted\">(ce que voient les joueurs)</span>", "Grand, barbe grise tressée, un œil de verre…")}
@@ -456,7 +456,7 @@ function editeurPnj(id){
     p0.nom = p0.nom.slice(0, 30); p0.emo = p0.emo.slice(0, 8) || "🧑";
     if(!C.pnj.includes(p0)) C.pnj.push(p0);
     // le jeton sur les cartes suit le nom et l'emoji
-    for(const k of Object.values(C.cartes)) k.o.forEach(o => { if(o.p === p0.id){ o.e = p0.emo; o.n = p0.nom; } });
+    for(const k of Object.values(C.cartes)) k.o.forEach(o => { if(o.p === p0.id){ o.e = p0.emo; o.n = p0.nom; o.t = (p0.apparence || "").slice(0, 200); } });
     Camp.sauver(); MJ.pnjSel = p0.id;
     if(G && enJeu && G.carte && (G.objets[G.carte] || []).some(o => o.p === p0.id)) majCarteCamp(G.carte, () => {});
     Base.toast("Fiche enregistrée 🧑"); dlg.close();

@@ -747,7 +747,7 @@ function caseLibreProche(x0, y0, sauf){
 function placerHeros(){
   const l = carteL(); if(!l) return;
   const P = [];
-  l.forEach((r, y) => [...r].forEach((c, x) => { if(c === "P") P.push([x, y]); }));
+  l.forEach((r, y) => [...r].forEach((c, x) => { if(c === "P" && marchable(x, y)) P.push([x, y]); }));
   const depart = P[0] || caseLibreProche(1, 1) || [1, 1];
   G.heros.forEach(h => { h.x = -1; h.y = -1; });
   G.heros.forEach((h, i) => {
@@ -1106,7 +1106,7 @@ function creerMonstres(liste, ia){
 function placerMonstres(ms){
   const l = carteL(); if(!l) return;
   const M = [], libres = [];
-  l.forEach((r, y) => [...r].forEach((c, x) => { if(c === "M") M.push([x, y]); else if(marchable(x, y)) libres.push([x, y]); }));
+  l.forEach((r, y) => [...r].forEach((c, x) => { if(!marchable(x, y)) return; if(c === "M") M.push([x, y]); else libres.push([x, y]); }));
   const hs = G.heros.filter(h => h.x >= 0);
   const loin = p => hs.length ? Math.min(...hs.map(h => Math.max(Math.abs(h.x - p[0]), Math.abs(h.y - p[1])))) : 9;
   libres.sort((a, b) => loin(b) - loin(a) || Math.random() - .5);
@@ -2274,7 +2274,7 @@ function editeurCarte(nom, lobby){
     if(E.pnj){
       const ancien = E.o.find(z => z.p === E.pnj.id);
       if(ancien){ E.o = E.o.filter(z => z !== ancien); majCase(ancien.x, ancien.y); }
-      n = {id: Camp.nid(), x, y, e: E.pnj.emo, n: E.pnj.nom, t: E.pnj.role || "", s: "", b: true, c: false, p: E.pnj.id};
+      n = {id: Camp.nid(), x, y, e: E.pnj.emo, n: E.pnj.nom, t: (E.pnj.apparence || "").slice(0, 200), s: "", b: true, c: false, p: E.pnj.id};
     }else n = {id: Camp.nid(), x, y, e: E.emo, n: "", t: "", s: "", b: false, c: false, p: ""};
     E.o.push(n); choisirObj(n);
   }
