@@ -1,0 +1,28 @@
+/* Paires de mots opposés du « Cadran » : [gauche (cran 1), droite (cran 10)] */
+window.CADRAN_PAIRES = [
+  ["Froid", "Chaud"], ["Nul", "Génial"], ["Inutile", "Indispensable"], ["Ringard", "Stylé"],
+  ["Pue", "Sent bon"], ["Facile", "Difficile"], ["Pas cher", "Hors de prix"], ["Calme", "Bruyant"],
+  ["Triste", "Joyeux"], ["Lent", "Rapide"], ["Petit", "Énorme"], ["Mou", "Dur"],
+  ["Sain", "Malsain"], ["Ennuyeux", "Passionnant"], ["Effrayant", "Rassurant"], ["Moche", "Magnifique"],
+  ["Pour les enfants", "Pour les adultes"], ["Sous-coté", "Surcoté"], ["Rare", "Partout"], ["Inoffensif", "Dangereux"],
+  ["Gentil", "Méchant"], ["Fragile", "Indestructible"], ["Démodé", "À la mode"], ["Salé", "Sucré"],
+  ["Léger", "Lourd"], ["Naturel", "Artificiel"], ["Sérieux", "Ridicule"], ["Silencieux", "Assourdissant"],
+  ["Bon marché", "Luxueux"], ["Matin", "Soir"], ["Vieux", "Neuf"], ["Doux", "Piquant"],
+  ["Paresseux", "Travailleur"], ["Débutant", "Expert"], ["Réel", "Imaginaire"], ["Simple", "Compliqué"],
+  ["Discret", "Voyant"], ["Hiver", "Été"], ["Introverti", "Extraverti"], ["Mauvaise idée", "Bonne idée"],
+  ["Calorique", "Diététique"], ["Sale", "Propre"], ["Faible", "Puissant"], ["Ville", "Campagne"],
+  ["Inconnu", "Ultra célèbre"], ["Romantique", "Pas du tout romantique"], ["Tranquille", "Chaotique"], ["Héros", "Méchant"],
+  ["Gâchis d'argent", "Bon investissement"], ["Mauvais cadeau", "Super cadeau"], ["Bébé", "Vieillard"], ["Gênant", "Classe"],
+  ["Sous-estimé", "Surestimé"], ["Lisse", "Rugueux"], ["Sec", "Mouillé"], ["Mauvais film", "Chef-d'œuvre"],
+  ["Peu utile en cas d'apocalypse", "Vital en cas d'apocalypse"], ["Animal de compagnie", "Animal sauvage"], ["Sportif", "Pantouflard"], ["Honnête", "Menteur"],
+  ["Pour une soirée", "Pour un enterrement"], ["Acceptable au travail", "Interdit au travail"], ["Normal", "Bizarre"], ["Banal", "Exotique"],
+  ["Mauvais super-pouvoir", "Super-pouvoir de rêve"], ["Mauvaise odeur de chambre", "Bonne odeur de chambre"], ["Bas de gamme", "Haut de gamme"], ["Respecté", "Détesté"],
+  ["Sucré", "Amer"], ["Personne ne l'aime", "Tout le monde l'aime"], ["Mauvais prénom", "Bon prénom"], ["Mauvais métier", "Métier de rêve"],
+  ["Facile à dessiner", "Impossible à dessiner"], ["Vieux jeu", "Futuriste"], ["Plat", "Épicé"], ["Fait pour l'intérieur", "Fait pour l'extérieur"],
+  ["Pas drôle", "Hilarant"], ["Sans danger à manger", "Mortel à manger"], ["Petite bêtise", "Crime grave"], ["Nul en cuisine", "Chef étoilé"],
+  ["Ça se mange froid", "Ça se mange chaud"], ["Tranquille à la maison", "Aventure extrême"],["Instinct", "Réflexion"], ["Faire la fête", "Rester chez soi"],
+  ["Nourriture de petit-déj", "Nourriture de dîner"], ["Jeu pour 1", "Jeu pour 100"], ["Facile à cacher", "Impossible à cacher"], ["Court", "Interminable"],
+  ["Inutile au lycée", "Vital au lycée"], ["Qu'on garde pour soi", "Qu'on montre à tout le monde"], ["Mauvais pour un premier rendez-vous", "Parfait pour un premier rendez-vous"], ["Pauvre", "Riche"],
+  ["Personnage faible", "Personnage cheaté"], ["Vrai sport", "Pas un sport"], ["Ça fait peur", "Ça fait rire"], ["Mauvaise habitude", "Bonne habitude"],
+  ["Repas", "Collation"], ["Liquide", "Solide"], ["Sous-titré", "Doublé"], ["Ordinaire", "Légendaire"]
+];

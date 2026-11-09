@@ -1,0 +1,44 @@
+/* Style commun des jeux de soirée en ligne (soiree.js) */
+.so-panneau{max-width:620px}
+.so-hero{text-align:center}
+.so-logo{font-size:3.4rem;line-height:1}
+.so-hero h2{font-size:2rem;margin:6px 0 4px}
+.so-etapes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;font-size:.85rem;font-weight:700}
+.so-etapes span{background:var(--soft);border-radius:999px;padding:4px 10px}
+.so-ligne{display:flex;gap:8px;align-items:center}
+.so-ligne .champ{flex:1;min-width:0}
+.so-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+.so-gros{font-size:1.1rem;padding:12px 28px}
+.so-note{color:var(--muted);font-size:.92rem;text-align:center;margin:12px 0 0}
+.so-code{font-family:Fredoka,sans-serif;font-size:2.6rem;letter-spacing:.2em;font-weight:700;color:var(--accent);margin:2px 0 8px}
+.so-liste{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.so-liste li{display:flex;align-items:center;gap:10px;background:var(--soft);border-radius:12px;padding:6px 10px}
+.so-liste .av{font-size:1.4rem}
+.so-liste .n{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.so-reg .so-bloc{margin-top:12px}
+.so-reg .so-bloc>b{display:block;font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.so-reg .pilules{justify-content:flex-start}
+.so-reg .so-val{font-weight:800}
+
+.so-jeu{width:100%;display:flex;flex-direction:column;align-items:center;gap:10px}
+.so-box{width:100%;max-width:680px;display:flex;flex-direction:column;gap:14px}
+.so-pied{text-align:center}
+.so-haut{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800;color:var(--muted);font-size:.9rem}
+.so-grand{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.5rem;line-height:1.25;text-align:center;margin:6px 0}
+.so-pastilles{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+.so-pastilles span{background:var(--soft);border-radius:999px;padding:4px 10px;font-size:.85rem;font-weight:700;color:var(--muted)}
+.so-pastilles span.ok{background:color-mix(in srgb,var(--ok) 20%,var(--card));color:var(--text)}
+.so-attente{text-align:center;color:var(--muted);font-weight:700;margin:10px 0 0}
+.so-choix{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.so-choix button{border:2px solid var(--line);background:var(--card);border-radius:14px;padding:10px;font-weight:800;display:flex;align-items:center;gap:8px;text-align:left}
+.so-choix button:hover{border-color:var(--text)}
+.so-choix button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+.so-choix button .av{font-size:1.4rem}
+.so-podium{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.so-podium li{display:flex;align-items:center;gap:10px;background:var(--soft);border-radius:12px;padding:8px 12px;font-weight:700}
+.so-podium li.moi{outline:2px solid var(--accent)}
+.so-podium li.parti{opacity:.5}
+.so-podium .r{width:30px;text-align:center;font-size:1.2rem}
+.so-podium .av{font-size:1.4rem}
+.so-podium .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.so-hote{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Le Cadran</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/soiree.css">
+<style>
+:root{--accent:#2f8fce;--fond1:rgba(47,143,206,.15);--fond2:rgba(229,72,77,.12)}
+.cadran{width:100%;max-width:520px;margin:6px auto 0;display:block}
+.cadran svg{width:100%;height:auto;display:block;touch-action:manipulation}
+.cadran path.cran{stroke:var(--card);stroke-width:2;transition:opacity .2s}
+.cadran.clic path.cran{cursor:pointer}
+.cadran.clic path.cran:hover{opacity:.8}
+.cadran text{font-family:Fredoka,sans-serif;font-weight:700;pointer-events:none}
+.bornes{display:flex;justify-content:space-between;gap:10px;margin-top:4px;font-weight:800}
+.bornes span{max-width:48%;padding:4px 10px;border-radius:10px;color:#fff;font-size:.95rem;line-height:1.2}
+.bornes .g{background:hsl(210 70% 48%)}
+.bornes .d{background:hsl(3 70% 52%);text-align:right}
+.indice{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.7rem;text-align:center;margin:4px 0;word-wrap:break-word}
+.indice small{display:block;font-family:Nunito,sans-serif;font-size:.85rem;color:var(--muted);font-weight:700}
+.cible{text-align:center;font-weight:800;margin:4px 0}
+.cible b{font-family:Fredoka,sans-serif;font-size:1.6rem;color:var(--accent)}
+.paires{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.paires button{border:2px solid var(--line);background:var(--card);border-radius:12px;padding:8px;font-weight:800;font-size:.9rem}
+.paires button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,var(--card))}
+.paires button.large{grid-column:1/-1}
+.perso{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.gains{display:flex;flex-direction:column;gap:5px;margin-top:10px}
+.gains div{display:flex;align-items:center;gap:8px;background:var(--soft);border-radius:10px;padding:5px 10px;font-weight:700}
+.gains div b{margin-left:auto}
+.gains .d3{background:color-mix(in srgb,var(--ok) 26%,var(--card))}
+.gains .d2{background:color-mix(in srgb,var(--ok) 15%,var(--card))}
+.bareme{font-size:.85rem;color:var(--muted);text-align:center;margin:6px 0 0}
+</style>
+</head>
+<body>
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="../commun/soiree.js"></script>
+<script src="paires.js"></script>
+<script>
+const {melanger, propre, podium, pastilles} = Soiree;
+const esc = Base.esc;
+const PAIRES = window.CADRAN_PAIRES;
+const N = 10;   // nombre de crans
+
+Base.entete({
+  titre: "Le Cadran",
+  emoji: "🎯",
+  aide: `<p>Un demi-cadran va d'un mot à son opposé (ex. <b>Froid → Chaud</b>), découpé en ${N} crans.</p>
+    <ul><li>À chaque manche, un joueur reçoit un <b>cran secret</b> (de 1 à ${N}).</li>
+    <li>Il donne un <b>indice</b> : un mot ou une idée qui, selon lui, tombe pile sur ce cran. Pour le cran 8 de Froid → Chaud : « un bain »…</li>
+    <li>Les autres placent l'aiguille où ils pensent que se trouve le cran. Débattez en vocal !</li>
+    <li>Pile sur le cran : <b>3 pts</b> · à 1 cran : <b>2 pts</b> · à 2 crans : <b>1 pt</b>. Celui qui donne l'indice gagne la moyenne des points des autres.</li></ul>`
+});
+
+const jDe = (G, id) => G.J.find(j => j.id === id);
+const presents = G => G.J.filter(j => !j.parti);
+const ptsEcart = d => d === 0 ? 3 : d === 1 ? 2 : d === 2 ? 1 : 0;
+
+function manche(G){
+  while(G.m < G.ordre.length && (!jDe(G, G.ordre[G.m]) || jDe(G, G.ordre[G.m]).parti)) G.m++;
+  if(G.m >= G.ordre.length || presents(G).length < 2){ G.phase = "fin"; return; }
+  G.donneur = G.ordre[G.m];
+  G.cible = 1 + Math.floor(Math.random() * N);
+  if(G.pioche.length < 2) G.pioche = melanger(PAIRES);
+  G.propos = [G.pioche.pop(), G.pioche.pop()];
+  G.phase = "indice"; G.paire = null; G.indice = null; G.choix = {}; G.res = null;
+}
+function reveler(G){
+  const gains = {}, l = Object.entries(G.choix);
+  l.forEach(([id, v]) => gains[id] = ptsEcart(Math.abs(v - G.cible)));
+  if(l.length) gains[G.donneur] = Math.round(l.reduce((s, [id]) => s + gains[id], 0) / l.length);
+  for(const id in gains){ const j = jDe(G, id); if(j) j.pts += gains[id]; }
+  G.res = {gains};
+  G.phase = "revele";
+}
+function verifier(G){
+  if(G.phase === "placer" && presents(G).every(j => j.id === G.donneur || G.choix[j.id] != null)) reveler(G);
+}
+function suivante(G){ G.m++; manche(G); }
+
+Soiree.demarrer({
+  jeu: "cadran", titre: "Le Cadran", emoji: "🎯", min: 3, max: 12,
+  hero: {
+    texte: `Un demi-cadran va d'un mot à son opposé (Froid → Chaud, Nul → Génial…). Un joueur reçoit un cran secret et donne un indice ; les autres débattent et placent l'aiguille. Pile poil ?`,
+    etapes: ["1 · Cran secret", "2 · Un indice", "3 · Placez l'aiguille", "4 · Révélation"]
+  },
+  reglages: [
+    {k: "tours", titre: "Indices par joueur", options: [[1, "1"], [2, "2"], [3, "3"]], def: 2}
+  ],
+  nouvelle(joueurs, R){
+    let ordre = [];
+    for(let t = 0; t < R.tours; t++) ordre = ordre.concat(melanger(joueurs.map(j => j.id)));
+    const G = {hote: joueurs[0].id, J: joueurs.map(j => ({...j, pts: 0})), ordre, m: 0, pioche: melanger(PAIRES)};
+    manche(G);
+    return G;
+  },
+  action(G, id, a){
+    const j = jDe(G, id); if(!j || j.parti) return false;
+    if(a.t === "indice" && G.phase === "indice" && id === G.donneur && a.m === G.m){
+      const txt = propre(a.txt, 60); if(!txt) return false;
+      if(Array.isArray(a.perso)){
+        const g = propre(a.perso[0], 30), d = propre(a.perso[1], 30);
+        if(!g || !d) return false;
+        G.paire = [g, d];
+      }else G.paire = G.propos[a.p === 1 ? 1 : 0];
+      G.indice = txt; G.phase = "placer";
+      verifier(G); return true;
+    }
+    if(a.t === "cran" && G.phase === "placer" && id !== G.donneur && a.m === G.m && G.choix[id] == null){
+      const v = a.v | 0; if(v < 1 || v > N) return false;
+      G.choix[id] = v; verifier(G); return true;
+    }
+    if(a.t === "suite" && G.phase === "revele" && (id === G.hote || id === G.donneur)){ suivante(G); return true; }
+    if(id !== G.hote) return false;
+    if(a.t === "passer"){
+      if(G.phase === "indice"){ suivante(G); return true; }
+      if(G.phase === "placer"){ reveler(G); return true; }
+    }
+    return false;
+  },
+  depart(G, id){
+    const j = jDe(G, id); if(!j) return;
+    j.parti = true;
+    if(presents(G).length < 2){ G.phase = "fin"; return; }
+    if(id === G.donneur && G.phase === "indice") suivante(G);
+    else verifier(G);
+  },
+  arrivee(G, j){ if(!jDe(G, j.id)) G.J.push({...j, pts: 0}); },
+  publique(G){
+    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), m: G.m, nm: G.ordre.length, donneur: G.donneur};
+    if(G.phase === "placer" || G.phase === "revele"){ V.paire = G.paire; V.indice = G.indice; V.faits = Object.keys(G.choix); }
+    if(G.phase === "revele"){ V.cible = G.cible; V.choix = G.choix; V.gains = G.res.gains; }
+    return V;
+  },
+  privee(G, id){
+    if(id === G.donneur && G.phase === "indice") return {cible: G.cible, propos: G.propos};
+    if(id === G.donneur && G.phase === "placer") return {cible: G.cible};
+    if(G.phase === "placer") return {choix: G.choix[id] || null};
+    return null;
+  },
+  rendre
+});
+
+/* ---------- Dessin du cadran ---------- */
+const CX = 160, CY = 160, RAY = 150;
+const pt = (deg, r) => [CX + r * Math.cos(deg * Math.PI / 180), CY - r * Math.sin(deg * Math.PI / 180)];
+const couleur = i => `hsl(${210 - (i - 1) * (207 / (N - 1))} 70% ${i === 1 || i === N ? 48 : 54}%)`;
+const milieu = i => 180 - (i - .5) * (180 / N);
+function cadran(o){
+  let s = `<svg viewBox="0 0 320 168" role="img" aria-label="Cadran">`;
+  for(let i = 1; i <= N; i++){
+    const a1 = 180 - (i - 1) * 180 / N, a2 = 180 - i * 180 / N, [x1, y1] = pt(a1, RAY), [x2, y2] = pt(a2, RAY);
+    const terne = (o.cible || o.sel) && i !== o.cible && i !== o.sel;
+    s += `<path class="cran" data-c="${i}" d="M${CX} ${CY} L${x1.toFixed(1)} ${y1.toFixed(1)} A${RAY} ${RAY} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="${couleur(i)}" style="opacity:${terne ? .45 : 1}"/>`;
+    const [tx, ty] = pt(milieu(i), RAY - 16);
+    s += `<text x="${tx.toFixed(1)}" y="${(ty + 5).toFixed(1)}" text-anchor="middle" font-size="14" fill="#fff">${i}</text>`;
+  }
+  if(o.cible){
+    const a1 = 180 - (o.cible - 1) * 180 / N, a2 = 180 - o.cible * 180 / N, [x1, y1] = pt(a1, RAY), [x2, y2] = pt(a2, RAY);
+    s += `<path d="M${CX} ${CY} L${x1.toFixed(1)} ${y1.toFixed(1)} A${RAY} ${RAY} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="none" stroke="var(--text)" stroke-width="4" stroke-linejoin="round" pointer-events="none"/>`;
+    const [tx, ty] = pt(milieu(o.cible), RAY + 0);
+    s += `<text x="${tx.toFixed(1)}" y="${(ty + 2).toFixed(1)}" text-anchor="middle" font-size="18">🎯</text>`;
+  }
+  // aiguilles : {v, av}
+  const parCran = {};
+  (o.aiguilles || []).forEach(a => (parCran[a.v] = parCran[a.v] || []).push(a));
+  for(const v in parCran){
+    const [ex, ey] = pt(milieu(+v), RAY - 32);
+    s += `<line x1="${CX}" y1="${CY}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round" pointer-events="none"/>`;
+    parCran[v].forEach((a, k) => {
+      const [ax, ay] = pt(milieu(+v), RAY - 46 - k * 21);
+      s += `<circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="11" fill="var(--card)" stroke="var(--text)" stroke-width="1.5" pointer-events="none"/><text x="${ax.toFixed(1)}" y="${(ay + 5).toFixed(1)}" text-anchor="middle" font-size="13">${esc(a.av)}</text>`;
+    });
+  }
+  s += `<circle cx="${CX}" cy="${CY}" r="9" fill="var(--text)"/></svg>`;
+  return `<div class="cadran ${o.clic ? "clic" : ""}">${s}</div>` + (o.paire ? `<div class="bornes"><span class="g">◀ ${esc(o.paire[0])}</span><span class="d">${esc(o.paire[1])} ▶</span></div>` : "");
+}
+
+/* ---------- Affichage ---------- */
+let loc = {m: -1};   // choix locaux de la manche (paire choisie, cran visé)
+function rendre(box, c){
+  const {V, P, moi} = c;
+  if(loc.m !== V.m + ":" + V.phase.slice(0, 1) + (V.gid || 0)){ loc = {m: V.m + ":" + V.phase.slice(0, 1) + (V.gid || 0), p: 0, sel: null}; }
+  const moiJ = V.J.find(j => j.id === moi), joue = moiJ && !moiJ.parti;
+  const jo = id => V.J.find(j => j.id === id) || {av: "❓", nom: "?"};
+  const don = jo(V.donneur), jeDonne = V.donneur === moi;
+  let h = "";
+
+  if(V.phase !== "fin") h += `<div class="so-haut"><span>Manche ${Math.min(V.m + 1, V.nm)} / ${V.nm}</span><span>${V.J.filter(j => !j.parti).sort((a, b) => b.pts - a.pts).slice(0, 3).map(j => esc(j.av) + " " + j.pts).join(" · ")}</span></div>`;
+
+  if(V.phase === "indice"){
+    h += `<section class="b-carte">`;
+    if(jeDonne && P && P.propos){
+      const perso = loc.p === 2, paire = perso ? [loc.g || "…", loc.d || "…"] : P.propos[loc.p];
+      h += `<p class="cible">🤫 Ton cran secret : <b>${P.cible}</b> / ${N}</p>${cadran({paire, cible: P.cible})}
+        <p style="font-weight:800;margin:14px 0 0">Choisis le cadran :</p>
+        <div class="paires">${P.propos.map((p, i) => `<button data-p="${i}" class="${loc.p === i ? "on" : ""}">${esc(p[0])} → ${esc(p[1])}</button>`).join("")}
+          <button data-p="2" class="large ${perso ? "on" : ""}">✏️ Inventer ma paire</button></div>
+        ${perso ? `<div class="perso"><input class="champ" id="g-${V.m}" maxlength="30" placeholder="Mot de gauche (1)" autocomplete="off"><input class="champ" id="d-${V.m}" maxlength="30" placeholder="Mot de droite (${N})" autocomplete="off"></div>` : ""}
+        <label class="etiquette" for="i-${V.m}">Ton indice</label>
+        <div class="so-ligne"><input class="champ" id="i-${V.m}" maxlength="60" placeholder="Un mot, un perso, une idée…" autocomplete="off"><button class="btn" id="envoyer">Envoyer</button></div>
+        <p class="bareme">Pas de chiffre ni de « un peu chaud » : donne une chose qui tombe sur ce cran !</p>`;
+    }else{
+      h += `<p class="so-grand">${esc(don.av)} ${esc(don.nom)} cherche un indice…</p>${cadran({})}<p class="so-attente">⏳ Préparez-vous à débattre !</p>`;
+    }
+    h += (c.hote && !jeDonne ? `<div class="so-hote"><button class="btn ghost petit" id="passer">⏩ Passer son tour</button></div>` : "") + `</section>`;
+  }
+
+  else if(V.phase === "placer"){
+    h += `<section class="b-carte"><div class="indice"><small>Indice de ${esc(don.av)} ${esc(don.nom)}</small>« ${esc(V.indice)} »</div>`;
+    if(jeDonne){
+      h += cadran({paire: V.paire, cible: P && P.cible}) + `<p class="so-attente">🤐 Les autres placent l'aiguille… pas d'aide, hein !</p>`;
+    }else if(!joue){
+      h += cadran({paire: V.paire}) + `<p class="so-attente">👀 Tu regardes cette manche.</p>`;
+    }else{
+      const valide = P && P.choix, envoi = c.attente("cran");
+      const sel = valide || loc.sel;
+      h += cadran({paire: V.paire, sel, aiguilles: sel ? [{v: sel, av: moiJ.av}] : [], clic: !valide && !envoi});
+      h += valide || envoi
+        ? `<p class="so-attente">${valide ? "✔ Aiguille sur le cran " + valide + ". On attend les autres…" : "Envoi…"}</p>`
+        : `<p class="bareme">Touche le cadran pour placer ton aiguille, discutez-en, puis valide.</p><div class="so-actions"><button class="btn so-gros" id="valider" ${sel ? "" : "disabled"}>${sel ? "Valider le cran " + sel + " ✔" : "Place ton aiguille"}</button></div>`;
+    }
+    h += pastilles(V.J, V.faits, {sauf: [V.donneur]}) + (c.hote ? `<div class="so-hote"><button class="btn ghost petit" id="passer">⏩ Révéler sans attendre</button></div>` : "") + `</section>`;
+  }
+
+  else if(V.phase === "revele"){
+    const aig = Object.entries(V.choix).map(([id, v]) => ({v, av: jo(id).av}));
+    const l = Object.entries(V.choix).sort((a, b) => Math.abs(a[1] - V.cible) - Math.abs(b[1] - V.cible));
+    h += `<section class="b-carte"><div class="indice"><small>Indice de ${esc(don.av)} ${esc(don.nom)}</small>« ${esc(V.indice)} »</div>
+      ${cadran({paire: V.paire, cible: V.cible, aiguilles: aig})}
+      <p class="cible">C'était le cran <b>${V.cible}</b> !</p>
+      <div class="gains">${l.map(([id, v]) => { const d = Math.abs(v - V.cible); return `<div class="d${ptsEcart(d)}">${esc(jo(id).av)} ${esc(jo(id).nom)} <span class="muted">cran ${v}${d === 0 ? " 🎯" : ""}</span><b>+${ptsEcart(d)}</b></div>`; }).join("")}
+        ${V.gains[V.donneur] != null ? `<div>${esc(don.av)} ${esc(don.nom)} <span class="muted">(indice)</span><b>+${V.gains[V.donneur]}</b></div>` : ""}</div>
+      ${c.hote || jeDonne ? `<div class="so-actions"><button class="btn so-gros" id="suite">${V.m + 1 < V.nm ? "Manche suivante ▶" : "Résultats 🏆"}</button></div>` : `<p class="so-attente">⏳ On passe bientôt à la suite…</p>`}
+    </section>`;
+  }
+
+  else if(V.phase === "fin"){
+    h += `<section class="b-carte"><h2 style="text-align:center;margin:0">🏆 Résultats</h2>${podium(V.J, moi)}${c.finHtml()}</section>`;
+    if(rendre.finVue !== V.gid){ rendre.finVue = V.gid; Soiree.confettis(); }
+  }
+
+  box.innerHTML = h;
+
+  // donneur : choix de la paire et indice
+  box.querySelectorAll("[data-p]").forEach(b => b.onclick = () => { loc.p = +b.dataset.p; rendre(box, c); });
+  ["g", "d"].forEach(k => { const e = box.querySelector(`#${k}-${V.m}`); if(e){ e.value = loc[k] || ""; e.oninput = () => { loc[k] = e.value; const s = box.querySelector(".bornes ." + k); if(s) s.textContent = k === "g" ? "◀ " + (e.value || "…") : (e.value || "…") + " ▶"; }; } });
+  const ind = box.querySelector(`#i-${V.m}`), env = box.querySelector("#envoyer");
+  if(ind){ ind.value = loc.i || ""; ind.oninput = () => { loc.i = ind.value; }; }
+  if(env){
+    const go = () => {
+      const txt = propre(ind.value, 60); if(!txt){ ind.focus(); return; }
+      const a = {t: "indice", m: V.m, txt};
+      if(loc.p === 2){
+        if(!propre(loc.g, 30) || !propre(loc.d, 30)){ Base.toast("Écris les deux mots de ta paire"); return; }
+        a.perso = [loc.g, loc.d];
+      }else a.p = loc.p;
+      c.envoyer(a);
+    };
+    env.onclick = go; ind.onkeydown = e => { if(e.key === "Enter") go(); };
+  }
+  // devineurs : aiguille
+  if(box.querySelector(".cadran.clic")) box.querySelectorAll(".cadran.clic [data-c]").forEach(p => p.onclick = () => { loc.sel = +p.dataset.c; rendre(box, c); });
+  const val = box.querySelector("#valider");
+  if(val) val.onclick = () => { if(loc.sel) c.envoyer({t: "cran", m: V.m, v: loc.sel}); };
+  const p = box.querySelector("#passer"); if(p) p.onclick = () => c.envoyer({t: "passer"});
+  const s = box.querySelector("#suite"); if(s) s.onclick = () => c.envoyer({t: "suite"});
+}
+</script>
+</body>
+</html>

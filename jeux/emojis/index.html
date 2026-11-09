@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Traduction Emoji</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/soiree.css">
+<style>
+:root{--accent:#f29d16;--fond1:rgba(242,157,22,.16);--fond2:rgba(91,107,208,.12)}
+.consigne{text-align:center;font-weight:800;color:var(--muted);margin:0}
+.source{text-align:center;margin:10px 0;padding:16px 12px;border-radius:16px;background:var(--soft);border:2px dashed var(--line)}
+.source.txt{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.4rem;line-height:1.3}
+.source.emo,.bulle .emo{font-size:2.4rem;line-height:1.35;letter-spacing:2px;word-break:break-all}
+.saisie-emo{font-size:1.8rem;letter-spacing:2px;text-align:center;padding:8px}
+.clavier{margin-top:10px;border:2px solid var(--line);border-radius:14px;overflow:hidden}
+.onglets{display:flex;overflow-x:auto;background:var(--soft)}
+.onglets button{border:0;background:transparent;font-size:1.3rem;padding:6px 10px;flex:none}
+.onglets button.on{background:var(--card)}
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));max-height:200px;overflow-y:auto;padding:4px}
+.grille button{border:0;background:transparent;font-size:1.6rem;padding:4px 0;border-radius:8px}
+.grille button:hover{background:var(--soft)}
+.outils{display:flex;gap:6px;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap}
+.compte{font-weight:800;color:var(--muted);font-size:.85rem}
+.album h2{text-align:center;margin:0 0 8px}
+.bulle{display:flex;gap:10px;align-items:flex-start;margin-top:10px;animation:entree .45s ease}
+@keyframes entree{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.bulle .qui{font-size:1.8rem;line-height:1;flex:none;width:40px;text-align:center}
+.bulle .corps{flex:1;min-width:0;background:var(--soft);border-radius:4px 16px 16px 16px;padding:8px 12px}
+.bulle .nom{font-size:.8rem;font-weight:800;color:var(--muted)}
+.bulle .txt{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.2rem;line-height:1.3}
+.bulle.depart .corps{background:color-mix(in srgb,var(--accent) 18%,var(--card))}
+.coeur{border:2px solid var(--line);background:var(--card);border-radius:999px;padding:2px 10px;font-weight:800;font-size:.9rem;margin-top:6px}
+.coeur.on{border-color:#e5484d;background:color-mix(in srgb,#e5484d 15%,var(--card))}
+.coeur:disabled{cursor:default;opacity:.7}
+.albums details{background:var(--soft);border-radius:12px;padding:8px 12px;margin-top:6px}
+.albums summary{font-weight:800;cursor:pointer}
+.albums .ligne{margin:4px 0}
+.albums .ligne .e{font-size:1.4rem}
+</style>
+</head>
+<body>
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="../commun/soiree.js"></script>
+<script src="phrases.js"></script>
+<script>
+const {melanger, hasard, propre, podium, pastilles} = Soiree;
+const esc = Base.esc;
+const PHRASES = window.EMOJIS_PHRASES;
+
+Base.entete({
+  titre: "Traduction Emoji",
+  emoji: "😂",
+  aide: `<p>Le téléphone arabe… en emojis !</p>
+    <ul><li>Chacun écrit une phrase de départ (ou le jeu en tire une au hasard).</li>
+    <li>Le joueur suivant la traduit <b>uniquement en emojis</b> (pas de lettres ni de chiffres).</li>
+    <li>Le suivant retraduit les emojis en phrase, et ainsi de suite.</li>
+    <li>À la fin, on découvre chaque chaîne étape par étape. Donne des ❤️ aux meilleures traductions : chaque ❤️ reçu = 1 point.</li></ul>`
+});
+
+/* ---------- Clavier d'emojis ---------- */
+const CLAVIER = [
+  ["😀", "😀😂🤣😊😍🥰😘😎🤓🤩🥳😏😴🤤😭😱😡🤬🤯🥶🥵🤢🤮🤧😇🤠🤡👻💀👽🤖💩😈🙄😬🤐🤫🤔🫡😵‍💫🥺"],
+  ["🙋", "👶🧒👦👧🧑👨👩👴👵👮🕵️👷🤴👸🧙🧛🧟🧜🦸🦹🎅🤶👰🤵🧑‍🍳🧑‍🚀🧑‍🚒🧑‍⚕️🧑‍🏫💃🕺🏃🚶🧘🏊🚴🤸🛌👋👍👎👏🙏💪🦵👀👂👃👅💋❤️💔"],
+  ["🐶", "🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🐔🐧🐦🦆🦅🦉🦇🐺🐗🐴🦄🐝🐛🦋🐌🐞🐜🕷️🐢🐍🦖🐙🦑🦀🐟🐬🐳🦈🐊🦒🐘🦘🐑🐐🦌🐓🦃🐁🐿️🌵🌲🌳🌴🌸🌹🌻🍄"],
+  ["🍕", "🍏🍎🍌🍉🍇🍓🍒🍑🥭🍍🥥🥝🍅🥑🥦🥕🌽🌶️🥔🧅🧄🥐🍞🧀🥚🍳🥓🍗🍖🌭🍔🍟🍕🥪🌮🌯🥗🍝🍜🍣🍤🍦🍩🍪🎂🍰🧁🍫🍬🍭🍿🧂🥤☕🍵🍺🍷🥂🍾"],
+  ["⚽", "⚽🏀🏈⚾🎾🏐🎱🏓🏸🥊🥋⛳🎣🤿🎿🛹⛸️🏆🥇🎮🕹️🎲🧩🎯🎳🎸🎹🥁🎺🎻🎤🎧🎬🎨🎭🎪🎟️🎁🎈🎉🎊"],
+  ["🚗", "🚗🚕🚌🚓🚑🚒🏎️🚜🛵🏍️🚲🛴🚂🚆✈️🚁🚀🛸⛵🚢⚓🗺️🏠🏡🏰🏯🏟️🏥🏦🏫⛪🗽🗼🌋⛰️🏖️🏝️🏜️🌍🌙⭐☀️⛅🌧️⛈️🌈❄️☃️🔥💧🌊⚡🌪️"],
+  ["💡", "📱💻⌚📷📺📻⏰🔦💡🔋🧲🔨🪓🔧🔫💣🔪🗡️🛡️🔑🗝️🚪🛏️🛁🚽🧻🧼🧸🎀👑👒🎩🧢👓🕶️👔👕👖👗👙👠👟🧦💍💎💰💸💳📦✉️📚✏️✂️🔒💊💉🩹🧪🔭"],
+  ["❓", "❤️🧡💛💚💙💜🖤💯💢💥💫💦💨💤💬💭❗❓‼️⁉️✅❌⛔🚫⚠️🔞➕➖➗✖️➡️⬅️⬆️⬇️🔄🔁⏩⏪🆗🆕🆘🆒🔴🟢🔵⚫⚪⬛🟥"]
+];
+const segm = window.Intl && Intl.Segmenter ? new Intl.Segmenter("fr", {granularity: "grapheme"}) : null;
+const graphemes = s => segm ? [...segm.segment(s)].map(x => x.segment) : [...s];
+const MAX_EMO = 16;
+const filtreEmo = s => graphemes(String(s || "").replace(/[\p{L}\p{N}]/gu, "").replace(/\s+/g, " ")).slice(0, MAX_EMO * 2).join("").trim();
+const emoOk = s => /\p{Extended_Pictographic}/u.test(s);
+const nbEmo = s => graphemes(s.replace(/\s/g, "")).length;
+
+const jDe = (G, id) => G.J.find(j => j.id === id);
+const presents = G => G.J.filter(j => !j.parti);
+const RIEN = {txt: "(n'a rien écrit)", emo: "🤷"};
+
+/* ---------- Règles ---------- */
+function nbEtapes(n, hasardOn, cap){
+  // on finit toujours sur une phrase : nombre impair d'étapes (impair : texte, emo, texte…), pair après une phrase tirée au hasard
+  let e = hasardOn ? (n % 2 ? n - 1 : n) : (n % 2 ? n : n - 1);
+  if(cap && e > cap) e = hasardOn ? (cap % 2 ? cap - 1 : cap) : (cap % 2 ? cap : cap - 1);
+  return Math.max(2, e);
+}
+const off = G => G.hasard ? 1 : 0;
+const typeEtape = (G, k) => ((k + off(G)) % 2 === 0) ? "txt" : "emo";
+const chaineDe = (G, i, k) => ((i - k - off(G)) % G.n + G.n) % G.n;     // chaîne traitée par le joueur n° i à l'étape k
+const auteurDe = (G, c, k) => G.J[(c + k + off(G)) % G.n];
+
+function etapeSuivante(G){
+  // les absents (ou retardataires si l'hôte n'attend plus) reçoivent une réponse vide
+  G.J.forEach((j, i) => {
+    const c = chaineDe(G, i, G.k), pos = G.k + off(G);
+    if(!G.chaines[c][pos]) G.chaines[c][pos] = {a: j.id, type: typeEtape(G, G.k), v: RIEN[typeEtape(G, G.k)]};
+  });
+  G.k++;
+  if(G.k >= G.E){ G.phase = "revele"; G.rc = 0; G.rk = 1; }
+}
+function verifier(G){
+  if(G.phase === "ecrire" && G.J.every((j, i) => j.parti || G.chaines[chaineDe(G, i, G.k)][G.k + off(G)])) etapeSuivante(G);
+}
+function points(G){
+  G.J.forEach(j => j.pts = 0);
+  for(const cle in G.likes){
+    const [c, i] = cle.split("-").map(Number), e = G.chaines[c] && G.chaines[c][i];
+    const j = e && jDe(G, e.a); if(j) j.pts += G.likes[cle].length;
+  }
+}
+const visible = (G, c, i) => G.phase === "fin" || c < G.rc || (c === G.rc && i < G.rk);
+
+Soiree.demarrer({
+  jeu: "emojis", titre: "Traduction Emoji", emoji: "😂", min: 3, max: 12,
+  hero: {
+    texte: "Le téléphone arabe en emojis : une phrase devient des emojis, qui redeviennent une phrase, qui redeviennent des emojis… puis on découvre les dérapages ensemble !",
+    etapes: ["1 · Une phrase", "2 · En emojis", "3 · Retraduis", "4 · Fous rires"]
+  },
+  reglages: [
+    {k: "depart", titre: "Phrases de départ", options: [["perso", "✍️ Chacun écrit la sienne"], ["hasard", "🎲 Tirées au hasard"]], def: "perso"},
+    {k: "etapes", titre: "Longueur des chaînes", options: [[0, "Tout le monde"], [6, "6 étapes max"], [4, "4 étapes max"]], def: 0}
+  ],
+  nouvelle(joueurs, R){
+    const n = joueurs.length, h = R.depart === "hasard";
+    const G = {hote: joueurs[0].id, J: joueurs.map(j => ({...j, pts: 0})), n, hasard: h, E: nbEtapes(n, h, R.etapes), k: 0, phase: "ecrire", likes: {}};
+    const ph = melanger(PHRASES);
+    G.chaines = Array.from({length: n}, (_, c) => h ? [{a: null, type: "txt", v: ph[c % ph.length]}] : []);
+    return G;
+  },
+  action(G, id, a){
+    const i = G.J.findIndex(j => j.id === id), j = G.J[i];
+    if(!j || j.parti) return false;
+    if(a.t === "etape" && G.phase === "ecrire" && a.k === G.k){
+      const c = chaineDe(G, i, G.k), pos = G.k + off(G), type = typeEtape(G, G.k);
+      if(G.chaines[c][pos]) return false;
+      let v = type === "emo" ? filtreEmo(a.v) : propre(a.v, 120);
+      if(type === "emo" && (!emoOk(v) || nbEmo(v) > MAX_EMO)) return false;
+      if(!v) return false;
+      G.chaines[c][pos] = {a: id, type, v};
+      verifier(G); return true;
+    }
+    if(a.t === "like" && (G.phase === "revele" || G.phase === "fin")){
+      const c = a.c | 0, k = a.i | 0, e = G.chaines[c] && G.chaines[c][k];
+      if(!e || !e.a || e.a === id || !visible(G, c, k)) return false;
+      const cle = c + "-" + k, l = G.likes[cle] = G.likes[cle] || [];
+      const x = l.indexOf(id); if(x >= 0) l.splice(x, 1); else l.push(id);
+      points(G); return true;
+    }
+    if(id !== G.hote) return false;
+    if(a.t === "passer" && G.phase === "ecrire"){ etapeSuivante(G); return true; }
+    if(a.t === "suite" && G.phase === "revele"){
+      if(G.rk < G.chaines[G.rc].length) G.rk++;
+      else if(G.rc + 1 < G.n){ G.rc++; G.rk = 1; }
+      else G.phase = "fin";
+      return true;
+    }
+    return false;
+  },
+  depart(G, id){
+    const j = jDe(G, id); if(!j) return;
+    j.parti = true;
+    if(presents(G).length < 2 && G.phase === "ecrire"){ while(G.phase === "ecrire") etapeSuivante(G); }
+    verifier(G);
+  },
+  publique(G){
+    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), k: G.k, E: G.E, n: G.n};
+    if(G.phase === "ecrire"){
+      V.type = typeEtape(G, G.k);
+      V.faits = G.J.filter((j, i) => G.chaines[chaineDe(G, i, G.k)][G.k + off(G)]).map(j => j.id);
+    }else{
+      V.rc = G.rc; V.rk = G.rk;
+      V.chaines = G.chaines.map((ch, c) => ch.filter((e, i) => visible(G, c, i)));
+      V.likes = G.likes;
+    }
+    return V;
+  },
+  privee(G, id){
+    if(G.phase !== "ecrire") return null;
+    const i = G.J.findIndex(j => j.id === id); if(i < 0) return null;
+    const c = chaineDe(G, i, G.k), pos = G.k + off(G);
+    return {c, prev: pos > 0 ? G.chaines[c][pos - 1] : null, mien: G.chaines[c][pos] ? G.chaines[c][pos].v : null};
+  },
+  rendre
+});
+
+let onglet = 0, curseur = null;
+function rendre(box, c){
+  const {V, P, moi} = c;
+  const moiJ = V.J.find(j => j.id === moi), joue = moiJ && !moiJ.parti;
+  const jo = id => V.J.find(j => j.id === id) || {av: "🎲", nom: "Le hasard"};
+  let h = "";
+
+  if(V.phase === "ecrire"){
+    const type = V.type, cle = "e" + V.k;
+    h += `<div class="so-haut"><span>Étape ${V.k + 1} / ${V.E}</span><span>${type === "emo" ? "😀 Emojis" : "✍️ Phrase"}</span></div><section class="b-carte">`;
+    if(!joue || !P) h += `<p class="so-attente">👀 La partie a commencé sans toi : regarde les albums à la fin !</p>`;
+    else if(P.mien || c.attente("etape")){
+      h += `<p class="consigne">Envoyé !</p><div class="source ${type}">${esc(P.mien || "…")}</div><p class="so-attente">⏳ On attend les autres…</p>`;
+    }else if(type === "txt" && !P.prev){
+      h += `<p class="consigne">Écris une phrase de départ : drôle, absurde, une petite histoire…</p>
+        <input class="champ" id="${cle}" maxlength="120" placeholder="Ex. : Mon chat a volé une pizza au voisin" autocomplete="off" style="margin-top:10px">
+        <div class="outils"><button class="btn ghost petit" id="idee">🎲 Une idée</button><button class="btn" id="envoyer">Envoyer</button></div>`;
+    }else if(type === "emo"){
+      h += `<p class="consigne">Traduis cette phrase <b>uniquement en emojis</b> :</p><div class="source txt">${esc(P.prev.v)}</div>
+        <input class="champ saisie-emo" id="${cle}" placeholder="😺🍕🏃‍♂️" autocomplete="off" inputmode="text">
+        <div class="clavier"><div class="onglets">${CLAVIER.map((o, i) => `<button data-o="${i}" class="${i === onglet ? "on" : ""}">${o[0]}</button>`).join("")}</div>
+        <div class="grille">${graphemes(CLAVIER[onglet][1]).map(e => `<button data-e="${e}">${e}</button>`).join("")}</div></div>
+        <div class="outils"><span><button class="btn ghost petit" id="effacer">⌫</button> <span class="compte" id="compte"></span></span><button class="btn" id="envoyer">Envoyer</button></div>`;
+    }else{
+      h += `<p class="consigne">Qu'est-ce que ces emojis veulent dire ? Écris la phrase :</p><div class="source emo">${esc(P.prev.v)}</div>
+        <input class="champ" id="${cle}" maxlength="120" placeholder="Ta traduction" autocomplete="off">
+        <div class="outils"><span></span><button class="btn" id="envoyer">Envoyer</button></div>`;
+    }
+    h += pastilles(V.J, V.faits) + (c.hote ? `<div class="so-hote"><button class="btn ghost petit" id="passer">⏩ Ne plus attendre</button></div>` : "") + `</section>`;
+  }
+
+  else if(V.phase === "revele"){
+    const ch = V.chaines[V.rc], prop = ch[0] && ch[0].a ? jo(ch[0].a) : null;
+    const total = V.n, finChaine = ch.length >= V.E + (V.chaines[V.rc][0] && !V.chaines[V.rc][0].a ? 1 : 0);
+    h += `<div class="so-haut"><span>Album ${V.rc + 1} / ${total}</span><span>${prop ? esc(prop.av + " " + prop.nom) : "🎲 Phrase au hasard"}</span></div>
+      <section class="b-carte album">${ch.map((e, i) => bulle(e, V.rc, i, i === ch.length - 1)).join("")}
+      ${c.hote ? `<div class="so-actions"><button class="btn so-gros" id="suite">${!finChaine ? "Suivant ▶" : V.rc + 1 < total ? "Album suivant 📖" : "Résultats 🏆"}</button></div>` : `<p class="so-attente">⏳ L'hôte tourne les pages…</p>`}
+      </section>`;
+  }
+
+  else if(V.phase === "fin"){
+    let meilleur = null;
+    for(const cle in V.likes){ const n = V.likes[cle].length; if(n && (!meilleur || n > meilleur.n)) meilleur = {cle, n}; }
+    h += `<section class="b-carte"><h2 style="text-align:center;margin:0">🏆 Les meilleurs traducteurs</h2>${podium(V.J, moi, {unite: "❤️"})}`;
+    if(meilleur){
+      const [ci, ii] = meilleur.cle.split("-").map(Number);
+      h += `<h3 style="margin:16px 0 0">⭐ La traduction préférée</h3>${bulle(V.chaines[ci][ii], ci, ii, false)}`;
+    }
+    h += `<div class="albums" style="margin-top:14px"><b>📖 Tous les albums</b>${V.chaines.map((ch, ci) => `<details><summary>${esc(ch[0].v)}</summary>${ch.map((e, i) =>
+      `<div class="ligne">${esc(jo(e.a).av)} ${e.type === "emo" ? `<span class="e">${esc(e.v)}</span>` : `<b>${esc(e.v)}</b>`} ${likeBtn(ci, i, e)}</div>`).join("")}</details>`).join("")}</div>
+      ${c.finHtml()}</section>`;
+    if(rendre.finVue !== V.gid){ rendre.finVue = V.gid; Soiree.confettis(); }
+  }
+
+  function likeBtn(ci, i, e){
+    if(!e.a) return "";
+    const l = (V.likes[ci + "-" + i] || []), on = l.includes(moi), mien = e.a === moi;
+    return `<button class="coeur ${on ? "on" : ""}" data-l="${ci}-${i}" ${mien || !joue ? "disabled" : ""} title="${mien ? "C'est la tienne !" : "J'adore"}">${on ? "❤️" : "🤍"} ${l.length || ""}</button>`;
+  }
+  function bulle(e, ci, i, neuf){
+    const j = jo(e.a);
+    return `<div class="bulle ${e.a ? "" : "depart"}" ${neuf ? "" : 'style="animation:none"'}><div class="qui">${esc(j.av)}</div><div class="corps">
+      <div class="nom">${esc(j.nom)} ${i === 0 ? "· départ" : e.type === "emo" ? "· a traduit en emojis" : "· a compris"}</div>
+      ${e.type === "emo" ? `<div class="emo">${esc(e.v)}</div>` : `<div class="txt">${esc(e.v)}</div>`}
+      ${likeBtn(ci, i, e)}</div></div>`;
+  }
+
+  box.innerHTML = h;
+
+  // saisie
+  const champ = box.querySelector(`#e${V.k}`), env = box.querySelector("#envoyer");
+  if(champ && env){
+    const emo = V.type === "emo";
+    const compter = () => { const n = box.querySelector("#compte"); if(n) n.textContent = nbEmo(champ.value) + " / " + MAX_EMO; };
+    if(emo){
+      champ.oninput = () => {
+        if(/[\p{L}\p{N}]/u.test(champ.value)){ champ.value = champ.value.replace(/[\p{L}\p{N}]/gu, ""); Base.toast("Que des emojis ! 🙊"); }
+        compter();
+      };
+      champ.onblur = () => { curseur = champ.selectionStart; };
+      setTimeout(compter);
+    }
+    const go = () => {
+      const v = emo ? filtreEmo(champ.value) : propre(champ.value, 120);
+      if(emo && !emoOk(v)){ Base.toast("Mets au moins un emoji 😉"); return; }
+      if(emo && nbEmo(v) > MAX_EMO){ Base.toast(`${MAX_EMO} emojis maximum`); return; }
+      if(!v){ champ.focus(); return; }
+      c.envoyer({t: "etape", k: V.k, v});
+    };
+    env.onclick = go; champ.onkeydown = e => { if(e.key === "Enter") go(); };
+    const grille = box.querySelector(".grille");
+    if(grille) grille.onclick = e => {
+      const b = e.target.closest("[data-e]"); if(!b) return;
+      if(nbEmo(champ.value) >= MAX_EMO){ Base.toast(`${MAX_EMO} emojis maximum`); return; }
+      const p = curseur == null ? champ.value.length : Math.min(curseur, champ.value.length);
+      champ.value = champ.value.slice(0, p) + b.dataset.e + champ.value.slice(p);
+      curseur = p + b.dataset.e.length; compter();
+    };
+    box.querySelectorAll("[data-o]").forEach(b => b.onclick = () => {
+      onglet = +b.dataset.o;
+      box.querySelectorAll("[data-o]").forEach(x => x.classList.toggle("on", x === b));
+      grille.innerHTML = graphemes(CLAVIER[onglet][1]).map(e => `<button data-e="${e}">${e}</button>`).join("");
+    });
+    const ef = box.querySelector("#effacer");
+    if(ef) ef.onclick = () => { const g = graphemes(champ.value); g.pop(); champ.value = g.join(""); curseur = null; compter(); };
+    const idee = box.querySelector("#idee");
+    if(idee) idee.onclick = () => { champ.value = hasard(PHRASES); };
+  }
+  box.querySelectorAll("[data-l]").forEach(b => b.onclick = () => {
+    const [ci, i] = b.dataset.l.split("-").map(Number);
+    c.envoyer({t: "like", c: ci, i});
+  });
+  const p = box.querySelector("#passer"); if(p) p.onclick = () => c.envoyer({t: "passer"});
+  const s = box.querySelector("#suite"); if(s) s.onclick = () => c.envoyer({t: "suite"});
+}
+</script>
+</body>
+</html>

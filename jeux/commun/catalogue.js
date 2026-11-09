@@ -205,6 +205,36 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "quiaditca",
+    title: "Qui a dit ça ?",
+    emoji: "🕵️",
+    desc: "Une question perso tombe (« ton pire achat ? »), tout le monde répond en secret… puis devinez qui a écrit chaque réponse ! Bluffez pour piéger les autres. En ligne, de 3 à 12 joueurs : parfait sur Discord.",
+    tags: ["Party", "Multijoueur"],
+    colors: ["#d9468f", "#f2c14e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "emojis",
+    title: "Traduction Emoji",
+    emoji: "😂",
+    desc: "Le téléphone arabe en emojis : une phrase est traduite en emojis, que le suivant retraduit en phrase, puis encore en emojis… Découvrez ensemble les dérapages et distribuez des ❤️. En ligne, de 3 à 12 joueurs.",
+    tags: ["Party", "Multijoueur"],
+    colors: ["#f29d16", "#5b6bd0"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "cadran",
+    title: "Le Cadran",
+    emoji: "🎯",
+    desc: "Un demi-cadran va d'un mot à son opposé (Froid → Chaud). Un joueur reçoit un cran secret et donne un indice, les autres débattent et placent l'aiguille. Pile poil ? En ligne, de 3 à 12 joueurs.",
+    tags: ["Party", "Multijoueur", "Mots"],
+    colors: ["#2f8fce", "#e5484d"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "imposteur",
     title: "L'Imposteur",
     emoji: "🕵️",
