@@ -106,6 +106,11 @@ a.card:hover .cover{font-size:4rem}
 footer{text-align:center;color:var(--muted);font-size:.9rem;font-weight:700;margin-top:44px}
 
 /* ---------- Catégories (page d'accueil) ---------- */
+.recherche{position:relative;max-width:560px;margin:0 auto 26px}
+.recherche .loupe{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:1.1rem;pointer-events:none}
+.recherche input{width:100%;font:inherit;font-size:1.05rem;font-weight:700;color:var(--text);background:var(--card);border:2px solid var(--bord);border-radius:999px;padding:12px 18px 12px 46px;box-shadow:var(--ombre)}
+.recherche input::placeholder{color:var(--muted);font-weight:600}
+.recherche input:focus{outline:3px solid var(--accent);outline-offset:2px}
 .choix{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.35rem;margin:0 0 14px}
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px 18px}
 .cat{display:flex;flex-direction:column;text-align:left;font:inherit;cursor:pointer;padding:0;color:inherit;background:var(--card);border:2px solid var(--bord);border-radius:22px;overflow:hidden;
@@ -178,8 +183,18 @@ dialog.b-fen p{margin:0 0 12px;line-height:1.5}
   <div class="defis" id="defis" hidden></div>
 
   <section id="accueil">
+    <div class="recherche">
+      <span class="loupe" aria-hidden="true">🔎</span>
+      <input id="recherche" type="search" autocomplete="off" placeholder="Chercher un jeu : tetris, musique, dessin, pokémon…" aria-label="Chercher un jeu">
+    </div>
+    <div id="resultats" hidden>
+      <h2 class="choix" id="resTitre"></h2>
+      <section class="grid" id="resGrille"></section>
+    </div>
+    <div id="blocCats">
     <h2 class="choix">Choisis une catégorie</h2>
     <div class="cats" id="cats"></div>
+    </div>
   </section>
 
   <section id="vueCat" hidden>
@@ -225,9 +240,10 @@ function visibles(){
     .filter(g => (g.etat !== "cache" || admin) && (!g.ia || ia));
 }
 
-function render(){
+function render(list, cible){
+  const grid = cible || document.getElementById("grid");
+  list = list || jeuxDeLaVue();
   grid.innerHTML = "";
-  const list = jeuxDeLaVue();
   if(!list.length){ grid.innerHTML = filtreGroupe() ? '<p class="empty">Aucun jeu à plusieurs ici. Touche « Voir tous les jeux » en haut pour tout afficher.</p>' : '<p class="empty">Aucun jeu dans cette catégorie pour l\'instant.</p>'; return; }
   for(const g of list){
     const ready = g.etat !== "bientot" && !g.sansPage;
@@ -389,6 +405,77 @@ const CATS_FIXES = [
    jeux: ["arene", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
 ];
 const categories = () => CATS_FIXES;
+
+/* Mots-clés de recherche en plus du nom, de la description et des étiquettes
+   (« tetris » → Blocs, « musique » → Blind Test et Freestyle…). */
+const MOTS_CLES = {
+  freestyle: "rap musique son beat prod rime chant micro impro",
+  arene: "fps tir shooter pistolet arme 3d action guerre call of duty",
+  manufacture: "usine plateau hexagone gestion production factorio",
+  laser: "laser miroir bataille navale reflexion lumiere",
+  quintuplees: "ia rencontre seduction romance anime histoire nakano",
+  jdr: "jeu de role donjons dragons ia aventure histoire mj fantasy des",
+  poker: "cartes texas holdem jetons casino bluff",
+  blackjack: "cartes 21 casino croupier jetons",
+  roulette: "casino jetons rouge noir pari",
+  coupdefeu: "cuisine recettes cartes deck balatro chef",
+  defense: "tower defense chateau tours strategie",
+  blindtest: "musique chanson son ecoute extrait artiste opening anime quiz",
+  dessin: "dessiner pictionary deviner crayon",
+  telephone: "telephone arabe dessin gartic phone",
+  encheres: "encheres anime personnages one piece naruto dragon ball",
+  eveil: "clicker idle entrainement anime one punch man",
+  mainmise: "monopoly plateau argent quartiers negocier",
+  categorie: "deviner categorie anime qui suis je",
+  quiaditca: "questions perso amis soiree deviner",
+  emojis: "emoji telephone arabe traduction",
+  cadran: "wavelength cadran mots oppose equipe",
+  imposteur: "undercover imposteur mot secret espion loup garou",
+  wordle: "wordle motus mot lettres",
+  loldle: "league of legends lol champion jeu video",
+  anidle: "anime manga personnage",
+  onepiecedle: "one piece luffy pirate manga anime",
+  pokedle: "pokemon pikachu jeu video",
+  electrodle: "maison appareil electromenager",
+  paysdle: "pays geographie carte drapeau monde",
+  motscroises: "mots croises grille definitions",
+  motsfleches: "mots fleches grille definitions",
+  sudoku: "sudoku chiffres grille logique",
+  connexions: "connections mots groupes",
+  blocs: "tetris blocs lignes arcade",
+  labyrinthe: "pacman pac man souris labyrinthe chat fromage arcade",
+  shikaku: "rectangles grille logique",
+  chancedle: "chance hasard loterie tirage nombre",
+  rocade: "routes ville trafic mini motorways circuit",
+  demineur: "mines minesweeper",
+  quiz: "quiz culture generale questions trivia",
+  bataille: "bataille navale bateaux battleship",
+  puissance4: "puissance 4 connect four jetons",
+  geoguessr: "geoguessr carte capture jeu video"
+};
+const sansAccent = t => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ");
+function chercher(q, liste){
+  const mots = sansAccent(q).split(" ").filter(Boolean);
+  if(!mots.length) return [];
+  return liste.filter(pret).map(g => {
+    const nom = sansAccent(g.title), cles = sansAccent(MOTS_CLES[g.slug] || "") + " " + sansAccent((g.tags || []).join(" "));
+    const texte = nom + " " + cles + " " + sansAccent(g.desc);
+    if(!mots.every(m => texte.includes(m))) return null;
+    // le nom et les mots-clés passent avant une simple mention dans la description
+    const score = mots.reduce((n, m) => n + (nom.includes(m) ? 3 : cles.includes(m) ? 2 : 1), 0);
+    return {g, score};
+  }).filter(Boolean).sort((x, y) => y.score - x.score).map(x => x.g);
+}
+let recherche = "";
+function renderRecherche(){
+  const q = recherche.trim();
+  $("resultats").hidden = !q; $("blocCats").hidden = !!q;
+  if(!q) return;
+  const l = chercher(q, jeuxBase());
+  $("resTitre").textContent = l.length ? `${l.length} jeu${l.length > 1 ? "x" : ""} pour « ${q} »` : `Aucun jeu pour « ${q} »`;
+  render(l, $("resGrille"));
+  if(!l.length) $("resGrille").innerHTML = '<p class="empty">Essaie un autre mot : musique, cartes, dessin, mots, pokémon…</p>';
+}
 let CATS = CATS_FIXES;
 function membresDe(cat, liste){
   const dans = liste.filter(g => cat.jeux.includes(g.slug));
@@ -397,7 +484,7 @@ function membresDe(cat, liste){
 }
 
 /* ---------- Groupe : seulement les jeux à plusieurs (étiquette « Multijoueur ») ---------- */
-let groupe = !!(lireLS("salle_groupe_id", null) && Compte.session()), voirTout = false;
+let groupe = false, voirTout = false;   // vrai seulement si le groupe a au moins 2 membres (seul, on voit tout)
 try{ voirTout = sessionStorage.getItem("salle_voir_tout") === "1"; }catch(e){}
 const filtreGroupe = () => groupe && !voirTout;
 function jeuxBase(){
@@ -471,7 +558,7 @@ function afficher(){
   document.body.classList.toggle("vue-cat", !!cat);
   $("accueil").hidden = !!cat; $("vueCat").hidden = !cat;
   renderGroupe(); renderDefis();
-  if(!cat) return renderCats();
+  if(!cat){ renderCats(); renderRecherche(); return; }
   renderEntete(cat);
   render();
 }
@@ -501,6 +588,7 @@ if(!lireLS("salle_bienvenue_vue", false)){
   else setTimeout(bienvenue, 500);
 }
 vue = lireVue();
+$("recherche").addEventListener("input", e => { recherche = e.target.value; renderRecherche(); });
 
 
 /* On attend les réglages (max ~3 s) pour ne pas montrer un jeu caché par erreur */
@@ -522,7 +610,7 @@ Compte.surChangement(() => tout());
 /* Groupe 👥 : on ne garde que les jeux à plusieurs (re-dessin seulement quand ça change) */
 (function attendreGroupe(){
   if(!(window.Groupe && Groupe.surChangement)) return setTimeout(attendreGroupe, 200);
-  Groupe.surChangement(g => { if(!!g !== groupe){ groupe = !!g; afficher(); } });
+  Groupe.surChangement(g => { const v = !!(g && g.membres && g.membres.length >= 2); if(v !== groupe){ groupe = v; afficher(); } });
 })();
 </script>
 </body>
