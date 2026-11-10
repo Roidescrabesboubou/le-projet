@@ -16,7 +16,17 @@
   for(let k = 0; k * k * k < MAX; k++) cubes.add(k * k * k);
   for(let a = 0, b = 1; a < MAX; [a, b] = [b, a + b]) fibo.add(a);
   for(let p = 1; p < MAX; p *= 2) puiss2.add(p);
-  const JOURS_MOIS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const triangles = new Set(), factos = new Set();
+  for(let k = 0; k * (k + 1) / 2 < MAX; k++) triangles.add(k * (k + 1) / 2);
+  for(let k = 1, f = 1; f < MAX; k++, f *= k) factos.add(f);
+  function narcissique(n){
+    const t = String(n), p = t.length;
+    return n > 9 && [...t].reduce((a, c) => a + Math.pow(+c, p), 0) === n;
+  }
+  const contient = (...motifs) => x => motifs.some(m => x.s.includes(m));
+  const CULTES = new Set([69, 67, 420, 1337, 404, 418, 7, 101, 300, 9000, 9001, 360, 1789, 1998, 2018, 1515, 51, 3615, 2012, 1984,
+    2001, 1969, 2000, 2026, 2048, 21, 993, 1111, 1234, 365, 42, 666, 777, 1729, 6174, 314159, 127001]);
+  const JOURS_MOIS =[31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   const RETOURNE = {0: 0, 1: 1, 6: 9, 8: 8, 9: 6};
 
   /* x = infos précalculées sur le nombre */
@@ -95,6 +105,55 @@
     ["horloge",  "⏰", "Horloge",          "Se lit comme une heure : hh mm ss",                  null,     x => +x.s.slice(0, 2) < 24 && x.d[2] < 6 && x.d[4] < 6],
     ["date",     "🗓️", "Calendrier",       "Se lit comme une date : jj mm aa",                   null,     x => { const j = +x.s.slice(0, 2), m = +x.s.slice(2, 4); return m >= 1 && m <= 12 && j >= 1 && j <= JOURS_MOIS[m - 1]; }],
     ["tetebeche","🙃", "Tête-bêche",       "Se lit pareil à l'envers (écran retourné)",          null,     x => x.d.every((c, i) => c in RETOURNE && RETOURNE[c] === x.d[5 - i])],
+    /* encore des maths */
+    ["triangle", "🔺", "Triangulaire",     "1, 3, 6, 10, 15… (on empile des billes en triangle)", null,   x => triangles.has(x.n)],
+    ["parfait",  "✨", "Nombre parfait",   "Égal à la somme de ses diviseurs (6, 28, 496, 8 128)", null,  x => [6, 28, 496, 8128].includes(x.n)],
+    ["facto",    "❗", "Factorielle",      "1, 2, 6, 24, 120, 720, 5 040…",                      null,     x => factos.has(x.n)],
+    ["narciss",  "🌸", "Narcissique",      "Égal à la somme de ses chiffres à la puissance du nombre de chiffres (ex. 153)", null, x => narcissique(x.n)],
+    ["jumprem",  "👬", "Premiers jumeaux", "Premier, et son voisin à 2 près aussi",              null,     x => !compose[x.n] && (!compose[x.n - 2] || (x.n + 2 < MAX && !compose[x.n + 2]))],
+    ["emirp",    "🔙", "Premier à l'envers","Premier, et encore premier lu à l'envers",          null,     x => { if(compose[x.n]) return false; const r = +String(x.n).split("").reverse().join(""); return r !== x.n && !compose[r]; }],
+    ["parite",   "☯️", "Pair, impair",     "Les chiffres alternent pair et impair",              null,     x => x.d.every((c, i) => i === 0 || c % 2 !== x.d[i - 1] % 2)],
+    ["paires3",  "👫", "Trois paires",     "Trois doublés à la suite (ex. 335 577)",             null,     x => x.d[0] === x.d[1] && x.d[2] === x.d[3] && x.d[4] === x.d[5] && x.d[1] !== x.d[2] && x.d[3] !== x.d[4]],
+    ["intrus",   "🕵️", "L'intrus",         "Cinq chiffres pareils et un seul différent",         null,     x => x.distincts === 2 && x.d.some(c => x.d.filter(e => e === c).length === 5)],
+    ["kaprekar", "🌀", "Kaprekar",         "Contient 6174, le nombre magique de Kaprekar",       null,     contient("6174")],
+    ["orr",      "🐌", "Nombre d'or",      "Commence par 1618 (1,618…)",                         null,     x => x.s.startsWith("1618")],
+    ["euler",    "📐", "Constante e",      "Commence par 2718 (2,718…)",                         null,     x => x.s.startsWith("2718")],
+    ["pifull",   "🍰", "Pi parfait",       "Exactement 314159",                                  null,     x => x.n === 314159],
+    ["taxi",     "🚕", "Taxi de Ramanujan","Contient 1729",                                      null,     contient("1729")],
+
+    /* pop culture */
+    ["nice",     "😏", "Nice",             "Contient 69",                                        null,     contient("69")],
+    ["sixseven", "🤷", "Six-seven",        "Contient 67",                                        null,     contient("67")],
+    ["quatre20", "🍃", "4:20",             "Contient 420",                                       null,     contient("420")],
+    ["leet",     "👾", "1337",             "Contient 1337 (leet, l'élite des hackers)",          null,     contient("1337")],
+    ["introuv",  "🚫", "Page introuvable", "Contient 404",                                       null,     contient("404")],
+    ["theiere",  "🫖", "Je suis une théière","Contient 418 (le code d'erreur le plus absurde du web)", null, contient("418")],
+    ["agent",    "🍸", "Agent secret",     "Contient 007",                                       null,     contient("007")],
+    ["dalmat",   "🐶", "Dalmatiens",       "Contient 101",                                       null,     contient("101")],
+    ["sparte",   "🛡️", "Spartiates",       "Contient 300",                                       null,     contient("300")],
+    ["over9000", "💥", "Plus de 9000 !",   "Contient 9000 ou 9001",              null,     contient("9000", "9001")],
+    ["noscope",  "🔭", "360 no scope",     "Contient 360",                                       null,     contient("360")],
+    ["revol",    "🇫🇷", "Révolution",      "Contient 1789",                                      null,     contient("1789")],
+    ["etoile",   "⭐", "Champions du monde","Contient 1998 ou 2018",                             null,     contient("1998", "2018")],
+    ["marignan", "⚔️", "Marignan",         "Contient 1515",                                      null,     contient("1515")],
+    ["zone51",   "👽", "Zone 51",          "Contient 51",                                        null,     contient("51")],
+    ["minitel",  "📟", "Minitel",          "Contient 3615",                                      null,     contient("3615")],
+    ["findumonde","🌋", "Fin du monde",    "Contient 2012",                                      null,     contient("2012")],
+    ["bigbro",   "👁️", "Big Brother",      "Contient 1984",                                      null,     contient("1984")],
+    ["odyssee",  "🛰️", "Odyssée de l'espace","Contient 2001",                                    null,     contient("2001")],
+    ["lune",     "🌕", "Un petit pas",     "Contient 1969 (l'homme sur la Lune)",                null,     contient("1969")],
+    ["an2000",   "💾", "Bug de l'an 2000", "Contient 2000",                                      null,     contient("2000")],
+    ["millesime","🥂", "Millésime",        "Contient 2026, l'année en cours",                    null,     contient("2026")],
+    ["jeu2048",  "🧮", "2048",             "Contient 2048",                                      null,     contient("2048")],
+    ["blackjack","🂡", "Blackjack",        "Contient 21",                                        null,     contient("21")],
+    ["mille7",   "🩸", "1000 - 7",         "Contient 993",                                       null,     contient("993")],
+    ["voeu",     "🌠", "11:11, fais un vœu","Contient 1111",                                     null,     contient("1111")],
+    ["pin",      "🔓", "Code PIN nul",     "Contient 1234 ou 0000",                              null,     contient("1234", "0000")],
+    ["unan",     "📅", "Une année",        "Contient 365",                                       null,     contient("365")],
+    ["lost",     "🏝️", "Les nombres maudits","Contient 4815 ou 2342 (4 8 15 16 23 42)",          null,     contient("4815", "2342")],
+    ["localhost","🏠", "Localhost",        "Exactement 127001 (127.0.0.1)",                      null,     x => x.n === 127001],
+    ["pilepoil", "🎯", "Pile poil",        "Le nombre entier est un nombre culte : 69, 67, 420, 1337, 404, 007…", null, x => CULTES.has(x.n)],
+
     /* dépend du jour : rareté fixe (100 nombres sur 1 000 000) */
     ["jourj",    "📆", "Pile le jour",     "Finit par la date du jour (jj mm)",                  null,     (x, c) => !!c && x.s.slice(2) === c.jjmm]
   ].map(([id, emoji, nom, desc, groupe, test]) => ({id, emoji, nom, desc, groupe, test}));
