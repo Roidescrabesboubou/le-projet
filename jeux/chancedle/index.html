@@ -28,7 +28,7 @@
 .badges{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0 4px;min-height:10px}
 .bd{display:flex;align-items:center;gap:6px;border:2px solid var(--line);background:var(--card);border-radius:12px;padding:6px 10px;text-align:left;cursor:pointer}
 .bd:hover{border-color:var(--text)}
-.bd .e{font-size:1.3rem}
+.bd .e{font-size:1.3rem;white-space:nowrap;flex-shrink:0;letter-spacing:-.15em}
 .bd b{display:block;font-size:.9rem;line-height:1.1}
 .bd small{color:var(--muted);font-size:.75rem}
 .bd.apparait{animation:apparait .35s cubic-bezier(.2,1.6,.4,1)}
@@ -47,8 +47,10 @@ ol.lb li b{white-space:nowrap;font-family:Fredoka,sans-serif}
 .namerow{display:flex;gap:6px;margin:6px 0}
 .namerow input{flex:1;min-width:0;border:2px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px}
 .album{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:10px}
-.album .bd{cursor:default}
+.album .bd{cursor:default;flex-direction:column;align-items:flex-start;text-align:left}
 .album .bd.non{opacity:.45;filter:grayscale(1)}
+.bd small.dsc{display:block;margin-top:2px;font-size:.72rem;line-height:1.2}
+dialog.b-fen:has(.album){width:min(620px,94vw)}
 .album .bd i{font-style:normal;font-weight:800;font-size:.75rem;color:var(--accent)}
 .resume{display:flex;gap:6px;margin:6px 0 4px}
 .resume div{flex:1;background:var(--soft);border-radius:12px;padding:8px 4px;text-align:center}
@@ -108,7 +110,10 @@ const RANGS = [
 Base.entete({
   titre: "Chancedle",
   emoji: "🎲",
-  boutons: [(() => { const b = Base.el("button", "📖", "b-ico"); b.title = "Album des badges"; b.onclick = album; return b; })()],
+  boutons: [
+    (() => { const b = Base.el("button", "🧾", "b-ico"); b.title = "Barème des points"; b.onclick = bareme; return b; })(),
+    (() => { const b = Base.el("button", "📖", "b-ico"); b.title = "Album des badges"; b.onclick = album; return b; })()
+  ],
   aide: `<p>Chaque jour, tu tires <b>un seul nombre</b> entre 000 000 et 999 999. Aucune stratégie : que la chance !</p>
     <ul>
       <li>Le nombre gagne des <b>badges</b> selon ses particularités : chiffres qui se répètent, miroir, nombre premier, suite, heure, date…</li>
@@ -116,6 +121,7 @@ Base.entete({
       <li>Ton tirage reçoit un <b>rang</b>, de ⚪ Banal à 🔴 Mythique (un tirage sur 10 000).</li>
       <li>Les meilleurs tirages de la semaine et de tous les temps vont au classement.</li>
       <li>📖 L'<b>album</b> garde tous les badges que tu as déjà eus.</li>
+      <li>🧾 Le <b>barème</b> explique les points et liste tous les badges, combos compris.</li>
     </ul>
     <p>Une fois ton tirage du jour fait, tu peux relancer « pour le plaisir », sans que ça compte.</p>`
 });
@@ -325,6 +331,61 @@ function album(){
   });
   box.appendChild(g);
   Base.fenetre("📖 Album des badges", box, {bouton: "Fermer"});
+}
+
+/* ---------- Barème : comment on compte les points + tous les badges par famille ---------- */
+const MATHS = new Set(["premier", "carre", "cube", "fibo", "puiss2", "triangle", "parfait", "facto", "narciss", "jumprem", "emirp",
+  "divisible", "kaprekar", "orr", "euler", "pi", "pifull", "taxi"]);
+const FAMILLES = [
+  ["combo",  "🔥 Combos",            "Plusieurs références différentes dans le même nombre (69 et 67, 420 et 42…). Seul le plus gros combo compte.", b => b.groupe === "combo"],
+  ["rep",    "🔁 Doubles et triples", "Une même référence qui revient. Ils s'ajoutent au badge simple (696769 = Nice + Double Nice).", b => b.rep],
+  ["pop",    "🎬 Pop culture",        "Le nombre contient une référence connue. « Pile poil » si le nombre entier en est une.", b => B.REFS.includes(b.id) || b.id === "pilepoil"],
+  ["maths",  "🧮 Maths",              "Les propriétés mathématiques du nombre.", b => MATHS.has(b.id)],
+  ["chiffres","🔢 Chiffres",          "La forme des chiffres : répétitions, suites, symétries, heure, date…", () => true]
+];
+function bareme(){
+  const box = Base.el("div");
+  const seuil = f => { const r = D.rangs.find(([, c]) => c <= f * B.MAX); return r ? r[0] : 0; };
+  const intro = Base.el("div");
+  intro.innerHTML = `
+    <p><b>Chaque badge rapporte des points selon sa rareté</b> : plus il y a de nombres (sur les 1 000 000 possibles) qui l'ont, moins il rapporte.</p>
+    <p class="muted" style="font-size:.88rem">points = 100 × log₂(1 000 000 ÷ nombre de tirages qui l'ont), au moins 10.<br>
+    Concrètement : <b>1 tirage sur 2 → 100 pts</b>, chaque fois que c'est <b>2 fois plus rare → +100 pts</b>.
+    1 sur 1 000 → 997 pts, 1 sur 1 000 000 → 1 993 pts.</p>
+    <p><b>Score du tirage</b> = 1 + la somme des points de tous ses badges. Les badges s'additionnent, sauf ceux d'une même famille
+    (doublé / brelan / carré…, combo / gros combo…, double / triple) : là, seul le plus fort compte.</p>
+    <p><b>Rang</b> selon la part des tirages possibles qui font au moins autant :</p>`;
+  box.appendChild(intro);
+  const ul = Base.el("ul"); ul.style.cssText = "list-style:none;padding:0;margin:0 0 6px";
+  [...RANGS].reverse().forEach((r, i, l) => {
+    const txt = r.n === 1 ? "la moitié des tirages" : `top ${(r.f * 100).toLocaleString("fr-FR")} % (1 sur ${fmt(Math.round(1 / r.f))})`;
+    ul.appendChild(Base.el("li", `${r.emoji} ${r.nom} : ${txt}` + (r.n > 1 ? ` · dès ${fmt(seuil(r.f))} pts environ` : "")));
+  });
+  box.appendChild(ul);
+
+  const pils = Base.el("div", null, "pilules"); pils.style.margin = "12px 0 8px";
+  const liste = Base.el("div");
+  const restants = [...B.BADGES], parFam = {};
+  FAMILLES.forEach(([k, , , f]) => { parFam[k] = restants.filter(f); parFam[k].forEach(b => restants.splice(restants.indexOf(b), 1)); });
+  let actif = "combo";
+  const dessiner = () => {
+    [...pils.children].forEach(x => x.classList.toggle("on", x.dataset.k === actif));
+    const [, , desc] = FAMILLES.find(f => f[0] === actif);
+    liste.innerHTML = "";
+    liste.appendChild(Base.el("p", desc, "muted"));
+    const g = Base.el("div", null, "album");
+    [...parFam[actif]].sort((a, b) => D.pts[b.id] - D.pts[a.id]).forEach(b => {
+      const e = badgeEl({...b, pts: D.pts[b.id], nb: D.comptes[b.id]});
+      e.title = b.desc;
+      e.querySelector("small").textContent = `+${fmt(D.pts[b.id])} pts · ${unSur(D.comptes[b.id])}`;
+      e.querySelector("div").appendChild(Base.el("small", b.desc, "dsc"));
+      g.appendChild(e);
+    });
+    liste.appendChild(g);
+  };
+  FAMILLES.forEach(([k, t]) => { const b = Base.el("button", `${t} (${parFam[k].length})`); b.dataset.k = k; b.onclick = () => { actif = k; dessiner(); }; pils.appendChild(b); });
+  box.append(pils, liste); dessiner();
+  Base.fenetre("🧾 Barème des points", box, {bouton: "Fermer"});
 }
 
 /* ---------- Démarrage ---------- */

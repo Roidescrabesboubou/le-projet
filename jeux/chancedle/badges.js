@@ -100,7 +100,7 @@
     ["lourd",    "🏋️", "Poids lourd",      "La somme des chiffres fait 46 ou plus",              "poids",  x => x.somme >= 46],
     ["milieu",   "🎚️", "Pile au milieu",   "La somme des chiffres fait 27",                      "poids",  x => x.somme === 27],
     ["divisible","🧩", "Divisible",        "Divisible par la somme de ses chiffres",             null,     x => x.somme > 0 && x.n % x.somme === 0],
-    ["sept",     "🍀", "Triple sept",      "Contient 777",                                       null,     contient("777")],
+    ["sept",     "🍀", "777 chanceux",      "Contient 777",                                       null,     contient("777")],
     ["diable",   "😈", "Diablotin",        "Contient 666",                                       null,     contient("666")],
     ["reponse",  "🌌", "La grande réponse","Contient 42",                                        null,     contient("42")],
     ["pi",       "🥧", "Pi",               "Commence par 314",                                   null,     x => x.s.startsWith("314")],
@@ -191,7 +191,7 @@
     return BADGES.filter(b => b.test(x, c));
   }
 
-  const api = {MAX, BADGES, badges, infos};
+  const api = {MAX, BADGES, REFS, badges, infos};
   if(typeof module !== "undefined" && module.exports) module.exports = api;
   else racine.ChanceBadges = api;
 })(typeof window !== "undefined" ? window : globalThis);
