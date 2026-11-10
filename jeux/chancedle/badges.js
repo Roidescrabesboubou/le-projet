@@ -28,6 +28,37 @@
   function fois(s, m){ let k = 0; for(let i = s.indexOf(m); i >= 0; i = s.indexOf(m, i + 1)) k++; return k; }
   const CULTES = new Set([69, 67, 420, 1337, 404, 418, 7, 101, 300, 9000, 9001, 360, 1789, 1998, 2018, 1515, 51, 3615, 2012, 1984,
     2001, 1969, 2000, 2026, 2048, 21, 993, 1111, 1234, 365, 42, 666, 777, 1729, 6174, 314159, 127001]);
+  /* plus petit facteur premier et somme des diviseurs (crible) */
+  const ppf = new Int32Array(MAX), sigma = new Float64Array(MAX);
+  for(let i = 2; i < MAX; i++) if(!ppf[i]) for(let j = i; j < MAX; j += i) if(!ppf[j]) ppf[j] = i;
+  for(let d = 1; d < MAX; d++) for(let j = d; j < MAX; j += d) sigma[j] += d;
+  const sommeChiffres = n => { let s = 0; for(; n; n = Math.floor(n / 10)) s += n % 10; return s; };
+  function smith(n){
+    if(n < 4 || !compose[n]) return false;
+    let s = 0, m = n;
+    while(m > 1){ const f = ppf[m]; s += sommeChiffres(f); m /= f; }
+    return s === sommeChiffres(n);
+  }
+  function heureux(n){
+    for(let i = 0; i < 30 && n !== 1; i++){ let s = 0; for(; n; n = Math.floor(n / 10)) s += (n % 10) * (n % 10); n = s; if(n === 4 || n === 0) return false; }
+    return n === 1;
+  }
+  function syracuse(n){ if(n < 1) return 0; let k = 0; while(n !== 1){ n = n % 2 ? 3 * n + 1 : n / 2; k++; } return k; }
+  const MOTS_HEXA = ["bad", "fab", "ace", "bed", "cab", "dad", "fed", "add", "bee", "dab", "fad", "cafe", "beef", "face", "dead", "fade", "c0de"];
+  const estPal = t => t === [...t].reverse().join("");
+  function palMax(s){ for(let L = 6; L >= 3; L--) for(let i = 0; i + L <= 6; i++) if(estPal(s.slice(i, i + L))) return L; return 0; }
+  function montagne(d, sens){
+    for(let p = 1; p <= 4; p++){
+      let ok = true;
+      for(let i = 1; i <= p && ok; i++) if((d[i] - d[i - 1]) * sens <= 0) ok = false;
+      for(let i = p + 1; i < 6 && ok; i++) if((d[i] - d[i - 1]) * sens >= 0) ok = false;
+      if(ok) return true;
+    }
+    return false;
+  }
+  /* répartition des chiffres façon main de poker : "21111" = une paire… */
+  const main = x => { if(x._main) return x._main; const c = {}; x.d.forEach(v => c[v] = (c[v] || 0) + 1); return (x._main = Object.values(c).sort((a, b) => b - a).join("")); };
+  const voisins = x => { let k = 0; for(let i = 1; i < 6; i++) if(Math.abs(x.d[i] - x.d[i - 1]) === 1) k++; return k; };
   const JOURS_MOIS =[31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   const RETOURNE = {0: 0, 1: 1, 6: 9, 8: 8, 9: 6};
 
@@ -69,7 +100,7 @@
     ["quinte",   "🖐️", "Cinq à la file",   "Cinq chiffres identiques côte à côte",               "serie",  x => x.maxSerie === 5],
     ["jackpot",  "💎", "Jackpot",          "Les six chiffres identiques",                        "serie",  x => x.maxSerie === 6],
     ["jumeaux",  "👯", "Jumeaux",          "Deux doublés séparés (ex. 112 344)",                 null,     x => x.paires >= 2],
-    ["miroir",   "🪞", "Miroir",           "Se lit pareil dans les deux sens",                   null,     x => x.s === [...x.s].reverse().join("")],
+    ["miroir",   "🪞", "Miroir",           "Se lit pareil dans les deux sens",                   "pal",     x => x.s === [...x.s].reverse().join("")],
     ["echo",     "🔁", "Écho",             "La 2ᵉ moitié répète la 1ʳᵉ (ex. 384 384)",           null,     x => x.s.slice(0, 3) === x.s.slice(3)],
     ["ritour",   "🎵", "Ritournelle",      "Deux chiffres en alternance (ex. 474 747)",          null,     x => x.d[0] !== x.d[1] && x.s === x.s.slice(0, 2).repeat(3)],
     ["suite3",   "📈", "À la suite",       "Trois chiffres qui se suivent (ex. 456 ou 654)",     "suite",  x => x.suite === 3],
@@ -122,6 +153,64 @@
     ["euler",    "📐", "Constante e",      "Commence par 2718 (2,718…)",                         null,     x => x.s.startsWith("2718")],
     ["pifull",   "🍰", "Pi parfait",       "Exactement 314159",                                  null,     x => x.n === 314159],
     ["taxi",     "🚕", "Taxi de Ramanujan","Contient 1729",                                      null,     contient("1729")],
+
+    /* petits bonus : courants, ils rapportent peu mais souvent */
+    ["mpaire",   "👥", "Une paire",        "Un chiffre apparaît deux fois (même séparé)",        "main",   x => main(x) === "21111"],
+    ["m2paires", "🎴", "Deux paires",      "Deux chiffres apparaissent deux fois chacun",        "main",   x => main(x) === "2211"],
+    ["m3paires", "🧦", "Trois fois deux",  "Trois chiffres apparaissent deux fois chacun",       "main",   x => main(x) === "222"],
+    ["mbrelan",  "🍒", "Trois pareils",    "Un chiffre apparaît trois fois (même séparé)",       "main",   x => main(x) === "3111"],
+    ["mfull",    "🏠", "Full",             "Trois pareils + deux pareils (comme au poker)",      "main",   x => main(x) === "321"],
+    ["m2brelan", "🍇", "Double brelan",    "Deux chiffres apparaissent trois fois chacun",       "main",   x => main(x) === "33"],
+    ["mcarre",   "🍀", "Quatre pareils",   "Un chiffre apparaît quatre fois",                    "main",   x => main(x) === "411"],
+    ["mcarrep",  "🎁", "Quatre + deux",    "Quatre pareils et deux autres pareils",              "main",   x => main(x) === "42"],
+    ["vois1",    "🤝", "Voisins",          "Deux chiffres qui se suivent côte à côte (ex. 89 ou 43)", "vois", x => voisins(x) === 1],
+    ["vois2",    "🏘️", "Bons voisins",     "Deux enchaînements de chiffres qui se suivent",      "vois",   x => voisins(x) === 2],
+    ["vois3",    "🏙️", "Tout le quartier", "Trois enchaînements ou plus de chiffres qui se suivent", "vois", x => voisins(x) >= 3],
+    ["dix",      "🔟", "Font dix",         "Deux chiffres côte à côte qui font 10 (ex. 37, 82, 55)", null,  x => x.d.some((c, i) => i && c + x.d[i - 1] === 10)],
+    ["saut",     "🪂", "Grand saut",       "Un 0 et un 9 côte à côte",                           null,     x => /09|90/.test(x.s)],
+    ["extremes", "↔️", "Du 0 au 9",        "Contient au moins un 0 et un 9",                     null,     x => x.s.includes("0") && x.s.includes("9")],
+    ["pal3",     "🔍", "Petit miroir",     "Trois chiffres qui se lisent dans les deux sens (ex. 474)", "pal", x => palMax(x.s) === 3],
+    ["pal4",     "🔎", "Miroir moyen",     "Quatre chiffres qui se lisent dans les deux sens (ex. 2552)", "pal", x => palMax(x.s) === 4],
+    ["pal5",     "🪟", "Grand miroir",     "Cinq chiffres qui se lisent dans les deux sens (ex. 38183)", "pal", x => palMax(x.s) === 5],
+    ["refrain",  "🎶", "Refrain",          "Deux mêmes chiffres qui reviennent (ex. 12 … 12)",   null,     x => { for(let i = 0; i < 5; i++) for(let j = i + 2; j < 5; j++) if(x.s.substr(i, 2) === x.s.substr(j, 2)) return true; return false; }],
+    ["boucle",   "➰", "La boucle",        "Finit par le même chiffre qu'au début",              "bout",   x => x.d[0] === x.d[5] && x.d[1] !== x.d[4]],
+    ["serre",    "📚", "Serre-livres",     "Les 2 premiers chiffres reviennent à la fin, à l'envers (ex. 12 … 21)", "bout", x => x.d[0] === x.d[5] && x.d[1] === x.d[4]],
+    ["finhaut",  "↗️", "Final en hausse",  "Les 3 derniers chiffres montent",                    null,     x => x.d[3] < x.d[4] && x.d[4] < x.d[5]],
+    ["finbas",   "↘️", "Final en baisse",  "Les 3 derniers chiffres descendent",                 null,     x => x.d[3] > x.d[4] && x.d[4] > x.d[5]],
+    ["montagne", "⛰️", "Montagne",         "Ça monte jusqu'à un sommet, puis ça redescend",      null,     x => montagne(x.d, 1)],
+    ["vallee",   "🏞️", "Vallée",           "Ça descend jusqu'à un creux, puis ça remonte",       null,     x => montagne(x.d, -1)],
+    ["petits",   "🐣", "Petits chiffres",  "Que des chiffres de 0 à 4",                          null,     x => x.d.every(c => c <= 4)],
+    ["grands",   "🦒", "Grands chiffres",  "Que des chiffres de 5 à 9",                          null,     x => x.d.every(c => c >= 5)],
+    ["boucles",  "⭕", "Tout en rondeurs", "Que des chiffres avec un rond : 0, 6, 8, 9",         null,     x => x.d.every(c => [0, 6, 8, 9].includes(c))],
+    ["batons",   "✏️", "Sans aucun rond",  "Que des chiffres sans rond : 1, 2, 3, 5, 7",         null,     x => x.d.every(c => [1, 2, 3, 5, 7].includes(c))],
+    ["hmiroir",  "🕰️", "Heure miroir",     "Commence par une heure miroir (ex. 14 h 41, 23 h 32)", "heure", x => { const h = x.s.slice(0, 2); return +h < 24 && h[1] + h[0] === x.s.slice(2, 4) && +x.s.slice(2, 4) < 60 && h[0] !== h[1]; }],
+    ["hdouble",  "⏱️", "Heure double",     "Commence par une heure double (ex. 12 h 12, 21 h 21)", "heure", x => +x.s.slice(0, 2) < 24 && x.s.slice(0, 2) === x.s.slice(2, 4)],
+    ["annee",    "📜", "Une année",        "Contient une année entre 1900 et 2099",              null,     x => /19\d\d|20\d\d/.test(x.s)],
+    ["sprem",    "🔹", "Somme première",   "La somme des chiffres est un nombre premier",        null,     x => !compose[x.somme]],
+    ["sculte",   "🎱", "Somme culte",      "La somme des chiffres fait 7, 13, 21 ou 42",         null,     x => [7, 13, 21, 42].includes(x.somme)],
+    ["moyenne",  "➗", "Moyenne pile",     "La moyenne des chiffres tombe juste",                null,     x => x.somme % 6 === 0],
+    ["sprod",    "🤝", "Somme = produit",  "La somme des chiffres est égale à leur produit",     null,     x => x.d.reduce((a, b) => a * b, 1) === x.somme],
+
+    /* divisibilité et moitiés */
+    ["mult3",    "3️⃣", "Multiple de 3",    "Divisible par 3",                                    "div3",   x => x.n % 3 === 0 && x.n % 9 !== 0],
+    ["mult9",    "9️⃣", "Multiple de 9",    "Divisible par 9",                                    "div3",   x => x.n % 9 === 0],
+    ["mult7",    "7️⃣", "Multiple de 7",    "Divisible par 7",                                    null,     x => x.n % 7 === 0],
+    ["mult11",   "🎳", "Multiple de 11",   "Divisible par 11",                                   null,     x => x.n % 11 === 0],
+    ["mult13",   "🐈‍⬛", "Multiple de 13", "Divisible par 13",                                   null,     x => x.n % 13 === 0],
+    ["mult37",   "🎰", "Multiple de 37",   "Divisible par 37 (comme 111, 222, 333…)",            null,     x => x.n % 37 === 0],
+    ["mprem",    "🧱", "Moitiés premières","Les deux moitiés (3 chiffres) sont des nombres premiers", null, x => !compose[+x.s.slice(0, 3)] && !compose[+x.s.slice(3)]],
+    ["msuite",   "🚃", "Moitiés voisines", "La 2ᵉ moitié vaut la 1ʳᵉ plus ou moins 1 (ex. 341 342)", null, x => Math.abs(+x.s.slice(3) - +x.s.slice(0, 3)) === 1],
+    ["mdouble",  "✖️", "Le double",        "La 2ᵉ moitié vaut le double de la 1ʳᵉ (ex. 123 246)", null,    x => +x.s.slice(0, 3) > 0 && +x.s.slice(3) === 2 * +x.s.slice(0, 3)],
+    ["mcompl",   "🧷", "Complément à 9",   "Les deux moitiés font 999 ensemble (ex. 123 876)",   null,     x => +x.s.slice(0, 3) + +x.s.slice(3) === 999],
+
+    /* tirés par les cheveux */
+    ["abondant", "💰", "Abondant",         "Ses diviseurs (sans lui) font plus que lui",         null,     x => x.n > 0 && sigma[x.n] - x.n > x.n],
+    ["heureux",  "😊", "Nombre heureux",   "Somme des carrés des chiffres, encore et encore… on tombe sur 1", null, x => heureux(x.n)],
+    ["smith",    "🧑‍🔬", "Nombre de Smith","Ses chiffres font la même somme que ceux de ses facteurs premiers", null, x => smith(x.n)],
+    ["syracuse", "✈️", "Long vol",         "Suite de Syracuse (÷2 si pair, ×3+1 sinon) : 200 étapes ou plus avant 1", null, x => syracuse(x.n) >= 200],
+    ["automorph","🪆", "Automorphe",       "Son carré finit par lui-même (ex. 376² = 141 376)",  null,     x => x.n > 1 && (x.n * x.n) % Math.pow(10, String(x.n).length) === x.n],
+    ["binpal",   "🔢", "Miroir binaire",   "Écrit en binaire (0 et 1), il se lit dans les deux sens", null, x => x.n > 0 && estPal(x.n.toString(2))],
+    ["hexa",     "🔤", "Mot caché en hexa","Écrit en hexadécimal, il cache un mot anglais (CAFE, BEEF, BAD…)", null, x => { const h = x.n.toString(16); return MOTS_HEXA.some(m => h.includes(m)); }],
 
     /* pop culture */
     ["nice",     "😏", "Nice",             "Contient 69",                                        null,     contient("69")],

@@ -335,11 +335,14 @@ function album(){
 
 /* ---------- Barème : comment on compte les points + tous les badges par famille ---------- */
 const MATHS = new Set(["premier", "carre", "cube", "fibo", "puiss2", "triangle", "parfait", "facto", "narciss", "jumprem", "emirp",
-  "divisible", "kaprekar", "orr", "euler", "pi", "pifull", "taxi"]);
+  "divisible", "kaprekar", "orr", "euler", "pi", "pifull", "taxi", "mult3", "mult9", "mult7", "mult11", "mult13", "mult37",
+  "mprem", "msuite", "mdouble", "mcompl", "sprem", "sculte", "moyenne"]);
+const LOIN = new Set(["abondant", "heureux", "smith", "syracuse", "automorph", "binpal", "hexa", "sprod"]);
 const FAMILLES = [
   ["combo",  "🔥 Combos",            "Plusieurs références différentes dans le même nombre (69 et 67, 420 et 42…). Seul le plus gros combo compte.", b => b.groupe === "combo"],
   ["rep",    "🔁 Doubles et triples", "Une même référence qui revient. Ils s'ajoutent au badge simple (696769 = Nice + Double Nice).", b => b.rep],
   ["pop",    "🎬 Pop culture",        "Le nombre contient une référence connue. « Pile poil » si le nombre entier en est une.", b => B.REFS.includes(b.id) || b.id === "pilepoil"],
+  ["loin",   "🤯 Tiré par les cheveux", "Des propriétés obscures que presque personne ne remarque. Elles comptent quand même !", b => LOIN.has(b.id)],
   ["maths",  "🧮 Maths",              "Les propriétés mathématiques du nombre.", b => MATHS.has(b.id)],
   ["chiffres","🔢 Chiffres",          "La forme des chiffres : répétitions, suites, symétries, heure, date…", () => true]
 ];
