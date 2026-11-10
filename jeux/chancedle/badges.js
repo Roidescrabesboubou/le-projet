@@ -262,10 +262,10 @@
     const m = (b.test.motifs || []).filter(m => m.length <= 3);
     if(!m.length) return;
     const k = x => Math.max(...m.map(mm => fois(x.s, mm)));
-    ajouts.push({id: b.id + "_x2", emoji: b.emoji.repeat(2), nom: "Double " + b.nom, desc: m.join(" ou ") + " deux fois", groupe: "rep_" + b.id, test: x => k(x) === 2, rep: true});
+    ajouts.push({id: b.id + "_x2", emoji: b.emoji.repeat(2), nom: "Double " + b.nom, desc: m.join(" ou ") + " deux fois", groupe: "rep_" + b.id, test: x => k(x) === 2, rep: true, motifs: m});
     /* trois fois : possible seulement pour 2 chiffres (696969) ou un chiffre répété (666 dans 66666) */
     if(m.some(mm => mm.length === 2 || new Set(mm).size === 1))
-    ajouts.push({id: b.id + "_x3", emoji: b.emoji.repeat(3), nom: "Triple " + b.nom, desc: m.join(" ou ") + " trois fois ou plus", groupe: "rep_" + b.id, test: x => k(x) >= 3, rep: true});
+    ajouts.push({id: b.id + "_x3", emoji: b.emoji.repeat(3), nom: "Triple " + b.nom, desc: m.join(" ou ") + " trois fois ou plus", groupe: "rep_" + b.id, test: x => k(x) >= 3, rep: true, motifs: m});
   });
   /* plusieurs références différentes dans le même nombre */
   ajouts.push(
@@ -274,13 +274,76 @@
     {id: "combo4", emoji: "🌟", nom: "Combo de légende", desc: "Quatre références différentes ou plus dans le même nombre", groupe: "combo", test: x => nbRefs(x) >= 4});
   BADGES.splice(avant, 0, ...ajouts);
 
+  /* ---------- Chiffres concernés par un badge (pour les surligner) ----------
+     renvoie les positions (0 à 5) ; tout le nombre si le badge parle du nombre entier */
+  const TOUT = [0, 1, 2, 3, 4, 5];
+  const plage = (a, b) => { const r = []; for(let i = a; i < b; i++) r.push(i); return r; };
+  function occurrences(s, motifs){
+    const r = new Set();
+    motifs.forEach(m => { for(let i = s.indexOf(m); i >= 0; i = s.indexOf(m, i + 1)) for(let k = 0; k < m.length; k++) r.add(i + k); });
+    return [...r];
+  }
+  function series(x, min){
+    const r = []; let debut = 0;
+    for(let i = 1; i <= 6; i++) if(i === 6 || x.d[i] !== x.d[i - 1]){ if(i - debut >= min) r.push(...plage(debut, i)); debut = i; }
+    return r;
+  }
+  function suitePlusLongue(x){
+    let meilleur = [0, 1];
+    for(const sens of [1, -1]){ let debut = 0;
+      for(let i = 1; i <= 6; i++) if(i === 6 || x.d[i] - x.d[i - 1] !== sens){ if(i - debut > meilleur[1] - meilleur[0]) meilleur = [debut, i]; debut = i; } }
+    return plage(meilleur[0], meilleur[1]);
+  }
+  const paires = (x, f) => { const r = new Set(); for(let i = 1; i < 6; i++) if(f(x.d[i - 1], x.d[i])){ r.add(i - 1); r.add(i); } return [...r]; };
+  const chiffres = (x, f) => TOUT.filter(i => f(x.d[i]));
+  function positions(id, n, c){
+    const x = infos(n), b = BADGES.find(e => e.id === id);
+    if(!b) return [];
+    if(b.motifs) return occurrences(x.s, b.motifs);
+    if(b.test.motifs) return occurrences(x.s, b.test.motifs);
+    if(b.groupe === "combo") return occurrences(x.s, refs.filter(r => r.test(x)).flatMap(r => r.test.motifs || []));
+    switch(id){
+      case "double": case "brelan": case "carre4": case "quinte": return series(x, x.maxSerie);
+      case "jumeaux": return series(x, 2);
+      case "suite3": case "suite4": case "suite5": case "suite6": return suitePlusLongue(x);
+      case "rond2": case "rond3": case "rond4": return plage(6 - x.zeros, 6);
+      case "petit": case "miette": { let k = 0; while(k < 5 && x.d[k] === 0) k++; return plage(0, k); }
+      case "haut": return [0, 1];
+      case "sommet": return [0, 1, 2];
+      case "pi": return [0, 1, 2];
+      case "orr": case "euler": return [0, 1, 2, 3];
+      case "hmiroir": case "hdouble": return [0, 1, 2, 3];
+      case "jourj": return [2, 3, 4, 5];
+      case "mpaire": case "m2paires": case "m3paires": case "mbrelan": case "mfull": case "m2brelan": case "mcarre": case "mcarrep": case "intrus":
+        return chiffres(x, v => x.d.filter(e => e === v).length >= 2);
+      case "vois1": case "vois2": case "vois3": return paires(x, (a, b) => Math.abs(a - b) === 1);
+      case "dix": return paires(x, (a, b) => a + b === 10);
+      case "saut": return paires(x, (a, b) => a + b === 9 && a * b === 0);
+      case "extremes": return chiffres(x, v => v === 0 || v === 9);
+      case "pal3": case "pal4": case "pal5": {
+        const L = palMax(x.s);
+        for(let i = 0; i + L <= 6; i++) if(estPal(x.s.slice(i, i + L))) return plage(i, i + L);
+        return [];
+      }
+      case "refrain": {
+        for(let i = 0; i < 5; i++) for(let j = i + 2; j < 5; j++) if(x.s.substr(i, 2) === x.s.substr(j, 2)) return [i, i + 1, j, j + 1];
+        return [];
+      }
+      case "boucle": return [0, 5];
+      case "serre": return [0, 1, 4, 5];
+      case "finhaut": case "finbas": return [3, 4, 5];
+      case "annee": { const m = x.s.match(/19\d\d|20\d\d/); return m ? plage(m.index, m.index + 4) : []; }
+      default: return TOUT;
+    }
+  }
+
   /* badges d'un nombre ; c = {jjmm: "1011"} pour le badge du jour */
   function badges(n, c){
     const x = infos(n);
     return BADGES.filter(b => b.test(x, c));
   }
 
-  const api = {MAX, BADGES, REFS, badges, infos};
+  const api = {MAX, BADGES, REFS, badges, infos, positions};
   if(typeof module !== "undefined" && module.exports) module.exports = api;
   else racine.ChanceBadges = api;
 })(typeof window !== "undefined" ? window : globalThis);

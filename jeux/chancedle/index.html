@@ -15,7 +15,9 @@
 .rouleaux .r:nth-child(3){margin-right:10px}
 .rouleaux .r.tourne span{animation:defile .09s linear infinite;filter:blur(1px)}
 .rouleaux .r.pose{animation:pose .25s ease-out}
-.rouleaux .r.badge{background:color-mix(in srgb,var(--or) 35%,var(--bg))}
+.rouleaux .r{transition:background .2s,transform .2s,box-shadow .2s,color .2s}
+.rouleaux .r.badge{background:var(--or);color:#1d1a3a;transform:translateY(-6px);box-shadow:0 9px 0 var(--encre),0 0 18px color-mix(in srgb,var(--or) 70%,transparent)}
+.bd.on{border-color:var(--or);background:color-mix(in srgb,var(--or) 22%,var(--card))}
 @keyframes defile{from{transform:translateY(-30%)}to{transform:translateY(30%)}}
 @keyframes pose{0%{transform:translateY(-8px)}60%{transform:translateY(3px)}100%{transform:none}}
 .btn.gros{font-size:1.25rem;padding:14px 30px;margin-top:14px}
@@ -182,6 +184,18 @@ function badgeEl(b){
   return d;
 }
 
+/* clic sur un badge du tirage : sa description + ses chiffres en surbrillance (2e clic : on éteint) */
+function surligner(b, a, e){
+  const deja = e.classList.contains("on");
+  document.querySelectorAll("#badges .bd.on").forEach(x => x.classList.remove("on"));
+  R.forEach(r => r.classList.remove("badge"));
+  if(deja) return;
+  e.classList.add("on");
+  const pos = B.positions(b.id, a.n, {jjmm: jjmmParis()});
+  pos.forEach(i => R[i].classList.add("badge"));
+  Base.toast(`${b.emoji} ${b.nom} : ${b.desc}`, 3500);
+}
+
 async function montrer(a, o){
   o = o || {};
   $("avant").classList.add("cache"); $("apres").classList.remove("cache");
@@ -195,6 +209,7 @@ async function montrer(a, o){
   for(const b of a.badges){
     if(o.anim) await new Promise(ok => setTimeout(ok, 260));
     const e = badgeEl(b); if(o.anim) e.classList.add("apparait"); zb.appendChild(e);
+    e.onclick = () => surligner(b, a, e);
   }
   rang.textContent = `${a.rang.emoji} ${a.rang.nom}`; rang.style.background = a.rang.coul;
   rang.className = "rang" + (o.anim ? " apparait" : "");
