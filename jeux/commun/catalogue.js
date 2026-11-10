@@ -100,7 +100,7 @@ window.SALLE_CATALOGUE = [
     title: "Blackjack",
     emoji: "🂡",
     desc: "Bats le croupier sans dépasser 21. Tu reçois des jetons chaque jour, et c'est tout : aucun autre moyen d'en gagner que de jouer. Gère ton tapis et grimpe au classement des plus riches !",
-    tags: ["Cartes", "Casino", "Quotidien", "Solo"],
+    tags: ["Cartes", "Casino", "Solo"],
     colors: ["#d9475a", "#1f7d52"],
     etat: "dispo",
     badge: "Nouveau"
@@ -110,7 +110,7 @@ window.SALLE_CATALOGUE = [
     title: "Roulette",
     emoji: "🎡",
     desc: "Une seule roulette pour tout le site : la roue tourne en boucle, tu vas et viens quand tu veux et tu vois les mises des autres en direct. 1 000 jetons chaque jour, et c'est tout : aucun autre moyen d'en gagner que de jouer. Grimpe au classement des plus riches !",
-    tags: ["Casino", "Quotidien", "Multijoueur"],
+    tags: ["Casino", "Multijoueur"],
     colors: ["#c0303c", "#1f7d52"],
     etat: "dispo",
     badge: "Nouveau"
