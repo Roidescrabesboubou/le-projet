@@ -365,41 +365,36 @@ const $ = id => document.getElementById(id);
 const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt != null) e.textContent = txt; if(cls) e.className = cls; return e; };
 const a = (g, t) => (g.tags || []).includes(t);
 const pret = g => g.etat !== "bientot" && !g.sansPage;
-/* Les catégories viennent uniquement des étiquettes (tags de catalogue.js) :
-   un jeu est dans chaque catégorie dont il porte une étiquette, donc souvent
-   dans plusieurs. Une étiquette qui n'est rangée nulle part ci-dessous crée
-   toute seule sa propre catégorie : aucun jeu n'est jamais inaccessible. */
+/* Catégories choisies une par une avec le propriétaire du site : chaque catégorie
+   liste ses jeux (slug). Un jeu peut figurer dans plusieurs listes. Un jeu qui
+   n'est dans aucune liste (nouveau jeu oublié) va dans « Arcade et solo ». */
 const CATS_FIXES = [
-  {id: "jour", emoji: "📅", titre: "Défis du jour", tags: ["Quotidien"], c: ["#ffb020", "#ff6a2b"],
-   desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles."},
-  {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", tags: ["Party", "Dessin", "Musique", "Quiz"], c: ["#ff4f7b", "#8b4dff"],
-   desc: "Dessin, quiz, blind test, imposteur… chacun joue sur son téléphone avec un code de salle."},
-  {id: "multi", emoji: "👥", titre: "À plusieurs", tags: ["Multijoueur"], c: ["#3d6bff", "#22b8cf"],
-   desc: "Tous les jeux qui se jouent à deux ou plus, sur le même écran ou en ligne."},
-  {id: "solo", emoji: "🙋", titre: "En solo", tags: ["Solo"], c: ["#1f9a66", "#9bd34a"],
-   desc: "Tous les jeux auxquels on peut jouer seul, contre l'ordinateur ou contre la montre."},
-  {id: "reflexion", emoji: "🧠", titre: "Mots et réflexion", tags: ["Réflexion", "Mots", "Géographie"], c: ["#0ea5a4", "#3d6bff"],
-   desc: "Mots, logique, géographie : de quoi faire chauffer les neurones."},
-  {id: "strategie", emoji: "♟️", titre: "Stratégie et plateau", tags: ["Stratégie", "Plateau"], c: ["#6d4aff", "#22b8cf"],
-   desc: "Plateaux, gestion et coups à l'avance."},
-  {id: "arcade", emoji: "🕹️", titre: "Arcade et action", tags: ["Arcade", "Action", "Clicker", "Collection"], c: ["#ff6a2b", "#ffb020"],
-   desc: "Réflexes, scores à battre et parties rapides."},
-  {id: "univers", emoji: "👾", titre: "Jeux vidéo et animé", tags: ["Jeux vidéo", "Animé"], c: ["#e0457b", "#ff9a3d"],
-   desc: "League of Legends, Pokémon, One Piece, animés : pour les fans."},
-  {id: "casino", emoji: "🎰", titre: "Casino et cartes", tags: ["Casino", "Cartes"], c: ["#0f7a4a", "#d4a017"],
-   desc: "Poker, blackjack, roulette et jeux de cartes, avec de faux jetons."},
-  {id: "ia", emoji: "🤖", titre: "Histoires avec l'IA", tags: ["IA", "Histoire"], c: ["#5b2bd8", "#ff6a9a"],
-   desc: "Des aventures racontées par une IA."}
+  {id: "jour", emoji: "📅", titre: "Défis du jour", c: ["#ffb020", "#ff6a2b"],
+   desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles.",
+   jeux: ["wordle", "loldle", "onepiecedle", "pokedle", "electrodle", "anidle", "paysdle", "motscroises", "motsfleches", "sudoku", "connexions", "shikaku", "chancedle", "coupdefeu"]},
+  {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", c: ["#ff4f7b", "#8b4dff"],
+   desc: "Des jeux de groupe où chacun joue sur son téléphone, il suffit d'un code de salle.",
+   jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran"]},
+  {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
+   desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
+   jeux: ["puissance4", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
+  {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
+   desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
+   jeux: ["poker", "blackjack", "roulette"]},
+  {id: "ia", emoji: "🤖", titre: "Histoires avec l'IA", c: ["#5b2bd8", "#ff6a9a"],
+   desc: "Des aventures racontées par une IA.",
+   jeux: ["quintuplees", "jdr"]},
+  {id: "arcade", emoji: "🕹️", titre: "Arcade et solo", c: ["#1f9a66", "#9bd34a"],
+   desc: "Arcade, réflexion et gestion : des records à battre quand tu as un moment.",
+   jeux: ["arene", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
 ];
-const COULEURS_AUTO = [["#8b4dff", "#ff4f7b"], ["#22b8cf", "#1f9a66"], ["#f59e0b", "#e0457b"]];
-function categories(liste){
-  const rangees = new Set(CATS_FIXES.flatMap(c => c.tags));
-  const autres = [...new Set(liste.flatMap(g => g.tags || []))].filter(t => !rangees.has(t))
-    .map((t, i) => ({id: "t-" + t.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, ""), emoji: "🎲", titre: t, tags: [t], c: COULEURS_AUTO[i % 3], desc: "Les jeux « " + t + " »."}));
-  return [...CATS_FIXES, ...autres];
-}
+const categories = () => CATS_FIXES;
 let CATS = CATS_FIXES;
-function membresDe(cat, liste){ return liste.filter(g => cat.tags.some(t => a(g, t))); }
+function membresDe(cat, liste){
+  const dans = liste.filter(g => cat.jeux.includes(g.slug));
+  if(cat.id === "arcade") liste.forEach(g => { if(!dans.includes(g) && !CATS_FIXES.some(c => c.jeux.includes(g.slug))) dans.push(g); });
+  return dans;
+}
 
 /* ---------- Groupe : seulement les jeux à plusieurs (étiquette « Multijoueur ») ---------- */
 let groupe = !!(lireLS("salle_groupe_id", null) && Compte.session()), voirTout = false;

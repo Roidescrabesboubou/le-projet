@@ -33,13 +33,13 @@ jeux/<slug>/        un dossier par jeu
 
 ## Ajouter un jeu
 1. Copier `jeux/_modele/` vers `jeux/<slug>/`.
-2. Ajouter l'entrée dans `jeux/commun/catalogue.js` (même slug).
+2. Ajouter l'entrée dans `jeux/commun/catalogue.js` (même slug), et le slug dans la bonne catégorie de `CATS_FIXES` (`index.html`).
 3. S'il a un classement : ajouter le slug dans `firebase-regles.json` (puis le publier avec `firebase.cmd deploy --only database`).
 4. Tester, commit, push sur `main`.
 
 L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
-Accueil : des catégories (`CATS_FIXES` dans `index.html`, adresse `#jeux/<catégorie>`), chacune = une liste d'étiquettes : un jeu est dans chaque catégorie dont il porte une étiquette (donc souvent plusieurs). Une étiquette rangée nulle part crée sa propre catégorie automatiquement : aucun jeu n'est inaccessible. Pas de page « tous les jeux ». Les jeux `ia: true` sont cachés de l'accueil sauf pour les comptes avec accès IA. En groupe 👥, seuls les jeux étiquetés `Multijoueur` s'affichent : mets cette étiquette à tout jeu qui a une salle en ligne. Message de bienvenue à la 1re visite (`salle_bienvenue_vue`).
+Accueil : 6 catégories choisies avec moi (`CATS_FIXES` dans `index.html`, adresse `#jeux/<catégorie>`), chacune avec la liste de ses jeux (slugs) : Défis du jour, Soirée entre amis, Duels et plateau, Casino, Histoires avec l'IA, Arcade et solo. **Nouveau jeu : l'ajouter dans la bonne liste** (sinon il tombe dans Arcade et solo). Un jeu peut être dans plusieurs listes. Pas de page « tous les jeux ». Les jeux `ia: true` sont cachés de l'accueil sauf pour les comptes avec accès IA. En groupe 👥, seuls les jeux étiquetés `Multijoueur` s'affichent : mets cette étiquette à tout jeu qui a une salle en ligne. Message de bienvenue à la 1re visite (`salle_bienvenue_vue`).
 
 ## Choix techniques
 - **Firebase** (projet `salle-de-jeux`) : comptes, classements (top semaine remis à zéro le lundi 0 h, heure de Paris, et tous les temps), séries, médailles, groupes, jetons, état des jeux réglé dans l'admin.
