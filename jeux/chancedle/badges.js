@@ -27,7 +27,7 @@
   /* nombre de fois qu'un motif apparaît (en comptant les chevauchements : 6969 → deux fois 69) */
   function fois(s, m){ let k = 0; for(let i = s.indexOf(m); i >= 0; i = s.indexOf(m, i + 1)) k++; return k; }
   const CULTES = new Set([69, 67, 420, 1337, 404, 418, 7, 101, 300, 9000, 9001, 360, 1789, 1998, 2018, 1515, 51, 3615, 2012, 1984,
-    2001, 1969, 2000, 2026, 2048, 21, 993, 1111, 1234, 365, 42, 666, 777, 1729, 6174, 314159, 127001]);
+    2001, 1969, 2000, 2026, 2048, 21, 993, 1111, 1234, 365, 42, 666, 777, 1729, 6174, 314159, 127001, 911]);
   /* plus petit facteur premier et somme des diviseurs (crible) */
   const ppf = new Int32Array(MAX), sigma = new Float64Array(MAX);
   for(let i = 2; i < MAX; i++) if(!ppf[i]) for(let j = i; j < MAX; j += i) if(!ppf[j]) ppf[j] = i;
@@ -94,7 +94,7 @@
 
   /* id, emoji, nom, explication, groupe (facultatif), test */
   const BADGES = [
-    ["double",   "🟰", "Doublé",           "Deux chiffres identiques côte à côte",               "serie",  x => x.maxSerie === 2],
+    ["double",   "♊", "Doublé",           "Deux chiffres identiques côte à côte",               "serie",  x => x.maxSerie === 2],
     ["brelan",   "🎰", "Brelan",           "Trois chiffres identiques côte à côte",              "serie",  x => x.maxSerie === 3],
     ["carre4",   "🃏", "Carré",            "Quatre chiffres identiques côte à côte",             "serie",  x => x.maxSerie === 4],
     ["quinte",   "🖐️", "Cinq à la file",   "Cinq chiffres identiques côte à côte",               "serie",  x => x.maxSerie === 5],
@@ -240,10 +240,11 @@
     ["mille7",   "🩸", "1000 - 7",         "Contient 993",                                       null,     contient("993")],
     ["voeu",     "🌠", "11:11, fais un vœu","Contient 1111",                                     null,     contient("1111")],
     ["pin",      "🔓", "Code PIN nul",     "Contient 1234 ou 0000",                              null,     contient("1234", "0000")],
+    ["porsche",  "🏎️", "911",              "Contient 911 (la Porsche, le numéro des urgences américaines)", null, contient("911")],
     ["unan",     "📅", "Une année",        "Contient 365",                                       null,     contient("365")],
     ["lost",     "🏝️", "Les nombres maudits","Contient 4815 ou 2342 (4 8 15 16 23 42)",          null,     contient("4815", "2342")],
     ["localhost","🏠", "Localhost",        "Exactement 127001 (127.0.0.1)",                      null,     x => x.n === 127001],
-    ["pilepoil", "🎯", "Pile poil",        "Le nombre entier est un nombre culte : 69, 67, 420, 1337, 404, 007…", null, x => CULTES.has(x.n)],
+    ["pilepoil", "🎯", "Pile poil",        "Le nombre entier est un nombre culte : 69, 67, 420, 911, 1337, 404, 007…", null, x => CULTES.has(x.n)],
 
     /* dépend du jour : rareté fixe (100 nombres sur 1 000 000) */
     ["jourj",    "📆", "Pile le jour",     "Finit par la date du jour (jj mm)",                  null,     (x, c) => !!c && x.s.slice(2) === c.jjmm]
@@ -252,7 +253,7 @@
   /* ---------- Références (pop culture + 42, 666, 777) : doubles, triples et combos ---------- */
   const REFS = ["reponse", "sept", "diable", "nice", "sixseven", "quatre20", "leet", "introuv", "theiere", "agent", "dalmat", "sparte",
     "over9000", "noscope", "revol", "etoile", "marignan", "zone51", "minitel", "findumonde", "bigbro", "odyssee", "lune", "an2000",
-    "millesime", "jeu2048", "blackjack", "mille7", "voeu", "pin", "unan", "lost", "localhost"];
+    "millesime", "jeu2048", "blackjack", "mille7", "voeu", "pin", "unan", "porsche", "lost", "localhost"];
   const refs = REFS.map(id => BADGES.find(b => b.id === id));
   const nbRefs = x => x._refs != null ? x._refs : (x._refs = refs.filter(b => b.test(x)).length);
   const avant = BADGES.findIndex(b => b.id === "pilepoil");
