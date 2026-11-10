@@ -378,6 +378,9 @@ const $ = id => document.getElementById(id);
 const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt != null) e.textContent = txt; if(cls) e.className = cls; return e; };
 const a = (g, t) => (g.tags || []).includes(t);
 const pret = g => g.etat !== "bientot" && !g.sansPage;
+/* Un jeu peut être dans plusieurs catégories. Un jeu qui n'entre dans aucune
+   (en dehors des Défis du jour) va dans « Solo et arcade » : aucun jeu n'est perdu. */
+const un = (g, ...t) => t.some(x => a(g, x));
 const CATS = [
   {id: "jour", emoji: "📅", titre: "Défis du jour", c: ["#ffb020", "#ff6a2b"],
    desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles.",
@@ -386,11 +389,17 @@ const CATS = [
    desc: "Dessin, quiz, imposteur… chacun joue sur son téléphone, il suffit d'un code de salle.",
    test: g => a(g, "Party")},
   {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
-   desc: "Stratégie et réflexion, contre l'ordinateur ou contre un ami en ligne.",
-   test: g => a(g, "Multijoueur") && !["Party", "Casino", "IA", "Arcade", "Action"].some(t => a(g, t))},
+   desc: "Face à face ou autour d'un plateau, contre l'ordinateur ou contre des amis en ligne.",
+   test: g => a(g, "Multijoueur") && !un(g, "Party", "IA")},
+  {id: "reflexion", emoji: "🧠", titre: "Mots et réflexion", c: ["#0ea5a4", "#3d6bff"],
+   desc: "Mots, logique, géographie : de quoi faire chauffer les neurones, seul ou à plusieurs.",
+   test: g => un(g, "Réflexion", "Mots", "Géographie", "Quiz")},
+  {id: "univers", emoji: "👾", titre: "Jeux vidéo et animé", c: ["#e0457b", "#ff9a3d"],
+   desc: "League of Legends, Pokémon, One Piece, animés : pour les fans.",
+   test: g => un(g, "Jeux vidéo", "Animé")},
   {id: "solo", emoji: "🕹️", titre: "Solo et arcade", c: ["#1f9a66", "#9bd34a"],
-   desc: "Arcade, gestion, casse-tête : des records à battre quand tu as un moment.",
-   test: g => (!a(g, "Multijoueur") || a(g, "Arcade") || a(g, "Action")) && !etatJour(g.slug) && !["Party", "Casino", "IA"].some(t => a(g, t))},
+   desc: "Arcade, action, gestion : des records à battre quand tu as un moment.",
+   test: g => un(g, "Arcade", "Action", "Clicker", "Collection") || (a(g, "Solo") && !a(g, "Multijoueur") && !etatJour(g.slug) && !un(g, "Casino", "Réflexion", "Mots"))},
   {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
    desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
    test: g => a(g, "Casino")},
@@ -402,7 +411,7 @@ const TOUS = {id: "tous", emoji: "🎲", titre: "Tous les jeux", desc: "Toute la
 function membresDe(cat, liste){
   if(cat.id === "tous") return liste;
   const dans = liste.filter(cat.test);
-  if(cat.id === "solo") liste.forEach(g => { if(!dans.includes(g) && !CATS.some(c => c.id !== "solo" && c.test(g))) dans.push(g); });
+  if(cat.id === "solo") liste.forEach(g => { if(!dans.includes(g) && !CATS.some(c => c.id !== "solo" && c.id !== "jour" && c.test(g))) dans.push(g); });
   return dans;
 }
 
