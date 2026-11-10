@@ -180,12 +180,10 @@ dialog.b-fen p{margin:0 0 12px;line-height:1.5}
   <section id="accueil">
     <h2 class="choix">Choisis une catégorie</h2>
     <div class="cats" id="cats"></div>
-    <button class="tous" id="tous" type="button">Voir tous les jeux</button>
   </section>
 
   <section id="vueCat" hidden>
     <div class="entete-cat" id="enteteCat"></div>
-    <nav class="filters" id="filters" hidden></nav>
     <section class="grid" id="grid"></section>
   </section>
 
@@ -214,16 +212,17 @@ dialog.b-fen p{margin:0 0 12px;line-height:1.5}
 })();
 const GAMES = window.SALLE_CATALOGUE;
 const grid = document.getElementById("grid");
-const filters = document.getElementById("filters");
-let active = "Tous", regl = {};
+let regl = {};
 
 Compte.bouton(document.getElementById("compte"));
 
-/* Jeux tels qu'ils doivent apparaître (réglages admin appliqués) */
+/* Jeux tels qu'ils doivent apparaître (réglages admin appliqués).
+   Les jeux IA ne s'affichent qu'aux comptes autorisés (accès IA donné dans l'admin) ;
+   les invités venus par un lien de salle y entrent quand même par le lien. */
 function visibles(){
-  const admin = !!(Compte.session() && Compte.session().admin);
+  const s = Compte.session(), admin = !!(s && s.admin), ia = !!(s && (s.ia || s.admin));
   return Compte.trier(GAMES, regl).map(g => ({...g, ...Compte.etatDe(g, regl)}))
-    .filter(g => g.etat !== "cache" || admin);
+    .filter(g => (g.etat !== "cache" || admin) && (!g.ia || ia));
 }
 
 function render(){
@@ -344,18 +343,6 @@ function recordDe(slug){
   return "";
 }
 
-function renderFilters(){
-  const tags = ["Tous", ...new Set(jeuxBase().flatMap(g => g.tags || []))];
-  if(!tags.includes(active)) active = "Tous";
-  filters.innerHTML = "";
-  for(const t of tags){
-    const b = document.createElement("button");
-    b.textContent = t;
-    if(t === active) b.className = "on";
-    b.onclick = () => { active = t; renderFilters(); render(); };
-    filters.appendChild(b);
-  }
-}
 
 function renderAnnonce(){
   const a = regl.annonce, box = document.getElementById("annonce");
@@ -378,42 +365,41 @@ const $ = id => document.getElementById(id);
 const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt != null) e.textContent = txt; if(cls) e.className = cls; return e; };
 const a = (g, t) => (g.tags || []).includes(t);
 const pret = g => g.etat !== "bientot" && !g.sansPage;
-/* Un jeu peut être dans plusieurs catégories. Un jeu qui n'entre dans aucune
-   (en dehors des Défis du jour) va dans « Solo et arcade » : aucun jeu n'est perdu. */
-const un = (g, ...t) => t.some(x => a(g, x));
-const CATS = [
-  {id: "jour", emoji: "📅", titre: "Défis du jour", c: ["#ffb020", "#ff6a2b"],
-   desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles.",
-   test: g => !!etatJour(g.slug)},
-  {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", c: ["#ff4f7b", "#8b4dff"],
-   desc: "Dessin, quiz, imposteur… chacun joue sur son téléphone, il suffit d'un code de salle.",
-   test: g => a(g, "Party")},
-  {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
-   desc: "Face à face ou autour d'un plateau, contre l'ordinateur ou contre des amis en ligne.",
-   test: g => a(g, "Multijoueur") && !un(g, "Party", "IA")},
-  {id: "reflexion", emoji: "🧠", titre: "Mots et réflexion", c: ["#0ea5a4", "#3d6bff"],
-   desc: "Mots, logique, géographie : de quoi faire chauffer les neurones, seul ou à plusieurs.",
-   test: g => un(g, "Réflexion", "Mots", "Géographie", "Quiz")},
-  {id: "univers", emoji: "👾", titre: "Jeux vidéo et animé", c: ["#e0457b", "#ff9a3d"],
-   desc: "League of Legends, Pokémon, One Piece, animés : pour les fans.",
-   test: g => un(g, "Jeux vidéo", "Animé")},
-  {id: "solo", emoji: "🕹️", titre: "Solo et arcade", c: ["#1f9a66", "#9bd34a"],
-   desc: "Arcade, action, gestion : des records à battre quand tu as un moment.",
-   test: g => un(g, "Arcade", "Action", "Clicker", "Collection") || (a(g, "Solo") && !a(g, "Multijoueur") && !etatJour(g.slug) && !un(g, "Casino", "Réflexion", "Mots"))},
-  {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
-   desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
-   test: g => a(g, "Casino")},
-  {id: "ia", emoji: "🤖", titre: "Histoires avec l'IA", c: ["#5b2bd8", "#ff6a9a"],
-   desc: "Des aventures racontées par une IA. Réservé aux comptes autorisés.",
-   test: g => a(g, "IA")}
+/* Les catégories viennent uniquement des étiquettes (tags de catalogue.js) :
+   un jeu est dans chaque catégorie dont il porte une étiquette, donc souvent
+   dans plusieurs. Une étiquette qui n'est rangée nulle part ci-dessous crée
+   toute seule sa propre catégorie : aucun jeu n'est jamais inaccessible. */
+const CATS_FIXES = [
+  {id: "jour", emoji: "📅", titre: "Défis du jour", tags: ["Quotidien"], c: ["#ffb020", "#ff6a2b"],
+   desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles."},
+  {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", tags: ["Party", "Dessin", "Musique", "Quiz"], c: ["#ff4f7b", "#8b4dff"],
+   desc: "Dessin, quiz, blind test, imposteur… chacun joue sur son téléphone avec un code de salle."},
+  {id: "multi", emoji: "👥", titre: "À plusieurs", tags: ["Multijoueur"], c: ["#3d6bff", "#22b8cf"],
+   desc: "Tous les jeux qui se jouent à deux ou plus, sur le même écran ou en ligne."},
+  {id: "solo", emoji: "🙋", titre: "En solo", tags: ["Solo"], c: ["#1f9a66", "#9bd34a"],
+   desc: "Tous les jeux auxquels on peut jouer seul, contre l'ordinateur ou contre la montre."},
+  {id: "reflexion", emoji: "🧠", titre: "Mots et réflexion", tags: ["Réflexion", "Mots", "Géographie"], c: ["#0ea5a4", "#3d6bff"],
+   desc: "Mots, logique, géographie : de quoi faire chauffer les neurones."},
+  {id: "strategie", emoji: "♟️", titre: "Stratégie et plateau", tags: ["Stratégie", "Plateau"], c: ["#6d4aff", "#22b8cf"],
+   desc: "Plateaux, gestion et coups à l'avance."},
+  {id: "arcade", emoji: "🕹️", titre: "Arcade et action", tags: ["Arcade", "Action", "Clicker", "Collection"], c: ["#ff6a2b", "#ffb020"],
+   desc: "Réflexes, scores à battre et parties rapides."},
+  {id: "univers", emoji: "👾", titre: "Jeux vidéo et animé", tags: ["Jeux vidéo", "Animé"], c: ["#e0457b", "#ff9a3d"],
+   desc: "League of Legends, Pokémon, One Piece, animés : pour les fans."},
+  {id: "casino", emoji: "🎰", titre: "Casino et cartes", tags: ["Casino", "Cartes"], c: ["#0f7a4a", "#d4a017"],
+   desc: "Poker, blackjack, roulette et jeux de cartes, avec de faux jetons."},
+  {id: "ia", emoji: "🤖", titre: "Histoires avec l'IA", tags: ["IA", "Histoire"], c: ["#5b2bd8", "#ff6a9a"],
+   desc: "Des aventures racontées par une IA."}
 ];
-const TOUS = {id: "tous", emoji: "🎲", titre: "Tous les jeux", desc: "Toute la salle, à filtrer par étiquette."};
-function membresDe(cat, liste){
-  if(cat.id === "tous") return liste;
-  const dans = liste.filter(cat.test);
-  if(cat.id === "solo") liste.forEach(g => { if(!dans.includes(g) && !CATS.some(c => c.id !== "solo" && c.id !== "jour" && c.test(g))) dans.push(g); });
-  return dans;
+const COULEURS_AUTO = [["#8b4dff", "#ff4f7b"], ["#22b8cf", "#1f9a66"], ["#f59e0b", "#e0457b"]];
+function categories(liste){
+  const rangees = new Set(CATS_FIXES.flatMap(c => c.tags));
+  const autres = [...new Set(liste.flatMap(g => g.tags || []))].filter(t => !rangees.has(t))
+    .map((t, i) => ({id: "t-" + t.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, ""), emoji: "🎲", titre: t, tags: [t], c: COULEURS_AUTO[i % 3], desc: "Les jeux « " + t + " »."}));
+  return [...CATS_FIXES, ...autres];
 }
+let CATS = CATS_FIXES;
+function membresDe(cat, liste){ return liste.filter(g => cat.tags.some(t => a(g, t))); }
 
 /* ---------- Groupe : seulement les jeux à plusieurs (étiquette « Multijoueur ») ---------- */
 let groupe = !!(lireLS("salle_groupe_id", null) && Compte.session()), voirTout = false;
@@ -434,8 +420,8 @@ function renderGroupe(){
 }
 
 /* ---------- Navigation ---------- */
-let vue = "";   // "" = catégories ; sinon l'id d'une catégorie, ou "tous"
-const lireVue = () => (location.hash.match(/^#jeux\/([a-z]+)$/) || [])[1] || "";
+let vue = "";   // "" = catégories ; sinon l'id d'une catégorie
+const lireVue = () => (location.hash.match(/^#jeux\/([a-z0-9-]+)$/) || [])[1] || "";
 function ouvrirCat(id){
   if(id){ location.hash = "#jeux/" + id; return; }
   history.replaceState(null, "", location.pathname + location.search); vueChangee();
@@ -445,7 +431,6 @@ addEventListener("hashchange", vueChangee);
 
 function jeuxDeLaVue(){
   const base = jeuxBase();
-  if(vue === "tous") return base.filter(g => active === "Tous" || a(g, active));
   const cat = CATS.find(c => c.id === vue);
   return cat ? membresDe(cat, base) : [];
 }
@@ -463,8 +448,8 @@ function renderCats(){
     bande.append(el("span", c.emoji, "gros"), mini);
     const corps = el("div", null, "corps"), pied = el("div", null, "pied");
     if(c.id === "jour"){
-      const n = l.filter(g => etatJour(g.slug).fait).length;
-      pied.appendChild(el("span", n === l.length ? `✅ ${n} / ${l.length} faits` : `${n} / ${l.length} faits`, "etat" + (n === l.length ? " ok" : "")));
+      const dj = l.filter(g => etatJour(g.slug)), n = dj.filter(g => etatJour(g.slug).fait).length;
+      pied.appendChild(el("span", n === dj.length ? `✅ ${n} / ${dj.length} faits` : `${n} / ${dj.length} faits`, "etat" + (n === dj.length ? " ok" : "")));
     }else pied.appendChild(el("span", `${l.length} jeu${l.length > 1 ? "x" : ""}`, "nb"));
     pied.appendChild(el("span", "Voir les jeux", "ouvrir"));
     corps.append(el("h2", c.titre), el("p", c.desc), pied);
@@ -473,7 +458,6 @@ function renderCats(){
     z.appendChild(b);
   }
   if(!z.children.length) z.appendChild(el("p", "Aucun jeu à afficher pour l'instant.", "empty"));
-  $("tous").textContent = `Voir tous les jeux (${base.filter(pret).length})`;
 }
 
 function renderEntete(cat){
@@ -486,15 +470,14 @@ function renderEntete(cat){
 }
 
 function afficher(){
-  const cat = vue === "tous" ? TOUS : CATS.find(c => c.id === vue) || null;
+  CATS = categories(jeuxBase());
+  const cat = CATS.find(c => c.id === vue) || null;
   if(vue && !cat) vue = "";
   document.body.classList.toggle("vue-cat", !!cat);
   $("accueil").hidden = !!cat; $("vueCat").hidden = !cat;
   renderGroupe(); renderDefis();
   if(!cat) return renderCats();
   renderEntete(cat);
-  filters.hidden = cat.id !== "tous";
-  if(cat.id === "tous") renderFilters();
   render();
 }
 
@@ -522,7 +505,6 @@ if(!lireLS("salle_bienvenue_vue", false)){
   if(lireLS("salle_pseudo", "") || Object.keys(lireLS("salle_records", {})).length) try{ localStorage.setItem("salle_bienvenue_vue", "true"); }catch(e){}
   else setTimeout(bienvenue, 500);
 }
-$("tous").onclick = () => ouvrirCat("tous");
 vue = lireVue();
 
 

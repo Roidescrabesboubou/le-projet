@@ -39,7 +39,7 @@ jeux/<slug>/        un dossier par jeu
 
 L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
-Accueil : des catégories (`CATS` dans `index.html`, adresse `#jeux/<catégorie>`) rangent les jeux d'après leurs étiquettes, et un jeu peut être dans plusieurs : défi du jour (dans `DLE`) → Défis du jour, `Party` → Soirée, `Multijoueur` sans Party/IA → Duels et plateau, `Réflexion`/`Mots`/`Géographie`/`Quiz` → Mots et réflexion, `Jeux vidéo`/`Animé` → Jeux vidéo et animé, `Arcade`/`Action`/`Clicker`/`Collection` → Solo et arcade, `Casino`, `IA`. Un jeu qui n'est dans aucune catégorie hors Défis du jour va dans Solo et arcade. En groupe 👥, seuls les jeux étiquetés `Multijoueur` s'affichent : mets cette étiquette à tout jeu qui a une salle en ligne. Message de bienvenue à la 1re visite (`salle_bienvenue_vue`).
+Accueil : des catégories (`CATS_FIXES` dans `index.html`, adresse `#jeux/<catégorie>`), chacune = une liste d'étiquettes : un jeu est dans chaque catégorie dont il porte une étiquette (donc souvent plusieurs). Une étiquette rangée nulle part crée sa propre catégorie automatiquement : aucun jeu n'est inaccessible. Pas de page « tous les jeux ». Les jeux `ia: true` sont cachés de l'accueil sauf pour les comptes avec accès IA. En groupe 👥, seuls les jeux étiquetés `Multijoueur` s'affichent : mets cette étiquette à tout jeu qui a une salle en ligne. Message de bienvenue à la 1re visite (`salle_bienvenue_vue`).
 
 ## Choix techniques
 - **Firebase** (projet `salle-de-jeux`) : comptes, classements (top semaine remis à zéro le lundi 0 h, heure de Paris, et tous les temps), séries, médailles, groupes, jetons, état des jeux réglé dans l'admin.
