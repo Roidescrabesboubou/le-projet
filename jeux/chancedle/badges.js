@@ -23,7 +23,9 @@
     const t = String(n), p = t.length;
     return n > 9 && [...t].reduce((a, c) => a + Math.pow(+c, p), 0) === n;
   }
-  const contient = (...motifs) => x => motifs.some(m => x.s.includes(m));
+  const contient = (...motifs) => Object.assign(x => motifs.some(m => x.s.includes(m)), {motifs});
+  /* nombre de fois qu'un motif apparaît (en comptant les chevauchements : 6969 → deux fois 69) */
+  function fois(s, m){ let k = 0; for(let i = s.indexOf(m); i >= 0; i = s.indexOf(m, i + 1)) k++; return k; }
   const CULTES = new Set([69, 67, 420, 1337, 404, 418, 7, 101, 300, 9000, 9001, 360, 1789, 1998, 2018, 1515, 51, 3615, 2012, 1984,
     2001, 1969, 2000, 2026, 2048, 21, 993, 1111, 1234, 365, 42, 666, 777, 1729, 6174, 314159, 127001]);
   const JOURS_MOIS =[31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -98,9 +100,9 @@
     ["lourd",    "🏋️", "Poids lourd",      "La somme des chiffres fait 46 ou plus",              "poids",  x => x.somme >= 46],
     ["milieu",   "🎚️", "Pile au milieu",   "La somme des chiffres fait 27",                      "poids",  x => x.somme === 27],
     ["divisible","🧩", "Divisible",        "Divisible par la somme de ses chiffres",             null,     x => x.somme > 0 && x.n % x.somme === 0],
-    ["sept",     "🍀", "Triple sept",      "Contient 777",                                       null,     x => x.s.includes("777")],
-    ["diable",   "😈", "Diablotin",        "Contient 666",                                       null,     x => x.s.includes("666")],
-    ["reponse",  "🌌", "La grande réponse","Contient 42",                                        null,     x => x.s.includes("42")],
+    ["sept",     "🍀", "Triple sept",      "Contient 777",                                       null,     contient("777")],
+    ["diable",   "😈", "Diablotin",        "Contient 666",                                       null,     contient("666")],
+    ["reponse",  "🌌", "La grande réponse","Contient 42",                                        null,     contient("42")],
     ["pi",       "🥧", "Pi",               "Commence par 314",                                   null,     x => x.s.startsWith("314")],
     ["horloge",  "⏰", "Horloge",          "Se lit comme une heure : hh mm ss",                  null,     x => +x.s.slice(0, 2) < 24 && x.d[2] < 6 && x.d[4] < 6],
     ["date",     "🗓️", "Calendrier",       "Se lit comme une date : jj mm aa",                   null,     x => { const j = +x.s.slice(0, 2), m = +x.s.slice(2, 4); return m >= 1 && m <= 12 && j >= 1 && j <= JOURS_MOIS[m - 1]; }],
@@ -157,6 +159,31 @@
     /* dépend du jour : rareté fixe (100 nombres sur 1 000 000) */
     ["jourj",    "📆", "Pile le jour",     "Finit par la date du jour (jj mm)",                  null,     (x, c) => !!c && x.s.slice(2) === c.jjmm]
   ].map(([id, emoji, nom, desc, groupe, test]) => ({id, emoji, nom, desc, groupe, test}));
+
+  /* ---------- Références (pop culture + 42, 666, 777) : doubles, triples et combos ---------- */
+  const REFS = ["reponse", "sept", "diable", "nice", "sixseven", "quatre20", "leet", "introuv", "theiere", "agent", "dalmat", "sparte",
+    "over9000", "noscope", "revol", "etoile", "marignan", "zone51", "minitel", "findumonde", "bigbro", "odyssee", "lune", "an2000",
+    "millesime", "jeu2048", "blackjack", "mille7", "voeu", "pin", "unan", "lost", "localhost"];
+  const refs = REFS.map(id => BADGES.find(b => b.id === id));
+  const nbRefs = x => x._refs != null ? x._refs : (x._refs = refs.filter(b => b.test(x)).length);
+  const avant = BADGES.findIndex(b => b.id === "pilepoil");
+  const ajouts = [];
+  /* un motif court qui revient : « Double … » (2 fois), « Triple … » (3 fois ou plus) */
+  refs.forEach(b => {
+    const m = (b.test.motifs || []).filter(m => m.length <= 3);
+    if(!m.length) return;
+    const k = x => Math.max(...m.map(mm => fois(x.s, mm)));
+    ajouts.push({id: b.id + "_x2", emoji: b.emoji.repeat(2), nom: "Double " + b.nom, desc: m.join(" ou ") + " deux fois", groupe: "rep_" + b.id, test: x => k(x) === 2, rep: true});
+    /* trois fois : possible seulement pour 2 chiffres (696969) ou un chiffre répété (666 dans 66666) */
+    if(m.some(mm => mm.length === 2 || new Set(mm).size === 1))
+    ajouts.push({id: b.id + "_x3", emoji: b.emoji.repeat(3), nom: "Triple " + b.nom, desc: m.join(" ou ") + " trois fois ou plus", groupe: "rep_" + b.id, test: x => k(x) >= 3, rep: true});
+  });
+  /* plusieurs références différentes dans le même nombre */
+  ajouts.push(
+    {id: "combo2", emoji: "🔥", nom: "Combo", desc: "Deux références différentes dans le même nombre (ex. 69 et 67)", groupe: "combo", test: x => nbRefs(x) === 2},
+    {id: "combo3", emoji: "🔥🔥", nom: "Gros combo", desc: "Trois références différentes dans le même nombre", groupe: "combo", test: x => nbRefs(x) === 3},
+    {id: "combo4", emoji: "🌟", nom: "Combo de légende", desc: "Quatre références différentes ou plus dans le même nombre", groupe: "combo", test: x => nbRefs(x) >= 4});
+  BADGES.splice(avant, 0, ...ajouts);
 
   /* badges d'un nombre ; c = {jjmm: "1011"} pour le badge du jour */
   function badges(n, c){
