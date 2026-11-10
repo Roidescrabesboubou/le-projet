@@ -39,6 +39,8 @@ jeux/<slug>/        un dossier par jeu
 
 L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
+Accueil : des catégories (`CATS` dans `index.html`, adresse `#jeux/<catégorie>`) rangent les jeux d'après leurs étiquettes : défi du jour (dans `DLE`) → Défis du jour, `Party` → Soirée, `Multijoueur` sans Party/Casino/IA/Arcade/Action → Duels et plateau, `Casino`, `IA`, le reste → Solo et arcade. En groupe 👥, seuls les jeux étiquetés `Multijoueur` s'affichent : mets cette étiquette à tout jeu qui a une salle en ligne. Message de bienvenue à la 1re visite (`salle_bienvenue_vue`).
+
 ## Choix techniques
 - **Firebase** (projet `salle-de-jeux`) : comptes, classements (top semaine remis à zéro le lundi 0 h, heure de Paris, et tous les temps), séries, médailles, groupes, jetons, état des jeux réglé dans l'admin.
 - **Joueurs sans compte** : identité Firebase anonyme (`Compte.anonyme()`, fournisseur « Anonyme » activé dans Authentication). Séries, résultats du jour, scores, Éveil, Shikaku, Coup de Feu sont rangés sous cet uid (`Classement.ecrireMoi`) : personne ne peut modifier l'entrée d'un autre. `scores/<jeu>/<uid>` = record de tous les temps, `scores_semaine/<jeu>/<uid>` = record de la semaine (champ `w`).

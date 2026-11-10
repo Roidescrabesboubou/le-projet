@@ -104,6 +104,64 @@ a.card:hover .cover{font-size:4rem}
 .card.hidden-admin{opacity:.6;outline:3px dashed var(--muted);outline-offset:3px}
 .empty{text-align:center;color:var(--muted);padding:30px;grid-column:1/-1}
 footer{text-align:center;color:var(--muted);font-size:.9rem;font-weight:700;margin-top:44px}
+
+/* ---------- Catégories (page d'accueil) ---------- */
+.choix{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.35rem;margin:0 0 14px}
+.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px 18px}
+.cat{display:flex;flex-direction:column;text-align:left;font:inherit;cursor:pointer;padding:0;color:inherit;background:var(--card);border:2px solid var(--bord);border-radius:22px;overflow:hidden;
+  box-shadow:var(--ombre);transition:transform .15s,box-shadow .15s}
+.cat:hover{transform:translateY(-3px);box-shadow:0 7px 0 var(--encre)}
+.cat:active{transform:translateY(2px);box-shadow:0 2px 0 var(--encre)}
+.cat .bande{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:2px solid var(--bord);
+  background:radial-gradient(rgba(255,255,255,.22) 1.5px,transparent 1.6px) 0 0/14px 14px,linear-gradient(135deg,var(--c1),var(--c2))}
+.cat .gros{font-size:2.9rem;line-height:1;filter:drop-shadow(0 3px 0 rgba(0,0,0,.18))}
+.cat .mini{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;margin-left:auto;max-width:60%}
+.cat .mini span{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.85);font-size:1.15rem}
+.cat .corps{display:flex;flex-direction:column;gap:6px;padding:14px 18px 16px;flex:1}
+.cat h2{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.4rem;letter-spacing:-.01em;margin:0}
+.cat p{margin:0;color:var(--muted);font-size:.93rem;line-height:1.45;flex:1}
+.cat .pied{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-weight:800;font-size:.9rem}
+.cat .nb{color:var(--muted)}
+.cat .ouvrir{white-space:nowrap;background:var(--accent);color:#fff;border:2px solid var(--encre);border-radius:999px;padding:4px 14px;box-shadow:0 3px 0 var(--encre)}
+.cat .etat{white-space:nowrap;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--text)}
+.cat .etat.ok{background:var(--ok);color:#fff}
+.tous{display:block;margin:22px auto 0;font:inherit;font-weight:800;cursor:pointer;border:2px dashed var(--muted);background:transparent;color:var(--text);border-radius:999px;padding:9px 22px}
+.tous:hover{border-style:solid;border-color:var(--text)}
+
+/* ---------- Vue d'une catégorie ---------- */
+body.vue-cat .hero{display:none}
+.entete-cat{display:flex;align-items:center;gap:14px;margin:4px 0 20px;flex-wrap:wrap}
+.entete-cat .gros{font-size:2.6rem;line-height:1}
+.entete-cat h2{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:clamp(1.5rem,4.5vw,2.1rem);letter-spacing:-.01em;margin:0}
+.entete-cat p{margin:2px 0 0;color:var(--muted)}
+.retour{font:inherit;font-weight:800;cursor:pointer;border:2px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:6px 14px}
+.retour:hover{border-color:var(--text)}
+.entete-cat .retour{flex-basis:auto}
+.entete-cat .titres{flex:1;min-width:200px}
+
+/* ---------- Mode groupe ---------- */
+.bandeau-groupe{display:flex;gap:8px 12px;align-items:center;justify-content:center;flex-wrap:wrap;margin:0 0 22px;padding:10px 16px;border-radius:16px;
+  background:#3d6bff;color:#fff;border:2px solid var(--encre);box-shadow:var(--ombre);font-weight:800;text-align:center}
+.bandeau-groupe[hidden]{display:none}
+.bandeau-groupe button{font:inherit;font-size:.85rem;font-weight:800;cursor:pointer;border:2px solid #fff;background:transparent;color:#fff;border-radius:999px;padding:3px 12px}
+.bandeau-groupe button:hover{background:#fff;color:#3d6bff}
+.bandeau-groupe.tout{background:var(--card);color:var(--text);border-color:var(--line);box-shadow:none}
+.bandeau-groupe.tout button{border-color:var(--line);color:var(--text)}
+.bandeau-groupe.tout button:hover{background:var(--text);color:var(--bg)}
+
+/* ---------- Fenêtre de bienvenue ---------- */
+.lien-aide{font:inherit;font-weight:800;cursor:pointer;background:none;border:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;margin-top:10px;padding:4px}
+dialog.b-fen{border:2px solid var(--bord);box-shadow:0 6px 0 var(--encre);border-radius:22px;background:var(--card);color:var(--text);padding:24px;width:min(480px,92vw);max-height:88vh;overflow:auto}
+dialog.b-fen::backdrop{background:rgba(19,17,42,.55);backdrop-filter:blur(3px)}
+dialog.b-fen h2{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.5rem;margin:0 0 10px;padding-right:30px;line-height:1.2}
+dialog.b-fen .b-x{position:absolute;top:12px;right:14px;border:0;background:transparent;font-size:1.5rem;color:var(--muted);cursor:pointer}
+dialog.b-fen p{margin:0 0 12px;line-height:1.5}
+.points{list-style:none;padding:0;margin:0 0 16px;display:flex;flex-direction:column;gap:10px}
+.points li{display:flex;gap:12px;align-items:flex-start;background:var(--soft);border-radius:14px;padding:10px 12px;line-height:1.45}
+.points li b{display:block}
+.points .ico{font-size:1.6rem;line-height:1.1}
+.btn{font:inherit;border:2px solid var(--encre);border-radius:12px;padding:9px 18px;font-weight:800;background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--encre);cursor:pointer;transition:transform .1s,box-shadow .1s}
+.btn:active{transform:translateY(3px);box-shadow:0 0 0 var(--encre)}
 </style>
 </head>
 <body>
@@ -113,11 +171,23 @@ footer{text-align:center;color:var(--muted);font-size:.9rem;font-weight:700;marg
   <section class="hero">
     <h1 class="tuiles" id="titre" aria-label="Salle de jeux">Salle de jeux</h1>
     <p>Des mini-jeux à lancer tout de suite : un défi par jour, des parties entre amis en ligne, et quelques jeux où l'IA mène la danse.</p>
+    <button class="lien-aide" id="aide" type="button">Comment ça marche ?</button>
   </section>
 
-  <nav class="filters" id="filters"></nav>
+  <div class="bandeau-groupe" id="bandeauGroupe" hidden></div>
   <div class="defis" id="defis" hidden></div>
-  <section class="grid" id="grid"></section>
+
+  <section id="accueil">
+    <h2 class="choix">Choisis une catégorie</h2>
+    <div class="cats" id="cats"></div>
+    <button class="tous" id="tous" type="button">Voir tous les jeux</button>
+  </section>
+
+  <section id="vueCat" hidden>
+    <div class="entete-cat" id="enteteCat"></div>
+    <nav class="filters" id="filters" hidden></nav>
+    <section class="grid" id="grid"></section>
+  </section>
 
   <footer><span id="count"></span></footer>
 </main>
@@ -158,8 +228,8 @@ function visibles(){
 
 function render(){
   grid.innerHTML = "";
-  const list = visibles().filter(g => active === "Tous" || (g.tags || []).includes(active));
-  if(!list.length){ grid.innerHTML = '<p class="empty">Aucun jeu dans cette catégorie pour l\'instant.</p>'; return; }
+  const list = jeuxDeLaVue();
+  if(!list.length){ grid.innerHTML = filtreGroupe() ? '<p class="empty">Aucun jeu à plusieurs ici. Touche « Voir tous les jeux » en haut pour tout afficher.</p>' : '<p class="empty">Aucun jeu dans cette catégorie pour l\'instant.</p>'; return; }
   for(const g of list){
     const ready = g.etat !== "bientot" && !g.sansPage;
     const cache = g.etat === "cache";
@@ -199,11 +269,11 @@ function render(){
 /* Record du joueur sur cet appareil, affiché sur la carte du jeu.
    Les nouveaux jeux passent par Base.record() ; les anciens sont lus ici. */
 function lireLS(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } }
-const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions", "anidle", "electrodle", "motscroises", "sudoku", "shikaku", "motsfleches"];
+const DLE = ["wordle", "loldle", "onepiecedle", "pokedle", "paysdle", "connexions", "anidle", "electrodle", "motscroises", "sudoku", "shikaku", "motsfleches", "chancedle"];
 /* Défi du jour : fait ou pas aujourd'hui ?
    Chaque jeu numérote ses jours depuis sa date de lancement (START dans le jeu) :
    indique-la ici si elle n'est pas le 1er novembre 2026. */
-const DEBUT_DLE = {anidle: [2026, 10, 3], electrodle: [2026, 10, 8], motscroises: [2026, 10, 4], shikaku: [2026, 10, 4], motsfleches: [2026, 10, 4]};
+const DEBUT_DLE = {anidle: [2026, 10, 3], electrodle: [2026, 10, 8], motscroises: [2026, 10, 4], shikaku: [2026, 10, 4], motsfleches: [2026, 10, 4], chancedle: [2026, 10, 10]};
 function jourParis(slug){
   const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date()).split("-").map(Number);
   const [sy, sm, sd] = DEBUT_DLE[slug] || [2026, 10, 1];
@@ -225,6 +295,7 @@ function etatJour(slug){
 }
 function renderDefis(){
   const z = document.getElementById("defis");
+  if((vue && vue !== "jour") || filtreGroupe()){ z.hidden = true; return; }
   const l = visibles().filter(g => g.etat !== "bientot" && !g.sansPage && etatJour(g.slug));
   if(!l.length){ z.hidden = true; return; }
   const n = l.filter(g => etatJour(g.slug).fait).length;
@@ -242,9 +313,9 @@ function renderDefis(){
     const br = document.createElement("button"); br.textContent = "ℹ️ Médailles"; br.onclick = () => Medailles.fenetreRegles();
     z.append(m, bm, br);
   }
-  if(n < l.length && active !== "Quotidien" && (filters.textContent || "").includes("Quotidien")){
-    const bt = document.createElement("button"); bt.textContent = "Voir les jeux quotidiens";
-    bt.onclick = () => { active = "Quotidien"; renderFilters(); render(); renderDefis(); };
+  if(n < l.length && vue !== "jour"){
+    const bt = document.createElement("button"); bt.textContent = "Voir les défis du jour";
+    bt.onclick = () => ouvrirCat("jour");
     z.appendChild(bt);
   }
 }
@@ -274,14 +345,14 @@ function recordDe(slug){
 }
 
 function renderFilters(){
-  const tags = ["Tous", ...new Set(visibles().flatMap(g => g.tags || []))];
+  const tags = ["Tous", ...new Set(jeuxBase().flatMap(g => g.tags || []))];
   if(!tags.includes(active)) active = "Tous";
   filters.innerHTML = "";
   for(const t of tags){
     const b = document.createElement("button");
     b.textContent = t;
     if(t === active) b.className = "on";
-    b.onclick = () => { active = t; renderFilters(); render(); renderDefis(); };
+    b.onclick = () => { active = t; renderFilters(); render(); };
     filters.appendChild(b);
   }
 }
@@ -295,24 +366,177 @@ function renderAnnonce(){
 function tout(){
   const n = visibles().filter(g => g.etat === "dispo" && !g.sansPage).length;
   document.getElementById("count").textContent = `${n} jeu${n > 1 ? "x" : ""} disponible${n > 1 ? "s" : ""} · d'autres arrivent bientôt`;
-  renderAnnonce(); renderFilters(); render(); renderDefis();
+  renderAnnonce(); afficher();
 }
 
+/* ================= Catégories, groupe et bienvenue =================
+   L'accueil montre des catégories ; un clic ouvre la liste de ses jeux
+   (adresse #jeux/<catégorie>, le bouton précédent revient aux catégories).
+   Chaque jeu est rangé d'après ses étiquettes (tags de catalogue.js) ;
+   un jeu qui n'entre dans aucune catégorie va dans « Solo et arcade ». */
+const $ = id => document.getElementById(id);
+const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt != null) e.textContent = txt; if(cls) e.className = cls; return e; };
+const a = (g, t) => (g.tags || []).includes(t);
+const pret = g => g.etat !== "bientot" && !g.sansPage;
+const CATS = [
+  {id: "jour", emoji: "📅", titre: "Défis du jour", c: ["#ffb020", "#ff6a2b"],
+   desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles.",
+   test: g => !!etatJour(g.slug)},
+  {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", c: ["#ff4f7b", "#8b4dff"],
+   desc: "Dessin, quiz, imposteur… chacun joue sur son téléphone, il suffit d'un code de salle.",
+   test: g => a(g, "Party")},
+  {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
+   desc: "Stratégie et réflexion, contre l'ordinateur ou contre un ami en ligne.",
+   test: g => a(g, "Multijoueur") && !["Party", "Casino", "IA", "Arcade", "Action"].some(t => a(g, t))},
+  {id: "solo", emoji: "🕹️", titre: "Solo et arcade", c: ["#1f9a66", "#9bd34a"],
+   desc: "Arcade, gestion, casse-tête : des records à battre quand tu as un moment.",
+   test: g => (!a(g, "Multijoueur") || a(g, "Arcade") || a(g, "Action")) && !etatJour(g.slug) && !["Party", "Casino", "IA"].some(t => a(g, t))},
+  {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
+   desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
+   test: g => a(g, "Casino")},
+  {id: "ia", emoji: "🤖", titre: "Histoires avec l'IA", c: ["#5b2bd8", "#ff6a9a"],
+   desc: "Des aventures racontées par une IA. Réservé aux comptes autorisés.",
+   test: g => a(g, "IA")}
+];
+const TOUS = {id: "tous", emoji: "🎲", titre: "Tous les jeux", desc: "Toute la salle, à filtrer par étiquette."};
+function membresDe(cat, liste){
+  if(cat.id === "tous") return liste;
+  const dans = liste.filter(cat.test);
+  if(cat.id === "solo") liste.forEach(g => { if(!dans.includes(g) && !CATS.some(c => c.id !== "solo" && c.test(g))) dans.push(g); });
+  return dans;
+}
+
+/* ---------- Groupe : seulement les jeux à plusieurs (étiquette « Multijoueur ») ---------- */
+let groupe = !!(lireLS("salle_groupe_id", null) && Compte.session()), voirTout = false;
+try{ voirTout = sessionStorage.getItem("salle_voir_tout") === "1"; }catch(e){}
+const filtreGroupe = () => groupe && !voirTout;
+function jeuxBase(){
+  const l = visibles();
+  return filtreGroupe() ? l.filter(g => a(g, "Multijoueur") && pret(g)) : l;
+}
+function renderGroupe(){
+  const z = $("bandeauGroupe");
+  if(!groupe){ z.hidden = true; return; }
+  z.hidden = false; z.innerHTML = ""; z.className = "bandeau-groupe" + (voirTout ? " tout" : "");
+  const b = el("button", voirTout ? "Seulement les jeux à plusieurs" : "Voir tous les jeux");
+  b.type = "button";
+  b.onclick = () => { voirTout = !voirTout; try{ sessionStorage.setItem("salle_voir_tout", voirTout ? "1" : "0"); }catch(e){} afficher(); };
+  z.append(el("span", voirTout ? "👥 Tu es en groupe, tous les jeux sont affichés." : "👥 Tu es en groupe : voici les jeux à plusieurs."), b);
+}
+
+/* ---------- Navigation ---------- */
+let vue = "";   // "" = catégories ; sinon l'id d'une catégorie, ou "tous"
+const lireVue = () => (location.hash.match(/^#jeux\/([a-z]+)$/) || [])[1] || "";
+function ouvrirCat(id){
+  if(id){ location.hash = "#jeux/" + id; return; }
+  history.replaceState(null, "", location.pathname + location.search); vueChangee();
+}
+function vueChangee(){ vue = lireVue(); afficher(); scrollTo(0, 0); }
+addEventListener("hashchange", vueChangee);
+
+function jeuxDeLaVue(){
+  const base = jeuxBase();
+  if(vue === "tous") return base.filter(g => active === "Tous" || a(g, active));
+  const cat = CATS.find(c => c.id === vue);
+  return cat ? membresDe(cat, base) : [];
+}
+
+function renderCats(){
+  const z = $("cats"); z.innerHTML = "";
+  const base = jeuxBase();
+  for(const c of CATS){
+    const l = membresDe(c, base).filter(pret);
+    if(!l.length) continue;
+    const b = el("button", null, "cat"); b.type = "button";
+    b.style.setProperty("--c1", c.c[0]); b.style.setProperty("--c2", c.c[1]);
+    const bande = el("div", null, "bande"), mini = el("div", null, "mini");
+    l.slice(0, 6).forEach(g => { const s = el("span", g.emoji || "🎲"); s.title = g.title; mini.appendChild(s); });
+    bande.append(el("span", c.emoji, "gros"), mini);
+    const corps = el("div", null, "corps"), pied = el("div", null, "pied");
+    if(c.id === "jour"){
+      const n = l.filter(g => etatJour(g.slug).fait).length;
+      pied.appendChild(el("span", n === l.length ? `✅ ${n} / ${l.length} faits` : `${n} / ${l.length} faits`, "etat" + (n === l.length ? " ok" : "")));
+    }else pied.appendChild(el("span", `${l.length} jeu${l.length > 1 ? "x" : ""}`, "nb"));
+    pied.appendChild(el("span", "Voir les jeux", "ouvrir"));
+    corps.append(el("h2", c.titre), el("p", c.desc), pied);
+    b.append(bande, corps);
+    b.onclick = () => ouvrirCat(c.id);
+    z.appendChild(b);
+  }
+  if(!z.children.length) z.appendChild(el("p", "Aucun jeu à afficher pour l'instant.", "empty"));
+  $("tous").textContent = `Voir tous les jeux (${base.filter(pret).length})`;
+}
+
+function renderEntete(cat){
+  const z = $("enteteCat"); z.innerHTML = "";
+  const r = el("button", "← Catégories", "retour"); r.type = "button";
+  r.onclick = () => { if(history.length > 1 && lireVue()) history.back(); else ouvrirCat(""); };
+  const t = el("div", null, "titres");
+  t.append(el("h2", cat.titre), el("p", cat.desc));
+  z.append(r, el("span", cat.emoji, "gros"), t);
+}
+
+function afficher(){
+  const cat = vue === "tous" ? TOUS : CATS.find(c => c.id === vue) || null;
+  if(vue && !cat) vue = "";
+  document.body.classList.toggle("vue-cat", !!cat);
+  $("accueil").hidden = !!cat; $("vueCat").hidden = !cat;
+  renderGroupe(); renderDefis();
+  if(!cat) return renderCats();
+  renderEntete(cat);
+  filters.hidden = cat.id !== "tous";
+  if(cat.id === "tous") renderFilters();
+  render();
+}
+
+/* ---------- Bienvenue (première visite) ---------- */
+function bienvenue(){
+  const d = el("dialog", null, "b-fen"); d.setAttribute("aria-labelledby", "bvTitre");
+  d.innerHTML = `<button class="b-x" type="button" aria-label="Fermer">×</button>
+    <h2 id="bvTitre">Bienvenue dans la Salle de jeux 👋</h2>
+    <p>Des petits jeux qui se lancent directement dans le navigateur, sur ordinateur comme sur téléphone, sans rien installer.</p>
+    <ul class="points">
+      <li><span class="ico">📅</span><span><b>Un défi par jour</b>Mot du jour, sudoku, Loldle… le même pour tout le monde. Reviens chaque jour pour garder ta série.</span></li>
+      <li><span class="ico">👥</span><span><b>Entre amis</b>Crée une salle et envoie le code ou le lien. Avec un groupe (bouton 👥 en bas à gauche), vous passez de jeu en jeu ensemble.</span></li>
+      <li><span class="ico">🏆</span><span><b>Un compte si tu veux</b>Pas besoin de compte pour jouer. Il sert aux classements, aux médailles et aux groupes.</span></li>
+    </ul>
+    <p>Choisis une catégorie pour trouver ton jeu.</p>
+    <button class="btn" type="button">Voir les catégories</button>`;
+  d.querySelectorAll("button").forEach(b => b.onclick = () => d.close());
+  d.addEventListener("click", e => { if(e.target === d) d.close(); });
+  d.addEventListener("close", () => { d.remove(); try{ localStorage.setItem("salle_bienvenue_vue", "true"); }catch(e){} });
+  document.body.appendChild(d); d.showModal();
+}
+$("aide").onclick = bienvenue;
+if(!lireLS("salle_bienvenue_vue", false)){
+  /* joueur déjà venu avant ce message : on ne l'embête pas */
+  if(lireLS("salle_pseudo", "") || Object.keys(lireLS("salle_records", {})).length) try{ localStorage.setItem("salle_bienvenue_vue", "true"); }catch(e){}
+  else setTimeout(bienvenue, 500);
+}
+$("tous").onclick = () => ouvrirCat("tous");
+vue = lireVue();
+
+
 /* On attend les réglages (max ~3 s) pour ne pas montrer un jeu caché par erreur */
-grid.innerHTML = '<p class="empty">Chargement des jeux…</p>';
+$("cats").innerHTML = '<p class="empty">Chargement des jeux…</p>';
 Promise.race([Compte.reglages(), new Promise(r => setTimeout(() => r({}), 3000))])
   .then(r => { regl = r || {}; tout(); });
 Compte.reglages().then(r => { if(JSON.stringify(r) !== JSON.stringify(regl)){ regl = r || {}; tout(); } });
 /* Retour sur l'accueil (bouton précédent) ou passage de minuit : statuts du jour à jour */
-addEventListener("pageshow", e => { if(e.persisted){ render(); renderDefis(); } });
+addEventListener("pageshow", e => { if(e.persisted){ vue = lireVue(); afficher(); } });
 let jourVu = jourParis("wordle");
-setInterval(() => { const j = jourParis("wordle"); if(j !== jourVu){ jourVu = j; render(); renderDefis(); } }, 60000);
+setInterval(() => { const j = jourParis("wordle"); if(j !== jourVu){ jourVu = j; afficher(); } }, 60000);
 Compte.surChangement(() => tout());
 /* Médailles 🏅 : compteur en haut + mise à jour des défis */
 (function attendreMedailles(){
   if(!window.Medailles) return setTimeout(attendreMedailles, 200);
   Medailles.compteur(document.getElementById("medailles"));
-  Medailles.surChangement(() => { render(); renderDefis(); });
+  Medailles.surChangement(() => afficher());
+})();
+/* Groupe 👥 : on ne garde que les jeux à plusieurs (re-dessin seulement quand ça change) */
+(function attendreGroupe(){
+  if(!(window.Groupe && Groupe.surChangement)) return setTimeout(attendreGroupe, 200);
+  Groupe.surChangement(g => { if(!!g !== groupe){ groupe = !!g; afficher(); } });
 })();
 </script>
 </body>

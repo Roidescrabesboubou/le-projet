@@ -483,7 +483,10 @@
     }, 1000);
   }
 
+  /* Prévient les pages (l'accueil filtre les jeux quand on est en groupe) */
+  const ecouteursGroupe = [];
   function dessiner(){
+    ecouteursGroupe.forEach(f => { try{ f(G ? {id: gid, chef: G.chef, membres: membres()} : null); }catch(e){} });
     if(!bouton) return;
     const attente = Object.keys(invits).filter(g => g !== gid).length + Object.keys(demandes).length;
     bouton.innerHTML = "";
@@ -686,6 +689,7 @@
   window.Groupe = {
     salleCreee, ouvrir, fermer,
     actuel: () => G ? {id: gid, chef: G.chef, membres: membres()} : null,
+    surChangement: f => { ecouteursGroupe.push(f); },
     _appliquer: appliquer
   };
   demarrer();
