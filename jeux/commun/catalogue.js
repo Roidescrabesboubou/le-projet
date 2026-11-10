@@ -381,6 +381,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "chancedle",
+    title: "Chancedle",
+    emoji: "🎲",
+    desc: "Un seul tirage par jour : un nombre entre 000 000 et 999 999, et que la chance ! Miroir, brelan, nombre premier, heure, date… chaque particularité rapporte un badge et des points. Du ⚪ Banal au 🔴 Mythique, classement des meilleurs tirages et album des badges.",
+    tags: ["Quotidien", "Solo"],
+    colors: ["#7b4fd6", "#f2be3c"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "rocade",
     title: "Rocade",
     emoji: "🛣️",

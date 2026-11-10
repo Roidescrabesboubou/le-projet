@@ -2,7 +2,7 @@
   "rules": {
     "scores": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense)$/)",
+        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle)$/)",
         ".indexOn": [
           "s",
           "t",
@@ -10,7 +10,7 @@
           "d"
         ],
         "$id": {
-          ".write": "($jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense)$/) && auth != null && auth.uid === $id && newData.exists() && root.child('bannis_id').child($id).val() !== true && root.child('bannis').child(auth.uid).val() !== true && (!data.exists() || ($jeu.beginsWith('demineur_') ? newData.child('t').val() < data.child('t').val() : $jeu === 'coupdefeu' ? newData.child('k').val() > data.child('k').val() : newData.child('s').val() > data.child('s').val()))) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
+          ".write": "($jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle)$/) && auth != null && auth.uid === $id && newData.exists() && root.child('bannis_id').child($id).val() !== true && root.child('bannis').child(auth.uid).val() !== true && (!data.exists() || ($jeu.beginsWith('demineur_') ? newData.child('t').val() < data.child('t').val() : $jeu === 'coupdefeu' ? newData.child('k').val() > data.child('k').val() : newData.child('s').val() > data.child('s').val()))) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
           ".validate": "newData.hasChildren(['n', 'd']) && ($jeu.beginsWith('demineur_') ? newData.hasChildren(['t']) : $jeu === 'coupdefeu' ? newData.hasChildren(['s', 'lv', 'k']) : newData.hasChildren(['s', 'lv']))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
@@ -31,7 +31,7 @@
             ".validate": "$jeu === 'coupdefeu' && newData.isNumber() && newData.val() >= newData.parent().child('lv').val() * 1000000000 && newData.val() < (newData.parent().child('lv').val() + 1) * 1000000000"
           },
           "r": {
-            ".validate": "$jeu === 'coupdefeu_plat' && newData.isString() && newData.val().length <= 20"
+            ".validate": "($jeu === 'coupdefeu_plat' && newData.isString() && newData.val().length <= 20) || ($jeu === 'chancedle' && newData.isString() && newData.val().matches(/^[0-9]{6}$/))"
           },
           "$autre": {
             ".validate": false
@@ -41,12 +41,12 @@
     },
     "scores_semaine": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense)$/)",
+        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle)$/)",
         ".indexOn": [
           "w"
         ],
         "$id": {
-          ".write": "($jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense)$/) && auth != null && auth.uid === $id && newData.exists() && root.child('bannis_id').child($id).val() !== true && root.child('bannis').child(auth.uid).val() !== true && (!data.exists() || newData.child('w').val() > data.child('w').val() || (newData.child('w').val() == data.child('w').val() && ($jeu.beginsWith('demineur_') ? newData.child('t').val() < data.child('t').val() : $jeu === 'coupdefeu' ? newData.child('k').val() > data.child('k').val() : newData.child('s').val() > data.child('s').val())))) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
+          ".write": "($jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle)$/) && auth != null && auth.uid === $id && newData.exists() && root.child('bannis_id').child($id).val() !== true && root.child('bannis').child(auth.uid).val() !== true && (!data.exists() || newData.child('w').val() > data.child('w').val() || (newData.child('w').val() == data.child('w').val() && ($jeu.beginsWith('demineur_') ? newData.child('t').val() < data.child('t').val() : $jeu === 'coupdefeu' ? newData.child('k').val() > data.child('k').val() : newData.child('s').val() > data.child('s').val())))) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
           ".validate": "newData.hasChild('w') && newData.hasChildren(['n', 'd']) && ($jeu.beginsWith('demineur_') ? newData.hasChildren(['t']) : $jeu === 'coupdefeu' ? newData.hasChildren(['s', 'lv', 'k']) : newData.hasChildren(['s', 'lv']))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
@@ -67,7 +67,7 @@
             ".validate": "$jeu === 'coupdefeu' && newData.isNumber() && newData.val() >= newData.parent().child('lv').val() * 1000000000 && newData.val() < (newData.parent().child('lv').val() + 1) * 1000000000"
           },
           "r": {
-            ".validate": "$jeu === 'coupdefeu_plat' && newData.isString() && newData.val().length <= 20"
+            ".validate": "($jeu === 'coupdefeu_plat' && newData.isString() && newData.val().length <= 20) || ($jeu === 'chancedle' && newData.isString() && newData.val().matches(/^[0-9]{6}$/))"
           },
           "w": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && now >= 1793491200000 + (newData.val() * 7 - 6) * 86400000 - 10800000 && now <= 1793491200000 + (newData.val() * 7 + 1) * 86400000 + 3600000"
@@ -554,7 +554,7 @@
         "$j": {
           "$cle": {
             ".write": "auth != null && auth.uid === $uid && root.child('bannis').child(auth.uid).val() !== true && $j.matches(/^[0-9]{1,5}$/) && !data.exists() && newData.exists()",
-            ".validate": "$cle === '_tous' ? newData.val() === 20 : $cle === '_parfait' ? newData.val() === 10 : $cle === '_serie' ? (newData.isNumber() && newData.val() >= 2 && newData.val() <= 10) : ($cle.matches(/^(wordle|loldle|anidle|onepiecedle|pokedle|electrodle|paysdle|connexions|sudoku|motscroises|motsfleches|shikaku|coupdefeu)$/) && newData.hasChildren(['m', 'e', 'g', 'd']) && newData.child('g').isBoolean() && newData.child('m').isNumber() && newData.child('e').isNumber() && newData.child('e').val() >= 0 && newData.child('e').val() <= 500 && (newData.child('g').val() === true ? (newData.child('m').val() >= 5 && newData.child('m').val() <= 10) : (newData.child('m').val() >= 2 && newData.child('m').val() <= ($cle === 'coupdefeu' ? 7 : 2))) && newData.child('d').val() == now && (!newData.hasChild('t') || (newData.child('t').isNumber() && newData.child('t').val() >= 0 && newData.child('t').val() <= 86400)))",
+            ".validate": "$cle === '_tous' ? newData.val() === 20 : $cle === '_parfait' ? newData.val() === 10 : $cle === '_serie' ? (newData.isNumber() && newData.val() >= 2 && newData.val() <= 10) : ($cle.matches(/^(wordle|loldle|anidle|onepiecedle|pokedle|electrodle|paysdle|connexions|sudoku|motscroises|motsfleches|shikaku|chancedle|coupdefeu)$/) && newData.hasChildren(['m', 'e', 'g', 'd']) && newData.child('g').isBoolean() && newData.child('m').isNumber() && newData.child('e').isNumber() && newData.child('e').val() >= 0 && newData.child('e').val() <= 500 && (newData.child('g').val() === true ? (newData.child('m').val() >= 5 && newData.child('m').val() <= 10) : (newData.child('m').val() >= 2 && newData.child('m').val() <= ($cle === 'coupdefeu' ? 7 : 2))) && newData.child('d').val() == now && (!newData.hasChild('t') || (newData.child('t').isNumber() && newData.child('t').val() >= 0 && newData.child('t').val() <= 86400)))",
             "$x": {
               ".validate": "$x.matches(/^(m|e|g|d|t)$/)"
             }
@@ -570,7 +570,7 @@
       ],
       "$uid": {
         ".write": "(auth != null && auth.uid === $uid && root.child('bannis').child(auth.uid).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
-        ".validate": "newData.hasChildren(['n', 't', 'w', 'sw', 'd']) && newData.child('sw').val() <= newData.child('t').val() && newData.child('t').val() <= ((now - 1793491200000 + 7200000) / 86400000 + 1) * 160 && newData.child('sw').val() <= ((now - 1793491200000 + 7200000) / 86400000 - (newData.child('w').val() * 7 - 6) + 1) * 160 && (!data.exists() || (newData.child('t').val() <= data.child('t').val() + 160 && now >= data.child('d').val() + 2000))",
+        ".validate": "newData.hasChildren(['n', 't', 'w', 'sw', 'd']) && newData.child('sw').val() <= newData.child('t').val() && newData.child('t').val() <= ((now - 1793491200000 + 7200000) / 86400000 + 1) * 200 && newData.child('sw').val() <= ((now - 1793491200000 + 7200000) / 86400000 - (newData.child('w').val() * 7 - 6) + 1) * 200 && (!data.exists() || (newData.child('t').val() <= data.child('t').val() + 160 && now >= data.child('d').val() + 2000))",
         "n": {
           ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
         },

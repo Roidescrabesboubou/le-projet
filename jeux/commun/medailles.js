@@ -40,6 +40,7 @@
     {slug: "motscroises", u: "indice",  q: e => lin(e, 0, 5)},
     {slug: "motsfleches", u: "indice",  q: e => lin(e, 0, 5)},
     {slug: "shikaku",     u: "aide",    q: e => lin(e, 0, 5)},
+    {slug: "chancedle",   u: "rang",    q: e => lin(e, 0, 6)},   /* e = 7 - rang (1 Banal … 7 Mythique) */
     {slug: "coupdefeu",   u: "journée", calc: (lv, g) => g ? 10 : 2 + Math.floor((Math.max(1, lv) - 1) * 5 / 8)}
   ];
   const parSlug = Object.fromEntries(DEFIS.map(d => [d.slug, d]));
@@ -51,6 +52,7 @@
   function detail(slug, e, g){
     const d = parSlug[slug];
     if(slug === "coupdefeu") return g ? "8 journées tenues" : `journée ${e} atteinte`;
+    if(slug === "chancedle") return "tirage " + (["mythique", "légendaire", "épique", "rare", "joli", "correct", "banal"][e] || "du jour");
     if(!g) return "raté, mais tenté";
     if(d.u === "coup") return `en ${e} coup${e > 1 ? "s" : ""}`;
     return e ? `${e} ${d.u}${e > 1 ? "s" : ""}` : `sans ${d.u}`;
@@ -246,7 +248,7 @@
      Défis du jour déjà terminés sur cet appareil mais sans médaille
      (par ex. joués avant l'arrivée des médailles) : on lit le résultat
      enregistré par le jeu lui-même. Seulement pour aujourd'hui. */
-  const DEBUTS = {anidle: [2026, 10, 3], electrodle: [2026, 10, 8], motscroises: [2026, 10, 4], motsfleches: [2026, 10, 4], shikaku: [2026, 10, 4]};
+  const DEBUTS = {anidle: [2026, 10, 3], electrodle: [2026, 10, 8], motscroises: [2026, 10, 4], motsfleches: [2026, 10, 4], shikaku: [2026, 10, 4], chancedle: [2026, 10, 10]};
   function jourDuJeu(slug){
     const [y, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date()).split("-").map(Number);
     const [sy, sm, sd] = DEBUTS[slug] || [2026, 10, 1];
@@ -266,6 +268,11 @@
         const sv = L(slug + "_daily", null);
         if(!fini || !sv || sv.day !== d || !Array.isArray(sv.guesses)) return null;
         return {e: sv.guesses.length, g: ["wordle", "paysdle"].includes(slug) ? gagne : true};
+      }
+      if(slug === "chancedle"){
+        const sv = L("chancedle_daily", null);
+        if(!fini || !sv || sv.day !== d || !sv.rang) return null;
+        return {e: 7 - sv.rang, g: true};
       }
       if(slug === "connexions"){
         const sv = L("connexions_daily", null);

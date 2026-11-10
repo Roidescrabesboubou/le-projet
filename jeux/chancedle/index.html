@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Chancedle</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#7b4fd6;--fond1:rgba(123,79,214,.16);--fond2:rgba(242,190,60,.14);--or:#f2be3c}
+.carte-jeu{text-align:center;max-width:560px}
+.date{margin:0;font-weight:800;color:var(--muted);font-size:.9rem;text-transform:capitalize}
+.rouleaux{display:flex;justify-content:center;gap:6px;margin:18px 0 6px}
+.rouleaux .r{width:min(13vw,62px);height:min(18vw,84px);border:2px solid var(--encre);border-radius:12px;background:var(--bg);box-shadow:0 3px 0 var(--encre);
+  display:flex;align-items:center;justify-content:center;font-family:Fredoka,sans-serif;font-weight:700;font-size:min(10vw,3rem);overflow:hidden;position:relative}
+.rouleaux .r:nth-child(3){margin-right:10px}
+.rouleaux .r.tourne span{animation:defile .09s linear infinite;filter:blur(1px)}
+.rouleaux .r.pose{animation:pose .25s ease-out}
+.rouleaux .r.badge{background:color-mix(in srgb,var(--or) 35%,var(--bg))}
+@keyframes defile{from{transform:translateY(-30%)}to{transform:translateY(30%)}}
+@keyframes pose{0%{transform:translateY(-8px)}60%{transform:translateY(3px)}100%{transform:none}}
+.btn.gros{font-size:1.25rem;padding:14px 30px;margin-top:14px}
+.rang{display:inline-block;margin:14px 0 4px;padding:6px 16px;border-radius:999px;border:2px solid var(--encre);font-weight:800;font-size:1.1rem;box-shadow:0 3px 0 var(--encre);color:#1d1a3a}
+.rang.apparait{animation:apparait .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes apparait{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+.score{font-family:Fredoka,sans-serif;font-size:2.2rem;margin:4px 0 0;line-height:1}
+.score small{font-size:1rem;color:var(--muted)}
+.proba{margin:4px 0 0;font-weight:700;color:var(--muted);font-size:.92rem}
+.badges{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0 4px;min-height:10px}
+.bd{display:flex;align-items:center;gap:6px;border:2px solid var(--line);background:var(--card);border-radius:12px;padding:6px 10px;text-align:left;cursor:pointer}
+.bd:hover{border-color:var(--text)}
+.bd .e{font-size:1.3rem}
+.bd b{display:block;font-size:.9rem;line-height:1.1}
+.bd small{color:var(--muted);font-size:.75rem}
+.bd.apparait{animation:apparait .35s cubic-bezier(.2,1.6,.4,1)}
+.bd.rare{border-color:var(--or)}
+.aucun{color:var(--muted);font-weight:700}
+.plaisir{display:inline-block;margin-top:10px;font-size:.8rem;font-weight:800;background:var(--soft);border-radius:999px;padding:3px 10px}
+.actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:16px}
+.prochain{margin:12px 0 0;color:var(--muted);font-weight:700;font-size:.9rem}
+.prochain b{font-family:Fredoka,sans-serif;color:var(--text)}
+#zoneClassement{width:100%}
+ol.lb{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;text-align:left}
+ol.lb li{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:10px;background:var(--soft);font-weight:700;font-size:.9rem}
+ol.lb li.me{outline:2px solid var(--accent)}
+ol.lb li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ol.lb li b{white-space:nowrap;font-family:Fredoka,sans-serif}
+.namerow{display:flex;gap:6px;margin:6px 0}
+.namerow input{flex:1;min-width:0;border:2px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px}
+.album{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:10px}
+.album .bd{cursor:default}
+.album .bd.non{opacity:.45;filter:grayscale(1)}
+.album .bd i{font-style:normal;font-weight:800;font-size:.75rem;color:var(--accent)}
+.resume{display:flex;gap:6px;margin:6px 0 4px}
+.resume div{flex:1;background:var(--soft);border-radius:12px;padding:8px 4px;text-align:center}
+.resume b{display:block;font-family:Fredoka,sans-serif;font-size:1.4rem}
+.resume small{color:var(--muted);font-size:.72rem}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section class="b-carte carte-jeu">
+    <p class="date" id="date"></p>
+    <div class="rouleaux" id="rouleaux"></div>
+    <div id="avant">
+      <p class="muted">Un seul tirage par jour. Pas de deuxième chance !</p>
+      <button class="btn gros" id="tirer">🎲 Tirer mon nombre</button>
+    </div>
+    <div id="apres" class="cache">
+      <span class="plaisir cache" id="etiquettePlaisir">🎈 Pour le plaisir : ne compte pas</span>
+      <div><span class="rang" id="rang"></span></div>
+      <p class="score" id="score"></p>
+      <p class="proba" id="proba"></p>
+      <div class="badges" id="badges"></div>
+      <div class="actions" id="actions"></div>
+      <p class="prochain" id="prochain"></p>
+    </div>
+  </section>
+  <section class="b-carte carte-jeu cache" id="carteClassement">
+    <h3 style="margin:0 0 10px">🏆 Meilleurs tirages</h3>
+    <div id="zoneClassement"></div>
+  </section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
+<script src="badges.js"></script>
+<script src="donnees.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("chancedle_");
+const START = Date.UTC(2026, 10, 10);   // ne pas changer : numéro des tirages et des séries
+const D = window.ChanceDonnees, B = window.ChanceBadges;
+const jour = () => Base.jour(START);
+
+/* Rangs d'un tirage selon la part des tirages possibles qui font au moins autant */
+const RANGS = [
+  {n: 7, nom: "Mythique",   emoji: "🔴", f: 0.0001, coul: "#ff5a5f"},
+  {n: 6, nom: "Légendaire", emoji: "🟡", f: 0.001,  coul: "#f2be3c"},
+  {n: 5, nom: "Épique",     emoji: "🟠", f: 0.01,   coul: "#ff9a4a"},
+  {n: 4, nom: "Rare",       emoji: "🟣", f: 0.05,   coul: "#b48cff"},
+  {n: 3, nom: "Joli",       emoji: "🔵", f: 0.2,    coul: "#7cc6e8"},
+  {n: 2, nom: "Correct",    emoji: "🟢", f: 0.5,    coul: "#7fd6a3"},
+  {n: 1, nom: "Banal",      emoji: "⚪", f: 1,      coul: "#e2e5f5"}
+];
+
+Base.entete({
+  titre: "Chancedle",
+  emoji: "🎲",
+  boutons: [(() => { const b = Base.el("button", "📖", "b-ico"); b.title = "Album des badges"; b.onclick = album; return b; })()],
+  aide: `<p>Chaque jour, tu tires <b>un seul nombre</b> entre 000 000 et 999 999. Aucune stratégie : que la chance !</p>
+    <ul>
+      <li>Le nombre gagne des <b>badges</b> selon ses particularités : chiffres qui se répètent, miroir, nombre premier, suite, heure, date…</li>
+      <li>Plus un badge est rare, plus il rapporte de <b>points</b>.</li>
+      <li>Ton tirage reçoit un <b>rang</b>, de ⚪ Banal à 🔴 Mythique (un tirage sur 10 000).</li>
+      <li>Les meilleurs tirages de la semaine et de tous les temps vont au classement.</li>
+      <li>📖 L'<b>album</b> garde tous les badges que tu as déjà eus.</li>
+    </ul>
+    <p>Une fois ton tirage du jour fait, tu peux relancer « pour le plaisir », sans que ça compte.</p>`
+});
+
+/* ---------- Calculs ---------- */
+function jjmmParis(){
+  const [, m, d] = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date()).split("-");
+  return d + m;
+}
+/* Le nombre du jour dépend du joueur et du jour : recharger la page ne change rien */
+function nombreDuJour(d){
+  const cle = Series.ancienId() + ":chancedle:" + d;
+  let h = 2166136261;
+  for(let i = 0; i < cle.length; i++){ h ^= cle.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const r = Base.rng(h >>> 0); r(); r();
+  return Math.floor(r() * B.MAX);
+}
+function analyser(n){
+  const l = B.badges(n, {jjmm: jjmmParis()}).map(b => ({...b, pts: D.pts[b.id], nb: D.comptes[b.id]}))
+    .sort((a, b) => b.pts - a.pts);
+  const s = 1 + l.reduce((a, b) => a + b.pts, 0);
+  let nb = B.MAX;
+  for(const [sc, c] of D.rangs){ if(sc <= s) nb = c; else break; }
+  const f = nb / B.MAX;
+  const rang = RANGS.find(r => f <= r.f) || RANGS[RANGS.length - 1];
+  return {n, txt: String(n).padStart(6, "0"), badges: l, s, nb, rang};
+}
+const fmt = v => v.toLocaleString("fr-FR");
+const unSur = nb => { const k = B.MAX / nb; return k < 1.05 ? "comme la plupart des tirages" : `1 tirage sur ${fmt(Math.round(k))}`; };
+
+/* ---------- Affichage ---------- */
+const rouleaux = $("rouleaux");
+for(let i = 0; i < 6; i++){ const r = Base.el("div", null, "r"); r.appendChild(Base.el("span", "?")); rouleaux.appendChild(r); }
+const R = [...rouleaux.children];
+$("date").textContent = Base.dateDuJour() + " · tirage n°" + (jour() + 1);
+
+function rouleauxFixes(txt){ R.forEach((r, i) => { r.className = "r"; r.firstChild.textContent = txt ? txt[i] : "?"; }); }
+
+let animEnCours = false;
+function animer(txt){
+  return new Promise(ok => {
+    animEnCours = true;
+    R.forEach(r => { r.className = "r tourne"; });
+    const t = setInterval(() => R.forEach(r => { if(r.classList.contains("tourne")) r.firstChild.textContent = Math.floor(Math.random() * 10); }), 60);
+    R.forEach((r, i) => setTimeout(() => {
+      r.className = "r pose"; r.firstChild.textContent = txt[i];
+      if(i === 5){ clearInterval(t); animEnCours = false; setTimeout(ok, 250); }
+    }, 700 + i * 380 + (i === 5 ? 350 : 0)));
+  });
+}
+
+function badgeEl(b){
+  const d = Base.el("button", null, "bd" + (b.nb <= 1000 ? " rare" : ""));
+  const t = Base.el("div");
+  t.append(Base.el("b", b.nom), Base.el("small", `+${fmt(b.pts)} · ${unSur(b.nb)}`));
+  d.append(Base.el("span", b.emoji, "e"), t);
+  d.onclick = () => Base.toast(`${b.emoji} ${b.nom} : ${b.desc}`, 3500);
+  return d;
+}
+
+async function montrer(a, o){
+  o = o || {};
+  $("avant").classList.add("cache"); $("apres").classList.remove("cache");
+  $("etiquettePlaisir").classList.toggle("cache", !o.plaisir);
+  const rang = $("rang"), score = $("score"), proba = $("proba"), zb = $("badges");
+  [rang, score, proba].forEach(x => x.style.visibility = o.anim ? "hidden" : "");
+  zb.innerHTML = ""; $("actions").innerHTML = ""; $("prochain").textContent = "";
+  if(o.anim) await animer(a.txt); else rouleauxFixes(a.txt);
+  R.forEach(r => r.classList.remove("badge"));
+  if(!a.badges.length) zb.appendChild(Base.el("p", "Aucun badge… un nombre parfaitement ordinaire.", "aucun"));
+  for(const b of a.badges){
+    if(o.anim) await new Promise(ok => setTimeout(ok, 260));
+    const e = badgeEl(b); if(o.anim) e.classList.add("apparait"); zb.appendChild(e);
+  }
+  rang.textContent = `${a.rang.emoji} ${a.rang.nom}`; rang.style.background = a.rang.coul;
+  rang.className = "rang" + (o.anim ? " apparait" : "");
+  if(o.anim){
+    if(a.badges.length) await new Promise(ok => setTimeout(ok, 300));
+    score.style.visibility = "";
+    const t0 = performance.now(), duree = 700;
+    await new Promise(ok => { const pas = t => { const k = Math.min(1, (t - t0) / duree); score.innerHTML = `${fmt(Math.round(a.s * k))} <small>pts</small>`; k < 1 ? requestAnimationFrame(pas) : ok(); }; requestAnimationFrame(pas); });
+  }
+  score.innerHTML = `${fmt(a.s)} <small>pts</small>`;
+  proba.textContent = `${unSur(a.nb)} fait au moins autant` + (a.nb < B.MAX / 2 ? ` · mieux que ${(Math.floor((1 - a.nb / B.MAX) * 1000) / 10).toLocaleString("fr-FR")} % des tirages` : "");
+  [rang, score, proba].forEach(x => x.style.visibility = "");
+  boutons(a, o);
+}
+
+function boutons(a, o){
+  const z = $("actions");
+  const fait = stock.lire("daily", null);
+  if(o.plaisir){
+    z.append(bouton("🎲 Encore un", () => pourLePlaisir(), true), bouton("↩ Mon tirage du jour", () => montrer(analyser(fait.n)), false));
+    return;
+  }
+  z.append(bouton("📤 Partager", () => Base.partager(texteDuPartage(a)), true),
+           bouton("🎈 Pour le plaisir", () => pourLePlaisir(), false),
+           bouton("📊 Stats", stats, false));
+  minuteur();
+}
+function bouton(t, f, plein){ const b = Base.el("button", t, "btn petit" + (plein ? "" : " ghost")); b.onclick = f; return b; }
+
+let tMinuteur = null;
+function minuteur(){
+  clearInterval(tMinuteur);
+  const maj = () => {
+    const fait = stock.lire("daily", null);
+    if(fait && fait.day !== jour()){ location.reload(); return; }
+    $("prochain").innerHTML = `Prochain tirage dans <b>${Base.avantMinuit()}</b>`;
+  };
+  maj(); tMinuteur = setInterval(maj, 1000);
+}
+
+function texteDuPartage(a){
+  return `🎲 Chancedle n°${jour() + 1}\n${a.txt.slice(0, 3)} ${a.txt.slice(3)} · ${a.rang.emoji} ${a.rang.nom}\n` +
+    (a.badges.length ? a.badges.map(b => b.emoji).join("") + "\n" : "") +
+    `${fmt(a.s)} pts · ${unSur(a.nb)}\n${location.origin + location.pathname}`;
+}
+
+async function pourLePlaisir(){
+  if(animEnCours) return;
+  clearInterval(tMinuteur);
+  await montrer(analyser(Math.floor(Math.random() * B.MAX)), {anim: true, plaisir: true});
+}
+
+/* ---------- Tirage du jour ---------- */
+function compter(a){
+  const d = jour(), s = stock.lire("statsDaily", {played: 0, wins: 0, streak: 0, best: 0, last: null, lastWin: null});
+  if(s.last === d) return s;
+  s.streak = s.lastWin === d - 1 ? s.streak + 1 : 1;
+  s.last = s.lastWin = d; s.played++; s.wins++;
+  s.best = Math.max(s.best, s.streak);
+  stock.ecrire("statsDaily", s);
+  const al = stock.lire("album", {});
+  a.badges.forEach(b => al[b.id] = (al[b.id] || 0) + 1);
+  stock.ecrire("album", al);
+  const h = stock.lire("rangs", {}); h[a.rang.n] = (h[a.rang.n] || 0) + 1; stock.ecrire("rangs", h);
+  Base.record("chancedle", a.s, {mieux: "haut", texte: `${fmt(a.s)} pts (${a.txt})`});
+  return s;
+}
+
+$("tirer").onclick = async () => {
+  if(animEnCours) return;
+  const d = jour();
+  if(stock.lire("daily", null) && stock.lire("daily").day === d) return;
+  const a = analyser(nombreDuJour(d));
+  stock.ecrire("daily", {day: d, n: a.n, s: a.s, rang: a.rang.n});   // enregistré avant l'animation
+  compter(a);
+  await montrer(a, {anim: true});
+  (window.__medailles = window.__medailles || []).push(["chancedle", 7 - a.rang.n, true]);   /* médailles 🏅 du défi du jour */
+  if(a.rang.n >= 5) Base.toast(`${a.rang.emoji} Tirage ${a.rang.nom.toLowerCase()} !`, 3000);
+  classement(a);
+  stock.ecrire("classe", d);
+};
+
+/* ---------- Classement ---------- */
+const lireTop = () => stock.lire("top", []);
+function ajouterTop(e){ const l = lireTop(); l.push(e); l.sort((a, b) => b.s - a.s); l.splice(10); stock.ecrire("top", l); return l.indexOf(e); }
+const qualifieTop = v => { const l = lireTop(); return l.length < 10 || v > l[l.length - 1].s; };
+function rendu(el, l, hi){
+  el.innerHTML = "";
+  if(!l.length){ el.appendChild(Base.el("p", "Aucun tirage pour l'instant.", "muted")); return; }
+  const ol = Base.el("ol", null, "lb");
+  l.forEach((e, i) => {
+    const li = Base.el("li", null, i === hi ? "me" : "");
+    const rg = RANGS.find(r => r.n === e.lv);
+    li.append(Base.el("span", (["🥇","🥈","🥉"][i] || (i + 1) + ".") + " " + e.n),
+              Base.el("b", (typeof e.r === "string" ? e.r + " · " : "") + fmt(e.s) + " pts " + (rg ? rg.emoji : "")));
+    ol.appendChild(li);
+  });
+  el.appendChild(ol);
+}
+const optsClassement = () => ({cle: "chancedle", champ: "s", asc: false, liste: lireTop, rendu});
+function classement(a){
+  $("carteClassement").classList.remove("cache");
+  const z = $("zoneClassement");
+  if(a) Classement.finDePartie({zone: z, cle: "chancedle", champ: "s", asc: false,
+    entree: {s: a.s, lv: a.rang.n, r: a.txt}, local: {qualifie: qualifieTop, ajouter: ajouterTop, liste: lireTop}, rendu});
+  else Classement.tableau(z, optsClassement());
+}
+
+/* ---------- Fenêtres ---------- */
+function stats(){
+  const s = stock.lire("statsDaily", {}), h = stock.lire("rangs", {}), courante = Series.courante(s, jour());
+  const box = Base.el("div");
+  const res = Base.el("div", null, "resume");
+  [[s.played || 0, "tirages"], [courante, "🔥 série"], [s.best || 0, "meilleure série"]].forEach(([v, t]) => { const d = Base.el("div"); d.append(Base.el("b", String(v)), Base.el("small", t)); res.appendChild(d); });
+  box.appendChild(res);
+  const ul = Base.el("ul"); ul.style.cssText = "list-style:none;padding:0;margin:10px 0 0";
+  RANGS.forEach(r => { const li = Base.el("li", `${r.emoji} ${r.nom} : ${h[r.n] || 0}`); ul.appendChild(li); });
+  box.appendChild(ul);
+  const rec = Base.records().chancedle;
+  if(rec) box.appendChild(Base.el("p", "🏆 Meilleur tirage : " + rec.texte));
+  Base.fenetre("📊 Mes tirages", box, {bouton: "Fermer"});
+}
+function album(){
+  const al = stock.lire("album", {}), box = Base.el("div");
+  const eus = B.BADGES.filter(b => al[b.id]).length;
+  box.appendChild(Base.el("p", `${eus} badge${eus > 1 ? "s" : ""} sur ${B.BADGES.length} déjà obtenu${eus > 1 ? "s" : ""} au tirage du jour.`, "muted"));
+  const g = Base.el("div", null, "album");
+  [...B.BADGES].sort((a, b) => D.pts[a.id] - D.pts[b.id]).forEach(b => {
+    const e = badgeEl({...b, pts: D.pts[b.id], nb: D.comptes[b.id]});
+    e.title = b.desc;
+    if(!al[b.id]) e.classList.add("non");
+    else e.appendChild(Base.el("i", "×" + al[b.id]));
+    g.appendChild(e);
+  });
+  box.appendChild(g);
+  Base.fenetre("📖 Album des badges", box, {bouton: "Fermer"});
+}
+
+/* ---------- Démarrage ---------- */
+(function(){
+  const fait = stock.lire("daily", null);
+  if(fait && fait.day === jour()){
+    const a = analyser(fait.n);
+    compter(a);   // rattrape un rechargement pendant l'animation
+    montrer(a);
+    classement(stock.lire("classe", null) === jour() ? null : a);   // rechargé avant l'envoi au classement
+    stock.ecrire("classe", jour());
+  }else if(Classement.enLigne || lireTop().length){
+    classement(null);
+  }
+})();
+</script>
+</body>
+</html>
