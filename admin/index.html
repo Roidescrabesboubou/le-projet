@@ -82,6 +82,10 @@ body.en-glisse,body.en-glisse *{cursor:grabbing!important;user-select:none!impor
 .cat-def .actions{display:flex;flex-direction:column;gap:4px}
 .cat-def.masquee{opacity:.55}
 @media (max-width:620px){.cat-def{grid-template-columns:auto 1fr}.cat-def .actions{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}}
+.idees{display:flex;flex-direction:column;gap:10px}
+.idee-admin{border:2px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--bg)}
+.idee-admin .idee-texte{margin:0 0 6px;white-space:pre-wrap;line-height:1.45}
+.idee-admin small{color:var(--muted);display:block;margin-bottom:8px}
 small.alerte{color:#d36a00;font-weight:700}
 dialog.fen{border:2px solid var(--bord);border-radius:20px;background:var(--card);color:var(--text);padding:22px;width:min(520px,92vw)}
 dialog.fen::backdrop{background:rgba(19,17,42,.55)}
@@ -158,7 +162,7 @@ async function demarrer(){
 /* ---------------- Onglets ---------------- */
 const ONGLETS = [
   ["jeux", "🎮 Jeux"], ["categories", "🗂️ Catégories"], ["comptes", "👥 Comptes"],
-  ["moderation", "🛡️ Modération"], ["annonce", "📢 Annonce"]
+  ["moderation", "🛡️ Modération"], ["idees", "💡 Idées"], ["annonce", "📢 Annonce"]
 ];
 async function panel(){
   main.innerHTML = "";
@@ -171,7 +175,7 @@ async function panel(){
     try{ localStorage.setItem("admin_onglet", id); }catch(e){}
     [...barre.children].forEach(b => b.classList.toggle("on", b.dataset.id === id));
     zone.innerHTML = "";
-    ({jeux: ongletJeux, categories: ongletCategories, comptes: ongletComptes, moderation: ongletModeration, annonce: ongletAnnonce})[id](zone, regl);
+    ({jeux: ongletJeux, categories: ongletCategories, comptes: ongletComptes, moderation: ongletModeration, idees: ongletIdees, annonce: ongletAnnonce})[id](zone, regl);
   };
   ONGLETS.forEach(([id, t]) => { const b = el("button", t); b.dataset.id = id; b.onclick = () => ouvrir(id); barre.appendChild(b); });
   let dernier = "jeux"; try{ dernier = localStorage.getItem("admin_onglet") || "jeux"; }catch(e){}
@@ -564,6 +568,58 @@ async function ongletCategories(main, regl){
     liste.appendChild(ligne);
     dessiner();
   }
+}
+
+/* ---------------- 💡 Idées de jeux envoyées depuis l'accueil ----------------
+   idees/<id> = {t: texte, n: prénom, u: uid, d: date, s: "a" à garder | "f" faite | "r" écartée} */
+async function ongletIdees(main){
+  const p = el("div", "", "panel"); main.appendChild(p);
+  p.appendChild(el("h2", "💡 Idées de jeux"));
+  p.appendChild(el("p", "Les idées envoyées par les joueurs depuis l'accueil. Range-les avec les boutons ; supprime celles qui ne servent à rien.", "hint"));
+  const filtres = el("div", "", "onglets"), liste = el("div", "", "idees");
+  p.append(filtres, liste);
+  let idees = [];
+  try{ idees = Object.entries((await Compte.db("idees")) || {}).map(([id, x]) => ({id, ...x})).filter(x => x && typeof x.t === "string").sort((a, b) => (b.d || 0) - (a.d || 0)); }
+  catch(e){ liste.appendChild(el("p", "Impossible de lire les idées : " + e.message, "hint")); return; }
+  const STATUTS = [["", "🆕 Nouvelles"], ["a", "⭐ À garder"], ["f", "✅ Faites"], ["r", "🗄️ Écartées"]];
+  let vue = "";
+  const dessinerFiltres = () => {
+    filtres.innerHTML = "";
+    STATUTS.forEach(([k, t]) => {
+      const n = idees.filter(x => (x.s || "") === k).length;
+      const b = el("button", `${t} (${n})`); if(k === vue) b.className = "on";
+      b.onclick = () => { vue = k; dessiner(); }; filtres.appendChild(b);
+    });
+  };
+  const dessiner = () => {
+    dessinerFiltres(); liste.innerHTML = "";
+    const l = idees.filter(x => (x.s || "") === vue);
+    if(!l.length){ liste.appendChild(el("p", vue ? "Aucune idée ici." : "Aucune nouvelle idée pour l'instant.", "hint")); return; }
+    for(const x of l){
+      const box = el("div", "", "idee-admin");
+      box.appendChild(el("p", x.t, "idee-texte"));
+      box.appendChild(el("small", `${x.n || "Anonyme"} · ${x.d ? new Date(x.d).toLocaleString("fr-FR", {day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"}) : "?"}`));
+      const act = el("div", "", "row");
+      STATUTS.filter(([k]) => k !== (x.s || "")).forEach(([k, t]) => {
+        const b = el("button", k ? t.replace(/s$/, "") : "🆕 Remettre en nouvelle", "ghost mini");
+        b.onclick = async () => {
+          try{ await Compte.db(`idees/${x.id}/s`, k ? {method: "PUT", body: k} : {method: "DELETE"}); if(k) x.s = k; else delete x.s; toast("Idée rangée"); dessiner(); }
+          catch(e){ toast(e.message, true); }
+        };
+        act.appendChild(b);
+      });
+      const sup = el("button", "🗑️ Supprimer", "ghost mini");
+      sup.onclick = async () => {
+        if(!confirm("Supprimer cette idée ?")) return;
+        try{ await Compte.db("idees/" + x.id, {method: "DELETE"}); idees = idees.filter(y => y !== x); toast("Idée supprimée"); dessiner(); }
+        catch(e){ toast(e.message, true); }
+      };
+      act.appendChild(sup);
+      box.appendChild(act);
+      liste.appendChild(box);
+    }
+  };
+  dessiner();
 }
 
 /* ---------------- 🗑️ Supprimer un compte ----------------

@@ -105,6 +105,17 @@ a.card:hover .cover{font-size:4rem}
 .empty{text-align:center;color:var(--muted);padding:30px;grid-column:1/-1}
 footer{text-align:center;color:var(--muted);font-size:.9rem;font-weight:700;margin-top:44px}
 
+/* ---------- Boîte à idées ---------- */
+.idee{margin:34px auto 0;max-width:680px;background:var(--card);border:2px dashed var(--line);border-radius:20px;padding:18px 20px}
+.idee p{margin:0 0 10px;color:var(--muted);line-height:1.45}
+.idee textarea,.idee input{width:100%;font:inherit;color:var(--text);background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:10px 12px}
+.idee textarea{resize:vertical;min-height:84px}
+.idee textarea:focus,.idee input:focus{outline:3px solid var(--accent);outline-offset:1px}
+.idee-bas{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.idee-bas input{flex:1;min-width:160px}
+.idee-msg{min-height:1.3em;margin:10px 0 0!important;font-weight:800}
+.idee-msg.ok{color:var(--ok)}.idee-msg.err{color:#d6455d}
+
 /* ---------- Catégories (page d'accueil) ---------- */
 .recherche{position:relative;max-width:560px;margin:0 auto 26px}
 .recherche .loupe{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:1.1rem;pointer-events:none}
@@ -195,6 +206,16 @@ dialog.b-fen p{margin:0 0 12px;line-height:1.5}
     <h2 class="choix">Choisis une catégorie</h2>
     <div class="cats" id="cats"></div>
     </div>
+    <form class="idee" id="idee">
+      <h2 class="choix">💡 Une idée de jeu ?</h2>
+      <p>Raconte le jeu que tu aimerais voir dans la salle : comment on y joue, à combien, ce qui le rend drôle. Toutes les idées sont lues.</p>
+      <textarea id="ideeTexte" maxlength="500" rows="3" required placeholder="Ex. : un jeu où chacun dessine un monstre et l'IA le fait combattre…"></textarea>
+      <div class="idee-bas">
+        <input id="ideeNom" maxlength="16" placeholder="Ton prénom (facultatif)" aria-label="Ton prénom (facultatif)">
+        <button class="btn" type="submit" id="ideeOk">Envoyer l'idée</button>
+      </div>
+      <p class="idee-msg" id="ideeMsg" role="status"></p>
+    </form>
   </section>
 
   <section id="vueCat" hidden>
@@ -569,6 +590,27 @@ if(!lireLS("salle_bienvenue_vue", false)){
   else setTimeout(bienvenue, 500);
 }
 vue = lireVue();
+/* ---------- Boîte à idées : idees/<id> (lisible seulement par les admins) ---------- */
+$("ideeNom").value = (Base.joueur.pseudo() || "").slice(0, 16);
+$("idee").onsubmit = async e => {
+  e.preventDefault();
+  const t = $("ideeTexte").value.trim(), msg = $("ideeMsg"), ok = $("ideeOk");
+  msg.className = "idee-msg";
+  if(t.length < 3){ msg.textContent = "Écris quelques mots sur ton idée."; msg.classList.add("err"); return; }
+  ok.disabled = true; msg.textContent = "Envoi…";
+  try{
+    const moi = await Compte.anonyme();
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    const n = $("ideeNom").value.trim().slice(0, 16);
+    const idee = {t, u: moi.uid, d: {".sv": "timestamp"}}; if(n) idee.n = n;
+    const r = await fetch(`${Compte.DB}/.json?auth=${encodeURIComponent(moi.jeton)}`, {method: "PATCH",
+      body: JSON.stringify({["idees/" + id]: idee, ["idees_dernier/" + moi.uid]: {t: {".sv": "timestamp"}, id}})});
+    if(r.status === 401 || r.status === 403){ msg.textContent = "Une idée par minute : attends un peu avant d'envoyer la suivante."; msg.classList.add("err"); }
+    else if(!r.ok) throw new Error("HTTP " + r.status);
+    else { msg.textContent = "Merci ! Ton idée est bien arrivée. 🙌"; msg.classList.add("ok"); $("ideeTexte").value = ""; }
+  }catch(err){ msg.textContent = "L'envoi n'a pas marché (connexion ?). Réessaie dans un moment."; msg.classList.add("err"); }
+  ok.disabled = false;
+};
 $("recherche").addEventListener("input", e => { recherche = e.target.value; renderRecherche(); });
 
 
