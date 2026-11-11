@@ -489,6 +489,32 @@ window.SALLE_CATEGORIES = [
    jeux: ["arene", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
 ];
 
+/* Liste finale des catégories : celles du code, modifiées ou masquées
+   depuis le panel admin (reglages/categories/<id> = {titre, emoji, desc,
+   c1, c2, o, suppr}), plus celles créées dans le panel. Chaque catégorie
+   reçoit sa liste de jeux (jeux), réglages admin compris. */
+window.SALLE_CATS = function(regl){
+  const perso = (regl && regl.categories) || {};
+  const liste = window.SALLE_CATEGORIES.map((c, i) => ({...c, c: [...c.c], o: i * 10, code: true}));
+  for(const [id, p] of Object.entries(perso)){
+    if(!p || typeof p !== "object") continue;
+    let c = liste.find(x => x.id === id);
+    if(!c){
+      if(!p.titre) continue;
+      c = {id, emoji: "🎲", titre: "", desc: "", c: ["#8b4dff", "#ff4f7b"], jeux: [], o: 1000, code: false};
+      liste.push(c);
+    }
+    if(typeof p.titre === "string" && p.titre) c.titre = p.titre;
+    if(typeof p.emoji === "string" && p.emoji) c.emoji = p.emoji;
+    if(typeof p.desc === "string") c.desc = p.desc;
+    if(typeof p.c1 === "string") c.c[0] = p.c1;
+    if(typeof p.c2 === "string") c.c[1] = p.c2;
+    if(typeof p.o === "number") c.o = p.o;
+    if(p.suppr === true) c.suppr = true;
+  }
+  return liste.filter(c => !c.suppr).sort((a, b) => a.o - b.o).map(c => ({...c, jeux: window.SALLE_JEUX_DE(c.id, regl)}));
+};
+
 /* Slugs d'une catégorie, réglages admin compris */
 window.SALLE_JEUX_DE = function(catId, regl){
   const cats = (regl && regl.cats) || {};

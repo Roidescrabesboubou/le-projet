@@ -393,7 +393,36 @@
       },
       "cats": {
         "$slug": {
-          ".validate": "$slug.matches(/^[a-z0-9-]{1,40}$/) && newData.isString() && newData.val().matches(/^((jour|soiree|duels|casino|ia|arcade)( (jour|soiree|duels|casino|ia|arcade))*)?$/)"
+          ".validate": "$slug.matches(/^[a-z0-9-]{1,40}$/) && newData.isString() && newData.val().matches(/^([a-z][a-z0-9]{1,19}( [a-z][a-z0-9]{1,19})*)?$/)"
+        }
+      },
+      "categories": {
+        "$id": {
+          ".validate": "$id.matches(/^[a-z][a-z0-9]{1,19}$/) && newData.hasChildren()",
+          "titre": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+          },
+          "emoji": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "desc": {
+            ".validate": "newData.isString() && newData.val().length <= 200"
+          },
+          "c1": {
+            ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-f]{6}$/)"
+          },
+          "c2": {
+            ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-f]{6}$/)"
+          },
+          "o": {
+            ".validate": "newData.isNumber() && newData.val() >= -100000 && newData.val() <= 100000"
+          },
+          "suppr": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$autre": {
+            ".validate": false
+          }
         }
       },
       "$autre": {

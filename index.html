@@ -381,10 +381,9 @@ const $ = id => document.getElementById(id);
 const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt != null) e.textContent = txt; if(cls) e.className = cls; return e; };
 const a = (g, t) => (g.tags || []).includes(t);
 const pret = g => g.etat !== "bientot" && !g.sansPage;
-/* Catégories : définies dans catalogue.js (SALLE_CATEGORIES), avec les choix
-   du panel admin (reglages/cats) appliqués par SALLE_JEUX_DE. */
-const CATS_FIXES = window.SALLE_CATEGORIES;
-const categories = () => CATS_FIXES.map(c => ({...c, jeux: SALLE_JEUX_DE(c.id, regl)}));
+/* Catégories : celles de catalogue.js, modifiées / créées dans le panel admin
+   (reglages/categories et reglages/cats), calculées par SALLE_CATS. */
+const categories = () => SALLE_CATS(regl);
 
 /* Mots-clés de recherche en plus du nom, de la description et des étiquettes
    (« tetris » → Blocs, « musique » → Blind Test et Freestyle…). */
@@ -456,10 +455,12 @@ function renderRecherche(){
   render(l, $("resGrille"));
   if(!l.length) $("resGrille").innerHTML = '<p class="empty">Essaie un autre mot : musique, cartes, dessin, mots, pokémon…</p>';
 }
-let CATS = CATS_FIXES;
+let CATS = SALLE_CATS({});
 function membresDe(cat, liste){
   const dans = liste.filter(g => cat.jeux.includes(g.slug));
-  if(cat.id === "arcade") liste.forEach(g => { if(!dans.includes(g) && !CATS.some(c => c.jeux.includes(g.slug))) dans.push(g); });
+  /* un jeu sans catégorie va dans « Arcade et solo » (ou la dernière catégorie si elle n'existe plus) */
+  const fourreTout = CATS.some(c => c.id === "arcade") ? "arcade" : (CATS[CATS.length - 1] || {}).id;
+  if(cat.id === fourreTout) liste.forEach(g => { if(!dans.includes(g) && !CATS.some(c => c.jeux.includes(g.slug))) dans.push(g); });
   return dans;
 }
 

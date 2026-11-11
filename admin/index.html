@@ -72,6 +72,16 @@ body.en-glisse,body.en-glisse *{cursor:grabbing!important;user-select:none!impor
 .puces{display:flex;flex-wrap:wrap;gap:5px}
 .puces button{font-size:.8rem;padding:5px 10px;background:var(--card);color:var(--muted);border:1px solid var(--line);border-radius:999px}
 .puces button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cat-def{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border:2px solid var(--line);border-radius:14px;background:var(--bg);margin-bottom:8px}
+.cat-def .apercu{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;border:2px solid var(--bord)}
+.cat-def .champs{display:grid;grid-template-columns:70px 1fr;gap:6px}
+.cat-def .champs input[type=text]{padding:6px 9px}
+.cat-def .champs .large{grid-column:1/-1}
+.cat-def .couleurs{display:flex;gap:6px;align-items:center;grid-column:1/-1;font-size:.85rem;color:var(--muted)}
+.cat-def .couleurs input{width:38px;height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:none}
+.cat-def .actions{display:flex;flex-direction:column;gap:4px}
+.cat-def.masquee{opacity:.55}
+@media (max-width:620px){.cat-def{grid-template-columns:auto 1fr}.cat-def .actions{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}}
 small.alerte{color:#d36a00;font-weight:700}
 dialog.fen{border:2px solid var(--bord);border-radius:20px;background:var(--card);color:var(--text);padding:22px;width:min(520px,92vw)}
 dialog.fen::backdrop{background:rgba(19,17,42,.55)}
@@ -408,18 +418,112 @@ async function ongletComptes(main){
    reglages/cats/<slug> = "jour soiree" (ou "" = aucune) : passe avant la
    liste par défaut de catalogue.js. ↺ supprime le choix du panel. */
 async function ongletCategories(main, regl){
-  const CATS = window.SALLE_CATEGORIES;
+  const perso = regl.categories = regl.categories || {};
   const choix = regl.cats = regl.cats || {};
-  const p = el("div", "", "panel"); main.appendChild(p);
-  p.appendChild(el("h2", "🗂️ Catégories de l'accueil"));
-  p.appendChild(el("p", "Touche une catégorie pour y mettre ou en retirer le jeu. Un jeu peut être dans plusieurs catégories. Un jeu sans catégorie va dans « Arcade et solo ». Enregistré tout de suite.", "hint"));
-  const resume = el("div", "", "cats-resume"); p.appendChild(resume);
-  const liste = el("div", "", "jeux"); p.appendChild(liste);
+  const redessiner = () => { main.innerHTML = ""; ongletCategories(main, regl); };
+  const enregistrer = async (chemin, opts, ok, applique) => {
+    try{ await Compte.db("reglages/categories/" + chemin, opts); applique(); toast(ok); redessiner(); }
+    catch(e){ toast(e.message, true); }
+  };
+  /* toutes les catégories, masquées comprises (pour pouvoir les réafficher) */
+  const masquees = Object.fromEntries(Object.entries(perso).filter(([, p]) => p && p.suppr).map(([id]) => [id, true]));
+  const sansMasque = Object.fromEntries(Object.entries(perso).map(([id, p]) => [id, {...p, suppr: false}]));
+  const toutes = SALLE_CATS({...regl, categories: sansMasque});
+  const visibles = toutes.filter(c => !masquees[c.id]);
+
+  /* ---------- 1. Les catégories ---------- */
+  const p1 = el("div", "", "panel"); main.appendChild(p1);
+  const tete = el("div", "", "tete"); tete.appendChild(el("h2", "🗂️ Les catégories"));
+  const nouvelle = el("button", "+ Nouvelle catégorie", "mini"); tete.appendChild(nouvelle);
+  p1.appendChild(tete);
+  p1.appendChild(el("p", "Crée, renomme, réordonne ou masque les catégories de l'accueil. Les catégories d'origine peuvent être masquées puis réaffichées ; celles que tu crées peuvent être supprimées.", "hint"));
+  const defs = el("div"); p1.appendChild(defs);
+
+  const carteCat = (c, i, creation) => {
+    const box = el("div", "", "cat-def" + (masquees[c.id] ? " masquee" : ""));
+    const apercu = el("div", c.emoji, "apercu");
+    const peindre = () => { apercu.textContent = emo.value || "🎲"; apercu.style.background = `linear-gradient(135deg,${c1.value},${c2.value})`; };
+    const champs = el("div", "", "champs");
+    const emo = el("input"); emo.type = "text"; emo.maxLength = 8; emo.value = c.emoji; emo.placeholder = "🎲"; emo.setAttribute("aria-label", "Emoji");
+    const titre = el("input"); titre.type = "text"; titre.maxLength = 40; titre.value = c.titre; titre.placeholder = "Nom de la catégorie"; titre.setAttribute("aria-label", "Nom");
+    const desc = el("input", "", "large"); desc.type = "text"; desc.maxLength = 200; desc.value = c.desc || ""; desc.placeholder = "Une phrase qui dit ce qu'on y trouve"; desc.setAttribute("aria-label", "Description");
+    const coul = el("div", "", "couleurs");
+    const c1 = el("input"); c1.type = "color"; c1.value = c.c[0]; c1.setAttribute("aria-label", "Couleur 1");
+    const c2 = el("input"); c2.type = "color"; c2.value = c.c[1]; c2.setAttribute("aria-label", "Couleur 2");
+    coul.append("Couleurs", c1, c2, el("span", masquees[c.id] ? " · masquée sur l'accueil" : creation ? "" : ` · ${c.jeux.length} jeu${c.jeux.length > 1 ? "x" : ""}`));
+    [emo, c1, c2].forEach(x => x.oninput = peindre);
+    champs.append(emo, titre, desc, coul);
+    const act = el("div", "", "actions");
+    const sauv = el("button", creation ? "Créer" : "Enregistrer", "mini");
+    sauv.onclick = () => {
+      const t = titre.value.trim();
+      if(!t) return toast("Donne un nom à la catégorie", true);
+      const champsCat = {titre: t, emoji: emo.value.trim() || "🎲", desc: desc.value.trim(), c1: c1.value, c2: c2.value};
+      if(creation){
+        let base = t.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "").replace(/^[0-9]+/, "").slice(0, 16) || "cat";
+        if(base.length < 2) base += "x";
+        let id = base, n = 2;
+        while(toutes.some(x => x.id === id) || perso[id]) id = base + n++;
+        const o = Math.max(0, ...toutes.map(x => x.o)) + 10;
+        enregistrer(id, {method: "PUT", body: {...champsCat, o}}, `Catégorie « ${t} » créée`, () => { perso[id] = {...champsCat, o}; });
+      }else enregistrer(c.id, {method: "PATCH", body: champsCat}, `« ${t} » enregistrée`, () => { perso[c.id] = {...(perso[c.id] || {}), ...champsCat}; });
+    };
+    act.appendChild(sauv);
+    if(creation){
+      const ann = el("button", "Annuler", "ghost mini"); ann.onclick = redessiner; act.appendChild(ann);
+    }else{
+      const fl = el("div", "", "row"); fl.style.gap = "4px";
+      const haut = el("button", "▲", "ghost mini"), bas = el("button", "▼", "ghost mini");
+      haut.title = "Monter"; bas.title = "Descendre";
+      haut.disabled = i === 0; bas.disabled = i === toutes.length - 1;
+      const echanger = voisin => {
+        const a = c.o, b = voisin.o === a ? a + 1 : voisin.o;
+        Promise.all([Compte.db("reglages/categories/" + c.id, {method: "PATCH", body: {o: b}}), Compte.db("reglages/categories/" + voisin.id, {method: "PATCH", body: {o: a}})])
+          .then(() => { perso[c.id] = {...(perso[c.id] || {}), o: b}; perso[voisin.id] = {...(perso[voisin.id] || {}), o: a}; toast("Ordre enregistré"); redessiner(); })
+          .catch(e => toast(e.message, true));
+      };
+      haut.onclick = () => echanger(toutes[i - 1]); bas.onclick = () => echanger(toutes[i + 1]);
+      fl.append(haut, bas); act.appendChild(fl);
+      if(c.code){
+        const m = el("button", masquees[c.id] ? "Afficher" : "Masquer", "ghost mini");
+        m.onclick = () => masquees[c.id]
+          ? enregistrer(c.id + "/suppr", {method: "DELETE"}, `« ${c.titre} » réaffichée`, () => { delete perso[c.id].suppr; })
+          : enregistrer(c.id, {method: "PATCH", body: {suppr: true}}, `« ${c.titre} » masquée`, () => { perso[c.id] = {...(perso[c.id] || {}), suppr: true}; });
+        act.appendChild(m);
+        if(perso[c.id]){
+          const raz = el("button", "↺ D'origine", "ghost mini"); raz.title = "Nom, couleurs, place et affichage d'origine";
+          raz.onclick = () => confirm(`Remettre « ${c.titre} » comme à l'origine ?`) && enregistrer(c.id, {method: "DELETE"}, "Catégorie remise d'origine", () => { delete perso[c.id]; });
+          act.appendChild(raz);
+        }
+      }else{
+        const sup = el("button", "Supprimer", "ghost mini");
+        sup.onclick = () => confirm(`Supprimer la catégorie « ${c.titre} » ? Ses jeux restent dans leurs autres catégories (ou vont dans Arcade et solo).`)
+          && enregistrer(c.id, {method: "DELETE"}, `« ${c.titre} » supprimée`, () => { delete perso[c.id]; });
+        act.appendChild(sup);
+      }
+    }
+    box.append(apercu, champs, act);
+    peindre();
+    return box;
+  };
+  toutes.forEach((c, i) => defs.appendChild(carteCat(c, i, false)));
+  nouvelle.onclick = () => {
+    if(defs.querySelector(".creation")) return;
+    const b = carteCat({id: "", emoji: "🎲", titre: "", desc: "", c: ["#8b4dff", "#ff4f7b"], jeux: []}, -1, true);
+    b.classList.add("creation"); defs.prepend(b); b.querySelector("input[aria-label=Nom]").focus();
+  };
+
+  /* ---------- 2. Les jeux de chaque catégorie ---------- */
+  const p2 = el("div", "", "panel"); main.appendChild(p2);
+  p2.appendChild(el("h2", "🎮 Les jeux de chaque catégorie"));
+  p2.appendChild(el("p", "Touche une catégorie pour y mettre ou en retirer le jeu. Un jeu peut être dans plusieurs catégories. Un jeu sans catégorie va dans « Arcade et solo ». Enregistré tout de suite.", "hint"));
+  const resume = el("div", "", "cats-resume"); p2.appendChild(resume);
+  const liste = el("div", "", "jeux"); p2.appendChild(liste);
   const dansCat = g => typeof choix[g.slug] === "string" ? choix[g.slug].split(" ").filter(Boolean)
-    : CATS.filter(c => c.jeux.includes(g.slug)).map(c => c.id);
+    : SALLE_CATEGORIES.filter(c => c.jeux.includes(g.slug)).map(c => c.id);
   const majResume = () => {
     resume.innerHTML = "";
-    CATS.forEach(c => resume.appendChild(el("span", `${c.emoji} ${c.titre} : ${SALLE_JEUX_DE(c.id, regl).length}`)));
+    visibles.forEach(c => resume.appendChild(el("span", `${c.emoji} ${c.titre} : ${SALLE_JEUX_DE(c.id, regl).length}`)));
   };
   for(const g of Compte.trier(SALLE_CATALOGUE, regl)){
     const ligne = el("div", "", "jeu cat-ligne");
@@ -430,10 +534,11 @@ async function ongletCategories(main, regl){
     const dessiner = () => {
       const ids = dansCat(g);
       puces.querySelectorAll("button").forEach(b => b.classList.toggle("on", ids.includes(b.dataset.id)));
-      const perso = typeof choix[g.slug] === "string";
-      note.textContent = (ids.length ? "" : "Aucune catégorie → Arcade et solo · ") + (perso ? "Choisi dans le panel" : "Par défaut");
-      note.className = ids.length ? "" : "alerte";
-      raz.disabled = !perso;
+      const perso2 = typeof choix[g.slug] === "string";
+      const aucune = !ids.some(id => visibles.some(c => c.id === id));
+      note.textContent = (aucune ? "Aucune catégorie → Arcade et solo · " : "") + (perso2 ? "Choisi dans le panel" : "Par défaut");
+      note.className = aucune ? "alerte" : "";
+      raz.disabled = !perso2;
       majResume();
     };
     const sauver = async ids => {
@@ -442,9 +547,12 @@ async function ongletCategories(main, regl){
       try{ await Compte.db("reglages/cats/" + g.slug, {method: "PUT", body: choix[g.slug]}); toast(g.title + " : catégories enregistrées"); }
       catch(e){ if(avant === undefined) delete choix[g.slug]; else choix[g.slug] = avant; dessiner(); toast(e.message, true); }
     };
-    CATS.forEach(c => {
+    visibles.forEach(c => {
       const b = el("button", c.emoji + " " + c.titre); b.dataset.id = c.id; b.type = "button";
-      b.onclick = () => { const ids = dansCat(g); sauver(ids.includes(c.id) ? ids.filter(x => x !== c.id) : CATS.map(x => x.id).filter(x => x === c.id || ids.includes(x))); };
+      b.onclick = () => {
+        const ids = dansCat(g);
+        sauver(ids.includes(c.id) ? ids.filter(x => x !== c.id) : [...ids, c.id]);
+      };
       puces.appendChild(b);
     });
     raz.onclick = async () => {
