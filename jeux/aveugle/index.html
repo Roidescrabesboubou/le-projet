@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Dessine à l'aveugle</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/soiree.css">
+<style>
+:root{--accent:#7c3aed;--fond1:rgba(124,58,237,.13);--fond2:rgba(236,72,153,.12)}
+.toile{display:block;width:100%;aspect-ratio:4/3;background:#fffdf7;border:2px solid var(--encre);border-radius:16px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:crosshair}
+.mot{text-align:center;font-weight:700;margin:0 0 8px}
+.mot b{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-size:1.6rem;color:var(--accent);display:block}
+.chrono{font-family:Fredoka,sans-serif;font-size:1.3rem;font-weight:700}
+.chrono.urgent{color:var(--bad)}
+.barreD{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px}
+.opts button{border:2px solid var(--line);background:var(--card);border-radius:14px;padding:10px;font-weight:800}
+.opts button:hover:not(:disabled){border-color:var(--text)}
+.opts button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+.opts button.bon{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 22%,var(--card))}
+.opts button:disabled{cursor:default}
+.opts button .qui{display:block;font-size:1rem;letter-spacing:2px;min-height:1.2em}
+.auteur{text-align:center;font-weight:800;margin:4px 0}
+.gains{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+.gains span{background:color-mix(in srgb,var(--ok) 20%,var(--card));border-radius:999px;padding:3px 10px;font-weight:800;font-size:.88rem}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:12px}
+.galerie figure{margin:0;background:var(--soft);border-radius:12px;padding:6px;text-align:center;font-weight:700;font-size:.85rem}
+.galerie canvas{width:100%;aspect-ratio:4/3;background:#fffdf7;border-radius:8px;display:block}
+</style>
+</head>
+<body>
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="../commun/soiree.js"></script>
+<script src="../dessin/mots.js"></script>
+<script>
+const {melanger, podium, pastilles} = Soiree;
+const esc = Base.esc;
+const LW = 400, LH = 300, MAXPTS = 1500;
+
+Base.entete({
+  titre: "Dessine à l'aveugle",
+  emoji: "🙈",
+  aide: `<p>Chacun reçoit un mot secret et doit le dessiner… <b>sans voir son dessin</b> !</p>
+    <ul><li>Tu as quelques secondes : dessine de mémoire, au doigt ou à la souris.</li>
+    <li>Ensuite, les dessins sont dévoilés un par un : devine le mot parmi la liste.</li>
+    <li>Bonne réponse : <b>+1</b> pour toi et <b>+1</b> pour le dessinateur.</li>
+    <li>Mode « fantôme » : ton trait s'efface au bout d'une seconde.</li></ul>`
+});
+
+const MOTS = Object.entries(window.MOTS).filter(([k]) => k !== "anime" && k !== "actions")
+  .flatMap(([, t]) => t.mots.split(",").map(s => s.trim()).filter(s => s && s.length <= 22));
+const jDe = (G, id) => G.J.find(j => j.id === id);
+const presents = G => G.J.filter(j => !j.parti);
+
+function manche(G){
+  G.phase = "dessin"; G.dessins = {}; G.mots = {}; G.choix = {}; G.res = null;
+  const l = melanger(MOTS.slice());
+  presents(G).forEach((j, i) => G.mots[j.id] = l[i]);
+  G.reserve = l.slice(presents(G).length, presents(G).length + 40);
+  G.fin = Date.now() + G.R.duree * 1000;
+}
+function lancerDevine(G){
+  G.ordre = melanger(Object.keys(G.mots).filter(id => jDe(G, id) && (G.dessins[id] || []).length));
+  if(!G.ordre.length){ apresManche(G); return; }
+  G.di = 0; devine(G);
+}
+function devine(G){
+  const d = G.ordre[G.di], bon = G.mots[d];
+  const leurres = melanger(Object.values(G.mots).filter(m => m !== bon)).slice(0, 3);
+  for(const m of G.reserve){ if(leurres.length >= 5) break; if(m !== bon && !leurres.includes(m)) leurres.push(m); }
+  G.opts = melanger([bon].concat(leurres)); G.choix = {}; G.res = null; G.phase = "devine";
+}
+function reveler(G){
+  const d = G.ordre[G.di], bon = G.opts.indexOf(G.mots[d]), gains = {};
+  for(const [id, i] of Object.entries(G.choix)) if(i === bon){ gains[id] = (gains[id] || 0) + 1; gains[d] = (gains[d] || 0) + 1; }
+  for(const id in gains){ const j = jDe(G, id); if(j) j.pts += gains[id]; }
+  G.res = {bon, gains, choix: Object.assign({}, G.choix)};
+  G.galerie.push({id: d, mot: G.mots[d], d: G.dessins[d]});
+  if(G.galerie.length > 12) G.galerie.shift();
+  G.phase = "revele";
+}
+function apresManche(G){ G.m++; if(G.m >= G.R.manches) G.phase = "fin"; else manche(G); }
+function verifier(G){
+  if(presents(G).length < 2 && G.phase !== "fin"){ G.phase = "fin"; return; }
+  if(G.phase === "dessin" && presents(G).every(j => G.dessins[j.id] || !G.mots[j.id])) lancerDevine(G);
+  else if(G.phase === "devine"){ const d = G.ordre[G.di]; if(presents(G).every(j => j.id === d || G.choix[j.id] != null)) reveler(G); }
+}
+// un dessin reçu : liste de traits [x0,y0,x1,y1…] en entiers dans 400×300
+function propreDessin(d){
+  if(!Array.isArray(d)) return [];
+  let n = 0; const out = [];
+  for(const t of d.slice(0, 200)){
+    if(!Array.isArray(t)) continue;
+    const s = [];
+    for(let i = 0; i + 1 < t.length && n < MAXPTS; i += 2, n++) s.push(Math.max(0, Math.min(LW, t[i] | 0)), Math.max(0, Math.min(LH, t[i + 1] | 0)));
+    if(s.length >= 2) out.push(s);
+  }
+  return out;
+}
+
+Soiree.demarrer({
+  jeu: "aveugle", titre: "Dessine à l'aveugle", emoji: "🙈", min: 3, max: 12,
+  hero: {
+    texte: "Chacun dessine un mot secret… sans voir ce qu'il dessine ! Puis on dévoile les chefs-d'œuvre et tout le monde devine. Fous rires garantis.",
+    etapes: ["1 · Dessine sans voir", "2 · Devine les dessins", "3 · Admire le carnage"]
+  },
+  reglages: [
+    {k: "manches", titre: "Nombre de manches", options: [[1, "1"], [2, "2"], [3, "3"]], def: 2},
+    {k: "duree", titre: "Temps pour dessiner", options: [[20, "20 s"], [30, "30 s"], [45, "45 s"]], def: 30},
+    {k: "mode", titre: "Mode", options: [["aveugle", "🙈 Totalement aveugle"], ["fantome", "👻 Trait qui s'efface"]], def: "aveugle"}
+  ],
+  nouvelle(joueurs, R){
+    const G = {hote: joueurs[0].id, R, J: joueurs.map(j => ({...j, pts: 0})), m: 0, galerie: []};
+    manche(G); return G;
+  },
+  action(G, id, a){
+    const j = jDe(G, id); if(!j || j.parti) return false;
+    if(a.t === "dessin" && G.phase === "dessin" && a.m === G.m && G.mots[id] && !G.dessins[id]){
+      G.dessins[id] = propreDessin(a.d); verifier(G); return true;
+    }
+    if(a.t === "choix" && G.phase === "devine" && a.di === G.di && a.m === G.m && G.ordre[G.di] !== id && G.choix[id] == null && G.opts[a.i] != null){
+      G.choix[id] = a.i; verifier(G); return true;
+    }
+    if(id !== G.hote) return false;
+    if(a.t === "temps" && G.phase === "dessin" && Date.now() > G.fin){ lancerDevine(G); return true; }
+    if(a.t === "suite" && G.phase === "revele"){ if(G.di + 1 < G.ordre.length){ G.di++; devine(G); } else apresManche(G); return true; }
+    if(a.t === "passer" && G.phase === "devine"){ reveler(G); return true; }
+    return false;
+  },
+  depart(G, id){ const j = jDe(G, id); if(j) j.parti = true; verifier(G); },
+  arrivee(G, j){ if(!jDe(G, j.id)) G.J.push({...j, pts: 0}); },
+  publique(G){
+    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), m: G.m, nm: G.R.manches, mode: G.R.mode};
+    if(G.phase === "dessin"){ V.fin = G.fin; V.faits = Object.keys(G.dessins); V.joueurs = Object.keys(G.mots); }
+    if(G.phase === "devine" || G.phase === "revele"){ V.di = G.di; V.nd = G.ordre.length; V.auteur = G.ordre[G.di]; V.d = G.dessins[G.ordre[G.di]]; V.opts = G.opts; V.faits = Object.keys(G.choix); }
+    if(G.phase === "revele") V.res = G.res;
+    if(G.phase === "fin") V.galerie = G.galerie;
+    return V;
+  },
+  privee(G, id){
+    if(G.phase === "dessin") return {mot: G.mots[id] || null, fait: !!G.dessins[id]};
+    if(G.phase === "devine") return {choix: G.choix[id] != null ? G.choix[id] : null};
+    return null;
+  },
+  rendre
+});
+
+/* ---------- Toile de dessin (gardée d'un affichage à l'autre) ---------- */
+const toile = document.createElement("canvas"); toile.className = "toile"; toile.width = LW * 2; toile.height = LH * 2;
+const tctx = toile.getContext("2d");
+let trace = [], traitEnCours = null, nbPts = 0, cle = "", curseur = null, recents = [];
+function posToile(e){ const r = toile.getBoundingClientRect(); return [Math.round((e.clientX - r.left) / r.width * LW), Math.round((e.clientY - r.top) / r.height * LH)]; }
+toile.addEventListener("pointerdown", e => {
+  if(!peutDessiner()) return;
+  e.preventDefault(); toile.setPointerCapture(e.pointerId);
+  const [x, y] = posToile(e); traitEnCours = [x, y]; trace.push(traitEnCours); nbPts++; curseur = [x, y];
+});
+toile.addEventListener("pointermove", e => {
+  if(!traitEnCours) return;
+  const [x, y] = posToile(e), n = traitEnCours.length;
+  curseur = [x, y];
+  if(Math.hypot(x - traitEnCours[n - 2], y - traitEnCours[n - 1]) < 3 || nbPts >= MAXPTS) return;
+  recents.push([traitEnCours[n - 2], traitEnCours[n - 1], x, y, performance.now()]);
+  traitEnCours.push(x, y); nbPts++;
+});
+const lever = () => { traitEnCours = null; };
+toile.addEventListener("pointerup", lever); toile.addEventListener("pointercancel", lever);
+
+let C = null;          // dernier contexte reçu
+const peutDessiner = () => C && C.V.phase === "dessin" && C.P && C.P.mot && !C.P.fait && !C.attente("dessin") && C.maintenant() < C.V.fin;
+function envoyerDessin(){ if(!C || !C.P || !C.P.mot || C.P.fait || C.attente("dessin")) return; traitEnCours = null; C.envoyer({t: "dessin", m: C.V.m, d: trace}); }
+
+function dessinerTraits(ctx, traits, k, w, h){
+  ctx.clearRect(0, 0, w, h); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#1d1a3a"; ctx.lineWidth = 4 * w / LW;
+  const sx = w / LW, sy = h / LH; let reste = k == null ? Infinity : k;
+  for(const t of traits){
+    if(reste <= 0) break;
+    ctx.beginPath(); ctx.moveTo(t[0] * sx, t[1] * sy);
+    if(t.length === 2) ctx.lineTo(t[0] * sx + .1, t[1] * sy);
+    for(let i = 2; i < t.length && reste > 0; i += 2, reste--) ctx.lineTo(t[i] * sx, t[i + 1] * sy);
+    reste--; ctx.stroke();
+  }
+}
+// boucle : toile de dessin (curseur / fantôme), révélation animée, chrono
+let voirCle = "", voirT0 = 0, tempsEnvoye = 0;
+function boucle(){
+  requestAnimationFrame(boucle);
+  if(!C) return;
+  const V = C.V;
+  if(V.phase === "dessin" && toile.isConnected){
+    tctx.clearRect(0, 0, toile.width, toile.height);
+    const now = performance.now();
+    recents = recents.filter(s => now - s[4] < 1000);
+    if(V.mode === "fantome"){
+      tctx.lineCap = "round"; tctx.strokeStyle = "#1d1a3a"; tctx.lineWidth = 8;
+      for(const s of recents){ tctx.globalAlpha = 1 - (now - s[4]) / 1000; tctx.beginPath(); tctx.moveTo(s[0] * 2, s[1] * 2); tctx.lineTo(s[2] * 2, s[3] * 2); tctx.stroke(); }
+      tctx.globalAlpha = 1;
+    }
+    if(curseur && traitEnCours){ tctx.fillStyle = "rgba(124,58,237,.5)"; tctx.beginPath(); tctx.arc(curseur[0] * 2, curseur[1] * 2, 10, 0, 6.3); tctx.fill(); }
+    if(!peutDessiner() && C.P && C.P.mot){ tctx.fillStyle = "rgba(29,26,58,.06)"; tctx.fillRect(0, 0, toile.width, toile.height); }
+  }
+  const ch = document.getElementById("chrono");
+  if(ch && V.fin){
+    const r = Math.max(0, Math.ceil((V.fin - C.maintenant()) / 1000));
+    ch.textContent = "⏱️ " + r + " s"; ch.classList.toggle("urgent", r <= 5);
+    if(r <= 0) envoyerDessin();
+    if(C.hote && C.maintenant() > V.fin + 4000 && Date.now() - tempsEnvoye > 2000){ tempsEnvoye = Date.now(); C.envoyer({t: "temps"}); }
+  }
+  const voir = document.getElementById("voir");
+  if(voir && V.d){
+    const k = V.m + "-" + V.di;
+    if(voirCle !== k){ voirCle = k; voirT0 = performance.now(); }
+    const total = V.d.reduce((s, t) => s + t.length / 2, 0), pas = V.phase === "revele" ? Infinity : Math.floor((performance.now() - voirT0) / 2500 * total);
+    dessinerTraits(voir.getContext("2d"), V.d, pas, voir.width, voir.height);
+  }
+}
+requestAnimationFrame(boucle);
+
+let choixLocal = null;
+function rendre(box, c){
+  C = c;
+  const {V, P, moi} = c;
+  const nom = id => { const j = V.J.find(x => x.id === id); return j ? j.av + " " + j.nom : "?"; };
+  const av = id => { const j = V.J.find(x => x.id === id); return j ? j.av : "?"; };
+  let h = "";
+  if(V.phase !== "fin") h += `<div class="so-haut"><span>Manche ${V.m + 1} / ${V.nm}</span>${V.phase !== "dessin" ? `<span>Dessin ${V.di + 1} / ${V.nd}</span>` : `<span class="chrono" id="chrono"></span>`}</div>`;
+
+  if(V.phase === "dessin"){
+    const k = V.m + ":" + V.fin;
+    if(cle !== k){ cle = k; trace = []; nbPts = 0; recents = []; }
+    h += `<section class="b-carte">`;
+    if(P && P.mot){
+      const fini = P.fait || c.attente("dessin");
+      h += `<p class="mot">${fini ? "✅ Dessin envoyé !" : V.mode === "fantome" ? "👻 Dessine (ton trait s'efface) :" : "🙈 Dessine sans regarder :"}<b>${esc(P.mot)}</b></p><div id="place"></div>
+        <div class="barreD"><button class="btn ghost petit" id="effacer" ${fini ? "disabled" : ""}>🗑️ Tout effacer</button><button class="btn" id="fini" ${fini ? "disabled" : ""}>${fini ? "Envoyé ✓" : "J'ai fini ✓"}</button></div>`;
+    }else h += `<p class="so-attente">👀 Tu dessineras à la prochaine manche.</p>`;
+    h += pastilles(V.J.filter(j => (V.joueurs || []).includes(j.id)), V.faits) + `</section>`;
+  }
+
+  else if(V.phase === "devine" || V.phase === "revele"){
+    if(!choixLocal || choixLocal.k !== V.m + "-" + V.di) choixLocal = {k: V.m + "-" + V.di, i: null};
+    const auteur = V.auteur === moi, choisi = choixLocal.i != null ? choixLocal.i : P && P.choix, r = V.res;
+    const qui = i => r ? Object.entries(r.choix).filter(([, x]) => x === i).map(([v]) => v) : [];
+    h += `<section class="b-carte"><p class="auteur">${V.phase === "revele" ? "🎨 Dessin de " + esc(nom(V.auteur)) : auteur ? "🤫 C'est ton dessin ! Les autres devinent…" : "Qu'est-ce que c'est ?"}</p>
+      <canvas id="voir" class="toile" width="800" height="600" style="cursor:default"></canvas>
+      <div class="opts">${V.opts.map((m, i) => `<button data-i="${i}" class="${r && i === r.bon ? "bon" : choisi === i ? "on" : ""}" ${auteur || r ? "disabled" : ""}>${esc(m)}${r ? `<span class="qui">${qui(i).map(av).map(esc).join("")}</span>` : ""}</button>`).join("")}</div>`;
+    if(r) h += `<div class="gains">${Object.entries(r.gains).map(([id, g]) => `<span>${esc(nom(id))} +${g}</span>`).join("") || `<span style="background:var(--soft)">Personne n'a trouvé 😂</span>`}</div>
+      ${c.hote ? `<div class="so-actions"><button class="btn so-gros" id="suite">${V.di + 1 < V.nd ? "Dessin suivant ▶" : V.m + 1 < V.nm ? "Manche suivante ▶" : "Résultats 🏆"}</button></div>` : `<p class="so-attente">⏳ L'hôte passe à la suite…</p>`}`;
+    else h += pastilles(V.J, V.faits, {sauf: [V.auteur]}) + (c.hote ? `<div class="so-hote"><button class="btn ghost petit" id="passer">⏩ Révéler sans attendre</button></div>` : "");
+    h += `</section>`;
+  }
+
+  else if(V.phase === "fin"){
+    h += `<section class="b-carte"><h2 style="text-align:center;margin:0">🏆 Résultats</h2>${podium(V.J, moi)}
+      <h3 style="margin:14px 0 0">🖼️ La galerie</h3><div class="galerie">${V.galerie.map((g, i) => `<figure><canvas width="400" height="300" data-g="${i}"></canvas>${esc(g.mot)}<br><span class="muted">${esc(nom(g.id))}</span></figure>`).join("")}</div>
+      ${c.finHtml()}</section>`;
+    if(rendre.finVue !== V.gid){ rendre.finVue = V.gid; Soiree.confettis(); }
+  }
+
+  box.innerHTML = h;
+  const place = box.querySelector("#place"); if(place) place.replaceWith(toile);
+  box.querySelectorAll("[data-g]").forEach(cv => dessinerTraits(cv.getContext("2d"), V.galerie[+cv.dataset.g].d, null, cv.width, cv.height));
+  const ef = box.querySelector("#effacer"); if(ef) ef.onclick = () => { trace = []; nbPts = 0; recents = []; Base.toast("Dessin effacé"); };
+  const fi = box.querySelector("#fini"); if(fi) fi.onclick = envoyerDessin;
+  box.querySelectorAll(".opts [data-i]").forEach(b => b.onclick = () => {
+    if(choixLocal.i != null || (P && P.choix != null)) return;
+    choixLocal.i = +b.dataset.i;
+    box.querySelectorAll(".opts [data-i]").forEach(x => x.classList.toggle("on", x === b));
+    c.envoyer({t: "choix", m: V.m, di: V.di, i: +b.dataset.i});
+  });
+  const p = box.querySelector("#passer"); if(p) p.onclick = () => c.envoyer({t: "passer"});
+  const s = box.querySelector("#suite"); if(s) s.onclick = () => c.envoyer({t: "suite"});
+}
+</script>
+</body>
+</html>

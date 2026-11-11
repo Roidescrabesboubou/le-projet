@@ -225,6 +225,36 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "menteur",
+    title: "Le Menteur",
+    emoji: "🤥",
+    desc: "Une anecdote vraie mais incroyable, avec un trou (« En 1932, l'Australie a fait la guerre à des ___ »). Chacun invente une fausse réponse crédible, puis trouvez la vraie au milieu des mensonges ! En ligne, de 3 à 12 joueurs.",
+    tags: ["Party", "Multijoueur"],
+    colors: ["#c2410c", "#5b6bd0"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "pireconseil",
+    title: "Pire Conseil",
+    emoji: "🙊",
+    desc: "Une situation gênante tombe (« ton chef te surprend en train de dormir »). Chacun écrit en secret le pire conseil possible, puis vote anonyme pour le plus drôle. En ligne, de 3 à 12 joueurs.",
+    tags: ["Party", "Multijoueur"],
+    colors: ["#16a34a", "#f2c14e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "aveugle",
+    title: "Dessine à l'aveugle",
+    emoji: "🙈",
+    desc: "Chacun reçoit un mot secret et doit le dessiner… sans voir son dessin ! Puis les chefs-d'œuvre sont dévoilés un par un et tout le monde devine. Mode fantôme où le trait s'efface. En ligne, de 3 à 12 joueurs.",
+    tags: ["Party", "Multijoueur", "Dessin"],
+    colors: ["#7c3aed", "#ec4899"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "cadran",
     title: "Le Cadran",
     emoji: "🎯",
@@ -401,6 +431,26 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "sumo",
+    title: "Sumo",
+    emoji: "🤼",
+    desc: "Pousse les autres lutteurs hors de l'arène ! Fonce, charge, ramasse l'étoile pour devenir géant… et méfie-toi, l'arène rétrécit. Contre l'ordi, à deux sur un clavier ou en ligne jusqu'à 6.",
+    tags: ["Arcade", "Action", "Multijoueur", "Solo"],
+    colors: ["#dc2626", "#f2c14e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "serpents",
+    title: "Serpents",
+    emoji: "🐍",
+    desc: "Le snake à plusieurs : tous les serpents dans la même arène, mange des pommes pour grandir et fais foncer les autres dans ton corps. Le dernier en vie gagne ! Contre l'ordi, à deux sur un clavier ou en ligne jusqu'à 6.",
+    tags: ["Arcade", "Multijoueur", "Solo"],
+    colors: ["#16a34a", "#3b82f6"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "assaut",
     title: "Assaut Galactique",
     emoji: "👾",
@@ -534,10 +584,10 @@ window.SALLE_CATEGORIES = [
    jeux: ["wordle", "loldle", "onepiecedle", "pokedle", "electrodle", "anidle", "paysdle", "motscroises", "motsfleches", "sudoku", "connexions", "shikaku", "chancedle", "chronologie", "coupdefeu"]},
   {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", c: ["#ff4f7b", "#8b4dff"],
    desc: "Des jeux de groupe où chacun joue sur son téléphone, il suffit d'un code de salle.",
-   jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran"]},
+   jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran", "menteur", "pireconseil", "aveugle"]},
   {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
    desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
-   jeux: ["puissance4", "morpion", "tour", "minigolf", "assaut", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
+   jeux: ["puissance4", "morpion", "sumo", "serpents", "tour", "minigolf", "assaut", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
   {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
    desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
    jeux: ["poker", "blackjack", "roulette"]},
@@ -546,7 +596,7 @@ window.SALLE_CATEGORIES = [
    jeux: ["quintuplees", "jdr"]},
   {id: "arcade", emoji: "🕹️", titre: "Arcade et solo", c: ["#1f9a66", "#9bd34a"],
    desc: "Arcade, réflexion et gestion : des records à battre quand tu as un moment.",
-   jeux: ["arene", "assaut", "dactylo", "tour", "minigolf", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
+   jeux: ["arene", "assaut", "serpents", "sumo", "dactylo", "tour", "minigolf", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
 ];
 
 /* Liste finale des catégories : celles du code, modifiées ou masquées

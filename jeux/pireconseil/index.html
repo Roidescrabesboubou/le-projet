@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Pire Conseil</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/soiree.css">
+<style>
+:root{--accent:#16a34a;--fond1:rgba(22,163,74,.13);--fond2:rgba(242,193,78,.14)}
+.situ{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.4rem;line-height:1.3;text-align:center;background:var(--soft);border-radius:16px;padding:16px 14px;margin:6px 0}
+.situ::before{content:"😬 ";}
+.moi-note{background:color-mix(in srgb,var(--accent) 14%,var(--card));border-radius:12px;padding:8px 12px;font-weight:700;text-align:center;margin-top:8px}
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.opts button{border:2px solid var(--line);background:var(--card);border-radius:14px;padding:12px 14px;font-weight:800;font-size:1.02rem;text-align:left}
+.opts button:hover:not(:disabled){border-color:var(--text)}
+.opts button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+.opts button:disabled{opacity:.5;cursor:default}
+.res{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.res .l{background:var(--soft);border-radius:14px;padding:10px 12px;animation:pop .45s cubic-bezier(.3,1.6,.5,1) both}
+.res .l.top{background:color-mix(in srgb,#f2c14e 30%,var(--card));outline:2px solid #e0a800}
+.res .t{font-weight:800;font-size:1.05rem}
+.res .q{font-size:.88rem;color:var(--muted);font-weight:700;margin-top:3px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.bestof details{background:var(--soft);border-radius:12px;padding:8px 12px;margin-top:6px}
+.bestof summary{font-weight:800;cursor:pointer}
+.bestof p{margin:6px 0}
+</style>
+</head>
+<body>
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="../commun/soiree.js"></script>
+<script src="situations.js"></script>
+<script>
+const {melanger, hasard, propre, podium, pastilles} = Soiree;
+const esc = Base.esc;
+
+Base.entete({
+  titre: "Pire Conseil",
+  emoji: "🙊",
+  aide: `<p>Une situation embarrassante s'affiche : « Ton chef te surprend en train de dormir au bureau ».</p>
+    <ul><li>Chacun écrit en secret le <b>pire conseil possible</b>.</li>
+    <li>Les conseils s'affichent sans les noms : vote pour ton préféré (pas le tien !).</li>
+    <li><b>+1</b> par vote reçu, <b>+1</b> de bonus pour le meilleur conseil de la manche.</li></ul>`
+});
+
+const jDe = (G, id) => G.J.find(j => j.id === id);
+const presents = G => G.J.filter(j => !j.parti);
+
+function banque(R){
+  const perso = melanger(String(R.perso || "").split("\n").map(s => propre(s, 200)).filter(Boolean));
+  return perso.concat(melanger(window.PIRE_SITUATIONS.slice())).slice(0, R.nb);
+}
+function poser(G){
+  G.phase = "ecrire"; G.reps = {}; G.votes = {}; G.res = null; G.opts = [];
+  let s = G.S[G.si]; if(s.includes("{x}")) s = s.replace(/\{x\}/g, hasard(presents(G)).nom);
+  G.s = s;
+}
+function lancerVotes(G){
+  const ids = Object.keys(G.reps).filter(id => jDe(G, id));
+  if(ids.length < 2){ suivante(G); return; }
+  G.opts = melanger(ids.map(id => ({id, txt: G.reps[id]}))); G.phase = "vote"; G.votes = {};
+}
+function reveler(G){
+  const recus = {};
+  for(const i of Object.values(G.votes)){ const o = G.opts[i]; if(o) recus[o.id] = (recus[o.id] || 0) + 1; }
+  const max = Math.max(0, ...Object.values(recus)), tops = max ? Object.keys(recus).filter(id => recus[id] === max) : [];
+  const gains = {};
+  for(const id in recus) gains[id] = recus[id];
+  tops.forEach(id => gains[id] = (gains[id] || 0) + 1);
+  for(const id in gains){ const j = jDe(G, id); if(j){ j.pts += gains[id]; j.votes += recus[id] || 0; } }
+  G.res = {gains, tops, votes: Object.assign({}, G.votes)};
+  tops.forEach(id => G.hist.push({s: G.s, txt: G.reps[id], a: id}));
+  G.phase = "revele";
+}
+function suivante(G){ G.si++; if(G.si >= G.S.length) G.phase = "fin"; else poser(G); }
+function verifier(G){
+  if(presents(G).length < 2 && G.phase !== "fin"){ G.phase = "fin"; return; }
+  if(G.phase === "ecrire" && presents(G).every(j => G.reps[j.id] != null)) lancerVotes(G);
+  else if(G.phase === "vote" && presents(G).every(j => G.votes[j.id] != null || G.opts.length <= 1)) reveler(G);
+}
+
+Soiree.demarrer({
+  jeu: "pireconseil", titre: "Pire Conseil", emoji: "🙊", min: 3, max: 12,
+  hero: {
+    texte: "Une situation gênante, et chacun donne en secret le pire conseil possible. Votez pour le plus drôle… sans savoir qui l'a écrit !",
+    etapes: ["1 · Écris un conseil nul", "2 · Vote anonyme", "3 · Rigolez"]
+  },
+  reglages: [
+    {k: "nb", titre: "Nombre de situations", options: [[4, "4"], [6, "6"], [8, "8"], [10, "10"]], def: 6},
+    {k: "perso", titre: "Vos propres situations (une par ligne, facultatif)", type: "texte", def: "", placeholder: "Ex. : Tu as renversé du jus sur le canapé tout neuf de Léa."}
+  ],
+  nouvelle(joueurs, R){
+    const G = {hote: joueurs[0].id, J: joueurs.map(j => ({...j, pts: 0, votes: 0})), S: banque(R), si: 0, hist: []};
+    poser(G); return G;
+  },
+  action(G, id, a){
+    const j = jDe(G, id); if(!j || j.parti) return false;
+    if(a.t === "rep" && G.phase === "ecrire" && a.si === G.si && G.reps[id] == null){
+      const txt = propre(a.txt, 160); if(!txt) return false;
+      G.reps[id] = txt; verifier(G); return true;
+    }
+    if(a.t === "vote" && G.phase === "vote" && a.si === G.si && G.votes[id] == null){
+      const o = G.opts[a.i]; if(!o || o.id === id) return false;
+      G.votes[id] = a.i; verifier(G); return true;
+    }
+    if(id !== G.hote) return false;
+    if(a.t === "suite" && G.phase === "revele"){ suivante(G); return true; }
+    if(a.t === "passer"){
+      if(G.phase === "ecrire"){ lancerVotes(G); return true; }
+      if(G.phase === "vote"){ reveler(G); return true; }
+    }
+    return false;
+  },
+  depart(G, id){ const j = jDe(G, id); if(j) j.parti = true; verifier(G); },
+  arrivee(G, j){ if(!jDe(G, j.id)) G.J.push({...j, pts: 0, votes: 0}); },
+  publique(G){
+    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), si: G.si, ns: G.S.length, s: G.s};
+    if(G.phase === "ecrire") V.faits = Object.keys(G.reps);
+    if(G.phase === "vote"){ V.opts = G.opts.map(o => o.txt); V.faits = Object.keys(G.votes); }
+    if(G.phase === "revele"){ V.opts = G.opts; V.res = G.res; }
+    if(G.phase === "fin") V.hist = G.hist;
+    return V;
+  },
+  privee(G, id){
+    if(G.phase === "ecrire") return {rep: G.reps[id] || null};
+    if(G.phase === "vote") return {mien: G.opts.findIndex(o => o.id === id), vote: G.votes[id] != null ? G.votes[id] : null};
+    return null;
+  },
+  rendre
+});
+
+let choixLocal = null;
+function rendre(box, c){
+  const {V, P, moi} = c;
+  const moiJ = V.J.find(j => j.id === moi), joue = moiJ && !moiJ.parti;
+  const nom = id => { const j = V.J.find(x => x.id === id); return j ? j.av + " " + j.nom : "?"; };
+  const av = id => { const j = V.J.find(x => x.id === id); return j ? j.av : "?"; };
+  const hoteBtns = l => c.hote ? `<div class="so-hote">${l}</div>` : "";
+  let h = "";
+  if(V.phase !== "fin") h += `<div class="so-haut"><span>Situation ${V.si + 1} / ${V.ns}</span><span>🙊 Pire Conseil</span></div>`;
+
+  if(V.phase === "ecrire"){
+    const fait = P && P.rep, envoi = c.attente("rep");
+    h += `<section class="b-carte"><div class="situ">${esc(V.s)}</div>`;
+    if(!joue) h += `<p class="so-attente">👀 Tu joueras à la prochaine situation.</p>`;
+    else if(fait) h += `<p class="moi-note">🙊 Ton conseil : « ${esc(fait)} »</p><p class="so-attente">⏳ On attend les autres…</p>`;
+    else h += `<p style="font-weight:800;text-align:center;margin:10px 0 0">Ton pire conseil :</p><div class="so-ligne" style="margin-top:6px"><input class="champ" id="r-${V.si}" maxlength="160" placeholder="Ex. : fais semblant d'être mort·e" autocomplete="off"><button class="btn" id="envoyer" ${envoi ? "disabled" : ""}>${envoi ? "Envoi…" : "Envoyer"}</button></div>`;
+    h += pastilles(V.J, V.faits) + hoteBtns(`<button class="btn ghost petit" id="passer">⏩ Ne plus attendre</button>`) + `</section>`;
+  }
+
+  else if(V.phase === "vote"){
+    if(!choixLocal || choixLocal.si !== V.si) choixLocal = {si: V.si, i: null};
+    const choisi = choixLocal.i != null ? choixLocal.i : P && P.vote, mien = P ? P.mien : -1;
+    h += `<section class="b-carte"><div class="situ">${esc(V.s)}</div><p style="font-weight:800;text-align:center;margin:8px 0 0">${joue ? "Vote pour le pire (meilleur) conseil :" : "Les conseils :"}</p><div class="opts">${V.opts.map((t, i) =>
+      `<button data-i="${i}" class="${choisi === i ? "on" : ""}" ${!joue || i === mien ? "disabled" : ""}>${esc(t)}${i === mien ? " <small>(le tien)</small>" : ""}</button>`).join("")}</div>`;
+    h += pastilles(V.J, V.faits) + hoteBtns(`<button class="btn ghost petit" id="passer">⏩ Révéler sans attendre</button>`) + `</section>`;
+  }
+
+  else if(V.phase === "revele"){
+    const qui = i => Object.entries(V.res.votes).filter(([, x]) => x === i).map(([v]) => v);
+    const ordre = V.opts.map((o, i) => i).sort((a, b) => qui(a).length - qui(b).length);
+    h += `<section class="b-carte"><div class="situ">${esc(V.s)}</div><div class="res">${ordre.map((i, k) => {
+      const o = V.opts[i], vs = qui(i), top = V.res.tops.includes(o.id);
+      return `<div class="l ${top ? "top" : ""}" style="animation-delay:${k * .3}s"><div class="t">${top ? "👑 " : ""}${esc(o.txt)}</div>
+        <div class="q"><span>${esc(nom(o.id))}</span><span>${vs.length ? vs.map(av).map(esc).join(" ") + " · +" + (V.res.gains[o.id] || 0) : "0 vote"}</span></div></div>`;
+    }).join("")}</div>
+      ${c.hote ? `<div class="so-actions"><button class="btn so-gros" id="suite">${V.si + 1 < V.ns ? "Situation suivante ▶" : "Résultats 🏆"}</button></div>` : `<p class="so-attente">⏳ L'hôte passe à la suite…</p>`}
+    </section>`;
+  }
+
+  else if(V.phase === "fin"){
+    h += `<section class="b-carte"><h2 style="text-align:center;margin:0">🏆 Le roi des pires conseils</h2>${podium(V.J, moi)}
+      ${V.hist.length ? `<div class="bestof" style="margin-top:12px"><b>👑 Les meilleurs conseils</b>${V.hist.map(x => `<details><summary>${esc(x.s)}</summary><p>« ${esc(x.txt)} » — <b>${esc(nom(x.a))}</b></p></details>`).join("")}</div>` : ""}
+      ${c.finHtml()}</section>`;
+    if(rendre.finVue !== V.gid){ rendre.finVue = V.gid; Soiree.confettis(); }
+  }
+
+  box.innerHTML = h;
+  const champ = box.querySelector(`#r-${V.si}`), env = box.querySelector("#envoyer");
+  if(env && champ){
+    const go = () => { const t = propre(champ.value, 160); if(!t){ champ.focus(); return; } c.envoyer({t: "rep", si: V.si, txt: t}); };
+    env.onclick = go; champ.onkeydown = e => { if(e.key === "Enter") go(); };
+  }
+  box.querySelectorAll(".opts [data-i]").forEach(b => b.onclick = () => {
+    if(choixLocal.i != null || (P && P.vote != null)) return;
+    choixLocal.i = +b.dataset.i;
+    box.querySelectorAll(".opts [data-i]").forEach(x => x.classList.toggle("on", x === b));
+    c.envoyer({t: "vote", si: V.si, i: +b.dataset.i});
+  });
+  const p = box.querySelector("#passer"); if(p) p.onclick = () => c.envoyer({t: "passer"});
+  const s = box.querySelector("#suite"); if(s) s.onclick = () => c.envoyer({t: "suite"});
+}
+</script>
+</body>
+</html>

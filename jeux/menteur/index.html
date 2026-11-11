@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Le Menteur</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/soiree.css">
+<style>
+:root{--accent:#c2410c;--fond1:rgba(194,65,12,.14);--fond2:rgba(91,107,208,.12)}
+.trou{display:inline-block;min-width:70px;border-bottom:3px solid var(--accent);margin:0 2px}
+.moi-note{background:color-mix(in srgb,var(--accent) 14%,var(--card));border-radius:12px;padding:8px 12px;font-weight:700;text-align:center;margin-top:8px}
+.refus{background:color-mix(in srgb,var(--bad) 18%,var(--card));border-radius:12px;padding:8px 12px;font-weight:800;text-align:center;margin-top:8px}
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.opts button{border:2px solid var(--line);background:var(--card);border-radius:14px;padding:12px 14px;font-weight:800;font-size:1.05rem;text-align:left}
+.opts button:hover:not(:disabled){border-color:var(--text)}
+.opts button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+.opts button:disabled{opacity:.5;cursor:default}
+.res{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.res .l{background:var(--soft);border-radius:14px;padding:10px 12px;animation:pop .45s cubic-bezier(.3,1.6,.5,1) both}
+.res .l.vrai{background:color-mix(in srgb,var(--ok) 24%,var(--card));outline:2px solid var(--ok)}
+.res .t{font-weight:800;font-size:1.05rem}
+.res .q{font-size:.88rem;color:var(--muted);font-weight:700;margin-top:3px}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.gains{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+.gains span{background:color-mix(in srgb,var(--ok) 20%,var(--card));border-radius:999px;padding:3px 10px;font-weight:800;font-size:.88rem}
+.prix{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.prix div{background:var(--soft);border-radius:12px;padding:10px;text-align:center;font-weight:700}
+.prix b{display:block;font-size:1.6rem}
+</style>
+</head>
+<body>
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="../commun/soiree.js"></script>
+<script src="questions.js"></script>
+<script>
+const {melanger, propre, podium, pastilles} = Soiree;
+const esc = Base.esc;
+
+Base.entete({
+  titre: "Le Menteur",
+  emoji: "🤥",
+  aide: `<p>Une anecdote vraie mais bizarre s'affiche avec un trou : « En 1932, l'Australie a fait la guerre à des ___ ».</p>
+    <ul><li>Chacun invente une <b>fausse réponse</b> crédible.</li>
+    <li>Toutes les réponses (la vraie + les vôtres) sont mélangées : trouve la <b>vraie</b> ! <b>+2</b>.</li>
+    <li>Chaque joueur qui tombe dans ton mensonge : <b>+1</b>.</li>
+    <li>Si tu écris la vraie réponse par hasard, on te demande d'en inventer une autre 😉</li></ul>`
+});
+
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/g, "oe")
+  .replace(/[^a-z0-9%]+/g, " ").trim().replace(/^(le|la|les|un|une|des|du|de|l|d|au|aux|a) /, "").replace(/s\b/g, "").replace(/\s+/g, "");
+const jDe = (G, id) => G.J.find(j => j.id === id);
+const presents = G => G.J.filter(j => !j.parti);
+const estVrai = (q, txt) => { const n = norm(txt); return !!n && [q.r].concat(q.a || []).some(x => norm(x) === n); };
+
+function banque(R){
+  const perso = String(R.perso || "").split("\n").map(l => l.split("=")).filter(x => x.length >= 2 && x[0].includes("___") && propre(x[1], 60))
+    .map(x => ({q: propre(x[0], 200), r: propre(x.slice(1).join("="), 60)}));
+  return melanger(perso).concat(melanger(window.MENTEUR_Q.slice())).slice(0, R.nb);
+}
+function poser(G){ G.phase = "ecrire"; G.mens = {}; G.refus = {}; G.opts = []; G.votes = {}; G.res = null; }
+function lancerVotes(G){
+  const q = G.Q[G.qi], par = new Map();
+  for(const [id, txt] of Object.entries(G.mens)){
+    if(!jDe(G, id)) continue;
+    const k = norm(txt);
+    if(par.has(k)) par.get(k).ids.push(id); else par.set(k, {txt, ids: [id]});
+  }
+  G.opts = melanger([...par.values()].concat([{txt: q.r, ids: [], vrai: true}]));
+  G.phase = "vote"; G.votes = {};
+}
+function reveler(G){
+  const gains = {}, plus = (id, n) => { gains[id] = (gains[id] || 0) + n; };
+  for(const [v, i] of Object.entries(G.votes)){
+    const o = G.opts[i]; if(!o) continue;
+    if(o.vrai){ plus(v, 2); const j = jDe(G, v); if(j) j.trouve++; }
+    else o.ids.forEach(a => { if(a !== v){ plus(a, 1); const j = jDe(G, a); if(j) j.pieges++; } });
+  }
+  for(const id in gains){ const j = jDe(G, id); if(j) j.pts += gains[id]; }
+  G.res = {gains, votes: Object.assign({}, G.votes)};
+  G.phase = "revele";
+}
+function verifier(G){
+  if(presents(G).length < 2 && G.phase !== "fin"){ G.phase = "fin"; return; }
+  if(G.phase === "ecrire" && presents(G).every(j => G.mens[j.id] != null)) lancerVotes(G);
+  else if(G.phase === "vote" && presents(G).every(j => G.votes[j.id] != null)) reveler(G);
+}
+
+Soiree.demarrer({
+  jeu: "menteur", titre: "Le Menteur", emoji: "🤥", min: 3, max: 12,
+  hero: {
+    texte: "Une anecdote vraie mais incroyable, avec un trou. Inventez chacun une fausse réponse crédible, puis trouvez la vraie au milieu des mensonges !",
+    etapes: ["1 · Invente un mensonge", "2 · Trouve la vérité", "3 · Piège les autres"]
+  },
+  reglages: [
+    {k: "nb", titre: "Nombre de questions", options: [[4, "4"], [6, "6"], [8, "8"], [10, "10"]], def: 6},
+    {k: "perso", titre: "Vos propres anecdotes (une par ligne : question avec ___ = vraie réponse)", type: "texte", def: "", placeholder: "Ex. : Le chat de Léa s'appelle ___ = Patate"}
+  ],
+  nouvelle(joueurs, R){
+    const G = {hote: joueurs[0].id, J: joueurs.map(j => ({...j, pts: 0, trouve: 0, pieges: 0})), Q: banque(R), qi: 0, hist: []};
+    poser(G); return G;
+  },
+  action(G, id, a){
+    const j = jDe(G, id); if(!j || j.parti) return false;
+    if(a.t === "mens" && G.phase === "ecrire" && a.qi === G.qi && G.mens[id] == null){
+      const txt = propre(a.txt, 60); if(!txt) return false;
+      if(estVrai(G.Q[G.qi], txt)){ G.refus[id] = txt; return true; }
+      delete G.refus[id]; G.mens[id] = txt; verifier(G); return true;
+    }
+    if(a.t === "vote" && G.phase === "vote" && a.qi === G.qi && G.votes[id] == null){
+      const o = G.opts[a.i]; if(!o || o.ids.includes(id)) return false;
+      G.votes[id] = a.i; verifier(G); return true;
+    }
+    if(id !== G.hote) return false;
+    if(a.t === "suite" && G.phase === "revele"){
+      G.hist.push({q: G.Q[G.qi].q, r: G.Q[G.qi].r});
+      G.qi++; if(G.qi >= G.Q.length) G.phase = "fin"; else poser(G); return true;
+    }
+    if(a.t === "passer"){
+      if(G.phase === "ecrire" && Object.keys(G.mens).length){ lancerVotes(G); return true; }
+      if(G.phase === "vote"){ reveler(G); return true; }
+    }
+    return false;
+  },
+  depart(G, id){ const j = jDe(G, id); if(j) j.parti = true; verifier(G); },
+  arrivee(G, j){ if(!jDe(G, j.id)) G.J.push({...j, pts: 0, trouve: 0, pieges: 0}); },
+  publique(G){
+    const q = G.Q[G.qi] || {};
+    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), qi: G.qi, nq: G.Q.length, q: q.q};
+    if(G.phase === "ecrire") V.faits = Object.keys(G.mens);
+    if(G.phase === "vote"){ V.opts = G.opts.map(o => o.txt); V.faits = Object.keys(G.votes); }
+    if(G.phase === "revele"){ V.opts = G.opts; V.res = G.res; V.r = q.r; }
+    if(G.phase === "fin"){
+      const tri = k => G.J.slice().sort((a, b) => b[k] - a[k])[0];
+      const d = tri("trouve"), b = tri("pieges");
+      V.prix = {flair: d && d.trouve ? {nom: d.nom, av: d.av, n: d.trouve} : null, menteur: b && b.pieges ? {nom: b.nom, av: b.av, n: b.pieges} : null};
+    }
+    return V;
+  },
+  privee(G, id){
+    if(G.phase === "ecrire") return {mens: G.mens[id] || null, refus: G.refus[id] || null};
+    if(G.phase === "vote") return {mien: G.opts.map((o, i) => o.ids.includes(id) ? i : -1).filter(i => i >= 0), vote: G.votes[id] != null ? G.votes[id] : null};
+    return null;
+  },
+  rendre
+});
+
+let choixLocal = null;
+function rendre(box, c){
+  const {V, P, moi} = c;
+  const moiJ = V.J.find(j => j.id === moi), joue = moiJ && !moiJ.parti;
+  const nom = id => { const j = V.J.find(x => x.id === id); return j ? j.av + " " + j.nom : "?"; };
+  const av = id => { const j = V.J.find(x => x.id === id); return j ? j.av : "?"; };
+  const hoteBtns = l => c.hote ? `<div class="so-hote">${l}</div>` : "";
+  const question = q => esc(q || "").replace("___", `<span class="trou">&nbsp;</span>`);
+  let h = "";
+  if(V.phase !== "fin") h += `<div class="so-haut"><span>Question ${V.qi + 1} / ${V.nq}</span><span>🤥 Le Menteur</span></div>`;
+
+  if(V.phase === "ecrire"){
+    const fait = P && P.mens, envoi = c.attente("mens") && !(P && P.refus);
+    h += `<section class="b-carte"><p class="so-grand">${question(V.q)}</p>`;
+    if(!joue) h += `<p class="so-attente">👀 Tu joueras à la prochaine question.</p>`;
+    else if(fait) h += `<p class="moi-note">🤥 Ton mensonge : « ${esc(fait)} »</p><p class="so-attente">⏳ On attend les autres…</p>`;
+    else{
+      if(P && P.refus) h += `<p class="refus">😱 « ${esc(P.refus)} »… c'est la vraie réponse ! Invente un mensonge.</p>`;
+      h += `<div class="so-ligne" style="margin-top:12px"><input class="champ" id="m-${V.qi}-${P && P.refus ? "b" : "a"}" maxlength="60" placeholder="Ta fausse réponse, crédible…" autocomplete="off"><button class="btn" id="envoyer" ${envoi ? "disabled" : ""}>${envoi ? "Envoi…" : "Mentir"}</button></div>`;
+    }
+    h += pastilles(V.J, V.faits) + hoteBtns(`<button class="btn ghost petit" id="passer">⏩ Ne plus attendre</button>`) + `</section>`;
+  }
+
+  else if(V.phase === "vote"){
+    if(!choixLocal || choixLocal.qi !== V.qi) choixLocal = {qi: V.qi, i: null};
+    const choisi = choixLocal.i != null ? choixLocal.i : P && P.vote, miens = (P && P.mien) || [];
+    h += `<section class="b-carte"><p class="so-grand">${question(V.q)}</p>`;
+    if(joue){
+      h += `<p style="font-weight:800;text-align:center;margin:8px 0 0">Laquelle est la vraie ?</p><div class="opts">${V.opts.map((t, i) =>
+        `<button data-i="${i}" class="${choisi === i ? "on" : ""}" ${miens.includes(i) ? "disabled" : ""}>${esc(t)}${miens.includes(i) ? " <small>(ton mensonge)</small>" : ""}</button>`).join("")}</div>`;
+    }else h += `<div class="opts">${V.opts.map(t => `<button disabled>${esc(t)}</button>`).join("")}</div>`;
+    h += pastilles(V.J, V.faits) + hoteBtns(`<button class="btn ghost petit" id="passer">⏩ Révéler sans attendre</button>`) + `</section>`;
+  }
+
+  else if(V.phase === "revele"){
+    const qui = i => Object.entries(V.res.votes).filter(([, x]) => x === i).map(([v]) => v);
+    const ordre = V.opts.map((o, i) => i).sort((a, b) => (V.opts[a].vrai ? 1 : 0) - (V.opts[b].vrai ? 1 : 0));
+    h += `<section class="b-carte"><p class="so-grand">${question(V.q)}</p><div class="res">${ordre.map((i, k) => {
+      const o = V.opts[i], vs = qui(i);
+      return `<div class="l ${o.vrai ? "vrai" : ""}" style="animation-delay:${k * .25}s"><div class="t">${o.vrai ? "✅ " : "🤥 "}${esc(o.txt)}</div>
+        <div class="q">${o.vrai ? "LA VÉRITÉ" : "Mensonge de " + o.ids.map(nom).map(esc).join(" et ")}${vs.length ? " · choisie par " + vs.map(av).map(esc).join(" ") : " · personne n'y a cru"}</div></div>`;
+    }).join("")}</div>
+      <div class="gains">${Object.entries(V.res.gains).map(([id, g]) => `<span>${esc(nom(id))} +${g}</span>`).join("") || `<span style="background:var(--soft)">Aucun point cette fois</span>`}</div>
+      ${c.hote ? `<div class="so-actions"><button class="btn so-gros" id="suite">${V.qi + 1 < V.nq ? "Question suivante ▶" : "Résultats 🏆"}</button></div>` : `<p class="so-attente">⏳ L'hôte passe à la suite…</p>`}
+    </section>`;
+  }
+
+  else if(V.phase === "fin"){
+    h += `<section class="b-carte"><h2 style="text-align:center;margin:0">🏆 Résultats</h2>${podium(V.J, moi)}
+      <div class="prix">
+        <div>👃 Meilleur flair<b>${V.prix.flair ? esc(V.prix.flair.av) : "—"}</b>${V.prix.flair ? esc(V.prix.flair.nom) + " · " + V.prix.flair.n + " vérité" + (V.prix.flair.n > 1 ? "s" : "") : "personne"}</div>
+        <div>🤥 Pire menteur<b>${V.prix.menteur ? esc(V.prix.menteur.av) : "—"}</b>${V.prix.menteur ? esc(V.prix.menteur.nom) + " · " + V.prix.menteur.n + " piégé" + (V.prix.menteur.n > 1 ? "s" : "") : "personne"}</div>
+      </div>${c.finHtml()}</section>`;
+    if(rendre.finVue !== V.gid){ rendre.finVue = V.gid; Soiree.confettis(); }
+  }
+
+  box.innerHTML = h;
+  const champ = box.querySelector(`[id^="m-${V.qi}-"]`), env = box.querySelector("#envoyer");
+  if(env && champ){
+    const go = () => { const t = propre(champ.value, 60); if(!t){ champ.focus(); return; } c.envoyer({t: "mens", qi: V.qi, txt: t}); };
+    env.onclick = go; champ.onkeydown = e => { if(e.key === "Enter") go(); };
+  }
+  box.querySelectorAll(".opts [data-i]").forEach(b => b.onclick = () => {
+    if(choixLocal.i != null || (P && P.vote != null)) return;
+    choixLocal.i = +b.dataset.i;
+    box.querySelectorAll(".opts [data-i]").forEach(x => x.classList.toggle("on", x === b));
+    c.envoyer({t: "vote", qi: V.qi, i: +b.dataset.i});
+  });
+  const p = box.querySelector("#passer"); if(p) p.onclick = () => c.envoyer({t: "passer"});
+  const s = box.querySelector("#suite"); if(s) s.onclick = () => c.envoyer({t: "suite"});
+}
+</script>
+</body>
+</html>

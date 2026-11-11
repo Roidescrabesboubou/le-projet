@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Serpents</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#16a34a;--fond1:rgba(22,163,74,.14);--fond2:rgba(59,130,246,.12)}
+.zone{position:relative;width:100%;max-width:560px}
+canvas{display:block;width:100%;aspect-ratio:34/26;border-radius:16px;border:2px solid var(--encre);box-shadow:var(--ombre);background:#0f1d14;touch-action:none;user-select:none;-webkit-user-select:none}
+.barre{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;max-width:560px;font-weight:800;flex-wrap:wrap}
+.scores{display:flex;gap:6px;flex-wrap:wrap}
+.scores span{background:var(--soft);border-radius:999px;padding:2px 9px;font-size:.85rem}
+.scores span.mort{opacity:.45;text-decoration:line-through}
+.voile{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:14px;border-radius:16px;background:rgba(8,20,12,.88);color:#fff;text-align:center;overflow:auto}
+.voile .boite{max-width:400px;width:100%}
+.voile h2{margin:0 0 6px;font-size:1.7rem}
+.voile p{margin:6px 0;color:#d4ecd9}
+.voile .champ{background:#fff;color:#1d1a3a}
+.voile .code{font-family:Fredoka,sans-serif;font-size:2.4rem;letter-spacing:.2em;font-weight:700;color:#ffd34d}
+.voile .ligne{display:flex;gap:6px;margin-top:6px}
+.voile .ligne .champ{flex:1;min-width:0}
+.voile .pilules button{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.08)}
+.voile .pilules button.on{background:#ffd34d;color:#1d1a3a;border-color:#ffd34d}
+.boutons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.rang{list-style:none;padding:0;margin:10px 0;display:flex;flex-direction:column;gap:5px;text-align:left}
+.rang li{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 10px;font-weight:800}
+.rang li.moi{outline:2px solid #ffd34d}
+.rang li .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt{display:inline-block;width:12px;height:12px;border-radius:50%}
+.croix{display:grid;grid-template-columns:repeat(3,62px);grid-template-rows:repeat(2,52px);gap:6px;justify-content:center}
+.croix button{font-size:1.4rem;border-radius:14px;border:2px solid var(--line);background:var(--card);touch-action:manipulation}
+.croix button:active{background:var(--soft)}
+@media (hover:hover) and (pointer:fine){.croix{display:none}}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="barre"><span id="hInfo">🐍 Serpents</span><span class="scores" id="scores"></span></div>
+  <div class="zone"><canvas id="cv" width="1020" height="780"></canvas><div class="voile" id="voile"></div></div>
+  <div class="croix"><span></span><button data-d="0">⬆️</button><span></span><button data-d="3">⬅️</button><button data-d="2">⬇️</button><button data-d="1">➡️</button></div>
+  <p class="muted" style="margin:0;text-align:center;font-size:.88rem">Flèches ou ZQSD, ou glisse le doigt sur le terrain.</p>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = Base.esc;
+const stock = Base.stock("serpents_");
+Base.entete({
+  titre: "Serpents",
+  emoji: "🐍",
+  aide: `<p>Tous les serpents dans la même arène ! Mange des pommes pour grandir et fais foncer les autres dans ton corps.</p>
+    <ul><li>Celui qui touche un mur, un corps (même le sien) est éliminé. Deux têtes qui se cognent : les deux sortent.</li>
+    <li>Un serpent éliminé se transforme en pommes 🍎.</li>
+    <li>Le dernier en vie gagne la manche ; le premier à 3 manches gagne.</li>
+    <li>Après 60 s, tout accélère !</li>
+    <li>Contre l'ordi, à deux sur ce clavier (ZQSD contre flèches) ou en ligne jusqu'à 6.</li></ul>`
+});
+
+/* ================= RÈGLES ================= */
+const GW = 34, GH = 26, DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0], LETTRES = "URDL";
+const COULS = ["#4ade80", "#60a5fa", "#f472b6", "#facc15", "#c084fc", "#fb923c"];
+const DEPARTS = [[4, 4, 1], [29, 21, 3], [29, 4, 3], [4, 21, 1], [17, 3, 2], [17, 22, 0]];
+let S = null, mode = "solo", salle = null, pid = 0;
+
+function nouvelleSim(joueurs, cible){
+  S = {ph: "compte", tp: 0, t: 0, manche: 1, cible: cible || 3, msg: "", acc: 0, f: [],
+       p: joueurs.map((j, i) => ({id: j.id, nom: j.nom, av: j.av || "🐍", coul: COULS[i % 6], bot: j.bot || 0, pts: 0}))};
+  placer();
+}
+function placer(){
+  S.p.forEach((p, i) => {
+    const [x, y, d] = DEPARTS[i % 6];
+    p.c = []; for(let k = 0; k < 4; k++) p.c.push([x - DX[d] * k, y - DY[d] * k]);
+    p.d = d; p.file = []; p.vivant = true; p.pousse = 0; p.mange = 0; p.mortT = 0;
+  });
+  S.f = []; S.ph = "compte"; S.tp = 0; S.t = 0; S.acc = 0; S.msg = "";
+  remplir();
+}
+const occupe = () => { const o = new Set(); S.p.forEach(p => p.vivant && p.c.forEach(([x, y]) => o.add(x + y * GW))); return o; };
+function remplir(){
+  const o = occupe(), cible = S.p.length + 2;
+  let essais = 0;
+  while(S.f.filter(f => !f.or).length < cible && essais++ < 200){
+    const x = 1 + Math.floor(Math.random() * (GW - 2)), y = 1 + Math.floor(Math.random() * (GH - 2));
+    if(!o.has(x + y * GW) && !S.f.some(f => f.x === x && f.y === y)) S.f.push({x, y, or: Math.random() < .08});
+  }
+}
+function tourner(p, d){
+  const der = p.file.length ? p.file[p.file.length - 1] : p.d;
+  if(d === der || (d + 2) % 4 === der || p.file.length >= 3) return;
+  p.file.push(d);
+}
+const vitesse = () => S.t > 60 ? .075 : .115;
+function maj(dt){
+  S.tp += dt;
+  if(S.ph === "compte"){ if(S.tp > 2.2){ S.ph = "jeu"; S.tp = 0; } return; }
+  if(S.ph === "pointe"){ if(S.tp > 2.6){ if(S.p.some(p => p.pts >= S.cible)){ S.ph = "fin"; S.tp = 0; } else { S.manche++; placer(); } } return; }
+  if(S.ph !== "jeu" && S.ph !== "dernier") return;
+  const humains = S.p.filter(p => !p.bot);
+  const rapide = mode !== "ligne" && humains.length && humains.every(p => !p.vivant);   // plus que des ordis : avance rapide
+  S.t += dt; S.acc += dt * (rapide ? 4 : 1);
+  while(S.acc >= vitesse()){ S.acc -= vitesse(); pas(); }
+  if(S.ph === "dernier" && S.tp > 1){
+    const g = S.p.filter(p => p.vivant);
+    S.ph = "pointe"; S.tp = 0;
+    if(g.length === 1){ g[0].pts++; S.msg = `${g[0].av} ${g[0].nom} gagne la manche !`; son(660, .3, "triangle", .06); }
+    else S.msg = "Égalité !";
+  }
+}
+function pas(){
+  const vivants = S.p.filter(p => p.vivant);
+  for(const p of vivants){ if(p.bot) p.file = [cerveau(p)]; if(p.file.length) p.d = p.file.shift(); }
+  // nouvelles têtes
+  const tetes = new Map();
+  for(const p of vivants){
+    const [hx, hy] = p.c[0], nx = hx + DX[p.d], ny = hy + DY[p.d];
+    p.nt = [nx, ny];
+    const fi = S.f.findIndex(f => f.x === nx && f.y === ny);
+    if(fi >= 0){ const f = S.f[fi]; S.f.splice(fi, 1); p.pousse += f.or ? 3 : 1; p.mange += f.or ? 3 : 1; son(f.or ? 1000 : 700, .08, "square", .03); }
+    p.grandit = p.pousse > 0;
+    const k = nx + ny * GW; tetes.set(k, (tetes.get(k) || 0) + 1);
+  }
+  // corps après le déplacement (les queues avancent)
+  const corps = new Set();
+  for(const p of vivants){ const fin = p.grandit ? p.c.length : p.c.length - 1; for(let i = 0; i < fin; i++) corps.add(p.c[i][0] + p.c[i][1] * GW); }
+  const morts = [];
+  for(const p of vivants){
+    const [nx, ny] = p.nt, k = nx + ny * GW;
+    if(nx < 0 || ny < 0 || nx >= GW || ny >= GH || corps.has(k) || tetes.get(k) > 1) morts.push(p);
+  }
+  for(const p of vivants){
+    if(morts.includes(p)) continue;
+    p.c.unshift(p.nt);
+    if(p.grandit) p.pousse--; else p.c.pop();
+  }
+  for(const p of morts){
+    p.vivant = false; p.mortT = 1;
+    p.c.forEach(([x, y], i) => { if(i % 2 === 1 && x >= 0 && y >= 0 && x < GW && y < GH && !S.f.some(f => f.x === x && f.y === y)) S.f.push({x, y, or: false}); });
+    son(140, .4, "sawtooth", .06); secousse = .25;
+  }
+  remplir();
+  const n = S.p.filter(p => p.vivant).length;
+  if(S.ph === "jeu" && (n <= 1 && S.p.length > 1 || n === 0)){ S.ph = "dernier"; S.tp = 0; }
+}
+
+/* ---------- Ordi ---------- */
+const NIV = [null, {erreur: .12, vision: 25}, {erreur: .03, vision: 60}, {erreur: 0, vision: 140}];
+function cerveau(p){
+  const n = NIV[p.bot] || NIV[2];
+  const o = occupe(), [hx, hy] = p.c[0];
+  // la queue avance : la dernière case se libère
+  S.p.forEach(q => { if(q.vivant && !q.pousse) { const t = q.c[q.c.length - 1]; o.delete(t[0] + t[1] * GW); } });
+  const libre = (x, y) => x >= 0 && y >= 0 && x < GW && y < GH && !o.has(x + y * GW);
+  // cases où une autre tête peut arriver
+  const danger = new Set();
+  S.p.forEach(q => { if(q !== p && q.vivant){ for(let d = 0; d < 4; d++) danger.add((q.c[0][0] + DX[d]) + (q.c[0][1] + DY[d]) * GW); } });
+  let meilleur = p.d, score = -1e9;
+  for(let d = 0; d < 4; d++){
+    if((d + 2) % 4 === p.d) continue;
+    const x = hx + DX[d], y = hy + DY[d];
+    if(!libre(x, y)) continue;
+    // place disponible (remplissage)
+    const vu = new Set([x + y * GW]), file = [[x, y]]; let place = 0;
+    while(file.length && place < n.vision){ const [a, b] = file.shift(); place++; for(let e = 0; e < 4; e++){ const u = a + DX[e], v = b + DY[e], k = u + v * GW; if(libre(u, v) && !vu.has(k)){ vu.add(k); file.push([u, v]); } } }
+    let s = place * 3;
+    if(place < p.c.length && place < n.vision) s -= 400;
+    if(danger.has(x + y * GW)) s -= 120;
+    const pomme = S.f.reduce((m, f) => Math.min(m, Math.abs(f.x - x) + Math.abs(f.y - y) - (f.or ? 4 : 0)), 99);
+    s -= pomme * 4;
+    if(d === p.d) s += 2;
+    s += Math.random() * 3;
+    if(s > score){ score = s; meilleur = d; }
+  }
+  if(Math.random() < n.erreur){ const d = (p.d + (Math.random() < .5 ? 1 : 3)) % 4; return d; }
+  return meilleur;
+}
+
+/* ================= AFFICHAGE ================= */
+const cv = $("cv"), ctx = cv.getContext("2d"), T = cv.width / GW;
+let secousse = 0;
+function dessiner(dt){
+  ctx.save();
+  ctx.fillStyle = "#0f1d14"; ctx.fillRect(0, 0, cv.width, cv.height);
+  if(secousse > 0){ secousse -= dt; ctx.translate((Math.random() - .5) * secousse * 40, (Math.random() - .5) * secousse * 40); }
+  ctx.fillStyle = "#13261a";
+  for(let x = 0; x < GW; x++) for(let y = 0; y < GH; y++) if((x + y) % 2) ctx.fillRect(x * T, y * T, T, T);
+  if(!S){ ctx.restore(); return; }
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `${T * .85}px serif`;
+  const pul = 1 + Math.sin(performance.now() / 200) * .08;
+  for(const f of S.f){ ctx.save(); ctx.translate(f.x * T + T / 2, f.y * T + T / 2 + 1); ctx.scale(pul, pul); ctx.fillText(f.or ? "🌟" : "🍎", 0, 0); ctx.restore(); }
+  for(const p of S.p){
+    if(!p.vivant){ if(p.mortT <= 0) continue; p.mortT -= dt * 1.5; ctx.globalAlpha = Math.max(0, p.mortT); }
+    ctx.fillStyle = p.coul;
+    p.c.forEach(([x, y], i) => {
+      const m = i === 0 ? 1 : 2 + Math.min(2, i * .15);
+      ctx.globalAlpha = (p.vivant ? 1 : Math.max(0, p.mortT)) * (i === 0 ? 1 : .92 - Math.min(.35, i * .01));
+      arrondi(x * T + m, y * T + m, T - 2 * m, T - 2 * m, T * .3);
+    });
+    if(p.c.length){
+      const [x, y] = p.c[0], cx = x * T + T / 2, cy = y * T + T / 2, ex = DY[p.d] * T * .2, ey = DX[p.d] * T * .2, fx = DX[p.d] * T * .12, fy = DY[p.d] * T * .12;
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(cx + ex + fx, cy - ey + fy, T * .15, 0, 6.3); ctx.arc(cx - ex + fx, cy + ey + fy, T * .15, 0, 6.3); ctx.fill();
+      ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(cx + ex + fx * 1.6, cy - ey + fy * 1.6, T * .07, 0, 6.3); ctx.arc(cx - ex + fx * 1.6, cy + ey + fy * 1.6, T * .07, 0, 6.3); ctx.fill();
+      if(estMoi(p) && p.vivant && S.ph !== "jeu"){ ctx.font = `800 ${T * .7}px Nunito, sans-serif`; ctx.fillStyle = "#fff"; ctx.fillText("▼ toi", cx, cy - T * 1.1); ctx.font = `${T * .85}px serif`; }
+    }
+    ctx.globalAlpha = 1;
+  }
+  const txt = (t, y, s) => { ctx.font = `800 ${s}px Fredoka, Nunito, sans-serif`; ctx.lineWidth = 8; ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.fillStyle = "#fff"; ctx.strokeText(t, cv.width / 2, y); ctx.fillText(t, cv.width / 2, y); };
+  if(S.ph === "compte"){ const n = 3 - Math.floor(S.tp / .7); txt(n > 0 ? String(n) : "GO !", cv.height / 2, 110); txt("Manche " + S.manche, 70, 44); }
+  if(S.ph === "pointe") txt(S.msg, cv.height / 2, 44);
+  if(S.ph === "jeu" && S.t > 58 && S.t < 61) txt("⚡ ACCÉLÉRATION !", 70, 44);
+  if(S.ph === "jeu" && mode !== "ligne" && S.p.some(p => !p.bot) && S.p.every(p => p.bot || !p.vivant)) txt("💀 Éliminé · avance rapide ⏩", 70, 40);
+  ctx.restore();
+}
+function arrondi(x, y, w, h, r){ ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); ctx.fill(); }
+function majScores(){
+  if(!S){ $("scores").innerHTML = ""; return; }
+  const h = S.p.map(p => `<span class="${p.vivant ? "" : "mort"}" style="border:2px solid ${p.coul}">${esc(p.av)} ${esc(p.nom)} · ${p.pts}</span>`).join("");
+  if($("scores").dataset.h !== h){ $("scores").innerHTML = h; $("scores").dataset.h = h; }
+  $("hInfo").textContent = `🐍 Serpents · premier à ${S.cible}`;
+}
+
+/* ================= SON ================= */
+let ac = null;
+function son(f, d, type, vol){
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type || "sine"; o.frequency.value = f;
+    g.gain.value = vol || .04; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d);
+  }catch(e){}
+}
+
+/* ================= COMMANDES ================= */
+const moiId = () => mode === "ligne" && salle ? salle.moi : "moi";
+const estMoi = p => mode === "deux" ? !p.bot : p.id === moiId();
+const CLES = {ArrowUp: [1, 0], ArrowRight: [1, 1], ArrowDown: [1, 2], ArrowLeft: [1, 3], KeyW: [0, 0], KeyZ: [0, 0], KeyD: [0, 1], KeyS: [0, 2], KeyA: [0, 3], KeyQ: [0, 3]};
+addEventListener("keydown", e => {
+  if(e.target.tagName === "INPUT" || !S) return;
+  const c = CLES[e.code]; if(!c) return;
+  e.preventDefault();
+  diriger(mode === "deux" ? c[0] : 0, c[1]);
+});
+function diriger(n, d){
+  if(!S || S.ph === "fin") return;
+  if(mode === "ligne" && !salle.hote){ envoyerDir(d); return; }
+  const l = S.p.filter(p => mode === "deux" ? !p.bot : p.id === moiId());
+  const p = l[n]; if(p && p.vivant) tourner(p, d);
+}
+let glisse = null;
+cv.addEventListener("pointerdown", e => { glisse = [e.clientX, e.clientY]; if(ac && ac.state === "suspended") ac.resume(); });
+cv.addEventListener("pointermove", e => {
+  if(!glisse) return;
+  const dx = e.clientX - glisse[0], dy = e.clientY - glisse[1];
+  if(Math.hypot(dx, dy) < 22) return;
+  diriger(0, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0));
+  glisse = [e.clientX, e.clientY];
+});
+cv.addEventListener("pointerup", () => glisse = null); cv.addEventListener("pointercancel", () => glisse = null);
+document.querySelectorAll(".croix [data-d]").forEach(b => b.addEventListener("pointerdown", e => { e.preventDefault(); diriger(0, +b.dataset.d); }));
+
+/* ================= BOUCLE ================= */
+let tPrec = performance.now(), finVue = false;
+function boucle(t){
+  requestAnimationFrame(boucle);
+  const dt = Math.min(.1, (t - tPrec) / 1000); tPrec = t;
+  if(S && !(mode === "ligne" && !salle.hote)){
+    const avant = S.ph + S.manche;
+    maj(dt);
+    if(mode === "ligne" && S.ph + S.manche !== avant) envoyerEtat();
+    if(S.ph === "fin" && S.tp > .3 && !finVue) finPartie();
+  }
+  dessiner(dt); majScores();
+}
+requestAnimationFrame(boucle);
+
+/* ================= MENUS ================= */
+function voile(html){ const v = $("voile"); v.innerHTML = `<div class="boite">${html}</div>`; v.style.display = "flex"; v.dataset.k = ""; return v; }
+function cacherVoile(){ $("voile").style.display = "none"; }
+let niveau = stock.lire("niveau", 2), nbBots = stock.lire("bots", 2);
+function menu(){
+  S = null; mode = "solo";
+  if(salle){ salle.quitter(); salle = null; }
+  const v = voile(`<h2>🐍 Serpents</h2><p>Tous dans la même arène : le dernier serpent en vie gagne !</p>
+    <p style="margin-top:12px"><b>Contre l'ordi</b></p>
+    <div class="pilules">${[1, 2, 3, 5].map(n => `<button data-b="${n}" class="${n === nbBots ? "on" : ""}">${n} ordi${n > 1 ? "s" : ""}</button>`).join("")}</div>
+    <div class="pilules" style="margin-top:6px">${[[1, "😊 Facile"], [2, "😤 Moyen"], [3, "👹 Difficile"]].map(([n, l]) => `<button data-n="${n}" class="${n === niveau ? "on" : ""}">${l}</button>`).join("")}</div>
+    <div class="boutons"><button class="btn" id="solo">Jouer ▶</button></div>
+    <div class="boutons"><button class="btn ghost" id="deux">👥 À deux sur ce clavier</button><button class="btn ghost" id="ligne">🌐 En ligne (2 à 6)</button></div>
+    <p style="font-size:.85rem">Victoires contre l'ordi : <b>${stock.lire("victoires", 0)}</b></p>`);
+  v.querySelectorAll("[data-b]").forEach(b => b.onclick = () => { nbBots = +b.dataset.b; stock.ecrire("bots", nbBots); menu(); });
+  v.querySelectorAll("[data-n]").forEach(b => b.onclick = () => { niveau = +b.dataset.n; stock.ecrire("niveau", niveau); menu(); });
+  v.querySelector("#solo").onclick = () => {
+    mode = "solo"; finVue = false;
+    const l = [{id: "moi", nom: Base.joueur.pseudo() || "Toi", av: Base.joueur.avatar()}];
+    const noms = ["Sifflette", "Kaa-lin", "Zigzag", "Nouille", "Spaghetto"];
+    for(let i = 0; i < nbBots; i++) l.push({id: "b" + i, nom: noms[i] + " 🤖", av: "🐍", bot: niveau});
+    nouvelleSim(l, 3); cacherVoile();
+  };
+  v.querySelector("#deux").onclick = () => {
+    mode = "deux"; finVue = false;
+    nouvelleSim([{id: "j1", nom: "Joueur 1", av: "🟢"}, {id: "j2", nom: "Joueur 2", av: "🔵"}], 3); cacherVoile();
+    Base.toast("J1 : ZQSD · J2 : flèches");
+  };
+  v.querySelector("#ligne").onclick = menuLigne;
+}
+function finPartie(){
+  finVue = true;
+  const tri = S.p.slice().sort((a, b) => b.pts - a.pts), g = tri[0];
+  const gagne = estMoi(g) && mode !== "deux";
+  if(gagne && mode === "solo") stock.ecrire("victoires", stock.lire("victoires", 0) + 1);
+  const chef = mode !== "ligne" || salle.hote;
+  const v = voile(`<h2>${mode === "deux" ? "🏆 " + esc(g.nom) + " gagne !" : gagne ? "🏆 Victoire !" : "😵 " + esc(g.nom) + " gagne"}</h2>
+    <ol class="rang">${tri.map(p => `<li class="${estMoi(p) && mode !== "deux" ? "moi" : ""}"><span class="pt" style="background:${p.coul}"></span><span class="n">${esc(p.av)} ${esc(p.nom)}</span><span>${p.pts}</span></li>`).join("")}</ol>
+    <div class="boutons">${chef ? `<button class="btn" id="re">🔁 Revanche</button>` : `<p>⏳ L'hôte choisit la suite…</p>`}${mode === "ligne" && salle.hote ? `<button class="btn ghost" id="sal">👥 Salon</button>` : ""}<button class="btn ghost" id="men">🏠 Menu</button></div>`);
+  v.dataset.k = "fin";
+  const re = v.querySelector("#re");
+  if(re) re.onclick = () => {
+    finVue = false;
+    if(mode === "ligne"){ lancerLigne(); return; }
+    nouvelleSim(S.p.map(p => ({id: p.id, nom: p.nom, av: p.av, bot: p.bot})), S.cible); cacherVoile();
+  };
+  const sal = v.querySelector("#sal"); if(sal) sal.onclick = () => { salle.envoyer({t: "salon"}); salonLigne(); };
+  v.querySelector("#men").onclick = menu;
+}
+
+/* ================= EN LIGNE ================= */
+function menuLigne(){
+  const v = voile(`<h2>🌐 Serpents en ligne</h2><p>De 2 à 6 serpents, chacun sur son appareil.</p>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton pseudo" autocomplete="off" value="${esc(Base.joueur.pseudo())}">
+    <div class="boutons"><button class="btn" id="creer">🏠 Créer une salle</button></div>
+    <div class="ligne"><input class="champ" id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off" style="text-transform:uppercase"><button class="btn" id="rej">Rejoindre</button></div>
+    <p id="msg"></p><div class="boutons"><button class="btn ghost petit" id="ret">← Retour</button></div>`);
+  const msg = t => { const p = v.querySelector("#msg"); if(p) p.textContent = t; };
+  const pseudoOk = () => { const p = v.querySelector("#pseudo").value.trim(); if(!p){ msg("Choisis d'abord un pseudo."); return false; } Base.joueur.changerPseudo(p); return true; };
+  v.querySelector("#ret").onclick = menu;
+  v.querySelector("#creer").onclick = async () => {
+    if(!pseudoOk()) return;
+    msg("Création de la salle…");
+    try{
+      salle = await Reseau.creer("serpents", {max: 6, surEssai: msg,
+        surArrivee(j){ Base.toast(j.avatar + " " + j.pseudo + " est là !"); if(!S) salonLigne(); },
+        surDepart(j){ Base.toast(j.pseudo + " est parti·e"); if(S){ const p = S.p.find(x => x.id === j.id); if(p && p.vivant){ p.vivant = false; p.mortT = 1; } } else salonLigne(); },
+        surMessage: recu});
+      mode = "ligne"; S = null; salonLigne();
+    }catch(e){ msg("❌ " + e.message); }
+  };
+  const rejoindre = async code => {
+    if(!pseudoOk()) return;
+    msg("Connexion à la salle " + code + "…");
+    try{
+      salle = await Reseau.rejoindre("serpents", code, {surMessage: recu,
+        surListe(){ if(!S) salonLigne(); },
+        surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; menu(); },
+        surHotePerdu(){ Base.toast("L'hôte ne répond plus…"); }});
+      mode = "ligne"; S = null; salonLigne(); salle.envoyer({t: "etat?"});
+    }catch(e){ msg("❌ " + e.message); }
+  };
+  v.querySelector("#rej").onclick = () => { const c = v.querySelector("#codeIn").value.trim().toUpperCase(); if(c) rejoindre(c); };
+  v.querySelector("#codeIn").addEventListener("keydown", e => { if(e.key === "Enter") v.querySelector("#rej").click(); });
+  menuLigne.rejoindre = rejoindre;
+}
+function salonLigne(){
+  if(!salle) return;
+  S = null; mode = "ligne";
+  const l = salle.joueurs, h = salle.hote;
+  const v = voile(`<h2>🐍 Salle des serpents</h2><p>Code de la salle</p><div class="code">${salle.code}</div>
+    <div class="boutons" style="margin-top:2px"><button class="btn ghost petit" id="lien">🔗 Copier le lien</button></div>
+    <ol class="rang">${l.map((j, i) => `<li class="${j.id === salle.moi ? "moi" : ""}"><span class="pt" style="background:${COULS[i % 6]}"></span><span>${esc(j.avatar)}</span><span class="n">${esc(j.pseudo)}${i === 0 ? " 👑" : ""}</span></li>`).join("")}</ol>
+    <p>${h ? (l.length < 2 ? "Envoie le code à tes amis (jusqu'à 6) !" : `${l.length} serpents, prêts ?`) : "⏳ L'hôte va lancer la partie…"}</p>
+    <div class="boutons">${h ? `<button class="btn" id="lancer" ${l.length < 2 ? "disabled" : ""}>Lancer ▶</button>` : ""}<button class="btn ghost" id="q">🚪 Quitter</button></div>`);
+  v.dataset.k = "salon";
+  v.querySelector("#lien").onclick = async () => { try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! 📨"); }catch(e){ Base.fenetre("Lien d'invitation", salle.lien); } };
+  const b = v.querySelector("#lancer"); if(b) b.onclick = lancerLigne;
+  v.querySelector("#q").onclick = menu;
+}
+function lancerLigne(){
+  pid++; finVue = false;
+  nouvelleSim(salle.joueurs.map(j => ({id: j.id, nom: j.pseudo, av: j.avatar})), 3);
+  cacherVoile(); envoyerEtat(true);
+}
+// le corps est envoyé comme la tête + une suite de lettres (direction vers la case suivante)
+function coder(c){ let s = ""; for(let i = 1; i < c.length; i++){ const dx = c[i][0] - c[i - 1][0], dy = c[i][1] - c[i - 1][1]; s += LETTRES[dy < 0 ? 0 : dx > 0 ? 1 : dy > 0 ? 2 : 3]; } return s; }
+function decoder(x, y, s){ const c = [[x, y]]; for(const l of s){ const d = LETTRES.indexOf(l); x += DX[d]; y += DY[d]; c.push([x, y]); } return c; }
+let pasEnvoye = -1, metaT = 0;
+function envoyerEtat(meta){
+  if(!salle || !S) return;
+  const now = performance.now();
+  const m = {t: "s", pid, ph: S.ph, tp: Math.round(S.tp * 10) / 10, mc: S.manche, msg: S.msg, t2: Math.round(S.t),
+    f: S.f.flatMap(f => [f.x, f.y, f.or ? 1 : 0]),
+    p: S.p.map(p => [p.c[0] ? p.c[0][0] : 0, p.c[0] ? p.c[0][1] : 0, coder(p.c), p.vivant ? 1 : 0, p.pts, p.d])};
+  if(meta || now - metaT > 1000){ metaT = now; m.j = S.p.map(p => [p.id, p.nom, p.av, p.coul]); m.c = S.cible; }
+  salle.envoyer(m);
+}
+// l'hôte envoie l'état à chaque pas de la simulation
+const pasOrig = pas;
+pas = function(){ pasOrig(); if(mode === "ligne" && salle && salle.hote) envoyerEtat(); };
+setInterval(() => { if(mode === "ligne" && salle && salle.hote && S && S.ph !== "jeu") envoyerEtat(); }, 250);
+let dirSeq = 0;
+function envoyerDir(d){ dirSeq++; salle.envoyer({t: "d", d, n: dirSeq}); }
+function recu(m){
+  if(!m || !m.t) return;
+  const de = m.de;
+  if(m.t === "etat?" && salle.hote){ if(S) envoyerEtat(true); else salle.envoyer({t: "salon"}); return; }
+  if(m.t === "salon" && !salle.hote){ salonLigne(); return; }
+  if(m.t === "d" && salle.hote && S){
+    const p = S.p.find(x => x.id === de); if(!p || !p.vivant || !(m.n > (p.dSeq || 0))) return;
+    p.dSeq = m.n; if(m.d >= 0 && m.d < 4) tourner(p, m.d);
+    return;
+  }
+  if(m.t === "s" && !salle.hote){
+    if(m.j && (!S || m.pid !== pid || S.p.length !== m.j.length)){ pid = m.pid; finVue = false; nouvelleSim(m.j.map(x => ({id: x[0], nom: x[1], av: x[2]})), m.c); S.p.forEach((p, i) => p.coul = m.j[i][3]); cacherVoile(); }
+    if(!S || m.pid !== pid) return;
+    const avant = S.ph;
+    S.ph = m.ph; S.tp = m.tp; S.manche = m.mc; S.msg = m.msg; S.t = m.t2;
+    S.f = []; for(let i = 0; i < m.f.length; i += 3) S.f.push({x: m.f[i], y: m.f[i + 1], or: !!m.f[i + 2]});
+    m.p.forEach((x, i) => { const p = S.p[i]; if(!p) return; if(p.vivant && !x[3]){ p.mortT = 1; son(140, .4, "sawtooth", .06); } p.c = decoder(x[0], x[1], x[2]); p.vivant = !!x[3]; p.pts = x[4]; p.d = x[5]; });
+    if(S.ph === "fin" && avant !== "fin") setTimeout(() => { if(S && S.ph === "fin" && !finVue) finPartie(); }, 300);
+    if(S.ph !== "fin" && $("voile").dataset.k === "fin"){ finVue = false; cacherVoile(); }
+  }
+}
+
+const codeLien = Reseau.codeDansAdresse();
+menu();
+if(codeLien){ menuLigne(); $("voile").querySelector("#codeIn").value = codeLien; if(Base.joueur.pseudo()) menuLigne.rejoindre(codeLien); }
+</script>
+</body>
+</html>

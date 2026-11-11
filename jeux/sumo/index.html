@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Sumo</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#dc2626;--fond1:rgba(220,38,38,.13);--fond2:rgba(242,193,78,.16)}
+.zone{position:relative;width:100%;max-width:520px}
+canvas{display:block;width:100%;aspect-ratio:1;border-radius:18px;border:2px solid var(--encre);box-shadow:var(--ombre);background:#1b1530;touch-action:none;user-select:none;-webkit-user-select:none}
+.barre{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;max-width:520px;font-weight:800;flex-wrap:wrap}
+.scores{display:flex;gap:6px;flex-wrap:wrap}
+.scores span{background:var(--soft);border-radius:999px;padding:2px 9px;font-size:.85rem}
+.voile{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:14px;border-radius:18px;background:rgba(20,14,40,.86);color:#fff;text-align:center;overflow:auto}
+.voile .boite{max-width:400px;width:100%}
+.voile h2{margin:0 0 6px;font-size:1.8rem}
+.voile p{margin:6px 0;color:#ddd5f5}
+.voile .champ{background:#fff;color:#1d1a3a}
+.voile .code{font-family:Fredoka,sans-serif;font-size:2.4rem;letter-spacing:.2em;font-weight:700;color:#ffd34d}
+.voile .ligne{display:flex;gap:6px;margin-top:6px}
+.voile .ligne .champ{flex:1;min-width:0}
+.voile .pilules button{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.08)}
+.voile .pilules button.on{background:#ffd34d;color:#1d1a3a;border-color:#ffd34d}
+.boutons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.rang{list-style:none;padding:0;margin:10px 0;display:flex;flex-direction:column;gap:5px;text-align:left}
+.rang li{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 10px;font-weight:800}
+.rang li.moi{outline:2px solid #ffd34d}
+.rang li .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt{display:inline-block;width:12px;height:12px;border-radius:50%}
+.dash{width:100%;max-width:520px;font-size:1.15rem;padding:14px}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="barre"><span id="hInfo">🤼 Sumo</span><span class="scores" id="scores"></span></div>
+  <div class="zone"><canvas id="cv" width="1000" height="1000"></canvas><div class="voile" id="voile"></div></div>
+  <button class="btn dash" id="bDash">💨 Charge !</button>
+  <p class="muted" style="margin:0;text-align:center;font-size:.88rem">Garde le doigt (ou la souris) sur l'arène : ton lutteur va vers lui. Clavier : flèches ou ZQSD, Espace pour charger.</p>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = Base.esc;
+const stock = Base.stock("sumo_");
+Base.entete({
+  titre: "Sumo",
+  emoji: "🤼",
+  aide: `<p>Pousse les autres lutteurs hors de l'arène ! Le dernier debout gagne la manche.</p>
+    <ul><li>Garde le doigt sur l'arène : ton lutteur fonce vers lui. Au clavier : flèches ou ZQSD.</li>
+    <li><b>💨 Charge</b> (Espace) : un gros coup d'élan, plus lourd pendant un instant. Il se recharge en 2 s.</li>
+    <li>Ramasse le <b>⭐</b> pour devenir géant quelques secondes.</li>
+    <li>Après 15 s, l'arène rétrécit !</li>
+    <li>Le premier à 3 manches gagne. Contre l'ordi, à deux sur le même clavier ou en ligne jusqu'à 6.</li></ul>`
+});
+
+/* ================= RÈGLES ================= */
+const W = 500, CX = 250, CY = 250, R0 = 215, RMIN = 95, RAYON = 22, ACC = 560, VMAX = 270, DASH = 520, DASH_CD = 2;
+const COULS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899"];
+const AVS = ["🔴", "🔵", "🟢", "🟠", "🟣", "🩷"];
+let S = null, mode = "solo", salle = null, pid = 0;
+
+function nouvelleSim(joueurs, cible){
+  S = {ph: "compte", t: 0, tp: 0, R: R0, p: joueurs.map((j, i) => ({id: j.id, nom: j.nom, av: j.av || AVS[i], coul: COULS[i % 6], bot: j.bot || 0, pts: 0, x: CX, y: CY, vx: 0, vy: 0, ax: 0, ay: 0, vivant: true, chute: 0, geant: 0, cd: 0, dashT: 0, veut: false, ia: {t: 0, cible: null}})),
+       manche: 1, cible: cible || 3, bonus: null, bonusCd: 6, msg: "", gagnant: null};
+  placer();
+}
+function placer(){
+  const n = S.p.length;
+  S.p.forEach((p, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; Object.assign(p, {x: CX + Math.cos(a) * 125, y: CY + Math.sin(a) * 125, vx: 0, vy: 0, vivant: true, chute: 0, geant: 0, cd: .5, dashT: 0, veut: false}); });
+  S.R = R0; S.t = 0; S.tp = 0; S.ph = "compte"; S.bonus = null; S.bonusCd = 6; S.gagnant = null;
+}
+const rayon = p => RAYON * (p.geant > 0 ? 1.45 : 1);
+const masse = p => (p.geant > 0 ? 2.2 : 1) * (p.dashT > 0 ? 1.8 : 1);
+
+function maj(dt){
+  S.tp += dt;
+  if(S.ph === "compte"){ if(S.tp > 2.4){ S.ph = "jeu"; S.tp = 0; } return; }
+  if(S.ph === "pointe"){
+    animerChutes(dt);
+    if(S.tp > 2.6){ if(S.p.some(p => p.pts >= S.cible)){ S.ph = "fin"; S.tp = 0; } else { S.manche++; placer(); } }
+    return;
+  }
+  if(S.ph === "fin"){ animerChutes(dt); return; }
+  S.t += dt;
+  if(S.t > 15) S.R = Math.max(RMIN, S.R - 7 * dt);
+  // bonus
+  if(!S.bonus){ S.bonusCd -= dt; if(S.bonusCd <= 0){ const a = Math.random() * 6.28, d = Math.random() * (S.R - 50); S.bonus = {x: CX + Math.cos(a) * d, y: CY + Math.sin(a) * d}; } }
+  for(const p of S.p){
+    if(!p.vivant) continue;
+    if(p.bot) cerveau(p, dt);
+    p.cd -= dt; p.dashT -= dt; if(p.geant > 0) p.geant -= dt;
+    let ax = p.ax, ay = p.ay; const n = Math.hypot(ax, ay); if(n > 1){ ax /= n; ay /= n; }
+    p.vx += ax * ACC * dt; p.vy += ay * ACC * dt;
+    if(p.veut){ p.veut = false; if(p.cd <= 0){ let dx = ax, dy = ay; if(!dx && !dy){ const v = Math.hypot(p.vx, p.vy) || 1; dx = p.vx / v; dy = p.vy / v; } const d = Math.hypot(dx, dy) || 1; p.vx += dx / d * DASH; p.vy += dy / d * DASH; p.cd = DASH_CD; p.dashT = .35; son(220, .15, "sawtooth", .05); } }
+    const v = Math.hypot(p.vx, p.vy), vm = p.dashT > 0 ? VMAX + DASH : VMAX;
+    if(v > vm){ p.vx *= vm / v; p.vy *= vm / v; }
+    const fr = Math.pow(.18, dt); p.vx *= fr; p.vy *= fr;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if(S.bonus && Math.hypot(p.x - S.bonus.x, p.y - S.bonus.y) < rayon(p) + 12){ p.geant = 5; S.bonus = null; S.bonusCd = 8 + Math.random() * 5; son(900, .2, "triangle", .05); }
+  }
+  // chocs
+  const vs = S.p.filter(p => p.vivant);
+  for(let i = 0; i < vs.length; i++) for(let k = i + 1; k < vs.length; k++){
+    const a = vs[i], b = vs[k], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), r = rayon(a) + rayon(b);
+    if(d >= r || d === 0) continue;
+    const nx = dx / d, ny = dy / d, ma = masse(a), mb = masse(b);
+    const recul = (r - d) / (ma + mb);
+    a.x -= nx * recul * mb; a.y -= ny * recul * mb; b.x += nx * recul * ma; b.y += ny * recul * ma;
+    const vr = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+    if(vr < 0){
+      const j = -(1 + .95) * vr / (1 / ma + 1 / mb);
+      a.vx -= j * nx / ma; a.vy -= j * ny / ma; b.vx += j * nx / mb; b.vy += j * ny / mb;
+      if(-vr > 120){ secousse = Math.min(.35, -vr / 1200); son(120 + Math.random() * 60, .08, "square", .05); etincelles((a.x + b.x) / 2, (a.y + b.y) / 2); }
+    }
+  }
+  // sorties
+  for(const p of vs) if(Math.hypot(p.x - CX, p.y - CY) > S.R + rayon(p) * .35){ p.vivant = false; p.chute = 1; son(300, .5, "sine", .06, 0, -250); }
+  animerChutes(dt);
+  const restants = S.p.filter(p => p.vivant);
+  if(restants.length <= 1){
+    S.ph = "pointe"; S.tp = 0;
+    const g = restants[0];
+    if(g){ g.pts++; S.gagnant = g.id; S.msg = `${g.av} ${g.nom} gagne la manche !`; } else { S.gagnant = null; S.msg = "Égalité, tout le monde est tombé !"; }
+  }
+}
+function animerChutes(dt){ for(const p of S.p) if(!p.vivant && p.chute > 0){ p.chute -= dt * 1.4; p.x += p.vx * dt * .5; p.y += p.vy * dt * .5; } }
+
+/* ---------- Ordi ---------- */
+const NIV = {facile: {acc: .65, reac: .55, dash: .25}, moyen: {acc: .85, reac: .3, dash: .55}, difficile: {acc: 1, reac: .12, dash: .9}};
+function cerveau(p, dt){
+  const n = NIV[["", "facile", "moyen", "difficile"][p.bot]] || NIV.moyen;
+  p.ia.t -= dt;
+  if(p.ia.t > 0) return;
+  p.ia.t = n.reac * (.6 + Math.random() * .8);
+  const dc = Math.hypot(p.x - CX, p.y - CY);
+  const autres = S.p.filter(o => o !== p && o.vivant);
+  let tx, ty;
+  if(dc > S.R - 55){ tx = CX; ty = CY; }            // trop près du bord : on revient
+  else if(S.bonus && Math.hypot(S.bonus.x - p.x, S.bonus.y - p.y) < 140){ tx = S.bonus.x; ty = S.bonus.y; }
+  else{
+    const c = autres.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
+    if(!c){ p.ax = p.ay = 0; return; }
+    // se placer entre le centre et la cible, puis pousser vers l'extérieur
+    const ox = c.x - CX, oy = c.y - CY, od = Math.hypot(ox, oy) || 1;
+    const px = c.x - ox / od * 34, py = c.y - oy / od * 34;
+    const dCible = Math.hypot(c.x - p.x, c.y - p.y);
+    if(Math.hypot(px - p.x, py - p.y) < 30 || dCible < 60){ tx = c.x + ox / od * 40; ty = c.y + oy / od * 40; if(dCible < 95 && Math.random() < n.dash) p.veut = true; }
+    else { tx = px; ty = py; }
+  }
+  const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy) || 1;
+  p.ax = dx / d * n.acc; p.ay = dy / d * n.acc;
+}
+
+/* ================= AFFICHAGE ================= */
+const cv = $("cv"), ctx = cv.getContext("2d"), K = cv.width / W;
+let secousse = 0, parts = [];
+function etincelles(x, y){ for(let i = 0; i < 12; i++){ const a = Math.random() * 6.28, v = 60 + Math.random() * 160; parts.push({x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: .4}); } }
+function dessiner(dt){
+  ctx.save(); ctx.setTransform(K, 0, 0, K, 0, 0);
+  ctx.fillStyle = "#1b1530"; ctx.fillRect(0, 0, W, W);
+  if(secousse > 0){ secousse -= dt; ctx.translate((Math.random() - .5) * secousse * 30, (Math.random() - .5) * secousse * 30); }
+  if(!S){ ctx.restore(); return; }
+  // arène
+  ctx.fillStyle = "#3b2f5c"; ctx.beginPath(); ctx.arc(CX, CY, R0 + 14, 0, 6.29); ctx.fill();
+  const g = ctx.createRadialGradient(CX, CY, 10, CX, CY, S.R);
+  g.addColorStop(0, "#f3dfb0"); g.addColorStop(1, "#d9b878");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(CX, CY, S.R, 0, 6.29); ctx.fill();
+  ctx.strokeStyle = "#8a5a2b"; ctx.lineWidth = 7; ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 2; ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.arc(CX, CY, S.R - 9, 0, 6.29); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = "rgba(138,90,43,.5)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(CX - 26, CY - 12); ctx.lineTo(CX - 26, CY + 12); ctx.moveTo(CX + 26, CY - 12); ctx.lineTo(CX + 26, CY + 12); ctx.stroke();
+  if(S.bonus){ const b = 1 + Math.sin(performance.now() / 150) * .12; ctx.font = `${26 * b}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("⭐", S.bonus.x, S.bonus.y); }
+  // lutteurs (ceux qui tombent d'abord, en dessous)
+  const ordre = S.p.slice().sort((a, b) => (a.vivant ? 1 : 0) - (b.vivant ? 1 : 0));
+  for(const p of ordre){
+    if(!p.vivant && p.chute <= 0) continue;
+    const r = rayon(p) * (p.vivant ? 1 : Math.max(.05, p.chute));
+    ctx.globalAlpha = p.vivant ? 1 : Math.max(0, p.chute);
+    if(p.dashT > 0){ ctx.fillStyle = p.coul + "55"; ctx.beginPath(); ctx.arc(p.x - p.vx * .05, p.y - p.vy * .05, r * 1.1, 0, 6.29); ctx.fill(); }
+    ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(p.x + 3, p.y + 5, r, r * .9, 0, 0, 6.29); ctx.fill();
+    ctx.fillStyle = p.coul; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.29); ctx.fill();
+    ctx.strokeStyle = p.geant > 0 ? "#ffd34d" : "rgba(0,0,0,.35)"; ctx.lineWidth = p.geant > 0 ? 4 : 3; ctx.stroke();
+    // ceinture + visage
+    ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(p.x - r * .33, p.y - r * .15, r * .17, 0, 6.29); ctx.arc(p.x + r * .33, p.y - r * .15, r * .17, 0, 6.29); ctx.fill();
+    const vx = p.vx / 300, vy = p.vy / 300;
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(p.x - r * .33 + vx * 3, p.y - r * .15 + vy * 3, r * .08, 0, 6.29); ctx.arc(p.x + r * .33 + vx * 3, p.y - r * .15 + vy * 3, r * .08, 0, 6.29); ctx.fill();
+    ctx.strokeStyle = "#111"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y + r * .25, r * .22, .2, Math.PI - .2); ctx.stroke();
+    // recharge de la charge (pour soi)
+    if(p.vivant && estMoi(p) && p.cd > 0){ ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, r + 6, -Math.PI / 2, -Math.PI / 2 + 6.28 * (1 - p.cd / DASH_CD)); ctx.stroke(); }
+    ctx.font = "800 12px Nunito, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 3;
+    const nm = (estMoi(p) ? "▼ " : "") + p.nom; ctx.strokeText(nm, p.x, p.y - r - 8); ctx.fillText(nm, p.x, p.y - r - 8);
+    ctx.globalAlpha = 1;
+  }
+  for(const q of parts){ q.t -= dt; q.x += q.vx * dt; q.y += q.vy * dt; ctx.fillStyle = `rgba(255,230,150,${Math.max(0, q.t * 2.5)})`; ctx.fillRect(q.x - 2, q.y - 2, 4, 4); }
+  parts = parts.filter(q => q.t > 0);
+  // textes
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 5;
+  const txt = (t, y, s) => { ctx.font = `800 ${s}px Fredoka, Nunito, sans-serif`; ctx.strokeText(t, CX, y); ctx.fillText(t, CX, y); };
+  if(S.ph === "compte"){ const n = 3 - Math.floor(S.tp / .8); txt(n > 0 ? String(n) : "HAKKEYOI !", CY, n > 0 ? 70 : 40); txt("Manche " + S.manche, 40, 22); }
+  if(S.ph === "pointe") txt(S.msg, 40, 20);
+  if(S.ph === "jeu" && S.t > 13 && S.t < 16) txt("⚠️ L'arène rétrécit !", 40, 20);
+  ctx.restore();
+}
+function majScores(){
+  if(!S){ $("scores").innerHTML = ""; return; }
+  const h = S.p.map(p => `<span style="border:2px solid ${p.coul}">${esc(p.av)} ${esc(p.nom)} · ${p.pts}</span>`).join("");
+  if($("scores").dataset.h !== h){ $("scores").innerHTML = h; $("scores").dataset.h = h; }
+  $("hInfo").textContent = `🤼 Sumo · premier à ${S.cible}`;
+}
+
+/* ================= SON ================= */
+let ac = null, sonOn = stock.lire("son", true);
+function son(f, d, type, vol, _, glisse){
+  if(!sonOn) return;
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type || "sine"; o.frequency.value = f;
+    if(glisse) o.frequency.linearRampToValueAtTime(Math.max(40, f + glisse), ac.currentTime + d);
+    g.gain.value = vol || .04; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d);
+  }catch(e){}
+}
+
+/* ================= COMMANDES ================= */
+const touches = {};
+let doigt = null;
+addEventListener("keydown", e => {
+  if(e.target.tagName === "INPUT") return;
+  touches[e.code] = true;
+  if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code) && S) e.preventDefault();
+  if(e.code === "Space") charge(0);
+  if(e.code === "Enter" && mode === "deux") charge(1);
+  if((e.code === "ShiftLeft" || e.code === "KeyF") && mode === "deux") charge(0);
+});
+addEventListener("keyup", e => { touches[e.code] = false; });
+function pos(e){ const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * W]; }
+cv.addEventListener("pointerdown", e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); doigt = pos(e); if(ac && ac.state === "suspended") ac.resume(); });
+cv.addEventListener("pointermove", e => { if(doigt) doigt = pos(e); });
+cv.addEventListener("pointerup", () => { doigt = null; }); cv.addEventListener("pointercancel", () => { doigt = null; });
+$("bDash").addEventListener("pointerdown", e => { e.preventDefault(); charge(0); });
+
+const moiId = () => mode === "ligne" && salle ? salle.moi : "moi";
+const estMoi = p => mode === "deux" ? !p.bot : p.id === moiId();
+function lireCommande(n){
+  const k = c => touches[c] ? 1 : 0;
+  let ax = 0, ay = 0;
+  if(mode === "deux"){
+    if(n === 0){ ax = k("KeyD") - (k("KeyA") || k("KeyQ")); ay = k("KeyS") - (k("KeyW") || k("KeyZ")); }
+    else { ax = k("ArrowRight") - k("ArrowLeft"); ay = k("ArrowDown") - k("ArrowUp"); }
+    return [ax, ay];
+  }
+  ax = (k("ArrowRight") || k("KeyD")) - (k("ArrowLeft") || k("KeyA") || k("KeyQ"));
+  ay = (k("ArrowDown") || k("KeyS")) - (k("ArrowUp") || k("KeyW") || k("KeyZ"));
+  const p = S && S.p.find(estMoi);
+  if(doigt && p){ const dx = doigt[0] - p.x, dy = doigt[1] - p.y, d = Math.hypot(dx, dy); if(d > 6){ const f = Math.min(1, d / 40); ax = dx / d * f; ay = dy / d * f; } }
+  return [ax, ay];
+}
+let dashSeq = 0;
+function charge(n){
+  if(!S || S.ph !== "jeu") return;
+  if(mode === "ligne" && !salle.hote){ dashSeq++; envoyerEntree(true); return; }
+  const l = S.p.filter(p => mode === "deux" ? !p.bot : p.id === moiId());
+  if(l[n]) l[n].veut = true;
+}
+
+/* ================= BOUCLE ================= */
+let tPrec = performance.now(), envoiT = 0;
+function boucle(t){
+  requestAnimationFrame(boucle);
+  const dt = Math.min(.05, (t - tPrec) / 1000); tPrec = t;
+  if(S){
+    if(mode === "ligne" && !salle.hote){ interpoler(dt); envoyerEntree(false); }
+    else{
+      if(mode === "deux"){ S.p.forEach((p, i) => { if(!p.bot){ [p.ax, p.ay] = lireCommande(i); } }); }
+      else { const p = S.p.find(x => x.id === moiId()); if(p) [p.ax, p.ay] = lireCommande(0); }
+      // pas de grandes étapes : physique en sous-pas
+      const n = Math.ceil(dt / .01); for(let i = 0; i < n; i++) maj(dt / n);
+      if(mode === "ligne" && t - envoiT > 50){ envoiT = t; envoyerEtat(); }
+      if(S.ph === "fin" && S.tp > .3 && !finVue) finPartie();
+    }
+  }
+  dessiner(dt); majScores();
+}
+requestAnimationFrame(boucle);
+
+/* ================= MENUS ================= */
+function voile(html){ const v = $("voile"); v.innerHTML = `<div class="boite">${html}</div>`; v.style.display = "flex"; v.dataset.k = ""; return v; }
+function cacherVoile(){ $("voile").style.display = "none"; }
+let niveau = stock.lire("niveau", 2), nbBots = stock.lire("bots", 1), finVue = false;
+function menu(){
+  S = null; mode = "solo";
+  if(salle){ salle.quitter(); salle = null; }
+  const v = voile(`<h2>🤼 Sumo</h2><p>Pousse les autres hors de l'arène !</p>
+    <p style="margin-top:12px"><b>Contre l'ordi</b></p>
+    <div class="pilules" id="pb">${[1, 2, 3].map(n => `<button data-b="${n}" class="${n === nbBots ? "on" : ""}">${n} ordi${n > 1 ? "s" : ""}</button>`).join("")}</div>
+    <div class="pilules" id="pn" style="margin-top:6px">${[[1, "😊 Facile"], [2, "😤 Moyen"], [3, "👹 Difficile"]].map(([n, l]) => `<button data-n="${n}" class="${n === niveau ? "on" : ""}">${l}</button>`).join("")}</div>
+    <div class="boutons"><button class="btn" id="solo">Combattre ▶</button></div>
+    <div class="boutons"><button class="btn ghost" id="deux">👥 À deux sur ce clavier</button><button class="btn ghost" id="ligne">🌐 En ligne (2 à 6)</button></div>`);
+  v.querySelectorAll("[data-b]").forEach(b => b.onclick = () => { nbBots = +b.dataset.b; stock.ecrire("bots", nbBots); menu(); });
+  v.querySelectorAll("[data-n]").forEach(b => b.onclick = () => { niveau = +b.dataset.n; stock.ecrire("niveau", niveau); menu(); });
+  v.querySelector("#solo").onclick = () => {
+    mode = "solo"; finVue = false;
+    const l = [{id: "moi", nom: Base.joueur.pseudo() || "Toi", av: Base.joueur.avatar ? Base.joueur.avatar() : "🔴"}];
+    const noms = ["Kiyoshi", "Bento", "Takeshi", "Mochi"];
+    for(let i = 0; i < nbBots; i++) l.push({id: "b" + i, nom: noms[i] + " 🤖", bot: niveau});
+    nouvelleSim(l, 3); cacherVoile();
+  };
+  v.querySelector("#deux").onclick = () => {
+    mode = "deux"; finVue = false;
+    nouvelleSim([{id: "j1", nom: "Joueur 1"}, {id: "j2", nom: "Joueur 2"}], 3); cacherVoile();
+    Base.toast("J1 : ZQSD + Maj gauche · J2 : flèches + Entrée");
+  };
+  v.querySelector("#ligne").onclick = menuLigne;
+}
+function finPartie(){
+  finVue = true;
+  const g = S.p.slice().sort((a, b) => b.pts - a.pts)[0];
+  const gagne = estMoi(g) && mode !== "deux";
+  if(gagne){ stock.ecrire("victoires", stock.lire("victoires", 0) + 1); son(660, .3, "triangle", .06); }
+  const chef = mode !== "ligne" || salle.hote;
+  const v = voile(`<h2>${mode === "deux" ? "🏆 " + esc(g.nom) + " gagne !" : gagne ? "🏆 Victoire !" : "😵 " + esc(g.nom) + " gagne"}</h2>
+    <ol class="rang">${S.p.slice().sort((a, b) => b.pts - a.pts).map(p => `<li class="${estMoi(p) && mode !== "deux" ? "moi" : ""}"><span class="pt" style="background:${p.coul}"></span><span class="n">${esc(p.av)} ${esc(p.nom)}</span><span>${p.pts}</span></li>`).join("")}</ol>
+    ${mode === "solo" ? `<p>Victoires contre l'ordi : <b>${stock.lire("victoires", 0)}</b></p>` : ""}
+    <div class="boutons">${chef ? `<button class="btn" id="re">🔁 Revanche</button>` : `<p>⏳ L'hôte choisit la suite…</p>`}${mode === "ligne" && salle.hote ? `<button class="btn ghost" id="sal">👥 Salon</button>` : ""}<button class="btn ghost" id="men">🏠 Menu</button></div>`);
+  v.dataset.k = "fin";
+  const re = v.querySelector("#re");
+  if(re) re.onclick = () => {
+    finVue = false;
+    if(mode === "ligne"){ lancerLigne(); return; }
+    const l = S.p.map(p => ({id: p.id, nom: p.nom, av: p.av, bot: p.bot})); nouvelleSim(l, S.cible); cacherVoile();
+  };
+  const sal = v.querySelector("#sal"); if(sal) sal.onclick = () => { salle.envoyer({t: "salon"}); salonLigne(); };
+  v.querySelector("#men").onclick = menu;
+}
+
+/* ================= EN LIGNE ================= */
+function menuLigne(){
+  const v = voile(`<h2>🌐 Sumo en ligne</h2><p>De 2 à 6 lutteurs, chacun sur son appareil.</p>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton pseudo" autocomplete="off" value="${esc(Base.joueur.pseudo())}">
+    <div class="boutons"><button class="btn" id="creer">🏠 Créer une salle</button></div>
+    <div class="ligne"><input class="champ" id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off" style="text-transform:uppercase"><button class="btn" id="rej">Rejoindre</button></div>
+    <p id="msg"></p><div class="boutons"><button class="btn ghost petit" id="ret">← Retour</button></div>`);
+  const msg = t => { const p = v.querySelector("#msg"); if(p) p.textContent = t; };
+  const pseudoOk = () => { const p = v.querySelector("#pseudo").value.trim(); if(!p){ msg("Choisis d'abord un pseudo."); return false; } Base.joueur.changerPseudo(p); return true; };
+  v.querySelector("#ret").onclick = menu;
+  v.querySelector("#creer").onclick = async () => {
+    if(!pseudoOk()) return;
+    msg("Création de la salle…");
+    try{
+      salle = await Reseau.creer("sumo", {max: 6, surEssai: msg,
+        surArrivee(j){ Base.toast(j.avatar + " " + j.pseudo + " est là !"); if(!S) salonLigne(); },
+        surDepart(j){ Base.toast(j.pseudo + " est parti·e"); if(S){ const p = S.p.find(x => x.id === j.id); if(p && p.vivant){ p.vivant = false; p.chute = 1; } } else salonLigne(); },
+        surMessage: recu});
+      mode = "ligne"; S = null; salonLigne();
+    }catch(e){ msg("❌ " + e.message); }
+  };
+  const rejoindre = async code => {
+    if(!pseudoOk()) return;
+    msg("Connexion à la salle " + code + "…");
+    try{
+      salle = await Reseau.rejoindre("sumo", code, {surMessage: recu,
+        surListe(){ if(!S) salonLigne(); },
+        surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; menu(); },
+        surHotePerdu(){ Base.toast("L'hôte ne répond plus…"); }});
+      mode = "ligne"; S = null; salonLigne(); salle.envoyer({t: "etat?"});
+    }catch(e){ msg("❌ " + e.message); }
+  };
+  v.querySelector("#rej").onclick = () => { const c = v.querySelector("#codeIn").value.trim().toUpperCase(); if(c) rejoindre(c); };
+  v.querySelector("#codeIn").addEventListener("keydown", e => { if(e.key === "Enter") v.querySelector("#rej").click(); });
+  menuLigne.rejoindre = rejoindre;
+}
+function salonLigne(){
+  if(!salle) return;
+  S = null; mode = "ligne";
+  const l = salle.joueurs, h = salle.hote;
+  const v = voile(`<h2>🤼 Salle de sumo</h2><p>Code de la salle</p><div class="code">${salle.code}</div>
+    <div class="boutons" style="margin-top:2px"><button class="btn ghost petit" id="lien">🔗 Copier le lien</button></div>
+    <ol class="rang">${l.map((j, i) => `<li class="${j.id === salle.moi ? "moi" : ""}"><span class="pt" style="background:${COULS[i % 6]}"></span><span>${esc(j.avatar)}</span><span class="n">${esc(j.pseudo)}${i === 0 ? " 👑" : ""}</span></li>`).join("")}</ol>
+    <p>${h ? (l.length < 2 ? "Envoie le code à tes amis (jusqu'à 6) !" : `${l.length} lutteurs, prêts ?`) : "⏳ L'hôte va lancer le combat…"}</p>
+    <div class="boutons">${h ? `<button class="btn" id="lancer" ${l.length < 2 ? "disabled" : ""}>Combattre ▶</button>` : ""}<button class="btn ghost" id="q">🚪 Quitter</button></div>`);
+  v.dataset.k = "salon";
+  v.querySelector("#lien").onclick = async () => { try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! 📨"); }catch(e){ Base.fenetre("Lien d'invitation", salle.lien); } };
+  const b = v.querySelector("#lancer"); if(b) b.onclick = lancerLigne;
+  v.querySelector("#q").onclick = menu;
+}
+function lancerLigne(){
+  pid++; finVue = false;
+  nouvelleSim(salle.joueurs.map(j => ({id: j.id, nom: j.pseudo, av: j.avatar})), 3);
+  cacherVoile(); envoyerEtat(true);
+}
+const r1 = x => Math.round(x * 10) / 10;
+let metaT = 0;
+function envoyerEtat(meta){
+  const now = performance.now();
+  const m = {t: "s", pid, ph: S.ph, tp: r1(S.tp), R: r1(S.R), m: S.manche, msg: S.msg, b: S.bonus ? [r1(S.bonus.x), r1(S.bonus.y)] : 0,
+    p: S.p.map(p => [r1(p.x), r1(p.y), r1(p.vx), r1(p.vy), p.vivant ? 1 : 0, r1(p.chute), p.geant > 0 ? 1 : 0, p.dashT > 0 ? 1 : 0, r1(Math.max(0, p.cd)), p.pts])};
+  if(meta || now - metaT > 1000){ metaT = now; m.j = S.p.map(p => [p.id, p.nom, p.av, p.coul]); m.c = S.cible; }
+  salle.envoyer(m);
+}
+function recu(m){
+  if(!m || !m.t) return;
+  const de = m.de;
+  if(m.t === "etat?" && salle.hote){ if(S) envoyerEtat(true); else salle.envoyer({t: "salon"}); return; }
+  if(m.t === "salon" && !salle.hote){ salonLigne(); return; }
+  if(m.t === "in" && salle.hote && S){
+    const p = S.p.find(x => x.id === de); if(!p) return;
+    p.ax = Math.max(-1, Math.min(1, +m.ax || 0)); p.ay = Math.max(-1, Math.min(1, +m.ay || 0));
+    if(m.d > (p.dSeq || 0)){ p.dSeq = m.d; if(S.ph === "jeu") p.veut = true; }
+    return;
+  }
+  if(m.t === "s" && !salle.hote){
+    if(!S || m.pid !== pid || m.j){
+      if(m.j && (!S || m.pid !== pid || S.p.length !== m.j.length)){ pid = m.pid; finVue = false; nouvelleSim(m.j.map(x => ({id: x[0], nom: x[1], av: x[2]})), m.c); S.p.forEach((p, i) => p.coul = m.j[i][3]); cacherVoile(); }
+      if(!S || m.pid !== pid) return;
+    }
+    const avant = S.ph;
+    S.ph = m.ph; S.tp = m.tp; S.R = m.R; S.manche = m.m; S.msg = m.msg; S.bonus = m.b ? {x: m.b[0], y: m.b[1]} : null;
+    m.p.forEach((x, i) => { const p = S.p[i]; if(!p) return; p.cx = x[0]; p.cy = x[1]; p.vx = x[2]; p.vy = x[3]; if(p.vivant && !x[4]) son(300, .5, "sine", .06, 0, -250); p.vivant = !!x[4]; p.chute = x[5]; p.geant = x[6] ? 1 : 0; p.dashT = x[7] ? 1 : 0; p.cd = x[8]; p.pts = x[9]; });
+    if(S.ph === "fin" && avant !== "fin") setTimeout(() => { if(S && S.ph === "fin" && !finVue) finPartie(); }, 400);
+    if(S.ph !== "fin" && $("voile").dataset.k === "fin"){ finVue = false; cacherVoile(); }
+  }
+}
+function interpoler(dt){
+  const k = Math.min(1, dt * 14);
+  for(const p of S.p){ if(p.cx == null) continue; p.x += (p.cx - p.x) * k; p.y += (p.cy - p.y) * k; if(!p.vivant && p.chute > 0) p.chute -= dt * 1.4; }
+}
+let entreeT = 0, derniereEntree = "";
+function envoyerEntree(force){
+  const now = performance.now();
+  const [ax, ay] = lireCommande(0), cle = r1(ax) + "," + r1(ay) + "," + dashSeq;
+  if(!force && cle === derniereEntree && now - entreeT < 400) return;
+  if(!force && now - entreeT < 50) return;
+  entreeT = now; derniereEntree = cle;
+  salle.envoyer({t: "in", ax: r1(ax), ay: r1(ay), d: dashSeq});
+}
+
+const codeLien = Reseau.codeDansAdresse();
+menu();
+if(codeLien){ menuLigne(); $("voile").querySelector("#codeIn").value = codeLien; if(Base.joueur.pseudo()) menuLigne.rejoindre(codeLien); }
+</script>
+</body>
+</html>
