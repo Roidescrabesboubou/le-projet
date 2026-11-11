@@ -59,7 +59,7 @@ Accueil : 6 catégories choisies avec moi (`SALLE_CATEGORIES` à la fin de `cata
 - Party / en ligne : `dessin`, `telephone`, `quiz` (Culture G, manches spéciales), `blindtest`, `imposteur`, `categorie`, `encheres`, `freestyle` (prod de rap synthétisée, boule sur 4 temps, rimes ; salle en ligne synchronisée sur l'horloge de l'hôte, lignes à se répartir)
 - Duels / plateau : `puissance4`, `morpion` Morpion géant (ultimate : ordi MCTS 3 niveaux, à deux, en ligne), `bataille` (navale), `laser` (Bataille Laser), `mainmise` (façon Monopoly)
 - Casino : `poker`, `blackjack`, `roulette`
-- Solo / gestion / action : `arene` (Arène Éclair, FPS), `dactylo` Dactylo Défense (mots de dico.js, top 10), `tour` La Tour (empilement, top 10), `minigolf` Mini-golf (9 trous dans TROUS, record local), `manufacture`, `rocade`, `defense` (Défense du Château), `coupdefeu` (Coup de Feu), `eveil`, `blocs`, `labyrinthe` (Souris gourmande), `demineur`
+- Solo / gestion / action : `arene` (Arène Éclair, FPS), `dactylo` Dactylo Défense (mots de dico.js, top 10), `tour` La Tour (empilement, top 10 ; duel en ligne 2 à 6 : mêmes blocs, chacun envoie sa hauteur), `minigolf` Mini-golf (9 trous dans TROUS, record local ; 2 à 4 sur un appareil ou en ligne, toutes les balles sur le terrain, la plus loin du trou joue, en ligne l'hôte calcule la physique), `manufacture`, `rocade`, `defense` (Défense du Château), `coupdefeu` (Coup de Feu), `eveil`, `blocs`, `labyrinthe` (Souris gourmande), `demineur`
 - Caché : `geoguessr` (GéoGamer — moteur prêt, manque des captures de vrais jeux)
 - Emplacement « Bientôt » : « Encore un autre »
 
@@ -76,6 +76,7 @@ Tests réels à faire (seulement testé avec un relais simulé) :
 - Ressenti souris de l'Arène Éclair.
 - Freestyle : juge au micro (reconnaissance vocale) et rendu des prods à l'oreille.
 - Glisser-déposer de l'admin au doigt.
+- Duels de La Tour et du Mini-golf : testés dans 2 onglets ; en ligne, l'hôte du Mini-golf doit garder la page affichée (la physique tourne chez lui).
 - Qui a dit ça ?, Traduction Emoji, Le Cadran : testés avec le vrai relais mais dans 3 onglets du même navigateur ; reste une vraie soirée sur plusieurs appareils.
 - Table de Légendes : assistant IA, PNJ qui parlent, souvenirs des PNJ avec une vraie clé (testés seulement avec des réponses simulées) ; éditeur de carte et carte du monde au doigt sur un vrai téléphone.
 

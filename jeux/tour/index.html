@@ -21,6 +21,15 @@ canvas{display:block;width:100%;border-radius:18px;border:2px solid var(--encre)
 .namerow{display:flex;gap:6px;margin-top:8px}
 .namerow input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:0}
 .cl-note,.cl-titre{color:#e4e0ff}
+.voile .champ{background:#fff;color:#1d1a3a}
+.voile .rang{list-style:none;padding:0;margin:10px 0;display:flex;flex-direction:column;gap:5px;text-align:left}
+.voile .rang li{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;font-weight:800}
+.voile .rang li.moi{outline:2px solid #ffd34d}
+.voile .rang li .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voile .code{font-family:Fredoka,sans-serif;font-size:2.4rem;letter-spacing:.2em;font-weight:700;color:#ffd34d}
+.voile .ligne{display:flex;gap:6px;margin-top:6px}
+.voile .ligne .champ{flex:1;min-width:0}
+.boutons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 </style>
 </head>
 <body>
@@ -33,6 +42,7 @@ canvas{display:block;width:100%;border-radius:18px;border:2px solid var(--encre)
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
 <script src="../commun/classement.js"></script>
+<script src="../commun/reseau.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const stock = Base.stock("tour_");
@@ -76,8 +86,8 @@ $("bSon").onclick = () => { sonOn = !sonOn; stock.ecrire("son", sonOn); $("bSon"
 let etat = "menu", pile = [], mobile = null, debris = [], anneaux = [], camera = 0, camCible = 0, combo = 0, parfaits = 0, teinte = 0, temps = 0, chute = null, eclat = 0;
 const LARG0 = 200;
 const couleur = (i, l) => `hsl(${(teinte + i * 6) % 360} 70% ${l}%)`;
-function nouvellePartie(){
-  teinte = Math.floor(Math.random() * 360);
+function nouvellePartie(t){
+  teinte = typeof t === "number" ? t : Math.floor(Math.random() * 360);
   pile = [{x: (LW - LARG0) / 2, w: LARG0}];
   debris = []; anneaux = []; combo = 0; parfaits = 0; chute = null; camera = camCible = 0;
   nouveauMobile();
@@ -117,6 +127,7 @@ function lacher(){
   }
   camCible = Math.max(0, (pile.length - 1) * BH - LH * .45);
   nouveauMobile();
+  if(duel) envoyerStatut();
 }
 
 /* ---------- Boucle ---------- */
@@ -163,6 +174,18 @@ function dessiner(){
   for(const d of debris){ ctx.save(); ctx.translate(d.x + d.w / 2, d.y + BH / 2); ctx.rotate(d.r); bloc(-d.w / 2, -BH / 2, d.w, d.i, .9); ctx.restore(); }
   if(mobile) bloc(mobile.x, yBloc(pile.length), mobile.w, pile.length);
   for(const a of anneaux){ ctx.strokeStyle = `rgba(255,255,255,${1 - a.t})`; ctx.lineWidth = 3; ctx.strokeRect(a.x - a.w / 2 - a.t * 18, a.y - BH / 2 - a.t * 10, a.w + a.t * 36, BH + a.t * 20); }
+  // duel : hauteur des rivaux (ligne pointillée)
+  if(duel && etat !== "menu"){
+    rivaux().forEach((r, k) => {
+      const y = yBloc(r.s) - PROF;
+      ctx.setLineDash([7, 6]); ctx.strokeStyle = r.fin ? "rgba(255,255,255,.45)" : "rgba(255,255,255,.95)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(LW, y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = "800 13px Nunito, sans-serif"; ctx.textAlign = k % 2 ? "right" : "left"; ctx.textBaseline = "bottom";
+      ctx.fillStyle = "rgba(0,0,0,.45)"; const t = `${r.av} ${r.nom} · ${r.s}${r.fin ? " 💥" : ""}`, tw = ctx.measureText(t).width;
+      ctx.fillRect(k % 2 ? LW - tw - 12 : 4, y - 19, tw + 8, 17);
+      ctx.fillStyle = "#fff"; ctx.fillText(t, k % 2 ? LW - 8 : 8, y - 3);
+    });
+  }
   ctx.restore();
   // score
   if(etat !== "menu"){
@@ -176,7 +199,7 @@ function dessiner(){
 cv.addEventListener("pointerdown", e => { e.preventDefault(); if(etat === "jeu") lacher(); });
 document.addEventListener("keydown", e => {
   if(document.querySelector("dialog[open]") || /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
-  if(e.code === "Space" || e.key === "Enter"){ e.preventDefault(); if(etat === "jeu") lacher(); else if(etat === "menu" || (etat === "fin" && performance.now() - finT > 1500)) nouvellePartie(); }
+  if(e.code === "Space" || e.key === "Enter"){ e.preventDefault(); if(etat === "jeu") lacher(); else if(!duel && (etat === "menu" || (etat === "fin" && performance.now() - finT > 1500))) nouvellePartie(); }
 });
 
 /* ---------- Écrans et classement ---------- */
@@ -198,8 +221,10 @@ function rendu(el, list, hi){
 function majRecord(){ const r = stock.lire("record", 0); $("hRec").textContent = r ? `🏆 Record : ${r} étages` : "🏆 Pas encore de record"; }
 function menu(){
   etat = "menu"; teinte = 200; pile = [{x: (LW - LARG0) / 2, w: LARG0}]; mobile = null;
-  voile(`<h2>🏗️ La Tour</h2><p>Lâche les blocs pile les uns sur les autres. Ce qui dépasse est coupé !</p>
-    <button class="btn" id="go" style="font-size:1.15rem;padding:12px 30px;margin-top:6px">Jouer ▶</button>`).querySelector("#go").onclick = nouvellePartie;
+  const v = voile(`<h2>🏗️ La Tour</h2><p>Lâche les blocs pile les uns sur les autres. Ce qui dépasse est coupé !</p>
+    <div class="boutons"><button class="btn" id="go" style="font-size:1.1rem;padding:12px 24px">Solo ▶</button><button class="btn" id="duelBtn" style="font-size:1.1rem;padding:12px 24px">⚔️ Duel en ligne</button></div>`);
+  v.querySelector("#go").onclick = () => nouvellePartie();
+  v.querySelector("#duelBtn").onclick = menuDuel;
 }
 let finT = 0;
 function fin(){
@@ -208,6 +233,7 @@ function fin(){
   if(s > rec) stock.ecrire("record", s);
   majRecord();
   if(s > 0) Base.record("tour", s, {mieux: "haut", texte: s + " étages"});
+  if(duel){ envoyerStatut(); setTimeout(ecranDuel, 700); return; }
   setTimeout(() => {
     const v = voile(`<p>Ta tour</p><div class="gros">${s}</div><p>étage${s > 1 ? "s" : ""} · ${parfaits} parfait${parfaits > 1 ? "s" : ""}${s > rec && rec ? " · 🎉 nouveau record !" : ""}</p>
       <div id="cl"></div><button class="btn" id="go" style="margin-top:12px">Rejouer 🔁</button>`);
@@ -222,7 +248,132 @@ $("bTop").onclick = () => {
   Classement.tableau(d, {cle: "tour", champ: "s", liste: listeLocale, rendu: (el, l, hi) => { rendu(el, l, hi); el.querySelectorAll("li").forEach(li => { li.style.background = "var(--soft)"; }); }});
 };
 
+/* ---------- Duel en ligne (2 à 6) ----------
+   Chacun construit sur son appareil avec les mêmes blocs (même ordre, même vitesse).
+   Chacun envoie sa hauteur à chaque bloc ; la plus haute tour gagne quand tout le monde est tombé.
+   Messages : go {pid, ids} (l'hôte lance une manche) · st {pid, s, fin} (ma hauteur) · etat? (nouveau venu) */
+let duel = null;
+const esc = Base.esc;
+const joueursDuel = () => duel && duel.salle ? duel.salle.joueurs.filter(j => !duel.ids || duel.ids.includes(j.id)) : [];
+function statutDe(id){
+  if(id === duel.salle.moi) return {s: score(), fin: etat === "fin"};
+  const st = duel.statuts[id];
+  return st && st.pid === duel.pid ? st : {s: 0, fin: false};
+}
+function rivaux(){
+  if(!duel || !duel.enJeu) return [];
+  return joueursDuel().filter(j => j.id !== duel.salle.moi).map(j => ({nom: j.pseudo, av: j.avatar, ...statutDe(j.id)}));
+}
+const classementDuel = () => joueursDuel().map(j => ({id: j.id, nom: j.pseudo, av: j.avatar, moi: j.id === duel.salle.moi, ...statutDe(j.id)})).sort((a, b) => b.s - a.s);
+function envoyerStatut(){ if(duel && duel.enJeu && duel.ids.includes(duel.salle.moi)) duel.salle.envoyer({t: "st", pid: duel.pid, s: score(), fin: etat === "fin"}); }
+setInterval(() => { if(duel && duel.enJeu && (etat === "jeu" || etat === "fin")) envoyerStatut(); }, 2000);
+
+function recu(m){
+  if(!duel || !m || !m.t) return;
+  if(m.t === "st"){ duel.statuts[m.de] = {pid: m.pid, s: Math.max(0, m.s | 0), fin: !!m.fin}; majDuel(); return; }
+  if(m.t === "go" && !duel.salle.hote){ if(m.pid !== duel.pid) demarrerDuel(m.pid, m.ids || []); return; }
+  if(m.t === "salon" && !duel.salle.hote){ duel.enJeu = false; duel.pid = 0; salonDuel(); return; }
+  if(m.t === "etat?" && duel.salle.hote){ duel.salle.envoyer(duel.enJeu ? {t: "go", pid: duel.pid, ids: duel.ids} : {t: "salon"}); }
+}
+function majDuel(){
+  if(!duel || !duel.enJeu) return;
+  if(etat === "fin") ecranDuel();
+  else if(etat === "jeu" && !duel.annonce){
+    const r = rivaux();
+    if(r.length && r.every(x => x.fin) && r.every(x => score() > x.s)){
+      duel.annonce = true; Base.toast("🏆 Tu as gagné ! Continue pour la gloire…", 3500);
+    }
+  }
+}
+function demarrerDuel(pid, ids){
+  duel.pid = pid; duel.ids = ids; duel.statuts = {}; duel.enJeu = true; duel.annonce = false;
+  if(!ids.includes(duel.salle.moi)){ etat = "menu"; voile(`<h2>⏳ Partie en cours</h2><p>Tu joueras la prochaine manche !</p><div class="boutons"><button class="btn ghost" id="q">🚪 Quitter</button></div>`).querySelector("#q").onclick = quitterDuel; return; }
+  etat = "compte"; mobile = null;
+  let n = 3;
+  const tic = () => {
+    if(!duel || duel.pid !== pid) return;
+    if(n === 0){ nouvellePartie((pid * 67) % 360); envoyerStatut(); return; }
+    voile(`<p>Duel à ${ids.length} !</p><div class="gros">${n}</div><p>Même blocs pour tout le monde, la plus haute tour gagne.</p>`);
+    son(440 + (3 - n) * 110, .15, "triangle", .08);
+    n--; setTimeout(tic, 800);
+  };
+  tic();
+}
+function ecranDuel(){
+  if(!duel || !duel.enJeu || etat !== "fin") return;
+  const l = classementDuel(), fini = l.every(x => x.fin), moi = l.find(x => x.moi);
+  const tete = l[0], egalite = l.length > 1 && l[1].s === tete.s;
+  const titre = !fini ? `💥 Ta tour : ${moi ? moi.s : score()} étages` : egalite ? "🤝 Égalité !" : tete.moi ? "🏆 Tu gagnes le duel !" : `🏆 ${esc(tete.nom)} gagne !`;
+  const v = voile(`<h2>${titre}</h2>
+    <ol class="rang">${l.map((x, i) => `<li class="${x.moi ? "moi" : ""}"><span>${["🥇", "🥈", "🥉"][i] || i + 1 + "."}</span><span>${esc(x.av)}</span><span class="n">${esc(x.nom)}</span><b>${x.s}</b><span>${x.fin ? "💥" : "🏗️"}</span></li>`).join("")}</ol>
+    ${fini ? "" : `<p>⏳ Les autres construisent encore…</p>`}
+    <div class="boutons">${fini && duel.salle.hote ? `<button class="btn" id="rev">🔁 Revanche</button><button class="btn ghost" id="sal">👥 Salon</button>` : fini ? `<p>⏳ L'hôte choisit la suite…</p>` : ""}<button class="btn ghost" id="q">🚪 Quitter</button></div>`);
+  const rev = v.querySelector("#rev"); if(rev) rev.onclick = lancerDuel;
+  const sal = v.querySelector("#sal"); if(sal) sal.onclick = () => { duel.enJeu = false; duel.pid = 0; duel.salle.envoyer({t: "salon"}); salonDuel(); };
+  v.querySelector("#q").onclick = quitterDuel;
+  if(fini && !duel.felicite && tete.moi && !egalite){ duel.felicite = duel.pid; son(660, .2, "triangle", .1); setTimeout(() => son(990, .3, "triangle", .1), 150); }
+}
+function lancerDuel(){
+  if(!duel || !duel.salle.hote) return;
+  if(duel.salle.joueurs.length < 2){ Base.toast("Il faut au moins 2 joueurs"); return; }
+  const pid = (duel.pid || duel.dernierPid || 0) + 1; duel.dernierPid = pid; duel.felicite = 0;
+  const ids = duel.salle.joueurs.map(j => j.id);
+  duel.salle.envoyer({t: "go", pid, ids});
+  demarrerDuel(pid, ids);
+}
+function salonDuel(){
+  if(!duel) return;
+  etat = "menu"; mobile = null; duel.enJeu = false; duel.ids = null;
+  const s = duel.salle, l = s.joueurs;
+  const v = voile(`<h2>⚔️ Duel</h2><p>Code de la salle</p><div class="code">${s.code}</div>
+    <div class="boutons" style="margin-top:2px"><button class="btn ghost petit" id="lien">🔗 Copier le lien</button></div>
+    <ol class="rang">${l.map((j, i) => `<li class="${j.id === s.moi ? "moi" : ""}"><span>${esc(j.avatar)}</span><span class="n">${esc(j.pseudo)}${i === 0 ? " 👑" : ""}</span></li>`).join("")}</ol>
+    <p>${s.hote ? (l.length < 2 ? "Envoie le code à ton adversaire !" : `${l.length} joueurs, prêts ?`) : "⏳ L'hôte va lancer le duel…"}</p>
+    <div class="boutons">${s.hote ? `<button class="btn" id="lancer" ${l.length < 2 ? "disabled" : ""}>Lancer le duel ▶</button>` : ""}<button class="btn ghost" id="q">🚪 Quitter</button></div>`);
+  v.querySelector("#lien").onclick = async () => { try{ await navigator.clipboard.writeText(s.lien); Base.toast("Lien copié ! 📨"); }catch(e){ Base.fenetre("Lien d'invitation", s.lien); } };
+  const b = v.querySelector("#lancer"); if(b) b.onclick = lancerDuel;
+  v.querySelector("#q").onclick = quitterDuel;
+}
+function quitterDuel(){ if(duel && duel.salle) duel.salle.quitter(); duel = null; menu(); }
+function menuDuel(){
+  const v = voile(`<h2>⚔️ Duel en ligne</h2><p>Chacun sur son appareil, de 2 à 6 joueurs.</p>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton pseudo" autocomplete="off" value="${esc(Base.joueur.pseudo())}">
+    <div class="boutons"><button class="btn" id="creer">🏠 Créer une salle</button></div>
+    <div class="ligne"><input class="champ" id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off" style="text-transform:uppercase"><button class="btn" id="rej">Rejoindre</button></div>
+    <p id="msg"></p><div class="boutons"><button class="btn ghost petit" id="ret">← Retour</button></div>`);
+  const msg = t => { const p = v.querySelector("#msg"); if(p) p.textContent = t; };
+  const pseudoOk = () => { const p = v.querySelector("#pseudo").value.trim(); if(!p){ msg("Choisis d'abord un pseudo."); return false; } Base.joueur.changerPseudo(p); return true; };
+  v.querySelector("#ret").onclick = menu;
+  v.querySelector("#creer").onclick = async () => {
+    if(!pseudoOk()) return;
+    msg("Création de la salle…");
+    try{
+      const salle = await Reseau.creer("tour", {max: 6, surEssai: msg,
+        surArrivee(j){ Base.toast(j.avatar + " " + j.pseudo + " est là !"); if(duel && !duel.enJeu) salonDuel(); },
+        surDepart(j){ Base.toast(j.pseudo + " est parti·e"); if(duel && !duel.enJeu) salonDuel(); else majDuel(); },
+        surMessage: recu});
+      duel = {salle, statuts: {}, pid: 0}; salonDuel();
+    }catch(e){ msg("❌ " + e.message); }
+  };
+  const rejoindre = async code => {
+    if(!pseudoOk()) return;
+    msg("Connexion à la salle " + code + "…");
+    try{
+      const salle = await Reseau.rejoindre("tour", code, {surMessage: recu,
+        surListe(){ if(duel && !duel.enJeu && etat === "menu") salonDuel(); else majDuel(); },
+        surFermeture(){ Base.toast("L'hôte a fermé la salle."); duel = null; menu(); },
+        surHotePerdu(){ Base.toast("L'hôte ne répond plus…"); }});
+      duel = {salle, statuts: {}, pid: 0}; salonDuel(); salle.envoyer({t: "etat?"});
+    }catch(e){ msg("❌ " + e.message); }
+  };
+  v.querySelector("#rej").onclick = () => { const c = v.querySelector("#codeIn").value.trim().toUpperCase(); if(c) rejoindre(c); };
+  v.querySelector("#codeIn").addEventListener("keydown", e => { if(e.key === "Enter") v.querySelector("#rej").click(); });
+  menuDuel.rejoindre = rejoindre;
+}
+
 taille(); majRecord(); menu(); requestAnimationFrame(boucle);
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){ menuDuel(); $("codeIn").value = codeLien; if(Base.joueur.pseudo()) menuDuel.rejoindre(codeLien); }
 </script>
 </body>
 </html>
