@@ -381,30 +381,10 @@ const $ = id => document.getElementById(id);
 const el = (tag, txt, cls) => { const e = document.createElement(tag); if(txt != null) e.textContent = txt; if(cls) e.className = cls; return e; };
 const a = (g, t) => (g.tags || []).includes(t);
 const pret = g => g.etat !== "bientot" && !g.sansPage;
-/* Catégories choisies une par une avec le propriétaire du site : chaque catégorie
-   liste ses jeux (slug). Un jeu peut figurer dans plusieurs listes. Un jeu qui
-   n'est dans aucune liste (nouveau jeu oublié) va dans « Arcade et solo ». */
-const CATS_FIXES = [
-  {id: "jour", emoji: "📅", titre: "Défis du jour", c: ["#ffb020", "#ff6a2b"],
-   desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles.",
-   jeux: ["wordle", "loldle", "onepiecedle", "pokedle", "electrodle", "anidle", "paysdle", "motscroises", "motsfleches", "sudoku", "connexions", "shikaku", "chancedle", "coupdefeu"]},
-  {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", c: ["#ff4f7b", "#8b4dff"],
-   desc: "Des jeux de groupe où chacun joue sur son téléphone, il suffit d'un code de salle.",
-   jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran"]},
-  {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
-   desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
-   jeux: ["puissance4", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
-  {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
-   desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
-   jeux: ["poker", "blackjack", "roulette"]},
-  {id: "ia", emoji: "🤖", titre: "Histoires avec l'IA", c: ["#5b2bd8", "#ff6a9a"],
-   desc: "Des aventures racontées par une IA.",
-   jeux: ["quintuplees", "jdr"]},
-  {id: "arcade", emoji: "🕹️", titre: "Arcade et solo", c: ["#1f9a66", "#9bd34a"],
-   desc: "Arcade, réflexion et gestion : des records à battre quand tu as un moment.",
-   jeux: ["arene", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
-];
-const categories = () => CATS_FIXES;
+/* Catégories : définies dans catalogue.js (SALLE_CATEGORIES), avec les choix
+   du panel admin (reglages/cats) appliqués par SALLE_JEUX_DE. */
+const CATS_FIXES = window.SALLE_CATEGORIES;
+const categories = () => CATS_FIXES.map(c => ({...c, jeux: SALLE_JEUX_DE(c.id, regl)}));
 
 /* Mots-clés de recherche en plus du nom, de la description et des étiquettes
    (« tetris » → Blocs, « musique » → Blind Test et Freestyle…). */
@@ -479,7 +459,7 @@ function renderRecherche(){
 let CATS = CATS_FIXES;
 function membresDe(cat, liste){
   const dans = liste.filter(g => cat.jeux.includes(g.slug));
-  if(cat.id === "arcade") liste.forEach(g => { if(!dans.includes(g) && !CATS_FIXES.some(c => c.jeux.includes(g.slug))) dans.push(g); });
+  if(cat.id === "arcade") liste.forEach(g => { if(!dans.includes(g) && !CATS.some(c => c.jeux.includes(g.slug))) dans.push(g); });
   return dans;
 }
 

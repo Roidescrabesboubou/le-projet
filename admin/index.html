@@ -62,6 +62,22 @@ body.en-glisse,body.en-glisse *{cursor:grabbing!important;user-select:none!impor
 .fleches button{padding:0;width:28px;height:22px;font-size:.75rem;line-height:1;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:7px}
 .fleches button:disabled{opacity:.25}
 .jeu.bouge{outline:2px solid var(--accent);transition:outline-color .6s}
+.onglets{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px}
+.onglets button{background:var(--card);color:var(--text);border:2px solid var(--line);border-radius:999px;padding:7px 14px}
+.onglets button:hover{border-color:var(--text)}
+.onglets button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.cats-resume{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.cats-resume span{font-size:.82rem;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.jeu.cat-ligne{grid-template-columns:44px minmax(120px,200px) 1fr auto}
+.puces{display:flex;flex-wrap:wrap;gap:5px}
+.puces button{font-size:.8rem;padding:5px 10px;background:var(--card);color:var(--muted);border:1px solid var(--line);border-radius:999px}
+.puces button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+small.alerte{color:#d36a00;font-weight:700}
+dialog.fen{border:2px solid var(--bord);border-radius:20px;background:var(--card);color:var(--text);padding:22px;width:min(520px,92vw)}
+dialog.fen::backdrop{background:rgba(19,17,42,.55)}
+dialog.fen code{word-break:break-all}
+dialog.fen .row{margin-top:14px}
+@media (max-width:620px){.jeu.cat-ligne{grid-template-columns:36px 1fr auto}.jeu.cat-ligne .puces{grid-column:1/-1}}
 .tete{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 @media (max-width:620px){.jeu{grid-template-columns:22px 30px 36px 1fr}.jeu .ctl{grid-column:1/-1;justify-content:flex-start}}
 </style>
@@ -129,12 +145,30 @@ async function demarrer(){
 }
 
 /* ---------------- Panel ---------------- */
+/* ---------------- Onglets ---------------- */
+const ONGLETS = [
+  ["jeux", "🎮 Jeux"], ["categories", "🗂️ Catégories"], ["comptes", "👥 Comptes"],
+  ["moderation", "🛡️ Modération"], ["annonce", "📢 Annonce"]
+];
 async function panel(){
   main.innerHTML = "";
   let regl = {};
   try{ regl = (await Compte.db("reglages", {auth: false})) || {}; }catch(e){ toast("Réglages illisibles : " + e.message, true); }
+  const barre = el("nav", "", "onglets"), zone = el("div");
+  main.append(barre, zone);
+  const ouvrir = id => {
+    if(!ONGLETS.some(o => o[0] === id)) id = "jeux";
+    try{ localStorage.setItem("admin_onglet", id); }catch(e){}
+    [...barre.children].forEach(b => b.classList.toggle("on", b.dataset.id === id));
+    zone.innerHTML = "";
+    ({jeux: ongletJeux, categories: ongletCategories, comptes: ongletComptes, moderation: ongletModeration, annonce: ongletAnnonce})[id](zone, regl);
+  };
+  ONGLETS.forEach(([id, t]) => { const b = el("button", t); b.dataset.id = id; b.onclick = () => ouvrir(id); barre.appendChild(b); });
+  let dernier = "jeux"; try{ dernier = localStorage.getItem("admin_onglet") || "jeux"; }catch(e){}
+  ouvrir(dernier);
+}
 
-  /* Annonce */
+async function ongletAnnonce(main, regl){
   const pa = el("div", "", "panel");
   pa.appendChild(el("h2", "📢 Annonce sur l'accueil"));
   pa.appendChild(el("p", "Un message affiché en haut de la page d'accueil (nouveau jeu, maintenance, soirée jeux…).", "hint"));
@@ -151,8 +185,9 @@ async function panel(){
     sv.disabled = false;
   };
   r.append(lab, sv); pa.append(ta, r); main.appendChild(pa);
+}
 
-  /* Jeux */
+async function ongletJeux(main, regl){
   const pj = el("div", "", "panel");
   const tete = el("div", "", "tete"); tete.appendChild(el("h2", "🎮 Jeux"));
   const razOrdre = el("button", "↺ Ordre du code", "ghost mini");
@@ -289,8 +324,14 @@ async function panel(){
     maj();
   }
   majFleches();
+}
 
-  /* Comptes */
+async function ongletModeration(main){
+  const pm = el("div", "", "panel"); main.appendChild(pm);
+  Moderation(pm);
+}
+
+async function ongletComptes(main){
   const pc = el("div", "", "panel");
   pc.appendChild(el("h2", "👥 Comptes"));
   const zc = el("div"); zc.appendChild(el("p", "Chargement…", "hint"));
@@ -304,7 +345,7 @@ async function panel(){
     zc.appendChild(el("p", `${l.length} compte${l.length > 1 ? "s" : ""} · ${Object.keys(admins).length} admin${Object.keys(admins).length > 1 ? "s" : ""} · ${nIA} avec accès IA. Les jeux IA (🤖) sont réservés aux comptes avec accès IA ; les autres ne peuvent que rejoindre une salle avec un lien envoyé par un membre.`, "hint"));
     if(!l.length) return;
     const t = el("table");
-    t.innerHTML = "<thead><tr><th>Pseudo</th><th>Inscrit le</th><th>🤖 Accès IA</th><th>Admin</th></tr></thead>";
+    t.innerHTML = "<thead><tr><th>Pseudo</th><th>Inscrit le</th><th>🤖 Accès IA</th><th>Admin</th><th></th></tr></thead>";
     const tb = el("tbody"); t.appendChild(tb);
     const moi = Compte.session().uid;
     for(const c of l){
@@ -346,16 +387,109 @@ async function panel(){
         b.disabled = false;
       };
       td3.appendChild(b);
-      tr.append(td1, td2, tdIA, td3); tb.appendChild(tr);
+      const td4 = el("td");
+      const sup = el("button", "🗑️ Supprimer", "ghost mini");
+      if(c.uid === moi){ sup.disabled = true; sup.title = "Tu ne peux pas supprimer ton propre compte d'ici"; }
+      sup.onclick = () => {
+        if(admins[c.uid]) return toast("Retire d'abord ses droits admin", true);
+        supprimerCompte(c, () => tr.remove());
+      };
+      td4.appendChild(sup);
+      tr.append(td1, td2, tdIA, td3, td4); tb.appendChild(tr);
     }
     zc.appendChild(t);
   }catch(e){
     zc.innerHTML = ""; zc.appendChild(el("p", "Impossible de lire les comptes : " + e.message, "hint"));
   }
 
-  /* Modération */
-  const pm = el("div", "", "panel"); main.appendChild(pm);
-  Moderation(pm);
+}
+
+/* ---------------- 🗂️ Catégories ----------------
+   reglages/cats/<slug> = "jour soiree" (ou "" = aucune) : passe avant la
+   liste par défaut de catalogue.js. ↺ supprime le choix du panel. */
+async function ongletCategories(main, regl){
+  const CATS = window.SALLE_CATEGORIES;
+  const choix = regl.cats = regl.cats || {};
+  const p = el("div", "", "panel"); main.appendChild(p);
+  p.appendChild(el("h2", "🗂️ Catégories de l'accueil"));
+  p.appendChild(el("p", "Touche une catégorie pour y mettre ou en retirer le jeu. Un jeu peut être dans plusieurs catégories. Un jeu sans catégorie va dans « Arcade et solo ». Enregistré tout de suite.", "hint"));
+  const resume = el("div", "", "cats-resume"); p.appendChild(resume);
+  const liste = el("div", "", "jeux"); p.appendChild(liste);
+  const dansCat = g => typeof choix[g.slug] === "string" ? choix[g.slug].split(" ").filter(Boolean)
+    : CATS.filter(c => c.jeux.includes(g.slug)).map(c => c.id);
+  const majResume = () => {
+    resume.innerHTML = "";
+    CATS.forEach(c => resume.appendChild(el("span", `${c.emoji} ${c.titre} : ${SALLE_JEUX_DE(c.id, regl).length}`)));
+  };
+  for(const g of Compte.trier(SALLE_CATALOGUE, regl)){
+    const ligne = el("div", "", "jeu cat-ligne");
+    const info = el("div"); info.appendChild(el("b", g.title + (g.ia ? " 🤖" : "")));
+    const note = el("small"); info.appendChild(note);
+    const puces = el("div", "", "puces");
+    const raz = el("button", "↺", "ghost mini"); raz.title = "Revenir aux catégories par défaut";
+    const dessiner = () => {
+      const ids = dansCat(g);
+      puces.querySelectorAll("button").forEach(b => b.classList.toggle("on", ids.includes(b.dataset.id)));
+      const perso = typeof choix[g.slug] === "string";
+      note.textContent = (ids.length ? "" : "Aucune catégorie → Arcade et solo · ") + (perso ? "Choisi dans le panel" : "Par défaut");
+      note.className = ids.length ? "" : "alerte";
+      raz.disabled = !perso;
+      majResume();
+    };
+    const sauver = async ids => {
+      const avant = choix[g.slug];
+      choix[g.slug] = ids.join(" "); dessiner();
+      try{ await Compte.db("reglages/cats/" + g.slug, {method: "PUT", body: choix[g.slug]}); toast(g.title + " : catégories enregistrées"); }
+      catch(e){ if(avant === undefined) delete choix[g.slug]; else choix[g.slug] = avant; dessiner(); toast(e.message, true); }
+    };
+    CATS.forEach(c => {
+      const b = el("button", c.emoji + " " + c.titre); b.dataset.id = c.id; b.type = "button";
+      b.onclick = () => { const ids = dansCat(g); sauver(ids.includes(c.id) ? ids.filter(x => x !== c.id) : CATS.map(x => x.id).filter(x => x === c.id || ids.includes(x))); };
+      puces.appendChild(b);
+    });
+    raz.onclick = async () => {
+      const avant = choix[g.slug]; delete choix[g.slug]; dessiner();
+      try{ await Compte.db("reglages/cats/" + g.slug, {method: "DELETE"}); toast(g.title + " : catégories par défaut"); }
+      catch(e){ choix[g.slug] = avant; dessiner(); toast(e.message, true); }
+    };
+    ligne.append(el("div", g.emoji || "🎲", "em"), info, puces, raz);
+    liste.appendChild(ligne);
+    dessiner();
+  }
+}
+
+/* ---------------- 🗑️ Supprimer un compte ----------------
+   Le navigateur ne peut pas effacer l'identifiant de connexion (Firebase
+   Authentication) : on efface toutes ses données, on le bannit, et on
+   donne le lien de la console pour supprimer la connexion elle-même. */
+async function supprimerCompte(c, fini){
+  const cle = Compte.cleDePseudo(c.pseudo);
+  const login = cle + "@joueurs.salle-de-jeux-249d2.firebaseapp.com";
+  if(!confirm(`Supprimer le compte « ${c.pseudo} » ?\n\nSes données sont effacées : profil, pseudo, amis, demandes, médailles, jetons du casino, sauvegarde de Défense. Il est aussi banni, pour qu'il ne puisse plus rien écrire.\n\nCe n'est pas annulable.`)) return;
+  try{
+    const u = c.uid, chemins = {};
+    ["comptes", "profils", "amis", "demandes", "invitations", "medailles", "medailles_classement", "blackjack", "roulette", "rouletteLive", "defense_sauvegardes", "acces_ia"]
+      .forEach(k => chemins[`${k}/${u}`] = null);
+    if(cle.length >= 2 && await Compte.db("pseudos/" + cle, {auth: false}).catch(() => null) === u) chemins["pseudos/" + cle] = null;
+    chemins["bannis/" + u] = true;
+    await Compte.db("", {method: "PATCH", body: chemins});
+    fini && fini();
+    const d = document.createElement("dialog"); d.className = "fen";
+    d.innerHTML = `<h2>✅ Données supprimées</h2>
+      <p>Il reste son <b>identifiant de connexion</b>, que seul toi peux effacer, dans la console Firebase. Tant qu'il existe, le pseudo reste pris.</p>
+      <ol><li>Ouvre la page des utilisateurs (bouton ci-dessous).</li><li>Cherche cet identifiant :</li></ol>
+      <p><code class="login"></code> <button class="ghost mini copier">Copier</button></p>
+      <ol start="3"><li>Menu ⋮ de la ligne → <b>Supprimer le compte</b>.</li></ol>
+      <p class="hint">Ses scores des défis et des jeux solo sont rangés sous une autre identité (celle de son appareil) : supprime-les si besoin depuis l'onglet 🛡️ Modération.</p>
+      <div class="row"><a class="btn" target="_blank" rel="noopener" href="https://console.firebase.google.com/project/salle-de-jeux-249d2/authentication/users">Ouvrir la console Firebase</a><button class="ghost fermer">Fermer</button></div>`;
+    d.querySelector(".login").textContent = login;
+    d.querySelector(".copier").onclick = () => navigator.clipboard.writeText(login).then(() => toast("Identifiant copié"), () => toast("Copie impossible", true));
+    d.querySelector(".fermer").onclick = () => d.close();
+    d.addEventListener("close", () => d.remove());
+    document.body.appendChild(d); d.showModal();
+  }catch(e){
+    toast(/refusé/.test(e.message) ? "Refusé par la base : règles Firebase pas encore publiées ?" : e.message, true);
+  }
 }
 
 /* On ne relance que si l'utilisateur ou ses droits changent (sinon boucle) */

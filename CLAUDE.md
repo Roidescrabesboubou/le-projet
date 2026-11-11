@@ -14,7 +14,7 @@ En ligne : https://roidescrabesboubou.github.io/le-projet/ (GitHub Pages, mise �
 ## Structure
 ```
 index.html          accueil : cartes, records, défis du jour, filtres
-admin/              panel admin : afficher/cacher, ordonner, badges, modération (moderation.js)
+admin/              panel admin en onglets : jeux (afficher/cacher, ordre, badges), catégories, comptes (accès IA, admin, suppression), modération (moderation.js), annonce
 reglages/           pseudo, avatar, clés IA, test réseau, sauvegarde
 firebase-regles.json  règles de sécurité Firebase (publiées par firebase.cmd deploy --only database)
 jeux/_modele/       squelette à copier pour chaque nouveau jeu
@@ -33,13 +33,13 @@ jeux/<slug>/        un dossier par jeu
 
 ## Ajouter un jeu
 1. Copier `jeux/_modele/` vers `jeux/<slug>/`.
-2. Ajouter l'entrée dans `jeux/commun/catalogue.js` (même slug), et dans `index.html` : le slug dans la bonne catégorie de `CATS_FIXES` et ses mots-clés dans `MOTS_CLES`.
+2. Ajouter l'entrée dans `jeux/commun/catalogue.js` (même slug), le slug dans la bonne catégorie de `SALLE_CATEGORIES` (fin de `catalogue.js`), et ses mots-clés dans `MOTS_CLES` (`index.html`).
 3. S'il a un classement : ajouter le slug dans `firebase-regles.json` (puis le publier avec `firebase.cmd deploy --only database`).
 4. Tester, commit, push sur `main`.
 
 L'état choisi dans le panel admin passe avant celui de `catalogue.js`.
 
-Accueil : 6 catégories choisies avec moi (`CATS_FIXES` dans `index.html`, adresse `#jeux/<catégorie>`), chacune avec la liste de ses jeux (slugs) : Défis du jour, Soirée entre amis, Duels et plateau, Casino, Histoires avec l'IA, Arcade et solo. **Nouveau jeu : l'ajouter dans la bonne liste** (sinon il tombe dans Arcade et solo). Un jeu peut être dans plusieurs listes. Pas de page « tous les jeux ». Les jeux `ia: true` sont cachés de l'accueil sauf pour les comptes avec accès IA. Barre de recherche : nom, description, étiquettes et mots-clés de `MOTS_CLES` (`index.html`, ex. « tetris » → blocs) : **ajoute des mots-clés pour chaque nouveau jeu**. En groupe 👥 d'au moins 2 membres, seuls les jeux étiquetés `Multijoueur` s'affichent (seul dans son groupe, on voit tout) : mets cette étiquette à tout jeu qui a une salle en ligne. Message de bienvenue à la 1re visite (`salle_bienvenue_vue`).
+Accueil : 6 catégories choisies avec moi (`SALLE_CATEGORIES` à la fin de `catalogue.js`, adresse `#jeux/<catégorie>`), chacune avec la liste de ses jeux par défaut : Défis du jour, Soirée entre amis, Duels et plateau, Casino, Histoires avec l'IA, Arcade et solo. L'onglet 🗂️ Catégories du panel admin change les catégories d'un jeu (`reglages/cats/<slug>` = "jour soiree", "" = aucune), ce choix passe avant la liste par défaut (`SALLE_JEUX_DE`). **Nouveau jeu : l'ajouter dans la bonne liste** (sinon il tombe dans Arcade et solo). Un jeu peut être dans plusieurs listes. Pas de page « tous les jeux ». Les jeux `ia: true` sont cachés de l'accueil sauf pour les comptes avec accès IA. Barre de recherche : nom, description, étiquettes et mots-clés de `MOTS_CLES` (`index.html`, ex. « tetris » → blocs) : **ajoute des mots-clés pour chaque nouveau jeu**. En groupe 👥 d'au moins 2 membres, seuls les jeux étiquetés `Multijoueur` s'affichent (seul dans son groupe, on voit tout) : mets cette étiquette à tout jeu qui a une salle en ligne. Message de bienvenue à la 1re visite (`salle_bienvenue_vue`).
 
 ## Choix techniques
 - **Firebase** (projet `salle-de-jeux`) : comptes, classements (top semaine remis à zéro le lundi 0 h, heure de Paris, et tous les temps), séries, médailles, groupes, jetons, état des jeux réglé dans l'admin.

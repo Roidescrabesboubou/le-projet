@@ -459,3 +459,40 @@ window.SALLE_CATALOGUE = [
     sansPage: true
   }
 ];
+
+/* ============================================================
+   CATÉGORIES DE L'ACCUEIL (choisies avec le propriétaire du site)
+   jeux : la liste par défaut. Le panel admin peut changer les
+   catégories d'un jeu (reglages/cats/<slug> = "jour soiree", ou ""
+   pour aucune) : ce choix passe avant la liste par défaut. Un jeu
+   sans catégorie va dans « Arcade et solo ». Un nouveau jeu : ajoute
+   son slug dans la bonne liste ci-dessous.
+   ============================================================ */
+window.SALLE_CATEGORIES = [
+  {id: "jour", emoji: "📅", titre: "Défis du jour", c: ["#ffb020", "#ff6a2b"],
+   desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles.",
+   jeux: ["wordle", "loldle", "onepiecedle", "pokedle", "electrodle", "anidle", "paysdle", "motscroises", "motsfleches", "sudoku", "connexions", "shikaku", "chancedle", "coupdefeu"]},
+  {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", c: ["#ff4f7b", "#8b4dff"],
+   desc: "Des jeux de groupe où chacun joue sur son téléphone, il suffit d'un code de salle.",
+   jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran"]},
+  {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
+   desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
+   jeux: ["puissance4", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
+  {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
+   desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
+   jeux: ["poker", "blackjack", "roulette"]},
+  {id: "ia", emoji: "🤖", titre: "Histoires avec l'IA", c: ["#5b2bd8", "#ff6a9a"],
+   desc: "Des aventures racontées par une IA.",
+   jeux: ["quintuplees", "jdr"]},
+  {id: "arcade", emoji: "🕹️", titre: "Arcade et solo", c: ["#1f9a66", "#9bd34a"],
+   desc: "Arcade, réflexion et gestion : des records à battre quand tu as un moment.",
+   jeux: ["arene", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
+];
+
+/* Slugs d'une catégorie, réglages admin compris */
+window.SALLE_JEUX_DE = function(catId, regl){
+  const cats = (regl && regl.cats) || {};
+  const defaut = (window.SALLE_CATEGORIES.find(c => c.id === catId) || {jeux: []}).jeux;
+  return window.SALLE_CATALOGUE.map(g => g.slug).filter(s =>
+    typeof cats[s] === "string" ? cats[s].split(" ").includes(catId) : defaut.includes(s));
+};
