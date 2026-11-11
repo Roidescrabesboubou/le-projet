@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Chronologie</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#b5651d;--fond1:rgba(181,101,29,.15);--fond2:rgba(47,143,206,.12)}
+.panneau{max-width:560px}
+.tete{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;max-width:560px}
+.consigne{text-align:center;font-weight:800;margin:0}
+.repere{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--muted);font-size:.85rem;margin:4px 2px}
+.repere::after{content:"";flex:1;height:2px;background:var(--line)}
+.liste{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.carte-ev{display:flex;align-items:center;gap:10px;background:var(--card);border:2px solid var(--bord);border-radius:14px;padding:8px 10px;box-shadow:0 3px 0 var(--encre);touch-action:none;user-select:none;-webkit-user-select:none;transition:background .25s}
+.carte-ev.tire{opacity:.92;box-shadow:0 8px 0 var(--encre);transform:scale(1.02);z-index:2;position:relative;cursor:grabbing}
+.carte-ev .poignee{cursor:grab;color:var(--muted);font-size:1.2rem;padding:4px 2px}
+.carte-ev .em{font-size:1.6rem;width:34px;text-align:center;flex:none}
+.carte-ev .t{flex:1;font-weight:800;line-height:1.25;min-width:0}
+.carte-ev .an{font-family:Fredoka,sans-serif;font-weight:700;font-size:1.1rem;color:var(--accent);white-space:nowrap}
+.carte-ev .fl{display:flex;flex-direction:column;gap:2px}
+.carte-ev .fl button{border:0;background:var(--soft);border-radius:8px;width:30px;height:24px;font-size:.8rem;padding:0}
+.carte-ev.ok{background:color-mix(in srgb,var(--ok) 20%,var(--card))}
+.carte-ev.ko{background:color-mix(in srgb,var(--ko) 16%,var(--card))}
+.essais{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:1.2rem;letter-spacing:2px}
+.points{display:flex;gap:6px;justify-content:center}
+.points span{width:14px;height:14px;border-radius:50%;background:var(--line)}
+.points span.use{background:var(--accent)}
+.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.fin{text-align:center}
+.fin h2{margin:0 0 4px}
+.prochain{font-family:Fredoka,sans-serif;font-size:1.3rem}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="tete">
+    <div class="pilules" id="modes"><button data-m="jour" class="on">📅 Défi du jour</button><button data-m="libre">🎲 Partie libre</button></div>
+    <div class="points" id="points" title="Essais restants"></div>
+  </div>
+  <section class="b-carte panneau">
+    <p class="consigne" id="consigne">Range ces événements du plus ancien au plus récent.</p>
+    <div class="repere">⬆️ Le plus ancien</div>
+    <ol class="liste" id="liste"></ol>
+    <div class="repere">⬇️ Le plus récent</div>
+    <div class="actions" style="margin-top:12px"><button class="btn" id="valider" style="font-size:1.1rem;padding:11px 28px">Valider ✔</button></div>
+    <div class="essais" id="essais" style="margin-top:10px"></div>
+  </section>
+  <section class="b-carte panneau fin cache" id="fin"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/series.js"></script>
+<script src="evenements.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("chronologie_");
+const EV = window.CHRONO_EVENEMENTS;
+const START = Date.UTC(2026, 10, 1), NB = 6, ESSAIS = 3;
+Base.entete({
+  titre: "Chronologie", emoji: "⏳",
+  aide: `<p>Six événements, à ranger <b>du plus ancien au plus récent</b>.</p>
+    <ul><li>Fais glisser les cartes (ou utilise ▲ ▼).</li>
+    <li>Tu as <b>${ESSAIS} essais</b>. Après chaque essai, les cartes bien placées passent en vert 🟩, les autres en rouge 🟥.</li>
+    <li>Un nouveau défi chaque jour à minuit, le même pour tout le monde. La partie libre est illimitée.</li></ul>`
+});
+
+/* ---------- Tirage ---------- */
+function tirage(rng){
+  const l = Base.melanger(EV.map((e, i) => i), rng), pris = [], annees = new Set();
+  for(const i of l){ if(annees.has(EV[i][0])) continue; pris.push(i); annees.add(EV[i][0]); if(pris.length === NB) break; }
+  return pris;
+}
+const jour = () => Base.jour(START);
+const bonOrdre = ids => ids.slice().sort((a, b) => EV[a][0] - EV[b][0]);
+const anTxt = a => a < 0 ? `${-a} av. J.-C.` : String(a);
+
+/* ---------- État ---------- */
+let mode = "jour", P = null;    // P = {day, ids, ordre, essais: [[bool]], fini, gagne}
+function chargerJour(){
+  const d = jour(), sv = stock.lire("daily", null);
+  if(sv && sv.day === d) return sv;
+  const ids = tirage(Base.rng(d * 7919 + 1789));
+  return {day: d, ids, ordre: Base.melanger(ids, Base.rng(d * 31 + 7)), essais: [], fini: false, gagne: false};
+}
+function nouvelleLibre(){
+  const ids = tirage(Math.random);
+  return {ids, ordre: Base.melanger(ids), essais: [], fini: false, gagne: false};
+}
+function sauver(){ if(mode === "jour") stock.ecrire("daily", P); }
+
+/* ---------- Affichage ---------- */
+function rendre(){
+  const ul = $("liste"); ul.innerHTML = "";
+  const dernier = P.essais[P.essais.length - 1];
+  const ordre = P.fini ? bonOrdre(P.ids) : P.ordre;
+  ordre.forEach((id, pos) => {
+    const [an, txt, em] = EV[id];
+    const li = Base.el("li", null, "carte-ev");
+    li.dataset.id = id;
+    if(P.fini){ const k = P.ordre.indexOf(id) === pos; li.classList.add(k ? "ok" : "ko"); }
+    else if(dernier && li.dataset.id && dernier.ordre[pos] === id) li.classList.add(dernier.ok[pos] ? "ok" : "ko");
+    li.innerHTML = `${P.fini ? "" : '<span class="poignee" aria-hidden="true">⠿</span>'}<span class="em">${em}</span><span class="t"></span>${P.fini ? `<span class="an">${anTxt(an)}</span>` : '<span class="fl"><button data-h aria-label="Monter">▲</button><button data-b aria-label="Descendre">▼</button></span>'}`;
+    li.querySelector(".t").textContent = txt;
+    ul.appendChild(li);
+  });
+  $("points").innerHTML = Array.from({length: ESSAIS}, (_, i) => `<span class="${i < P.essais.length ? "use" : ""}"></span>`).join("");
+  $("essais").innerHTML = P.essais.map(e => `<div>${e.ok.map(x => x ? "🟩" : "🟥").join("")}</div>`).join("");
+  $("valider").classList.toggle("cache", P.fini);
+  $("consigne").textContent = P.fini ? (P.gagne ? "🎉 Bravo, tout est dans l'ordre !" : "Voici le bon ordre :") : P.essais.length ? `Essai ${P.essais.length + 1} sur ${ESSAIS} : corrige les cartes en rouge.` : "Range ces événements du plus ancien au plus récent.";
+  if(!P.fini) brancherCartes();
+  if(P.fini) afficherFin(); else $("fin").classList.add("cache");
+}
+function lireOrdre(){ P.ordre = [...$("liste").children].map(li => +li.dataset.id); }
+function bouger(id, d){
+  const i = P.ordre.indexOf(id), j = i + d;
+  if(j < 0 || j >= P.ordre.length) return;
+  [P.ordre[i], P.ordre[j]] = [P.ordre[j], P.ordre[i]];
+  sauver(); rendre();
+}
+
+/* glisser-déposer (souris et doigt) */
+function brancherCartes(){
+  const ul = $("liste");
+  [...ul.children].forEach(li => {
+    li.querySelector("[data-h]").onclick = () => bouger(+li.dataset.id, -1);
+    li.querySelector("[data-b]").onclick = () => bouger(+li.dataset.id, 1);
+    li.addEventListener("pointerdown", e => {
+      if(e.target.closest("button")) return;
+      e.preventDefault();
+      li.setPointerCapture(e.pointerId);
+      li.classList.add("tire");
+      let y0 = e.clientY;
+      const deplacer = ev => {
+        const dy = ev.clientY - y0;
+        li.style.transform = `translateY(${dy}px) scale(1.02)`;
+        const prec = li.previousElementSibling, suiv = li.nextElementSibling;
+        if(suiv && dy > suiv.offsetHeight / 2 + 4){ ul.insertBefore(suiv, li); y0 += suiv.offsetHeight + 8; li.style.transform = `translateY(${ev.clientY - y0}px) scale(1.02)`; }
+        else if(prec && dy < -(prec.offsetHeight / 2 + 4)){ ul.insertBefore(li, prec); y0 -= prec.offsetHeight + 8; li.style.transform = `translateY(${ev.clientY - y0}px) scale(1.02)`; }
+      };
+      const lacher = () => {
+        li.classList.remove("tire"); li.style.transform = "";
+        li.removeEventListener("pointermove", deplacer); li.removeEventListener("pointerup", lacher); li.removeEventListener("pointercancel", lacher);
+        lireOrdre(); sauver(); rendre();
+      };
+      li.addEventListener("pointermove", deplacer); li.addEventListener("pointerup", lacher); li.addEventListener("pointercancel", lacher);
+    });
+  });
+}
+
+/* ---------- Validation ---------- */
+$("valider").onclick = () => {
+  if(P.fini) return;
+  const bon = bonOrdre(P.ids);
+  // deux événements de la même année seraient interchangeables : on compare les années
+  const ok = P.ordre.map((id, i) => EV[id][0] === EV[bon[i]][0]);
+  P.essais.push({ordre: P.ordre.slice(), ok});
+  if(ok.every(Boolean)){ P.fini = true; P.gagne = true; }
+  else if(P.essais.length >= ESSAIS){ P.fini = true; }
+  else Base.toast(`${ok.filter(Boolean).length} / ${NB} bien placé${ok.filter(Boolean).length > 1 ? "s" : ""}`);
+  if(P.fini && mode === "jour") finJour();
+  sauver(); rendre();
+};
+
+/* ---------- Statistiques et séries (comme les autres défis du jour) ---------- */
+function finJour(){
+  const st = stock.lire("statsDaily", {played: 0, wins: 0, streak: 0, best: 0, last: null, lastWin: null});
+  if(st.last === P.day) return;
+  st.played++;
+  if(P.gagne){
+    st.wins++;
+    st.streak = st.lastWin === P.day - 1 ? st.streak + 1 : 1;
+    st.best = Math.max(st.best, st.streak); st.lastWin = P.day;
+  }else st.streak = 0;
+  st.last = P.day;
+  stock.ecrire("statsDaily", st);
+  Series.envoyer("chronologie", st, P.day);
+}
+function texteResultat(){
+  const date = new Date().toLocaleDateString("fr-FR", {timeZone: "Europe/Paris", day: "numeric", month: "short"});
+  return `⏳ Chronologie du ${date} : ${P.gagne ? P.essais.length + "/" + ESSAIS : "X/" + ESSAIS}\n` + P.essais.map(e => e.ok.map(x => x ? "🟩" : "🟥").join("")).join("\n") + "\n" + location.origin + location.pathname;
+}
+let minuteur = null;
+function afficherFin(){
+  const f = $("fin"); f.classList.remove("cache");
+  clearInterval(minuteur);
+  if(mode === "libre"){
+    f.innerHTML = `<h2>${P.gagne ? "🎉 Réussi en " + P.essais.length + " essai" + (P.essais.length > 1 ? "s" : "") : "😅 Raté !"}</h2><div class="actions"><button class="btn" id="encore">🎲 Une autre</button></div>`;
+    $("encore").onclick = () => { P = nouvelleLibre(); rendre(); };
+    return;
+  }
+  const st = stock.lire("statsDaily", {});
+  f.innerHTML = `<h2>${P.gagne ? "🎉 Réussi en " + P.essais.length + " essai" + (P.essais.length > 1 ? "s" : "") + " !" : "😅 Raté pour aujourd'hui"}</h2>
+    <p>🔥 Série : <b>${Series.courante(st, P.day)}</b> · record <b>${st.best || 0}</b> · ${st.wins || 0} / ${st.played || 0} réussis</p>
+    <div class="actions"><button class="btn" id="partager">📤 Partager</button><button class="btn ghost" id="libre">🎲 Partie libre</button></div>
+    <p class="muted" style="margin:12px 0 0">Prochain défi dans</p><div class="prochain" id="compte">${Base.avantMinuit()}</div>
+    <div id="ajZone"></div><div id="srZone"></div>`;
+  $("partager").onclick = () => Base.partager(texteResultat());
+  $("libre").onclick = () => choisirMode("libre");
+  minuteur = setInterval(() => { const c = $("compte"); if(c) c.textContent = Base.avantMinuit(); if(jour() !== P.day && mode === "jour"){ P = chargerJour(); rendre(); } }, 1000);
+  const err = P.gagne ? P.essais.length - 1 : P.essais.length;
+  Series.aujourdhui($("ajZone"), "chronologie", P.day, {moi: {e: err, g: P.gagne}, unite: "erreur", gagnantsSeulement: false, reussite: true});
+  Series.panneau($("srZone"), "chronologie", st, P.day);
+}
+
+function choisirMode(m){
+  mode = m;
+  document.querySelectorAll("#modes button").forEach(b => b.classList.toggle("on", b.dataset.m === m));
+  P = m === "jour" ? chargerJour() : nouvelleLibre();
+  rendre(); window.scrollTo(0, 0);
+}
+document.querySelectorAll("#modes button").forEach(b => b.onclick = () => choisirMode(b.dataset.m));
+choisirMode("jour");
+</script>
+</body>
+</html>

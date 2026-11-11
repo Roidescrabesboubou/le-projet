@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Dactylo Défense</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#18a999;--fond1:rgba(24,169,153,.14);--fond2:rgba(91,107,208,.14)}
+.zone{position:relative;width:100%;max-width:760px}
+canvas{display:block;width:100%;border-radius:18px;border:2px solid var(--encre);box-shadow:var(--ombre);background:#0d1030;touch-action:manipulation}
+.hud{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;max-width:760px;font-weight:800;flex-wrap:wrap}
+.hud .v{font-family:Fredoka,sans-serif;font-size:1.25rem}
+.hud .boutons{display:flex;gap:6px}
+.frappe{width:100%;max-width:760px;display:flex;gap:8px;align-items:center}
+.frappe input{flex:1;min-width:0;font-family:Fredoka,sans-serif;font-size:1.2rem;text-align:center;letter-spacing:.06em}
+.voile{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;border-radius:18px;background:rgba(10,12,40,.82);color:#f1efff;text-align:center;overflow:auto}
+.voile .boite{max-width:440px;width:100%}
+.voile h2{margin:0 0 6px;font-size:1.9rem}
+.voile p{margin:6px 0;color:#c9c6ee}
+.voile .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.voile .stats div{background:rgba(255,255,255,.08);border-radius:12px;padding:8px}
+.voile .stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.5rem;color:#fff}
+.voile .cle{display:inline-block;background:rgba(255,255,255,.14);border-radius:6px;padding:0 6px;font-weight:800}
+.voile ul{text-align:left;padding-left:20px;color:#c9c6ee;margin:8px 0}
+.lb{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px;text-align:left}
+.lb li{display:flex;justify-content:space-between;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:5px 10px;font-weight:700;color:#f1efff}
+.lb li.me{outline:2px solid #3ce0c8}
+.namerow{display:flex;gap:6px;margin-top:8px}
+.namerow input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:0}
+.cl-note,.cl-titre{color:#c9c6ee}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="hud">
+    <span>🌊 Vague <span class="v" id="hVague">1</span></span>
+    <span>⭐ <span class="v" id="hScore">0</span></span>
+    <span>🔥 x<span class="v" id="hMult">1</span></span>
+    <span class="boutons"><button class="btn ghost petit" id="bSon">🔊</button><button class="btn ghost petit" id="bPause">⏸️</button><button class="btn ghost petit" id="bTop">🏆</button></span>
+  </div>
+  <div class="zone">
+    <canvas id="cv"></canvas>
+    <div class="voile" id="voile"></div>
+  </div>
+  <div class="frappe">
+    <input class="champ" id="saisie" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Tape les mots ici ⌨️" enterkeyhint="done">
+  </div>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/dico.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("dactylo_");
+Base.entete({
+  titre: "Dactylo Défense", emoji: "⌨️",
+  aide: `<p>Des mots tombent sur ta ville : tape-les pour les détruire avant qu'ils ne touchent un immeuble !</p>
+    <ul><li>Tape la première lettre d'un mot pour le viser, puis le reste. Les accents ne comptent pas.</li>
+    <li><b>Retour arrière</b> ou <b>Échap</b> : change de cible.</li>
+    <li>Enchaîne les mots sans faute pour monter le multiplicateur 🔥 (jusqu'à x4).</li>
+    <li>Mots dorés : ❄️ ralentit tout, 💣 détruit tout l'écran, 🏗️ reconstruit un immeuble.</li>
+    <li>Toutes les 5 vagues, un boss : une phrase entière à taper.</li>
+    <li>La partie s'arrête quand les 5 immeubles sont détruits.</li></ul>`
+});
+
+/* ---------- Mots ---------- */
+const sansAccent = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const TOUS = (window.Dico ? Dico.liste({min: 3, max: 12}).map(x => x.mot.toLowerCase()) : []);
+const SECOURS = "chat chien maison soleil pomme livre arbre route bateau avion jardin fleur table chaise porte lune etoile neige pluie nuage montagne riviere foret plage sable vague tempete orage eclair dragon chateau tresor pirate robot fusee planete galaxie clavier souris ecran".split(" ");
+const PAR_LONG = {};
+(TOUS.length > 200 ? TOUS : SECOURS).forEach(m => (PAR_LONG[m.length] = PAR_LONG[m.length] || []).push(m));
+const BOSS = [
+  "les chaussettes de l archiduchesse sont elles seches",
+  "un chasseur sachant chasser doit savoir chasser sans son chien",
+  "la nuit tous les chats sont gris",
+  "il ne faut pas vendre la peau de l ours avant de l avoir tue",
+  "qui vole un oeuf vole un boeuf",
+  "les petits ruisseaux font les grandes rivieres",
+  "mieux vaut tard que jamais",
+  "petit a petit l oiseau fait son nid",
+  "apres la pluie vient le beau temps",
+  "tant va la cruche a l eau qu a la fin elle se casse",
+  "le clavier est plus fort que l epee",
+  "six cent six saucisses sechees",
+  "pierre qui roule n amasse pas mousse",
+  "il pleut des cordes sur la ville endormie",
+  "la tour de controle demande une frappe rapide"
+];
+function motAuHasard(vague){
+  const min = Math.min(3 + Math.floor(vague / 3), 7), max = Math.min(5 + vague, 12);
+  for(let essai = 0; essai < 20; essai++){
+    const n = min + Math.floor(Math.random() * (max - min + 1)), l = PAR_LONG[n];
+    if(l && l.length){
+      const m = l[Math.floor(Math.random() * l.length)];
+      if(!mots.some(w => w.txt[0] === m[0])) return m;   // une première lettre libre : plus facile à viser
+    }
+  }
+  const l = PAR_LONG[5] || SECOURS; return l[Math.floor(Math.random() * l.length)];
+}
+
+/* ---------- Toile ---------- */
+const cv = $("cv"), ctx = cv.getContext("2d");
+let W = 0, H = 0, dpr = 1;
+function taille(){
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.parentElement.clientWidth, h = Math.max(320, Math.min(window.innerHeight - 230, w * 0.9, 640));
+  cv.style.height = h + "px";
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  W = w; H = h; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  etoiles = Array.from({length: 70}, () => ({x: Math.random() * W, y: Math.random() * H * .8, r: Math.random() * 1.4 + .3, t: Math.random() * 6}));
+}
+let etoiles = [];
+window.addEventListener("resize", () => { const ax = W; taille(); if(ax) placerVille(); });
+
+/* ---------- Son ---------- */
+let son = stock.lire("son", true), actx = null;
+function bip(f, d, type, vol){
+  if(!son) return;
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || "square"; o.frequency.value = f;
+    g.gain.setValueAtTime(vol || .04, actx.currentTime); g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + d);
+    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + d);
+  }catch(e){}
+}
+$("bSon").textContent = son ? "🔊" : "🔇";
+$("bSon").onclick = () => { son = !son; stock.ecrire("son", son); $("bSon").textContent = son ? "🔊" : "🔇"; };
+
+/* ---------- Partie ---------- */
+let etat = "menu", mots = [], immeubles = [], parts = [], tirs = [], textes = [];
+let cible = null, score = 0, vague = 1, combo = 0, resteVague = 0, prochain = 0, gel = 0, secousse = 0;
+let frappes = 0, justes = 0, motsFaits = 0, tempsJeu = 0, bossFait = false;
+const mult = () => Math.min(4, 1 + Math.floor(combo / 5) * .5);
+
+function placerVille(){
+  const n = 5, larg = W / n;
+  if(!immeubles.length) immeubles = Array.from({length: n}, (_, i) => ({vivant: true, h: 34 + ((i * 37) % 30), fen: Math.random()}));
+  immeubles.forEach((b, i) => { b.x = i * larg + larg * .15; b.w = larg * .7; });
+}
+function nouvellePartie(){
+  mots = []; parts = []; tirs = []; textes = []; immeubles = []; placerVille();
+  cible = null; score = 0; vague = 1; combo = 0; gel = 0; frappes = 0; justes = 0; motsFaits = 0; tempsJeu = 0;
+  debutVague(); etat = "jeu"; $("voile").style.display = "none"; $("saisie").value = ""; $("saisie").focus();
+}
+function debutVague(){
+  resteVague = 6 + vague * 2; prochain = 1.2; bossFait = vague % 5 !== 0;
+  textes.push({txt: vague % 5 === 0 ? `⚠️ Vague ${vague} : BOSS !` : `Vague ${vague}`, x: W / 2, y: H * .4, v: 2.2, taille: 30});
+  if(vague > 1) bip(660, .15, "triangle", .06);
+}
+function vitesse(){ return (H / 15) * (1 + (vague - 1) * .09); }   // pixels par seconde
+function ajouterMot(boss){
+  const txt = boss ? BOSS[Math.floor(Math.random() * BOSS.length)] : motAuHasard(vague);
+  let fs = boss ? 18 : 17;
+  ctx.font = `700 ${fs}px Fredoka, sans-serif`;
+  let largeur = ctx.measureText(txt).width + 18;
+  if(largeur > W - 12){ fs = Math.max(10, fs * (W - 30) / (largeur - 18)); ctx.font = `700 ${fs}px Fredoka, sans-serif`; largeur = ctx.measureText(txt).width + 18; }
+  const vivants = immeubles.filter(b => b.vivant), dest = vivants[Math.floor(Math.random() * vivants.length)] || immeubles[0];
+  const x = Math.max(largeur / 2 + 4, Math.min(W - largeur / 2 - 4, Math.random() * W));
+  const bonus = !boss && vague >= 2 && Math.random() < .08 ? ["gel", "bombe", "repare"][Math.floor(Math.random() * 3)] : null;
+  mots.push({txt, cle: sansAccent(txt), x, y: -12, dx: Math.max(largeur / 2 + 4, Math.min(W - largeur / 2 - 4, dest.x + dest.w / 2)), fait: 0, boss, bonus, largeur, fs,
+    v: vitesse() * (boss ? .32 : .75 + Math.random() * .5)});
+}
+const ICONE = {gel: "❄️", bombe: "💣", repare: "🏗️"};
+
+function taper(ch){
+  if(etat !== "jeu") return;
+  ch = sansAccent(ch);
+  if(!/^[a-z ]$/.test(ch)) return;
+  if(!cible){
+    if(ch === " ") return;
+    const c = mots.filter(m => m.cle[0] === ch).sort((a, b) => b.y - a.y)[0];
+    frappes++;
+    if(!c){ rate(); return; }
+    cible = c;
+  }else frappes++;
+  if(cible.cle[cible.fait] === ch){
+    justes++; cible.fait++;
+    tirs.push({x: W / 2, y: H - 14, tx: cible.x, ty: cible.y, t: 0});
+    bip(900 + cible.fait * 25, .03, "square", .025);
+    if(cible.fait >= cible.cle.length) detruire(cible, true);
+  }else rate();
+}
+function rate(){
+  combo = 0; secousse = .15; bip(140, .12, "sawtooth", .05);
+}
+function detruire(m, tape){
+  mots = mots.filter(x => x !== m);
+  if(cible === m) cible = null;
+  const gain = Math.round(m.cle.replace(/ /g, "").length * 10 * (m.boss ? 3 : 1) * mult() * (tape ? 1 : .5));
+  score += gain; if(tape){ combo++; motsFaits++; }
+  for(let i = 0; i < (m.boss ? 60 : 22); i++){
+    const a = Math.random() * 6.28, v = 40 + Math.random() * 160;
+    parts.push({x: m.x, y: m.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: .6 + Math.random() * .5, c: m.bonus ? "#ffd34d" : m.boss ? "#ff5d8f" : ["#3ce0c8", "#8fd3ff", "#fff"][i % 3]});
+  }
+  textes.push({txt: "+" + gain, x: m.x, y: m.y, v: 1, taille: 16});
+  bip(m.boss ? 120 : 220, m.boss ? .5 : .18, "triangle", .07);
+  if(tape && m.bonus){
+    if(m.bonus === "gel"){ gel = 5; textes.push({txt: "❄️ Ralenti !", x: W / 2, y: H * .45, v: 1.5, taille: 26}); }
+    if(m.bonus === "bombe"){ textes.push({txt: "💣 BOUM !", x: W / 2, y: H * .45, v: 1.5, taille: 30}); secousse = .4; mots.slice().forEach(x => detruire(x, false)); }
+    if(m.bonus === "repare"){ const b = immeubles.find(b => !b.vivant); if(b){ b.vivant = true; textes.push({txt: "🏗️ Reconstruit !", x: W / 2, y: H * .45, v: 1.5, taille: 26}); } else score += 200; }
+  }
+  if(m.boss) bossFait = true;
+}
+function impact(m){
+  mots = mots.filter(x => x !== m);
+  if(cible === m) cible = null;
+  let b = immeubles.filter(b => b.vivant).sort((p, q) => Math.abs(p.x + p.w / 2 - m.x) - Math.abs(q.x + q.w / 2 - m.x))[0];
+  if(b){ b.vivant = false; for(let i = 0; i < 30; i++) parts.push({x: b.x + Math.random() * b.w, y: H - 10 - Math.random() * b.h, vx: (Math.random() - .5) * 120, vy: -Math.random() * 160, t: .8 + Math.random() * .6, c: ["#ff8a3d", "#ffd34d", "#777"][i % 3]}); }
+  combo = 0; secousse = .5; bip(70, .5, "sawtooth", .09);
+  if(!immeubles.some(b => b.vivant)) finPartie();
+}
+
+/* ---------- Boucle ---------- */
+let avant = performance.now();
+function boucle(t){
+  const dt = Math.min(.05, (t - avant) / 1000); avant = t;
+  if(etat === "jeu") maj(dt);
+  dessiner(t / 1000, dt);
+  requestAnimationFrame(boucle);
+}
+function maj(dt){
+  tempsJeu += dt;
+  if(gel > 0) gel -= dt;
+  const lent = gel > 0 ? .35 : 1;
+  prochain -= dt;
+  if(prochain <= 0 && resteVague > 0){
+    ajouterMot(false); resteVague--;
+    prochain = Math.max(.55, 2.3 - vague * .12) * (.7 + Math.random() * .6);
+  }
+  if(resteVague === 0 && !bossFait && !mots.some(m => m.boss) && mots.length < 3){ ajouterMot(true); }
+  if(resteVague === 0 && bossFait && !mots.length){ vague++; debutVague(); }
+  for(const m of mots.slice()){
+    m.y += m.v * dt * lent;
+    m.x += (m.dx - m.x) * dt * .05 * lent;
+    if(m.y > H - 46) impact(m);
+  }
+  majHud();
+}
+function majHud(){ $("hVague").textContent = vague; $("hScore").textContent = score.toLocaleString("fr-FR"); $("hMult").textContent = String(mult()).replace(".", ","); }
+
+function pilule(x, y, w, h, r){ ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+function dessiner(T, dt){
+  ctx.save();
+  if(secousse > 0){ secousse -= dt; ctx.translate((Math.random() - .5) * 10 * secousse * 2, (Math.random() - .5) * 10 * secousse * 2); }
+  // ciel
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, gel > 0 ? "#0b2a4a" : "#0a0c2a"); g.addColorStop(1, gel > 0 ? "#1d5a7a" : "#2a1f5a");
+  ctx.fillStyle = g; ctx.fillRect(-20, -20, W + 40, H + 40);
+  for(const e of etoiles){ ctx.globalAlpha = .4 + .4 * Math.sin(T * 2 + e.t); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, 6.28); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  // ville
+  for(const b of immeubles){
+    const y = H - 10 - b.h;
+    if(b.vivant){
+      ctx.fillStyle = "#3b3f7a"; ctx.fillRect(b.x, y, b.w, b.h);
+      ctx.fillStyle = "#ffd76a";
+      for(let fx = b.x + 6; fx < b.x + b.w - 8; fx += 12) for(let fy = y + 6; fy < H - 18; fy += 11) if(((fx * 7 + fy * 3) | 0) % 5 > 1) ctx.fillRect(fx, fy, 5, 5);
+    }else{
+      ctx.fillStyle = "#2a2440"; ctx.beginPath(); ctx.moveTo(b.x, H - 10); ctx.lineTo(b.x + b.w * .2, H - 22); ctx.lineTo(b.x + b.w * .5, H - 16); ctx.lineTo(b.x + b.w * .8, H - 26); ctx.lineTo(b.x + b.w, H - 10); ctx.fill();
+    }
+  }
+  ctx.fillStyle = "#14122e"; ctx.fillRect(0, H - 10, W, 10);
+  // tourelle
+  ctx.fillStyle = "#3ce0c8"; ctx.beginPath(); ctx.arc(W / 2, H - 10, 12, Math.PI, 0); ctx.fill();
+  // tirs
+  for(const s of tirs){ s.t += dt * 6; ctx.strokeStyle = `rgba(60,224,200,${1 - s.t})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.tx, s.ty); ctx.stroke(); }
+  tirs = tirs.filter(s => s.t < 1);
+  // mots
+  for(const m of mots){
+    ctx.font = `700 ${m.fs}px Fredoka, sans-serif`;
+    const w = m.largeur, x = m.x - w / 2, y = m.y - 14;
+    pilule(x, y, w, 28, 14);
+    ctx.fillStyle = m.boss ? "rgba(120,20,60,.92)" : m.bonus ? "rgba(110,80,0,.92)" : "rgba(20,24,60,.88)"; ctx.fill();
+    ctx.lineWidth = m === cible ? 3 : 1.5; ctx.strokeStyle = m === cible ? "#3ce0c8" : m.bonus ? "#ffd34d" : m.boss ? "#ff5d8f" : "rgba(255,255,255,.35)"; ctx.stroke();
+    ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    const a = m.txt.slice(0, m.fait), b = m.txt.slice(m.fait), tx = x + 9;
+    ctx.fillStyle = "#3ce0c8"; ctx.fillText(a, tx, m.y + 1);
+    ctx.fillStyle = "#fff"; ctx.fillText(b, tx + ctx.measureText(a).width, m.y + 1);
+    if(m.bonus){ ctx.font = "16px sans-serif"; ctx.fillText(ICONE[m.bonus], x + w + 2, m.y + 1); }
+  }
+  // particules
+  for(const p of parts){ p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; ctx.globalAlpha = Math.max(0, Math.min(1, p.t * 2)); ctx.fillStyle = p.c; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); }
+  parts = parts.filter(p => p.t > 0); ctx.globalAlpha = 1;
+  // textes flottants
+  for(const t of textes){ t.v -= dt; t.y -= 20 * dt; ctx.globalAlpha = Math.max(0, Math.min(1, t.v)); ctx.font = `800 ${t.taille}px Fredoka, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.fillText(t.txt, t.x, t.y); }
+  textes = textes.filter(t => t.v > 0); ctx.globalAlpha = 1;
+  if(gel > 0){ ctx.fillStyle = "rgba(160,220,255,.08)"; ctx.fillRect(0, 0, W, H); }
+  ctx.restore();
+}
+
+/* ---------- Saisie (clavier physique et clavier du téléphone) ---------- */
+const saisie = $("saisie");
+saisie.addEventListener("input", () => {
+  const v = saisie.value; saisie.value = "";
+  for(const ch of v) taper(ch);
+});
+saisie.addEventListener("keydown", e => {
+  if(e.key === "Backspace" || e.key === "Escape"){ if(cible){ cible.fait = 0; cible = null; } e.preventDefault(); }
+  if(e.key === "Enter" && etat !== "jeu"){ e.preventDefault(); if(etat === "pause") reprendre(); else nouvellePartie(); }
+});
+cv.addEventListener("pointerdown", () => saisie.focus());
+document.addEventListener("keydown", e => {
+  if(document.activeElement === saisie || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return;
+  if(e.key.length === 1 || e.key === "Enter"){ saisie.focus(); }
+  if(e.key.length === 1 && etat === "jeu"){ e.preventDefault(); taper(e.key); }
+});
+
+/* ---------- Écrans ---------- */
+function voile(html){ const v = $("voile"); v.innerHTML = `<div class="boite">${html}</div>`; v.style.display = "flex"; return v; }
+function menu(){
+  etat = "menu";
+  const rec = stock.lire("meilleur", 0);
+  const v = voile(`<h2>⌨️ Dactylo Défense</h2><p>Des mots tombent sur ta ville. Tape-les pour les détruire !</p>
+    <ul><li>Les accents ne comptent pas.</li><li><span class="cle">Retour</span> ou <span class="cle">Échap</span> : changer de cible.</li><li>Mots dorés : ❄️ 💣 🏗️ · boss toutes les 5 vagues.</li></ul>
+    ${rec ? `<p>🏆 Ton record : <b>${rec.toLocaleString("fr-FR")}</b></p>` : ""}
+    <button class="btn" id="go" style="font-size:1.15rem;padding:12px 30px;margin-top:8px">Jouer ▶</button><p style="font-size:.85rem">ou appuie sur Entrée</p>`);
+  v.querySelector("#go").onclick = nouvellePartie;
+}
+function pause(){
+  if(etat !== "jeu") return;
+  etat = "pause";
+  voile(`<h2>⏸️ Pause</h2><p>Vague ${vague} · ${score.toLocaleString("fr-FR")} points</p><button class="btn" id="rep">Reprendre ▶</button>`).querySelector("#rep").onclick = reprendre;
+}
+function reprendre(){ etat = "jeu"; $("voile").style.display = "none"; avant = performance.now(); saisie.focus(); }
+$("bPause").onclick = () => etat === "jeu" ? pause() : etat === "pause" ? reprendre() : null;
+document.addEventListener("visibilitychange", () => { if(document.hidden) pause(); });
+
+/* classement : top 10 de l'appareil + classement mondial */
+const SKEY = "dactylo_scores";
+const listeLocale = () => stock.lire("scores", []);
+const qualifieLocal = s => { const l = listeLocale(); return l.length < 10 || s > l[l.length - 1].s; };
+function ajouterLocal(e){ const l = listeLocale(); l.push(e); l.sort((a, b) => b.s - a.s); l.splice(10); stock.ecrire("scores", l); return l.indexOf(e); }
+function rendu(el, list, hi){
+  el.innerHTML = "";
+  if(!list.length){ el.appendChild(Base.el("p", "Aucun score pour l'instant.", "cl-note")); return; }
+  const ol = Base.el("ol", null, "lb");
+  list.forEach((e, i) => {
+    const li = Base.el("li", null, i === hi ? "me" : "");
+    li.append(Base.el("span", (["🥇", "🥈", "🥉"][i] || (i + 1) + ".") + " " + e.n), Base.el("b", e.s.toLocaleString("fr-FR") + " · vague " + e.lv));
+    ol.appendChild(li);
+  });
+  el.appendChild(ol);
+}
+function finPartie(){
+  etat = "fin"; cible = null;
+  const minutes = Math.max(tempsJeu / 60, .1), mpm = Math.round(justes / 5 / minutes), precision = frappes ? Math.round(justes / frappes * 100) : 100;
+  if(score > stock.lire("meilleur", 0)) stock.ecrire("meilleur", score);
+  Base.record("dactylo", score, {mieux: "haut", texte: score.toLocaleString("fr-FR") + " pts · vague " + vague});
+  const v = voile(`<h2>💥 Ville détruite !</h2>
+    <div class="stats"><div>Score<b>${score.toLocaleString("fr-FR")}</b></div><div>Vague<b>${vague}</b></div><div>Mots / minute<b>${mpm}</b></div><div>Précision<b>${precision} %</b></div></div>
+    <div id="cl"></div><button class="btn" id="go" style="margin-top:12px">Rejouer 🔁</button>`);
+  v.querySelector("#go").onclick = nouvellePartie;
+  if(score > 0) Classement.finDePartie({zone: v.querySelector("#cl"), cle: "dactylo", champ: "s", entree: {s: score, lv: Math.min(999, vague)},
+    local: {qualifie: qualifieLocal, ajouter: ajouterLocal, liste: listeLocale}, rendu});
+}
+$("bTop").onclick = () => {
+  if(etat === "jeu") pause();
+  const d = Base.el("div");
+  Base.fenetre("🏆 Classement", d);
+  Classement.tableau(d, {cle: "dactylo", champ: "s", liste: listeLocale, rendu: (el, l, hi) => { rendu(el, l, hi); el.querySelectorAll("li").forEach(li => { li.style.background = "var(--soft)"; li.style.color = "var(--text)"; }); }});
+};
+
+taille(); placerVille(); menu(); requestAnimationFrame(boucle);
+</script>
+</body>
+</html>

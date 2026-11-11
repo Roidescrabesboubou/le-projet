@@ -41,6 +41,7 @@
     {slug: "motsfleches", u: "indice",  q: e => lin(e, 0, 5)},
     {slug: "shikaku",     u: "aide",    q: e => lin(e, 0, 5)},
     {slug: "chancedle",   u: "rang",    q: e => lin(e, 0, 6)},   /* e = 7 - rang (1 Banal … 7 Mythique) */
+    {slug: "chronologie", u: "erreur",  q: e => lin(e, 0, 2)},   /* e = essais ratés avant le bon (3 essais) */
     {slug: "coupdefeu",   u: "journée", calc: (lv, g) => g ? 10 : 2 + Math.floor((Math.max(1, lv) - 1) * 5 / 8)}
   ];
   const parSlug = Object.fromEntries(DEFIS.map(d => [d.slug, d]));
@@ -273,6 +274,11 @@
         const sv = L("chancedle_daily", null);
         if(!fini || !sv || sv.day !== d || !sv.rang) return null;
         return {e: 7 - sv.rang, g: true};
+      }
+      if(slug === "chronologie"){
+        const sv = L("chronologie_daily", null);
+        if(!fini || !sv || sv.day !== d || !sv.fini || !Array.isArray(sv.essais)) return null;
+        return {e: sv.gagne ? sv.essais.length - 1 : sv.essais.length, g: !!sv.gagne};
       }
       if(slug === "connexions"){
         const sv = L("connexions_daily", null);

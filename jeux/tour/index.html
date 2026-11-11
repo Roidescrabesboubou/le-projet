@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>La Tour</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#e0663a;--fond1:rgba(224,102,58,.15);--fond2:rgba(91,107,208,.13)}
+.zone{position:relative;width:100%;max-width:440px}
+canvas{display:block;width:100%;border-radius:18px;border:2px solid var(--encre);box-shadow:var(--ombre);touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
+.barre{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:440px;font-weight:800}
+.voile{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;border-radius:18px;background:rgba(20,16,40,.72);color:#fff;text-align:center;overflow:auto}
+.voile .boite{max-width:340px;width:100%}
+.voile h2{margin:0 0 6px;font-size:2rem}
+.voile p{margin:6px 0;color:#e4e0ff}
+.voile .gros{font-family:Fredoka,sans-serif;font-size:3.4rem;font-weight:700;line-height:1;color:#fff}
+.lb{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px;text-align:left}
+.lb li{display:flex;justify-content:space-between;gap:8px;background:rgba(255,255,255,.1);border-radius:10px;padding:5px 10px;font-weight:700}
+.lb li.me{outline:2px solid #ffd34d}
+.namerow{display:flex;gap:6px;margin-top:8px}
+.namerow input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:0}
+.cl-note,.cl-titre{color:#e4e0ff}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="barre"><span id="hRec">🏆 —</span><span><button class="btn ghost petit" id="bSon">🔊</button> <button class="btn ghost petit" id="bTop">🏆 Classement</button></span></div>
+  <div class="zone"><canvas id="cv"></canvas><div class="voile" id="voile"></div></div>
+  <p class="muted" style="margin:0;text-align:center;font-size:.9rem">Touche l'écran (ou Espace) pour lâcher le bloc.</p>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("tour_");
+Base.entete({
+  titre: "La Tour", emoji: "🏗️",
+  aide: `<p>Empile les blocs le plus haut possible !</p>
+    <ul><li>Un bloc va et vient : touche l'écran (ou <b>Espace</b>) pour le lâcher.</li>
+    <li>Ce qui dépasse du bloc du dessous est <b>coupé</b> : la tour s'affine.</li>
+    <li>Lâché pile dessus : <b>Parfait !</b> Trois parfaits d'affilée font <b>regrandir</b> le bloc.</li>
+    <li>Raté complètement ? Fin de la partie.</li></ul>`
+});
+
+/* ---------- Toile ---------- */
+const cv = $("cv"), ctx = cv.getContext("2d");
+const LW = 360, BH = 24, PROF = 10;    // largeur logique, hauteur d'un bloc, profondeur 3D
+let LH = 600, echelle = 1, dpr = 1;
+function taille(){
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.parentElement.clientWidth, h = Math.max(380, Math.min(window.innerHeight - 200, w * 1.7));
+  echelle = w / LW; LH = h / echelle;
+  cv.style.height = h + "px"; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+}
+window.addEventListener("resize", taille);
+
+/* ---------- Son ---------- */
+let sonOn = stock.lire("son", true), actx = null;
+function son(f, d, type, vol){
+  if(!sonOn) return;
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(vol || .08, actx.currentTime); g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + d);
+    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + d);
+  }catch(e){}
+}
+$("bSon").textContent = sonOn ? "🔊" : "🔇";
+$("bSon").onclick = () => { sonOn = !sonOn; stock.ecrire("son", sonOn); $("bSon").textContent = sonOn ? "🔊" : "🔇"; };
+
+/* ---------- Partie ---------- */
+let etat = "menu", pile = [], mobile = null, debris = [], anneaux = [], camera = 0, camCible = 0, combo = 0, parfaits = 0, teinte = 0, temps = 0, chute = null, eclat = 0;
+const LARG0 = 200;
+const couleur = (i, l) => `hsl(${(teinte + i * 6) % 360} 70% ${l}%)`;
+function nouvellePartie(){
+  teinte = Math.floor(Math.random() * 360);
+  pile = [{x: (LW - LARG0) / 2, w: LARG0}];
+  debris = []; anneaux = []; combo = 0; parfaits = 0; chute = null; camera = camCible = 0;
+  nouveauMobile();
+  etat = "jeu"; $("voile").style.display = "none";
+}
+const score = () => pile.length - 1;
+function nouveauMobile(){
+  const haut = pile[pile.length - 1], gauche = pile.length % 2 === 0;
+  mobile = {x: gauche ? -haut.w : LW, w: haut.w, dir: gauche ? 1 : -1, v: Math.min(430, 150 + score() * 7)};
+}
+const yBloc = i => LH - 70 - (i + 1) * BH;     // haut du bloc n° i (sans caméra)
+
+function lacher(){
+  if(etat !== "jeu" || !mobile) return;
+  const haut = pile[pile.length - 1], m = mobile, i = pile.length;
+  const gauche = Math.max(m.x, haut.x), droite = Math.min(m.x + m.w, haut.x + haut.w);
+  if(Math.abs(m.x - haut.x) <= 4){            // parfait
+    combo++; parfaits++;
+    let w = haut.w, x = haut.x;
+    if(combo >= 3 && w < LARG0){ const g = Math.min(12, LARG0 - w); w += g; x -= g / 2; }
+    pile.push({x, w});
+    anneaux.push({x: x + w / 2, y: yBloc(i) + BH / 2, w, t: 0});
+    son(440 * Math.pow(2, Math.min(combo, 14) / 12), .25, "triangle", .1);
+    if(combo >= 3) eclat = .25;
+  }else if(droite - gauche > 0){
+    combo = 0;
+    pile.push({x: gauche, w: droite - gauche});
+    // morceau coupé qui tombe
+    const cx = m.x < gauche ? m.x : droite, cw = m.x < gauche ? gauche - m.x : m.x + m.w - droite;
+    debris.push({x: cx, y: yBloc(i), w: cw, vy: 0, vx: (m.x < gauche ? -1 : 1) * 40, r: 0, vr: (m.x < gauche ? -1 : 1) * 2, i});
+    son(220, .12, "square", .05);
+  }else{
+    // raté : le bloc tombe, fin
+    debris.push({x: m.x, y: yBloc(i), w: m.w, vy: 0, vx: m.dir * 60, r: 0, vr: m.dir * 2.5, i});
+    mobile = null; son(110, .5, "sawtooth", .08);
+    fin(); return;
+  }
+  camCible = Math.max(0, (pile.length - 1) * BH - LH * .45);
+  nouveauMobile();
+}
+
+/* ---------- Boucle ---------- */
+let avant = performance.now();
+function boucle(t){
+  const dt = Math.min(.05, (t - avant) / 1000); avant = t; temps += dt;
+  if(mobile && etat === "jeu"){
+    mobile.x += mobile.dir * mobile.v * dt;
+    if(mobile.x + mobile.w > LW + 30 && mobile.dir > 0){ mobile.dir = -1; }
+    if(mobile.x < -30 && mobile.dir < 0){ mobile.dir = 1; }
+  }
+  camera += (camCible - camera) * Math.min(1, dt * 6);
+  for(const d of debris){ d.vy += 900 * dt; d.y += d.vy * dt; d.x += d.vx * dt; d.r += d.vr * dt; }
+  debris = debris.filter(d => d.y - camera < LH + 200 + camera);
+  for(const a of anneaux) a.t += dt * 2;
+  anneaux = anneaux.filter(a => a.t < 1);
+  if(eclat > 0) eclat -= dt;
+  dessiner();
+  requestAnimationFrame(boucle);
+}
+function bloc(x, y, w, i, alpha){
+  ctx.globalAlpha = alpha == null ? 1 : alpha;
+  ctx.fillStyle = couleur(i, 62); ctx.fillRect(x, y, w, BH);                                         // face
+  ctx.fillStyle = couleur(i, 76); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + PROF, y - PROF); ctx.lineTo(x + w + PROF, y - PROF); ctx.lineTo(x + w, y); ctx.fill();  // dessus
+  ctx.fillStyle = couleur(i, 48); ctx.beginPath(); ctx.moveTo(x + w, y); ctx.lineTo(x + w + PROF, y - PROF); ctx.lineTo(x + w + PROF, y + BH - PROF); ctx.lineTo(x + w, y + BH); ctx.fill(); // côté
+  ctx.globalAlpha = 1;
+}
+function dessiner(){
+  ctx.setTransform(echelle * dpr, 0, 0, echelle * dpr, 0, 0);
+  // ciel : du jour vers l'espace en montant
+  const h = Math.min(1, camera / 2400);
+  const g = ctx.createLinearGradient(0, 0, 0, LH);
+  g.addColorStop(0, `hsl(${(teinte + 200) % 360} ${50 - h * 20}% ${78 - h * 66}%)`);
+  g.addColorStop(1, `hsl(${(teinte + 170) % 360} ${55 - h * 25}% ${90 - h * 66}%)`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, LW, LH);
+  if(h > .2){ ctx.fillStyle = "#fff"; for(let k = 0; k < 50; k++){ ctx.globalAlpha = (h - .2) * (.4 + .4 * Math.sin(temps + k)); ctx.fillRect((k * 71) % LW, (k * 131 + camera * .1) % LH, 2, 2); } ctx.globalAlpha = 1; }
+  if(eclat > 0){ ctx.fillStyle = `rgba(255,255,255,${eclat})`; ctx.fillRect(0, 0, LW, LH); }
+  ctx.save(); ctx.translate(0, camera);
+  // sol
+  ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(0, LH - 70, LW, 400);
+  // pile (seulement ce qui est visible)
+  const premier = Math.max(0, Math.floor((camera - 60) / BH) - 2);
+  for(let i = premier; i < pile.length; i++) bloc(pile[i].x, yBloc(i), pile[i].w, i);
+  for(const d of debris){ ctx.save(); ctx.translate(d.x + d.w / 2, d.y + BH / 2); ctx.rotate(d.r); bloc(-d.w / 2, -BH / 2, d.w, d.i, .9); ctx.restore(); }
+  if(mobile) bloc(mobile.x, yBloc(pile.length), mobile.w, pile.length);
+  for(const a of anneaux){ ctx.strokeStyle = `rgba(255,255,255,${1 - a.t})`; ctx.lineWidth = 3; ctx.strokeRect(a.x - a.w / 2 - a.t * 18, a.y - BH / 2 - a.t * 10, a.w + a.t * 36, BH + a.t * 20); }
+  ctx.restore();
+  // score
+  if(etat !== "menu"){
+    ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.font = "700 46px Fredoka, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.shadowColor = "rgba(0,0,0,.3)"; ctx.shadowBlur = 6; ctx.fillText(score(), LW / 2, 18); ctx.shadowBlur = 0;
+    if(combo >= 2 && etat === "jeu"){ ctx.font = "800 16px Nunito, sans-serif"; ctx.fillText(`✨ Parfait x${combo}`, LW / 2, 70); }
+  }
+}
+
+/* ---------- Commandes ---------- */
+cv.addEventListener("pointerdown", e => { e.preventDefault(); if(etat === "jeu") lacher(); });
+document.addEventListener("keydown", e => {
+  if(document.querySelector("dialog[open]") || /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if(e.code === "Space" || e.key === "Enter"){ e.preventDefault(); if(etat === "jeu") lacher(); else if(etat === "menu" || (etat === "fin" && performance.now() - finT > 1500)) nouvellePartie(); }
+});
+
+/* ---------- Écrans et classement ---------- */
+function voile(html){ const v = $("voile"); v.innerHTML = `<div class="boite">${html}</div>`; v.style.display = "flex"; return v; }
+const listeLocale = () => stock.lire("scores", []);
+const qualifieLocal = s => { const l = listeLocale(); return l.length < 10 || s > l[l.length - 1].s; };
+function ajouterLocal(e){ const l = listeLocale(); l.push(e); l.sort((a, b) => b.s - a.s); l.splice(10); stock.ecrire("scores", l); return l.indexOf(e); }
+function rendu(el, list, hi){
+  el.innerHTML = "";
+  if(!list.length){ el.appendChild(Base.el("p", "Aucun score pour l'instant.", "cl-note")); return; }
+  const ol = Base.el("ol", null, "lb");
+  list.forEach((e, i) => {
+    const li = Base.el("li", null, i === hi ? "me" : "");
+    li.append(Base.el("span", (["🥇", "🥈", "🥉"][i] || (i + 1) + ".") + " " + e.n), Base.el("b", e.s + " étages" + (e.lv > 1 ? " · " + (e.lv - 1) + " ✨" : "")));
+    ol.appendChild(li);
+  });
+  el.appendChild(ol);
+}
+function majRecord(){ const r = stock.lire("record", 0); $("hRec").textContent = r ? `🏆 Record : ${r} étages` : "🏆 Pas encore de record"; }
+function menu(){
+  etat = "menu"; teinte = 200; pile = [{x: (LW - LARG0) / 2, w: LARG0}]; mobile = null;
+  voile(`<h2>🏗️ La Tour</h2><p>Lâche les blocs pile les uns sur les autres. Ce qui dépasse est coupé !</p>
+    <button class="btn" id="go" style="font-size:1.15rem;padding:12px 30px;margin-top:6px">Jouer ▶</button>`).querySelector("#go").onclick = nouvellePartie;
+}
+let finT = 0;
+function fin(){
+  etat = "fin"; finT = performance.now();
+  const s = score(), rec = stock.lire("record", 0);
+  if(s > rec) stock.ecrire("record", s);
+  majRecord();
+  if(s > 0) Base.record("tour", s, {mieux: "haut", texte: s + " étages"});
+  setTimeout(() => {
+    const v = voile(`<p>Ta tour</p><div class="gros">${s}</div><p>étage${s > 1 ? "s" : ""} · ${parfaits} parfait${parfaits > 1 ? "s" : ""}${s > rec && rec ? " · 🎉 nouveau record !" : ""}</p>
+      <div id="cl"></div><button class="btn" id="go" style="margin-top:12px">Rejouer 🔁</button>`);
+    v.querySelector("#go").onclick = nouvellePartie;
+    if(s > 0) Classement.finDePartie({zone: v.querySelector("#cl"), cle: "tour", champ: "s", entree: {s, lv: Math.min(999, parfaits + 1)},
+      local: {qualifie: qualifieLocal, ajouter: ajouterLocal, liste: listeLocale}, rendu});
+  }, 700);
+}
+$("bTop").onclick = () => {
+  const d = Base.el("div");
+  Base.fenetre("🏆 Classement de La Tour", d);
+  Classement.tableau(d, {cle: "tour", champ: "s", liste: listeLocale, rendu: (el, l, hi) => { rendu(el, l, hi); el.querySelectorAll("li").forEach(li => { li.style.background = "var(--soft)"; }); }});
+};
+
+taille(); majRecord(); menu(); requestAnimationFrame(boucle);
+</script>
+</body>
+</html>

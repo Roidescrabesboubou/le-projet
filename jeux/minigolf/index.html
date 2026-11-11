@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mini-golf</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#2e9d4f;--fond1:rgba(46,157,79,.15);--fond2:rgba(242,193,78,.14)}
+.hud{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;max-width:480px;font-weight:800;flex-wrap:wrap}
+.hud .v{font-family:Fredoka,sans-serif;font-size:1.2rem}
+.zone{position:relative;width:100%;max-width:480px;display:flex;justify-content:center}
+canvas{display:block;border-radius:18px;border:2px solid var(--encre);box-shadow:var(--ombre);touch-action:none;background:#2f6b3a;cursor:crosshair}
+.voile{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;border-radius:18px;background:rgba(15,30,20,.78);color:#fff;text-align:center}
+.voile .boite{max-width:360px;width:100%}
+.voile h2{margin:0 0 4px;font-size:1.9rem}
+.voile p{margin:6px 0;color:#d8f0dc}
+.carte{width:100%;border-collapse:collapse;margin:10px 0;font-weight:700;font-size:.9rem;background:rgba(255,255,255,.08);border-radius:10px;overflow:hidden}
+.carte td,.carte th{padding:4px 2px;text-align:center;border-bottom:1px solid rgba(255,255,255,.12)}
+.carte .m{color:#7ef0a0}.carte .p{color:#ffb4b4}
+.titre-trou{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.05rem;text-align:center;margin:0}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="hud">
+    <span>⛳ Trou <span class="v" id="hTrou">1</span>/9</span>
+    <span>Par <span class="v" id="hPar">2</span></span>
+    <span>🏌️ Coups <span class="v" id="hCoups">0</span></span>
+    <span>Total <span class="v" id="hTotal">0</span></span>
+    <button class="btn ghost petit" id="bCarte">📋</button>
+  </div>
+  <p class="titre-trou" id="hNom"></p>
+  <div class="zone"><canvas id="cv"></canvas><div class="voile" id="voile"></div></div>
+  <p class="muted" style="margin:0;text-align:center;font-size:.9rem">Tire vers l'arrière (comme un lance-pierre) puis relâche.</p>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("minigolf_");
+Base.entete({
+  titre: "Mini-golf", emoji: "⛳",
+  aide: `<p>9 trous à faire en le moins de coups possible.</p>
+    <ul><li>Appuie n'importe où, <b>tire vers l'arrière</b> et relâche : la balle part dans l'autre sens. Plus tu tires loin, plus c'est fort.</li>
+    <li>🟨 Le sable freine la balle. 🟦 L'eau : +1 coup et retour à l'endroit du tir.</li>
+    <li>🔴 Les bumpers font rebondir, les flèches poussent la balle, les moulins tournent…</li>
+    <li>Une balle trop rapide passe au-dessus du trou !</li>
+    <li>10 coups maximum par trou.</li></ul>`
+});
+
+/* ---------- Les 9 trous (terrain de 360 × 560) ---------- */
+const R = (x1, y1, x2, y2) => [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
+const TROUS = [
+  {nom: "L'échauffement", par: 2, depart: [180, 460], trou: [180, 100], bord: R(60, 40, 300, 520)},
+  {nom: "Le coude", par: 3, depart: [90, 460], trou: [260, 90], bord: [[40, 400], [200, 400], [200, 40], [320, 40], [320, 520], [40, 520]]},
+  {nom: "Les bumpers", par: 2, depart: [180, 470], trou: [180, 80], bord: R(50, 40, 310, 520),
+    bumpers: [[130, 250, 18], [230, 250, 18], [180, 330, 18], [180, 170, 14]]},
+  {nom: "Le bac à sable", par: 3, depart: [100, 460], trou: [100, 100], bord: R(40, 40, 320, 520),
+    blocs: [R(40, 270, 230, 290)], sable: [[230, 235, 320, 330]]},
+  {nom: "Le moulin", par: 3, depart: [180, 480], trou: [180, 90], bord: R(110, 40, 250, 520),
+    moulins: [[180, 280, 120, 1.6]]},
+  {nom: "La rivière", par: 3, depart: [180, 470], trou: [260, 90], bord: R(40, 40, 320, 520),
+    eau: [[40, 250, 150, 310], [210, 250, 320, 310]], sable: [[40, 40, 120, 110]]},
+  {nom: "Le vent", par: 2, depart: [180, 470], trou: [120, 90], bord: R(60, 40, 300, 520),
+    pentes: [[60, 200, 300, 360, 280, 0]], bumpers: [[250, 140, 16]]},
+  {nom: "Le zigzag", par: 4, depart: [80, 470], trou: [80, 100], bord: R(40, 40, 320, 520),
+    blocs: [R(40, 370, 250, 386), R(110, 220, 320, 236)], sable: [[180, 270, 260, 340]], bumpers: [[290, 470, 14]]},
+  {nom: "Le grand final", par: 4, depart: [100, 480], trou: [90, 80], bord: R(30, 30, 330, 530),
+    eau: [[30, 300, 200, 342]], moulins: [[265, 321, 110, 2.2]], bumpers: [[110, 190, 16], [225, 150, 16]], sable: [[150, 410, 250, 460]],
+    pentes: [[200, 30, 330, 110, -160, 0]]}
+];
+
+/* ---------- Toile ---------- */
+const cv = $("cv"), ctx = cv.getContext("2d");
+const LW = 360, LH = 560;
+let echelle = 1, dpr = 1;
+function taille(){
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.min(cv.parentElement.clientWidth, 480), h = Math.max(300, window.innerHeight - 220);
+  echelle = Math.min(w / LW, h / LH);
+  cv.style.width = LW * echelle + "px"; cv.style.height = LH * echelle + "px";
+  cv.width = Math.round(LW * echelle * dpr); cv.height = Math.round(LH * echelle * dpr);
+}
+window.addEventListener("resize", taille);
+
+/* ---------- Partie ---------- */
+const BR = 6, TR = 10, COL = BR + 4;   // rayon balle, rayon trou, distance de choc avec un mur (épaisseur comprise)
+let n = 0, H = null, balle = null, coups = 0, cartes = [], dernier = null, viser = null, temps = 0, etat = "menu", tombe = 0, eclabousse = null;
+function segments(){
+  const l = [];
+  const poly = p => p.forEach((a, i) => l.push([a, p[(i + 1) % p.length]]));
+  poly(H.bord); (H.blocs || []).forEach(poly);
+  return l;
+}
+let SEGS = [];
+function charger(i){
+  n = i; H = TROUS[i]; SEGS = segments();
+  balle = {x: H.depart[0], y: H.depart[1], vx: 0, vy: 0};
+  coups = 0; dernier = [balle.x, balle.y]; viser = null; tombe = 0; etat = "jeu";
+  $("voile").style.display = "none";
+  majHud();
+}
+function majHud(){
+  $("hTrou").textContent = n + 1; $("hPar").textContent = H.par; $("hCoups").textContent = coups;
+  $("hTotal").textContent = cartes.reduce((s, c) => s + c, 0) + (etat === "jeu" ? coups : 0);
+  $("hNom").textContent = "« " + H.nom + " »";
+}
+const dans = (r, x, y) => x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3];
+const arret = () => Math.hypot(balle.vx, balle.vy) < 4;
+
+/* ---------- Physique ---------- */
+function choc(ax, ay, bx, by, vitPt){
+  const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey || 1;
+  const t = Math.max(0, Math.min(1, ((balle.x - ax) * ex + (balle.y - ay) * ey) / L2));
+  const qx = ax + ex * t, qy = ay + ey * t, dx = balle.x - qx, dy = balle.y - qy, d = Math.hypot(dx, dy);
+  if(d >= COL || d === 0) return;
+  const nx = dx / d, ny = dy / d;
+  balle.x = qx + nx * COL; balle.y = qy + ny * COL;
+  const [ux, uy] = vitPt ? vitPt(qx, qy) : [0, 0];
+  const rx = balle.vx - ux, ry = balle.vy - uy, vn = rx * nx + ry * ny;
+  if(vn < 0){ balle.vx -= 1.75 * vn * nx; balle.vy -= 1.75 * vn * ny; if(Math.abs(vn) > 60) son(180, .05); }
+}
+function pas(dt){
+  temps += dt;
+  if(tombe > 0) return;
+  let f = 1.0;
+  if((H.sable || []).some(r => dans(r, balle.x, balle.y))) f = 4.2;
+  for(const p of (H.pentes || [])) if(dans(p, balle.x, balle.y)){ balle.vx += p[4] * dt; balle.vy += p[5] * dt; }
+  const k = Math.exp(-f * dt);
+  balle.vx *= k; balle.vy *= k;
+  balle.x += balle.vx * dt; balle.y += balle.vy * dt;
+  for(const [a, b] of SEGS) choc(a[0], a[1], b[0], b[1]);
+  for(const [cx, cy, rr] of (H.bumpers || [])){
+    const dx = balle.x - cx, dy = balle.y - cy, d = Math.hypot(dx, dy);
+    if(d < rr + BR && d > 0){
+      const nx = dx / d, ny = dy / d; balle.x = cx + nx * (rr + BR); balle.y = cy + ny * (rr + BR);
+      const vn = balle.vx * nx + balle.vy * ny;
+      if(vn < 0){ balle.vx -= 2.25 * vn * nx; balle.vy -= 2.25 * vn * ny; son(520, .08); }
+    }
+  }
+  for(const [cx, cy, len, w] of (H.moulins || [])){
+    const a = temps * w, hx = Math.cos(a) * len / 2, hy = Math.sin(a) * len / 2;
+    choc(cx - hx, cy - hy, cx + hx, cy + hy, (qx, qy) => [-w * (qy - cy), w * (qx - cx)]);
+    choc(cx - hy, cy + hx, cx + hy, cy - hx, (qx, qy) => [-w * (qy - cy), w * (qx - cx)]);
+  }
+  // eau
+  if((H.eau || []).some(r => dans(r, balle.x, balle.y))){
+    eclabousse = {x: balle.x, y: balle.y, t: .6}; son(90, .3);
+    coups++; balle = {x: dernier[0], y: dernier[1], vx: 0, vy: 0}; majHud();
+    Base.toast("💦 Plouf ! +1 coup", 1400);
+    if(coups >= 10) finTrou();
+    return;
+  }
+  // trou
+  const dx = H.trou[0] - balle.x, dy = H.trou[1] - balle.y, d = Math.hypot(dx, dy), v = Math.hypot(balle.vx, balle.vy);
+  if(d < TR){
+    if(v < 330){ tombe = .35; balle.vx = balle.vy = 0; son(880, .15); setTimeout(() => son(1320, .2), 120); setTimeout(finTrou, 650); return; }
+    balle.vx += dx * 12 * dt; balle.vy += dy * 12 * dt;   // la balle « lèche » le bord du trou
+  }else if(d < TR + 6 && v < 120){ balle.vx += dx * 6 * dt; balle.vy += dy * 6 * dt; }
+  if(Math.hypot(balle.vx, balle.vy) < 4){ balle.vx = balle.vy = 0; if(coups >= 10 && etat === "jeu" && !tombe) finTrou(); }
+}
+
+/* ---------- Tir ---------- */
+function point(e){ const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / echelle, (e.clientY - r.top) / echelle]; }
+cv.addEventListener("pointerdown", e => {
+  if(etat !== "jeu" || !arret() || tombe) return;
+  cv.setPointerCapture(e.pointerId);
+  const p = point(e); viser = {x0: p[0], y0: p[1], x: p[0], y: p[1]};
+});
+cv.addEventListener("pointermove", e => { if(viser){ const p = point(e); viser.x = p[0]; viser.y = p[1]; } });
+cv.addEventListener("pointerup", () => {
+  if(!viser) return;
+  const {dx, dy, f} = force(); viser = null;
+  if(f < .04) return;
+  const V = 900 * f, L = Math.hypot(dx, dy);
+  dernier = [balle.x, balle.y];
+  balle.vx = dx / L * V; balle.vy = dy / L * V;
+  coups++; majHud(); son(300 + f * 300, .06);
+});
+cv.addEventListener("pointercancel", () => viser = null);
+function force(){
+  const dx = viser.x0 - viser.x, dy = viser.y0 - viser.y;
+  return {dx, dy, f: Math.min(1, Math.hypot(dx, dy) / 160)};
+}
+
+/* ---------- Son ---------- */
+let actx = null;
+function son(f, d){
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(.08, actx.currentTime); g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + d);
+    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + d);
+  }catch(e){}
+}
+
+/* ---------- Dessin ---------- */
+function chemin(p){ ctx.beginPath(); p.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); }
+function dessiner(){
+  ctx.setTransform(echelle * dpr, 0, 0, echelle * dpr, 0, 0);
+  // gazon hors terrain
+  ctx.fillStyle = "#2f6b3a"; ctx.fillRect(0, 0, LW, LH);
+  ctx.fillStyle = "rgba(255,255,255,.04)";
+  for(let i = 0; i < 40; i++) ctx.fillRect((i * 97) % LW, (i * 53) % LH, 3, 3);
+  if(!H) return;
+  // terrain avec bandes
+  ctx.save(); chemin(H.bord); ctx.clip();
+  for(let y = 0; y < LH; y += 28){ ctx.fillStyle = (y / 28) % 2 ? "#5cc46d" : "#53b964"; ctx.fillRect(0, y, LW, 28); }
+  for(const r of (H.sable || [])){ ctx.fillStyle = "#e9d49b"; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r[0], r[1], r[2] - r[0], r[3] - r[1], 16) : ctx.rect(r[0], r[1], r[2] - r[0], r[3] - r[1]); ctx.fill(); ctx.fillStyle = "rgba(160,120,60,.25)"; for(let i = 0; i < 25; i++) ctx.fillRect(r[0] + ((i * 37) % (r[2] - r[0])), r[1] + ((i * 23) % (r[3] - r[1])), 2, 2); }
+  for(const r of (H.eau || [])){
+    ctx.fillStyle = "#3d9be0"; ctx.fillRect(r[0], r[1], r[2] - r[0], r[3] - r[1]);
+    ctx.strokeStyle = "rgba(255,255,255,.45)"; ctx.lineWidth = 2;
+    for(let y = r[1] + 10; y < r[3]; y += 14){ ctx.beginPath(); for(let x = r[0]; x <= r[2]; x += 6) ctx.lineTo(x, y + Math.sin(x / 10 + temps * 3) * 2); ctx.stroke(); }
+  }
+  for(const p of (H.pentes || [])){
+    ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(p[0], p[1], p[2] - p[0], p[3] - p[1]);
+    const ang = Math.atan2(p[5], p[4]), dec = (temps * 30) % 40;
+    ctx.fillStyle = "rgba(255,255,255,.35)";
+    for(let x = p[0] + 20; x < p[2]; x += 40) for(let y = p[1] + 20; y < p[3]; y += 40){
+      ctx.save(); ctx.translate(x + Math.cos(ang) * (dec - 20) * .5, y + Math.sin(ang) * (dec - 20) * .5); ctx.rotate(ang);
+      ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-6, -7); ctx.lineTo(-6, 7); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+  }
+  ctx.restore();
+  // murs
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.strokeStyle = "#7a4a22"; ctx.lineWidth = 8; chemin(H.bord); ctx.stroke();
+  ctx.strokeStyle = "#a8692f"; ctx.lineWidth = 4; chemin(H.bord); ctx.stroke();
+  for(const b of (H.blocs || [])){ chemin(b); ctx.fillStyle = "#a8692f"; ctx.fill(); ctx.strokeStyle = "#7a4a22"; ctx.lineWidth = 4; ctx.stroke(); }
+  // bumpers
+  for(const [x, y, r] of (H.bumpers || [])){
+    ctx.fillStyle = "#e5484d"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "#ff9a9d"; ctx.beginPath(); ctx.arc(x - r * .3, y - r * .3, r * .4, 0, 6.28); ctx.fill();
+    ctx.strokeStyle = "#8c1d22"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.stroke();
+  }
+  // trou + drapeau
+  const [tx, ty] = H.trou;
+  ctx.fillStyle = "#1b2a1e"; ctx.beginPath(); ctx.arc(tx, ty, TR, 0, 6.28); ctx.fill();
+  ctx.strokeStyle = "#ddd"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx, ty - 38); ctx.stroke();
+  ctx.fillStyle = "#ff4f7b"; ctx.beginPath(); ctx.moveTo(tx, ty - 38); ctx.lineTo(tx + 20 + Math.sin(temps * 4) * 2, ty - 32); ctx.lineTo(tx, ty - 26); ctx.fill();
+  // moulins
+  for(const [cx, cy, len, w] of (H.moulins || [])){
+    const a = temps * w;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(a);
+    ctx.fillStyle = "#f2c14e"; ctx.strokeStyle = "#7a4a22"; ctx.lineWidth = 2;
+    for(let k = 0; k < 2; k++){ ctx.rotate(Math.PI / 2 * k); ctx.fillRect(-len / 2, -4, len, 8); ctx.strokeRect(-len / 2, -4, len, 8); }
+    ctx.restore();
+    ctx.fillStyle = "#7a4a22"; ctx.beginPath(); ctx.arc(cx, cy, 7, 0, 6.28); ctx.fill();
+  }
+  // éclaboussure
+  if(eclabousse && eclabousse.t > 0){ ctx.strokeStyle = `rgba(255,255,255,${eclabousse.t})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(eclabousse.x, eclabousse.y, 22 * (1 - eclabousse.t) + 4, 0, 6.28); ctx.stroke(); }
+  // visée
+  if(viser && balle){
+    const {dx, dy, f} = force();
+    if(f > .02){
+      const L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, lg = 30 + 150 * f;
+      ctx.setLineDash([6, 7]); ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(balle.x, balle.y); ctx.lineTo(balle.x + ux * lg, balle.y + uy * lg); ctx.stroke(); ctx.setLineDash([]);
+      // jauge
+      ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(12, LH - 26, 120, 12);
+      ctx.fillStyle = `hsl(${120 - f * 120} 80% 55%)`; ctx.fillRect(12, LH - 26, 120 * f, 12);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.strokeRect(12, LH - 26, 120, 12);
+    }
+  }
+  // balle
+  if(balle){
+    const s = tombe > 0 ? Math.max(.1, tombe / .35) : 1;
+    ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(balle.x + 2, balle.y + 3, BR * s, BR * .8 * s, 0, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(balle.x, balle.y, BR * s, 0, 6.28); ctx.fill();
+    ctx.strokeStyle = "#bbb"; ctx.lineWidth = 1; ctx.stroke();
+    if(etat === "jeu" && arret() && !viser && !tombe){ ctx.strokeStyle = `rgba(255,255,255,${.4 + .3 * Math.sin(temps * 5)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(balle.x, balle.y, BR + 6, 0, 6.28); ctx.stroke(); }
+  }
+}
+
+/* ---------- Boucle ---------- */
+let avant = performance.now(), acc = 0;
+function boucle(t){
+  const dt = Math.min(.05, (t - avant) / 1000); avant = t;
+  if(etat === "jeu"){
+    acc += dt;
+    while(acc >= 1 / 240){ pas(1 / 240); acc -= 1 / 240; }
+    if(tombe > 0) tombe = Math.max(0, tombe - dt);
+  }else temps += dt;
+  if(eclabousse) eclabousse.t -= dt;
+  dessiner();
+  requestAnimationFrame(boucle);
+}
+
+/* ---------- Écrans ---------- */
+const NOMS = {"-3": "Albatros ! 🦅", "-2": "Eagle ! 🦅", "-1": "Birdie ! 🐦", "0": "Par ✅", "1": "Bogey", "2": "Double bogey"};
+function voile(html){ const v = $("voile"); v.innerHTML = `<div class="boite">${html}</div>`; v.style.display = "flex"; return v; }
+function tableau(){
+  const tot = cartes.reduce((s, c) => s + c, 0), par = TROUS.slice(0, cartes.length).reduce((s, h) => s + h.par, 0);
+  let h = `<table class="carte"><tr><th>Trou</th>${TROUS.map((_, i) => `<th>${i + 1}</th>`).join("")}<th>Tot</th></tr>
+    <tr><td>Par</td>${TROUS.map(t => `<td>${t.par}</td>`).join("")}<td>${TROUS.reduce((s, t) => s + t.par, 0)}</td></tr>
+    <tr><td>Toi</td>${TROUS.map((t, i) => cartes[i] == null ? "<td>·</td>" : `<td class="${cartes[i] < t.par ? "m" : cartes[i] > t.par ? "p" : ""}">${cartes[i]}</td>`).join("")}<td>${tot || "·"}</td></tr></table>`;
+  return {h, tot, ecart: tot - par};
+}
+const ecartTxt = e => e === 0 ? "pile le par" : e > 0 ? `+${e}` : `${e}`;
+function finTrou(){
+  if(etat !== "jeu") return;
+  etat = "entre";
+  cartes.push(coups);
+  const e = coups - H.par, nom = coups === 1 ? "Trou en un !!! 🎉" : (NOMS[String(e)] || `+${e}`);
+  const meil = stock.lire("trous", {}); if(!meil[n] || coups < meil[n]) { meil[n] = coups; stock.ecrire("trous", meil); }
+  majHud();
+  if(n + 1 >= TROUS.length){ finParcours(); return; }
+  const t = tableau();
+  const v = voile(`<h2>${nom}</h2><p>Trou ${n + 1} en ${coups} coup${coups > 1 ? "s" : ""} (par ${H.par})</p>${t.h}
+    <p>Total : <b>${t.tot}</b> (${ecartTxt(t.ecart)})</p><button class="btn" id="suite">Trou suivant ▶</button>`);
+  v.querySelector("#suite").onclick = () => charger(n + 1);
+}
+function finParcours(){
+  etat = "fin";
+  const t = tableau(), rec = stock.lire("record", 0), nouveau = !rec || t.tot < rec;
+  if(nouveau) stock.ecrire("record", t.tot);
+  Base.record("minigolf", t.tot, {mieux: "bas", texte: `${t.tot} coups (${ecartTxt(t.ecart)})`});
+  const v = voile(`<h2>🏆 Parcours terminé !</h2><p><b style="font-size:1.6rem">${t.tot} coups</b> · ${ecartTxt(t.ecart)}</p>${t.h}
+    <p>${nouveau ? "🎉 Nouveau record !" : `Ton record : ${rec} coups`}</p><button class="btn" id="re">Rejouer 🔁</button>`);
+  v.querySelector("#re").onclick = nouveauParcours;
+}
+function nouveauParcours(){ cartes = []; charger(0); }
+function menu(){
+  H = TROUS[0]; SEGS = segments(); balle = {x: H.depart[0], y: H.depart[1], vx: 0, vy: 0};
+  const rec = stock.lire("record", 0);
+  voile(`<h2>⛳ Mini-golf</h2><p>9 trous, du plus simple au plus tordu : sable, eau, bumpers, vent et moulins.</p>
+    <p>Par du parcours : <b>${TROUS.reduce((s, t) => s + t.par, 0)}</b>${rec ? ` · ton record : <b>${rec}</b>` : ""}</p>
+    <button class="btn" id="go" style="font-size:1.15rem;padding:12px 30px">Jouer ▶</button>`).querySelector("#go").onclick = nouveauParcours;
+  majHud();
+}
+$("bCarte").onclick = () => { const t = tableau(); Base.fenetre("📋 Carte des scores", t.h.replace(/rgba\(255,255,255,\.08\)/, ""), {html: true}); };
+
+taille(); menu(); requestAnimationFrame(boucle);
+</script>
+</body>
+</html>

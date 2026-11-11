@@ -381,6 +381,56 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "chronologie",
+    title: "Chronologie",
+    emoji: "⏳",
+    desc: "Six événements (histoire, inventions, films, jeux vidéo, sport…) à ranger du plus ancien au plus récent, en 3 essais. Un nouveau défi chaque jour, plus une partie libre illimitée.",
+    tags: ["Quotidien", "Histoire", "Solo"],
+    colors: ["#d08a3c", "#2f8fce"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "morpion",
+    title: "Morpion géant",
+    emoji: "#️⃣",
+    desc: "Neuf morpions dans un grand morpion : la case où tu joues envoie ton adversaire dans le petit morpion correspondant. Aligne trois petits morpions gagnés ! Contre l'ordi (3 niveaux), à deux ou en ligne.",
+    tags: ["Plateau", "Stratégie", "Multijoueur", "Solo"],
+    colors: ["#6d4cdb", "#ff6a2b"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "dactylo",
+    title: "Dactylo Défense",
+    emoji: "⌨️",
+    desc: "Des mots tombent sur ta ville : tape-les au clavier pour les détruire ! Vagues de plus en plus rapides, multiplicateur, mots bonus et boss en phrases entières. Mots par minute et top 10.",
+    tags: ["Arcade", "Mots", "Solo"],
+    colors: ["#18a999", "#2a1f5a"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "minigolf",
+    title: "Mini-golf",
+    emoji: "⛳",
+    desc: "Un parcours de 9 trous à faire en le moins de coups possible : tire comme un lance-pierre et évite le sable, l'eau, les bumpers, le vent et les moulins.",
+    tags: ["Arcade", "Solo"],
+    colors: ["#2e9d4f", "#f2c14e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "tour",
+    title: "La Tour",
+    emoji: "🏗️",
+    desc: "Empile les blocs le plus haut possible : ce qui dépasse est coupé, la tour s'affine… Lâche-les pile dessus pour les faire regrandir. Un doigt suffit, et le top 10 t'attend.",
+    tags: ["Arcade", "Solo"],
+    colors: ["#e0663a", "#5b6bd0"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "chancedle",
     title: "Chancedle",
     emoji: "🎲",
@@ -471,13 +521,13 @@ window.SALLE_CATALOGUE = [
 window.SALLE_CATEGORIES = [
   {id: "jour", emoji: "📅", titre: "Défis du jour", c: ["#ffb020", "#ff6a2b"],
    desc: "Un nouveau défi chaque jour, le même pour tout le monde. Garde ta série et gagne des médailles.",
-   jeux: ["wordle", "loldle", "onepiecedle", "pokedle", "electrodle", "anidle", "paysdle", "motscroises", "motsfleches", "sudoku", "connexions", "shikaku", "chancedle", "coupdefeu"]},
+   jeux: ["wordle", "loldle", "onepiecedle", "pokedle", "electrodle", "anidle", "paysdle", "motscroises", "motsfleches", "sudoku", "connexions", "shikaku", "chancedle", "chronologie", "coupdefeu"]},
   {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", c: ["#ff4f7b", "#8b4dff"],
    desc: "Des jeux de groupe où chacun joue sur son téléphone, il suffit d'un code de salle.",
    jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran"]},
   {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
    desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
-   jeux: ["puissance4", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
+   jeux: ["puissance4", "morpion", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
   {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
    desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
    jeux: ["poker", "blackjack", "roulette"]},
@@ -486,7 +536,7 @@ window.SALLE_CATEGORIES = [
    jeux: ["quintuplees", "jdr"]},
   {id: "arcade", emoji: "🕹️", titre: "Arcade et solo", c: ["#1f9a66", "#9bd34a"],
    desc: "Arcade, réflexion et gestion : des records à battre quand tu as un moment.",
-   jeux: ["arene", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
+   jeux: ["arene", "dactylo", "tour", "minigolf", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
 ];
 
 /* Liste finale des catégories : celles du code, modifiées ou masquées

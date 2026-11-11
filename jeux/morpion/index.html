@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Morpion géant</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#6d4cdb;--fond1:rgba(109,76,219,.15);--fond2:rgba(255,106,43,.12);--x:#e5484d;--o:#2f7fe0}
+.panneau{max-width:560px}
+.hero{text-align:center}
+.hero .logo{font-size:3.2rem;line-height:1}
+.hero h2{font-size:2rem;margin:6px 0 4px}
+.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}
+@media (max-width:520px){.modes{grid-template-columns:1fr}}
+.modes button{border:2px solid var(--line);background:var(--card);border-radius:16px;padding:14px 10px;font-weight:800;display:flex;flex-direction:column;align-items:center;gap:4px}
+.modes button:hover{border-color:var(--text)}
+.modes button span{font-size:1.8rem}
+.modes button small{font-weight:700;color:var(--muted);font-size:.8rem}
+.bloc{margin-top:14px}
+.bloc>b{display:block;font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+.ligne{display:flex;gap:8px}
+.ligne .champ{flex:1;min-width:0}
+.note{color:var(--muted);text-align:center;font-size:.92rem;margin:10px 0 0}
+.code{font-family:Fredoka,sans-serif;font-size:2.4rem;letter-spacing:.2em;font-weight:700;color:var(--accent);text-align:center;margin:4px 0}
+
+.jeu{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.bandeau-tour{display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px}
+.joueur{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--card);border:2px solid var(--line);font-weight:800;min-width:0}
+.joueur .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:9em}
+.joueur.actif{border-color:var(--encre);box-shadow:0 3px 0 var(--encre)}
+.joueur.x .s{color:var(--x)}.joueur.o .s{color:var(--o)}
+.joueur .s{font-family:Fredoka,sans-serif;font-size:1.3rem}
+.msg{font-weight:800;text-align:center;min-height:1.4em}
+.grand{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(100%,520px);aspect-ratio:1;background:var(--encre);padding:8px;border-radius:18px}
+.petit{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;background:var(--line);border-radius:10px;padding:3px;transition:opacity .2s,box-shadow .2s}
+.petit.jouable{background:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px var(--accent)}
+.petit.eteint{opacity:.55}
+.case{border:0;border-radius:6px;background:var(--card);font-family:Fredoka,sans-serif;font-weight:700;font-size:clamp(.9rem,4.4vw,1.7rem);display:flex;align-items:center;justify-content:center;padding:0;line-height:1;color:var(--text)}
+.case.x{color:var(--x)}.case.o{color:var(--o)}
+.case.dernier{background:color-mix(in srgb,#f2c14e 45%,var(--card))}
+.petit.jouable .case:not(.x):not(.o):hover{background:color-mix(in srgb,var(--accent) 18%,var(--card))}
+.case:disabled{cursor:default}
+.gagne{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:Fredoka,sans-serif;font-weight:700;font-size:clamp(3rem,22vw,8rem);border-radius:10px;pointer-events:none;animation:apparait .35s cubic-bezier(.3,1.6,.5,1)}
+.gagne.x{color:var(--x);background:color-mix(in srgb,var(--x) 22%,var(--card))}
+.gagne.o{color:var(--o);background:color-mix(in srgb,var(--o) 22%,var(--card))}
+.gagne.nul{color:var(--muted);background:var(--soft);font-size:clamp(2rem,14vw,5rem)}
+@keyframes apparait{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+.boutons{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="eMenu" class="b-carte panneau">
+    <div class="hero">
+      <div class="logo">#️⃣</div>
+      <h2>Morpion géant</h2>
+      <p class="muted">Neuf morpions dans un grand morpion. La case où tu joues décide du morpion où ton adversaire devra jouer. Gagne trois petits morpions alignés !</p>
+    </div>
+    <div class="modes">
+      <button id="mBot"><span>🤖</span>Contre l'ordi<small>3 niveaux</small></button>
+      <button id="mLocal"><span>👥</span>À deux<small>sur le même écran</small></button>
+      <button id="mLigne"><span>🌐</span>En ligne<small>avec un code</small></button>
+    </div>
+    <div class="bloc" id="blocNiveau">
+      <b>Niveau de l'ordi</b>
+      <div class="pilules" id="niveaux"></div>
+    </div>
+  </section>
+
+  <section id="eLigne" class="b-carte panneau cache">
+    <button class="btn ghost petit" data-retour>← Retour</button>
+    <h2 style="margin:12px 0 4px">🌐 Jouer en ligne</h2>
+    <label class="etiquette" for="pseudo">Ton pseudo</label>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton prénom ou pseudo" autocomplete="off">
+    <div class="actions"><button class="btn" id="creer">🏠 Créer une salle</button></div>
+    <label class="etiquette" for="codeIn">… ou rejoindre une salle</label>
+    <div class="ligne"><input class="champ" id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off" style="text-transform:uppercase"><button class="btn ghost" id="rejoindre">Rejoindre</button></div>
+    <p class="note" id="msgLigne"></p>
+  </section>
+
+  <section id="eAttente" class="b-carte panneau cache" style="text-align:center">
+    <p class="muted" style="margin:0">Code de la salle</p>
+    <div class="code" id="code">····</div>
+    <button class="btn ghost petit" id="copier">🔗 Copier le lien d'invitation</button>
+    <p class="note">⏳ En attente de ton adversaire…</p>
+    <div class="actions"><button class="btn ghost" id="annuler">Annuler</button></div>
+  </section>
+
+  <section id="eJeu" class="jeu cache">
+    <div class="bandeau-tour">
+      <div class="joueur x" id="jX"><span class="s">X</span><span class="n" id="nX">Toi</span></div>
+      <div class="joueur o" id="jO"><span class="n" id="nO">Ordi</span><span class="s">O</span></div>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="grand" id="grand"></div>
+    <div class="boutons">
+      <button class="btn" id="rejouer">🔁 Nouvelle partie</button>
+      <button class="btn ghost" id="quitter">🏠 Menu</button>
+    </div>
+  </section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const stock = Base.stock("morpion_");
+Base.entete({
+  titre: "Morpion géant", emoji: "#️⃣",
+  aide: `<p>Le plateau est un grand morpion dont chaque case est un petit morpion.</p>
+    <ul><li>Tu joues dans un petit morpion. <b>La case que tu choisis envoie ton adversaire</b> dans le petit morpion à la même place (case en haut à droite → morpion en haut à droite).</li>
+    <li>Le morpion où il faut jouer est entouré en couleur.</li>
+    <li>Si ce morpion est déjà gagné ou plein, l'adversaire joue <b>où il veut</b>.</li>
+    <li>Gagner un petit morpion (3 alignés) le marque à ton symbole. <b>Aligne 3 petits morpions gagnés</b> pour remporter la partie.</li>
+    <li>Plus aucun alignement possible ? Celui qui a gagné le plus de petits morpions l'emporte.</li></ul>`
+});
+
+/* ---------- Règles ---------- */
+const LIGNES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+function vainqueur(t){       // t : 9 valeurs "X" | "O" | "=" | null
+  for(const [a, b, c] of LIGNES) if(t[a] && t[a] !== "=" && t[a] === t[b] && t[a] === t[c]) return t[a];
+  return null;
+}
+function nouvelEtat(premier){ return {p: Array.from({length: 9}, () => Array(9).fill(null)), g: Array(9).fill(null), suiv: -1, tour: premier || "X", fin: null, dernier: null}; }
+function coups(S){
+  if(S.fin) return [];
+  const l = [], bs = S.suiv >= 0 ? [S.suiv] : [0,1,2,3,4,5,6,7,8].filter(b => !S.g[b]);
+  for(const b of bs) for(let c = 0; c < 9; c++) if(!S.p[b][c]) l.push(b * 9 + c);
+  return l;
+}
+function jouer(S, m){           // modifie S
+  const b = Math.floor(m / 9), c = m % 9, j = S.tour;
+  S.p[b][c] = j; S.dernier = m;
+  if(!S.g[b]){
+    if(vainqueur(S.p[b])) S.g[b] = j;
+    else if(S.p[b].every(Boolean)) S.g[b] = "=";
+  }
+  const v = vainqueur(S.g);
+  if(v) S.fin = v;
+  else{
+    // plus aucun alignement possible pour personne : le plus de petits morpions gagnés l'emporte
+    const possible = s => LIGNES.some(l => l.every(i => !S.g[i] || S.g[i] === s));
+    if(!possible("X") && !possible("O")){
+      const nx = S.g.filter(x => x === "X").length, no = S.g.filter(x => x === "O").length;
+      S.fin = nx > no ? "X" : no > nx ? "O" : "=";
+    }
+  }
+  S.suiv = S.g[c] ? -1 : c;
+  S.tour = j === "X" ? "O" : "X";
+  if(!S.fin && !coups(S).length) S.fin = "=";
+  return S;
+}
+const copie = S => ({p: S.p.map(r => r.slice()), g: S.g.slice(), suiv: S.suiv, tour: S.tour, fin: S.fin, dernier: S.dernier});
+
+/* ---------- Ordi ---------- */
+function gagneLePetit(S, m){ const b = Math.floor(m / 9), c = m % 9; if(S.g[b]) return false; const t = S.p[b].slice(); t[c] = S.tour; return !!vainqueur(t); }
+function heuristique(S, m){
+  const T = copie(S); jouer(T, m);
+  if(T.fin === S.tour) return 1e6;
+  let s = Math.random();
+  if(gagneLePetit(S, m)) s += 50;
+  const adv = copie(S); adv.tour = S.tour === "X" ? "O" : "X";
+  if(gagneLePetit(adv, m)) s += 30;                    // bloque
+  if(T.suiv === -1) s -= 25;                            // laisse le choix libre
+  else if(coups(T).some(x => gagneLePetit(T, x))) s -= 40;  // l'envoie là où il gagne un morpion
+  const c = m % 9; if(c === 4) s += 3; else if(c % 2 === 0) s += 1.5;
+  return s;
+}
+function coupFacile(S){
+  const l = coups(S);
+  if(Math.random() < .5) return l[Math.floor(Math.random() * l.length)];
+  return l.reduce((a, b) => heuristique(S, b) > heuristique(S, a) ? b : a);
+}
+/* MCTS (arbre de recherche Monte-Carlo) avec parties simulées un peu guidées */
+function mcts(S, ms){
+  const moi = S.tour, fin = performance.now() + ms;
+  const racine = {m: null, n: 0, w: 0, enfants: null, reste: coups(S), joueur: null};
+  let iter = 0;
+  while(performance.now() < fin || iter < 200){
+    iter++;
+    const T = copie(S); let noeud = racine; const chemin = [racine];
+    // sélection
+    while(noeud.reste && !noeud.reste.length && noeud.enfants && noeud.enfants.length){
+      const ln = Math.log(noeud.n);
+      noeud = noeud.enfants.reduce((a, b) => (b.w / b.n + 1.2 * Math.sqrt(ln / b.n)) > (a.w / a.n + 1.2 * Math.sqrt(ln / a.n)) ? b : a);
+      jouer(T, noeud.m); chemin.push(noeud);
+    }
+    // expansion
+    if(!T.fin && noeud.reste && noeud.reste.length){
+      const i = Math.floor(Math.random() * noeud.reste.length), m = noeud.reste.splice(i, 1)[0];
+      const qui = T.tour; jouer(T, m);
+      const e = {m, n: 0, w: 0, enfants: null, reste: coups(T), joueur: qui};
+      (noeud.enfants = noeud.enfants || []).push(e); noeud = e; chemin.push(e);
+    }
+    // simulation
+    let k = 0;
+    while(!T.fin && k++ < 90){
+      const l = coups(T);
+      const g = l.find(x => gagneLePetit(T, x));
+      jouer(T, g != null && Math.random() < .7 ? g : l[Math.floor(Math.random() * l.length)]);
+    }
+    // rétropropagation
+    for(const x of chemin){ x.n++; if(x.joueur) x.w += T.fin === x.joueur ? 1 : T.fin === "=" || !T.fin ? .5 : 0; }
+    if(iter > 60000) break;
+  }
+  if(!racine.enfants) return coups(S)[0];
+  // coup gagnant immédiat
+  const direct = coups(S).find(m => { const T = copie(S); jouer(T, m); return T.fin === moi; });
+  if(direct != null) return direct;
+  return racine.enfants.reduce((a, b) => b.n > a.n ? b : a).m;
+}
+const NIVEAUX = [["facile", "😊 Facile"], ["moyen", "🙂 Moyen"], ["difficile", "😈 Difficile"]];
+function coupOrdi(S, niv){
+  if(niv === "facile") return coupFacile(S);
+  return mcts(S, niv === "moyen" ? 250 : 1400);
+}
+
+/* ---------- État de l'interface ---------- */
+let pid = 1, attente = null, mode = null, S = null, niveau = stock.lire("niveau", "moyen"), moiSym = "X", salle = null, noms = {X: "Toi", O: "Ordi"}, premier = "X", reflechit = false;
+function ecran(id){ ["eMenu", "eLigne", "eAttente", "eJeu"].forEach(x => $(x).classList.toggle("cache", x !== id)); }
+
+function pilulesNiveau(){
+  $("niveaux").innerHTML = "";
+  NIVEAUX.forEach(([k, t]) => { const b = Base.el("button", t); b.className = k === niveau ? "on" : ""; b.onclick = () => { niveau = k; stock.ecrire("niveau", k); pilulesNiveau(); }; $("niveaux").appendChild(b); });
+}
+pilulesNiveau();
+
+function rendre(){
+  const g = $("grand"); g.innerHTML = "";
+  const peut = peutJouer();
+  const jouables = new Set(coups(S).map(m => Math.floor(m / 9)));
+  for(let b = 0; b < 9; b++){
+    const p = Base.el("div", null, "petit");
+    if(!S.fin && jouables.has(b)) p.classList.add("jouable");
+    else if(!S.g[b]) p.classList.add("eteint");
+    for(let c = 0; c < 9; c++){
+      const v = S.p[b][c], k = Base.el("button", v || "", "case" + (v ? " " + v.toLowerCase() : "") + (S.dernier === b * 9 + c ? " dernier" : ""));
+      k.setAttribute("aria-label", `Morpion ${b + 1}, case ${c + 1}${v ? " : " + v : ""}`);
+      k.disabled = !peut || !!v || !jouables.has(b) || !!S.fin;
+      k.onclick = () => clic(b * 9 + c);
+      p.appendChild(k);
+    }
+    if(S.g[b]) p.appendChild(Base.el("div", S.g[b] === "=" ? "=" : S.g[b], "gagne " + (S.g[b] === "=" ? "nul" : S.g[b].toLowerCase())));
+    g.appendChild(p);
+  }
+  $("nX").textContent = noms.X; $("nO").textContent = noms.O;
+  $("jX").classList.toggle("actif", !S.fin && S.tour === "X");
+  $("jO").classList.toggle("actif", !S.fin && S.tour === "O");
+  let m = "";
+  if(S.fin){
+    m = S.fin === "=" ? "🤝 Match nul !" : `🏆 ${noms[S.fin]} gagne !`;
+  }else if(mode === "bot") m = S.tour === moiSym ? (S.suiv >= 0 ? "À toi : joue dans le morpion entouré" : "À toi : joue où tu veux") : "🤖 L'ordi réfléchit…";
+  else if(mode === "ligne") m = S.tour === moiSym ? "À toi de jouer !" : `⏳ ${noms[S.tour]} réfléchit…`;
+  else m = `Au tour de ${noms[S.tour]} (${S.tour})`;
+  $("msg").textContent = m;
+  $("rejouer").classList.toggle("cache", mode === "ligne" && !(salle && salle.hote));
+}
+function peutJouer(){
+  if(!S || S.fin) return false;
+  if(mode === "local") return true;
+  if(mode === "bot") return S.tour === moiSym && !reflechit;
+  if(mode === "ligne") return S.tour === moiSym;
+  return false;
+}
+function finPartie(){
+  if(!S.fin) return;
+  if(mode === "bot" && S.fin === moiSym){
+    const v = stock.lire("victoires", {}); v[niveau] = (v[niveau] || 0) + 1; stock.ecrire("victoires", v);
+    const pts = {facile: 1, moyen: 2, difficile: 3}[niveau];
+    Base.record("morpion", pts, {mieux: "haut", texte: "Bat l'ordi " + {facile: "facile", moyen: "moyen", difficile: "difficile"}[niveau]});
+    Base.toast("🏆 Victoire contre l'ordi " + niveau + " !");
+  }
+}
+function clic(m){
+  if(!peutJouer() || !coups(S).includes(m)) return;
+  if(mode === "ligne"){
+    if(salle.hote){ jouer(S, m); diffuser(); }
+    else { attente = {m, n: nbCoups(), t: Date.now(), pid}; salle.envoyer({t: "coup", m, n: attente.n}); jouer(S, m); }   // affichage immédiat, l'hôte confirme
+    rendre(); finPartie(); return;
+  }
+  jouer(S, m); rendre(); finPartie();
+  if(mode === "bot" && !S.fin) tourOrdi();
+}
+const nbCoups = () => S.p.reduce((n, r) => n + r.filter(Boolean).length, 0);
+function tourOrdi(){
+  reflechit = true; rendre();
+  setTimeout(() => {
+    const m = coupOrdi(S, niveau);
+    jouer(S, m); reflechit = false; rendre(); finPartie();
+  }, niveau === "difficile" ? 30 : 350);
+}
+
+function lancer(m){
+  mode = m;
+  premier = "X";
+  S = nouvelEtat("X");
+  if(m === "bot"){ moiSym = "X"; noms = {X: Base.joueur.pseudo() || "Toi", O: "🤖 Ordi"}; }
+  if(m === "local"){ noms = {X: "Joueur X", O: "Joueur O"}; }
+  ecran("eJeu"); rendre();
+}
+$("mBot").onclick = () => lancer("bot");
+$("mLocal").onclick = () => lancer("local");
+$("mLigne").onclick = () => { $("pseudo").value = Base.joueur.pseudo(); ecran("eLigne"); };
+document.querySelectorAll("[data-retour]").forEach(b => b.onclick = () => ecran("eMenu"));
+$("rejouer").onclick = () => {
+  if(mode === "bot"){
+    premier = premier === "X" ? "O" : "X";
+    S = nouvelEtat(premier); rendre();
+    if(S.tour !== moiSym) tourOrdi();
+  }else if(mode === "local"){ premier = premier === "X" ? "O" : "X"; S = nouvelEtat(premier); rendre(); }
+  else if(salle && salle.hote){ premier = premier === "X" ? "O" : "X"; S = nouvelEtat(premier); pid++; diffuser(); rendre(); }
+};
+$("quitter").onclick = () => {
+  if(salle){ salle.quitter(); salle = null; }
+  mode = null; ecran("eMenu");
+};
+
+/* ---------- En ligne (l'hôte joue X et fait foi) ---------- */
+function diffuser(){ if(salle && salle.hote && S) salle.envoyer({t: "etat", S, noms, pid}); }
+function pseudoOk(){
+  const p = $("pseudo").value.trim();
+  if(!p){ $("msgLigne").textContent = "Choisis d'abord un pseudo."; return false; }
+  Base.joueur.changerPseudo(p); return true;
+}
+$("creer").onclick = async () => {
+  if(!pseudoOk()) return;
+  $("msgLigne").textContent = "Création de la salle…";
+  try{
+    salle = await Reseau.creer("morpion", {
+      max: 2,
+      surEssai(t){ $("msgLigne").textContent = t; },
+      surArrivee(j){
+        mode = "ligne"; moiSym = "X"; premier = "X";
+        noms = {X: salle.joueurs[0].pseudo, O: j.pseudo};
+        S = nouvelEtat("X"); ecran("eJeu"); rendre(); diffuser();
+        Base.toast(j.avatar + " " + j.pseudo + " est là !");
+      },
+      surDepart(j){ Base.toast(j.pseudo + " est parti·e"); $("msg").textContent = "😢 Ton adversaire a quitté la partie."; },
+      surMessage(m){
+        if(m.t === "etat?"){ diffuser(); return; }
+        if(m.t === "coup" && S && !S.fin && S.tour === "O" && coups(S).includes(m.m) && m.n === nbCoups()){ jouer(S, m.m); rendre(); finPartie(); }
+        diffuser();
+      }
+    });
+    $("code").textContent = salle.code; ecran("eAttente");
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+};
+async function rejoindre(code){
+  if(!pseudoOk()) return;
+  $("msgLigne").textContent = "Connexion à la salle " + code + "…";
+  try{
+    salle = await Reseau.rejoindre("morpion", code, {
+      surMessage(m){
+        if(m.t !== "etat" || !m.S) return;
+        const n = m.S.p.reduce((k, r) => k + r.filter(Boolean).length, 0);
+        if(attente && attente.pid !== m.pid) attente = null;
+        pid = m.pid;
+        if(attente){
+          if(n <= attente.n && !m.S.fin){                // mon coup n'est pas encore arrivé chez l'hôte
+            if(Date.now() - attente.t > 2000){ attente.t = Date.now(); salle.envoyer({t: "coup", m: attente.m, n: attente.n}); }
+            return;
+          }
+          attente = null;
+        }
+        const avant = S ? JSON.stringify(S) : "";
+        S = m.S; noms = m.noms || noms; mode = "ligne"; moiSym = "O";
+        if($("eJeu").classList.contains("cache")) ecran("eJeu");
+        if(JSON.stringify(S) !== avant){ rendre(); finPartie(); }
+      },
+      surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; mode = null; ecran("eMenu"); },
+      surHotePerdu(){ Base.toast("L'hôte ne répond plus…"); }
+    });
+    salle.envoyer({t: "etat?"});
+    $("msgLigne").textContent = "Connecté ! La partie va commencer…";
+  }catch(e){ $("msgLigne").textContent = "❌ " + e.message; }
+}
+$("rejoindre").onclick = () => { const c = $("codeIn").value.trim().toUpperCase(); if(c) rejoindre(c); };
+$("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("rejoindre").click(); });
+$("copier").onclick = async () => {
+  try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! 📨"); }catch(e){ Base.fenetre("Lien d'invitation", salle.lien); }
+};
+$("annuler").onclick = () => { if(salle){ salle.quitter(); salle = null; } ecran("eMenu"); };
+setInterval(() => { if(salle && salle.hote && mode === "ligne") diffuser(); }, 3000);
+
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){ $("codeIn").value = codeLien; $("pseudo").value = Base.joueur.pseudo(); ecran("eLigne"); if(Base.joueur.pseudo()) rejoindre(codeLien); }
+</script>
+</body>
+</html>
