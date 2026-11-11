@@ -66,6 +66,8 @@ Base.entete({
     <li>Après chaque vague, choisis <b>un augment parmi trois</b> : tir triple, missiles, drones, éclairs, rebonds… Ils se cumulent !</li>
     <li>Bonus qui tombent : 💣 bombe, ⚡ frénésie, 🛡️ bouclier, ❤️ vie. L'OVNI qui passe en haut en lâche toujours un.</li>
     <li>Toutes les 5 vagues : <b>la Mère-Ruche</b>, un boss.</li>
+    <li>Après la vague 10, les aliens deviennent plus coriaces à chaque vague, et des <b>élites</b> (cerclés d'or) apparaissent : ils visent et rapportent 3 fois plus.</li>
+    <li>Tous tes augments au max ? Surpuissance, Surchauffe et Réparation se cumulent sans limite.</li>
     <li><b>Coop</b> (2 à 4) : même terrain, chacun ses augments. Un joueur abattu revient à la vague suivante.</li>
     <li><b>Duel</b> (2 à 4) : chacun ses vagues (les mêmes pour tous). Tes éliminations envoient des plongeurs chez les autres. Le dernier en vie gagne !</li></ul>`
 });
@@ -98,11 +100,15 @@ const AUGS = [
   {k: "gel",     e: "❄️", n: "Tirs gelants",     d: "Les ennemis touchés ne tirent plus 2 s", r: "commun", max: 1},
   {k: "meteore", e: "☄️", n: "Pluie de météores", d: "Des météores frappent les ennemis",    r: "epique", max: 3},
   {k: "bouclier",e: "🛡️", n: "Bouclier",         d: "Encaisse un tir, rechargé à chaque vague", r: "commun", max: 3},
-  {k: "vie",     e: "❤️", n: "Vie en plus",      d: "+1 vie tout de suite",                  r: "commun", max: 9},
+  {k: "vie",     e: "❤️", n: "Vie en plus",      d: "+1 vie tout de suite",                  r: "commun", max: 4},
   {k: "vitesse", e: "🏃", n: "Réacteurs",        d: "Tu te déplaces 25 % plus vite",         r: "commun", max: 3},
   {k: "esquive", e: "👻", n: "Fantôme",          d: "12 % d'esquiver un tir, invincible plus longtemps", r: "rare", max: 3},
   {k: "jackpot", e: "🎰", n: "Jackpot",          d: "Les ennemis lâchent 2 fois plus de bonus", r: "commun", max: 2},
-  {k: "sabotage",e: "☠️", n: "Sabotage",         d: "Duel : chaque attaque envoie 1 plongeur de plus", r: "rare", max: 3, duel: true}
+  {k: "sabotage",e: "☠️", n: "Sabotage",         d: "Duel : chaque attaque envoie 1 plongeur de plus", r: "rare", max: 3, duel: true},
+  // sans limite : proposés quand il ne reste plus assez d'augments normaux
+  {k: "puissance", e: "💪", n: "Surpuissance",   d: "+20 % de dégâts sur tout",              r: "epique", max: 999, inf: true},
+  {k: "surchauffe",e: "🔥", n: "Surchauffe",     d: "Tu tires 10 % plus vite",               r: "rare",   max: 999, inf: true},
+  {k: "soin",      e: "🩹", n: "Réparation",     d: "+1 vie tout de suite",                  r: "commun", max: 999, inf: true}
 ];
 const AUG = Object.fromEntries(AUGS.map(a => [a.k, a]));
 const POIDS = {commun: 6, rare: 3, epique: 1.3};
@@ -154,6 +160,9 @@ function nouvelleSim(joueurs){
 }
 const vivants = () => S.v.filter(v => !v.mort);
 const nb = (v, k) => v.aug[k] || 0;
+// difficulté : douce jusqu'à la vague 10, puis +10 % de résistance par vague, +18 % après la vague 30
+const dur = w => w <= 10 ? 1 : Math.pow(1.1, w - 10) * Math.pow(1.08, Math.max(0, w - 30));
+const pm = v => v ? 1 + .2 * nb(v, "puissance") : 1;
 
 /* ---------- Vagues ---------- */
 function vagueSuivante(){
@@ -163,10 +172,11 @@ function vagueSuivante(){
   S.en = S.en.filter(e => e.piege);       // les plongeurs envoyés par un rival restent
   if(S.w % 5 === 0){
     const lvl = S.w / 5;
-    S.boss = {x: LW / 2, y: -90, hp: 70 + 45 * lvl + (S.v.length - 1) * 40, max: 0, t: 0, cdSalve: 2, cdPonte: 4, cdSpirale: 0, ang: 0, lvl};
+    S.boss = {x: LW / 2, y: -90, hp: Math.round((70 + 45 * lvl + (S.v.length - 1) * 40) * dur(S.w) * (1 + .25 * (S.v.length - 1))), max: 0, t: 0, cdSalve: 2, cdPonte: 4, cdSpirale: 0, ang: 0, lvl};
     S.boss.max = S.boss.hp;
   }else{
-    const lignes = Math.min(5, 3 + Math.floor((S.w - 1) / 2)), cols = 8;
+    const lignes = Math.min(S.w >= 15 ? 6 : 5, 3 + Math.floor((S.w - 1) / 2)), cols = 8;
+    const pElite = S.w < 12 ? 0 : Math.min(.4, (S.w - 11) * .02);
     const pool = ["bulle", "bulle", "meduse"];
     if(S.w >= 2) pool.push("tireur");
     if(S.w >= 3) pool.push("plongeur", "plongeur");
@@ -175,8 +185,9 @@ function vagueSuivante(){
     for(let gy = 0; gy < lignes; gy++){
       const t = gy === 0 && S.w >= 4 ? (r() < .5 ? "blinde" : "tireur") : pool[Math.floor(r() * pool.length)];
       for(let gx = 0; gx < cols; gx++){
-        const T = TYPES[t], bonusHp = Math.floor(S.w / 7);
-        S.en.push({id: idSuiv++, t, hp: T.hp + bonusHp, gx, gy, x: 0, y: 0, m: "form", gel: 0, cd: 2 + r() * 4});
+        const T = TYPES[t], el = r() < pElite ? 1 : 0;
+        const hp = Math.ceil((T.hp + Math.floor(S.w / 6)) * dur(S.w) * (el ? 2.5 : 1));
+        S.en.push({id: idSuiv++, t, hp, gx, gy, x: 0, y: 0, m: "form", gel: 0, cd: 2 + r() * 4, el});
       }
     }
     S.form = {x: 0, y: -220, dir: 1, n0: S.en.length};
@@ -187,8 +198,9 @@ const posForm = e => [36 + e.gx * 47 + S.form.x, 70 + e.gy * 36 + S.form.y];
 
 /* ---------- Augments ---------- */
 function tirerOffres(v){
-  const dispo = AUGS.filter(a => nb(v, a.k) < a.max && (!a.duel || mode === "duel"));
+  const dispo = AUGS.filter(a => !a.inf && nb(v, a.k) < a.max && (!a.duel || mode === "duel"));
   const l = [];
+  if(dispo.length < 3) dispo.push(...AUGS.filter(a => a.inf));
   while(l.length < 3 && dispo.length){
     const tot = dispo.reduce((s, a) => s + POIDS[a.r], 0);
     let x = Math.random() * tot, i = 0;
@@ -200,7 +212,7 @@ function tirerOffres(v){
 function appliquerAug(v, k){
   if(!AUG[k] || nb(v, k) >= AUG[k].max) return;
   v.aug[k] = nb(v, k) + 1;
-  if(k === "vie") v.vies++;
+  if(k === "vie" || k === "soin") v.vies++;
   if(k === "bouclier") v.bouclier++;
 }
 function finVague(){
@@ -227,7 +239,7 @@ function maj(dt){
     if(v.frenesie > 0) v.frenesie -= dt;
     if(S.phase !== "jeu") continue;
     v.cd -= dt * (v.frenesie > 0 ? 2 : 1);
-    if(v.cd <= 0){ v.cd = .34 / (1 + .25 * nb(v, "cadence")); salve(v); }
+    if(v.cd <= 0){ v.cd = .34 / ((1 + .25 * nb(v, "cadence")) * (1 + .1 * nb(v, "surchauffe"))); salve(v); }
     if(nb(v, "drone")){ v.droneCd -= dt; if(v.droneCd <= 0){ v.droneCd = .55; for(let k = 0; k < nb(v, "drone"); k++){ const dx = (k % 2 ? 1 : -1) * (28 + 12 * Math.floor(k / 2)); balle(v, v.x + dx, YV - 4, 0, -480, {deg: 1, taille: 2.5}); } } }
     if(nb(v, "meteore")){ v.meteoCd -= dt; if(v.meteoCd <= 0){ v.meteoCd = 7.5 / nb(v, "meteore"); const c = cibles().sort(() => Math.random() - .5).slice(0, 3); c.forEach(e => balle(v, e.x + (Math.random() - .5) * 10, -20, 0, 650, {deg: 3, taille: 7, k: 2})); } }
   }
@@ -255,7 +267,7 @@ function maj(dt){
     if(e.m === "form"){
       [e.x, e.y] = posForm(e);
       if(e.y > YV - 18){ invasion(e); continue; }
-      if(e.t === "tireur" && e.gel <= 0){ e.cd -= dt; if(e.cd <= 0){ e.cd = 3 + Math.random() * 3; const c = vivants()[Math.floor(Math.random() * vivants().length)]; if(c){ const a = Math.atan2(YV - e.y, c.x - e.x); S.te.push({x: e.x, y: e.y + 10, vx: Math.cos(a) * 190, vy: Math.sin(a) * 190}); } } }
+      if((e.t === "tireur" || e.el) && e.gel <= 0){ e.cd -= dt; if(e.cd <= 0){ e.cd = Math.max(1.6, 3 - S.w * .03) + Math.random() * 3; const c = vivants()[Math.floor(Math.random() * vivants().length)]; if(c){ const a = Math.atan2(YV - e.y, c.x - e.x), sp = Math.min(300, 190 + S.w * 2.5); S.te.push({x: e.x, y: e.y + 10, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp}); } } }
     }else if(e.m === "plonge" || e.m === "libre"){
       e.x += e.vx * dt * lent; e.y += e.vy * dt * lent;
       if(e.m === "plonge"){ const c = proche(e.x); if(c) e.vx += Math.sign(c.x - e.x) * 140 * dt; e.vx = Math.max(-160, Math.min(160, e.vx)); }
@@ -274,7 +286,7 @@ function maj(dt){
     S.cdPlonge = Math.max(1.1, 4 - S.w * .15) * (.7 + Math.random() * .6) / Math.sqrt(vivants().length || 1);
     const cand = form.filter(e => e.t === "plongeur" || S.w >= 8);
     const e = cand[Math.floor(Math.random() * cand.length)];
-    if(e){ e.m = "plonge"; e.vx = 0; e.vy = 150 + S.w * 6; e.retour = true; }
+    if(e){ e.m = "plonge"; e.vx = 0; e.vy = Math.min(380, 150 + S.w * 6); e.retour = true; }
   }
   // tirs ennemis
   S.cdTir -= dt;
@@ -282,8 +294,11 @@ function maj(dt){
     S.cdTir = Math.max(.3, 1.5 - S.w * .07) * (.6 + Math.random() * .8) / (1 + .4 * (vivants().length - 1));
     const cols = {};
     form.forEach(e => { if(e.gel <= 0 && (!cols[e.gx] || e.y > cols[e.gx].y)) cols[e.gx] = e; });
-    const l = Object.values(cols), e = l[Math.floor(Math.random() * l.length)];
-    if(e) S.te.push({x: e.x, y: e.y + 10, vx: 0, vy: 190 + S.w * 5});
+    const l = Object.values(cols), salves = 1 + Math.floor(Math.max(0, S.w - 10) / 8);
+    for(let k = 0; k < salves && l.length; k++){
+      const e = l.splice(Math.floor(Math.random() * l.length), 1)[0];
+      S.te.push({x: e.x, y: e.y + 10, vx: 0, vy: Math.min(420, 190 + S.w * 5)});
+    }
   }
   // boss
   if(S.boss) majBoss(dt);
@@ -311,13 +326,13 @@ function majBoss(dt){
   b.cdSalve -= dt; b.cdPonte -= dt;
   if(b.cdSalve <= 0){
     b.cdSalve = Math.max(.9, 1.8 - b.lvl * .15);
-    const n = 5 + b.lvl;
+    const n = Math.min(17, 5 + b.lvl);
     for(let i = 0; i < n; i++){ const a = Math.PI / 2 + (i - (n - 1) / 2) * .17; S.te.push({x: b.x, y: b.y + 30, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180}); }
     son(160, .15, "sawtooth", .03, "boss");
   }
   if(b.cdPonte <= 0){
     b.cdPonte = 5;
-    for(let i = 0; i < 2 + b.lvl; i++) S.en.push({id: idSuiv++, t: "plongeur", hp: 1, x: b.x + (i - 1) * 30, y: b.y + 30, m: "plonge", vx: (i - 1) * 40, vy: 160, gel: 0});
+    for(let i = 0; i < Math.min(8, 2 + b.lvl); i++) S.en.push({id: idSuiv++, t: "plongeur", hp: Math.ceil(dur(S.w)), x: b.x + (i - 1) * 30, y: b.y + 30, m: "plonge", vx: (i - 1) * 40, vy: 160, gel: 0});
   }
   if(b.hp < b.max / 2){
     b.cdSpirale -= dt;
@@ -326,7 +341,7 @@ function majBoss(dt){
 }
 const cibles = () => S.en.concat(S.boss ? [{x: S.boss.x, y: S.boss.y, boss: true}] : []).concat(S.ovni ? [{x: S.ovni.x, y: S.ovni.y, ovni: true}] : []);
 const proche = x => vivants().reduce((a, v) => !a || Math.abs(v.x - x) < Math.abs(a.x - x) ? v : a, null);
-function balle(v, x, y, vx, vy, o){ S.tb.push({x, y, vx, vy, o: S.v.indexOf(v), deg: o.deg || 1, taille: o.taille || 3, perce: o.perce || 0, rebond: o.rebond || 0, k: o.k || 0, vus: []}); }
+function balle(v, x, y, vx, vy, o){ S.tb.push({x, y, vx, vy, o: S.v.indexOf(v), deg: (o.deg || 1) * pm(v), taille: o.taille || 3, perce: o.perce || 0, rebond: o.rebond || 0, k: o.k || 0, vus: []}); }
 function salve(v){
   const n = 1 + 2 * nb(v, "triple"), deg = 1 + nb(v, "gros"), taille = 3 + 1.6 * nb(v, "gros");
   for(let i = 0; i < n; i++){
@@ -377,10 +392,10 @@ function collisions(){
       if(v && Math.random() < .15 * nb(v, "crit")){ d *= 3; S.ev.push([e.x, e.y, 2]); }
       blesser(e, d, v);
       if(v && nb(v, "gel")) e.gel = 2;
-      if(v && nb(v, "explo")){ const R = 22 + 10 * nb(v, "explo"); S.ev.push([b.x, b.y, 3, R]); for(const o of S.en) if(o !== e && !o.mort && Math.hypot(o.x - b.x, o.y - b.y) < R) blesser(o, 1, v); }
+      if(v && nb(v, "explo") && !b.boum){ b.boum = 1; const R = 22 + 10 * nb(v, "explo"); S.ev.push([b.x, b.y, 3, R]); for(const o of S.en) if(o !== e && !o.mort && Math.hypot(o.x - b.x, o.y - b.y) < R) blesser(o, Math.max(1, b.deg * .35), v); }
       if(v && Math.random() < .15 * nb(v, "chaine")){
         S.en.filter(o => !o.mort && o !== e).map(o => ({o, d: Math.hypot(o.x - e.x, o.y - e.y)})).filter(x => x.d < 120).sort((p, q) => p.d - q.d).slice(0, 2)
-          .forEach(x => { S.ev.push([e.x, e.y, 4, x.o.x, x.o.y]); blesser(x.o, 1, v); });
+          .forEach(x => { S.ev.push([e.x, e.y, 4, x.o.x, x.o.y]); blesser(x.o, Math.max(1, b.deg * .6), v); });
       }
       if(e.mort && b.rebond > 0){
         const c = S.en.filter(o => !o.mort && !b.vus.includes(o.id)).sort((p, q) => Math.hypot(p.x - b.x, p.y - b.y) - Math.hypot(q.x - b.x, q.y - b.y))[0];
@@ -402,10 +417,10 @@ function blesser(e, d, v){
   if(e.hp > 0){ ev(e.x, e.y, TYPES[e.t].c, 3); son(300, .02, "square", .01, "touche"); return; }
   e.mort = true; S.kills++;
   const T = TYPES[e.t];
-  S.score += T.pts;
+  S.score += T.pts * (e.el ? 3 : 1);
   ev(e.x, e.y, T.c, 16);
   son(180 + Math.random() * 80, .1, "triangle", .04, "boum");
-  if(e.t === "scindeur") for(const s of [-1, 1]) S.en.push({id: idSuiv++, t: "mini", hp: 1, x: e.x + s * 8, y: e.y, m: "libre", vx: s * 60, vy: 40, gel: 0});
+  if(e.t === "scindeur") for(const s of [-1, 1]) S.en.push({id: idSuiv++, t: "mini", hp: Math.ceil(dur(S.w)), x: e.x + s * 8, y: e.y, m: "libre", vx: s * 60, vy: 40, gel: 0});
   const chance = .035 * (1 + (v ? nb(v, "jackpot") : 0));
   if(Math.random() < chance) S.bo.push({x: e.x, y: e.y, t: BONUS[Math.floor(Math.random() * (Math.random() < .1 ? 4 : 3))]});
   if(mode === "duel" && S.kills % 12 === 0) envoyerAttaque(1, "série");
@@ -420,9 +435,9 @@ function tuerBoss(){
   if(mode === "duel") envoyerAttaque(4, "boss");
 }
 function invasion(e){
-  e.mort = true; ev(e.x, e.y, "#ff5d5d", 20);
   if(S.t - (S.tInv || -9) < 1) return;
-  S.tInv = S.t; S.form.y -= 110;          // la formation recule : une seule vie perdue
+  ev(e.x, e.y, "#ff5d5d", 20);
+  S.tInv = S.t; S.form.y -= 110;          // la formation recule (sans perdre d'aliens) : une seule vie perdue, bouclier ignoré
   vivants().forEach(v => toucher(v, true));
   ajouterTexte("⚠️ INVASION !", LW / 2, LH * .5, 24, 1.5);
 }
@@ -432,7 +447,7 @@ function touchePar(e){
 function toucher(v, force){
   if(v.mort || v.invul > 0) return;
   if(!force && Math.random() < .12 * nb(v, "esquive")){ S.ev.push([v.x, YV - 20, 5]); v.invul = .4; return; }
-  if(v.bouclier > 0){ v.bouclier--; v.invul = .8; S.ev.push([v.x, YV, 6]); son(600, .15, "sine", .05); return; }
+  if(!force && v.bouclier > 0){ v.bouclier--; v.invul = .8; S.ev.push([v.x, YV, 6]); son(600, .15, "sine", .05); return; }
   v.vies--; v.invul = 2 + .5 * nb(v, "esquive");
   ev(v.x, YV, v.coul, 26); secousse = .4; son(90, .4, "sawtooth", .08);
   if(v.vies <= 0){ v.mort = true; ev(v.x, YV, "#fff", 40); verifierFin(); }
@@ -443,7 +458,7 @@ function prendreBonus(v, b){
   if(b.t === "vie") v.vies++;
   if(b.t === "bouclier") v.bouclier++;
   if(b.t === "frenesie") v.frenesie = 6;
-  if(b.t === "bombe"){ secousse = .5; S.ev.push([LW / 2, LH / 2, 7]); S.te = []; S.en.slice().forEach(e => blesser(e, 2, v)); if(S.boss){ S.boss.hp -= 15; if(S.boss.hp <= 0) tuerBoss(); } }
+  if(b.t === "bombe"){ secousse = .5; S.ev.push([LW / 2, LH / 2, 7]); S.te = []; S.en.slice().forEach(e => blesser(e, 2 * dur(S.w), v)); if(S.boss){ S.boss.hp -= 15 * dur(S.w); if(S.boss.hp <= 0) tuerBoss(); } }
 }
 function verifierFin(){
   if(vivants().length) return;
@@ -591,7 +606,8 @@ function dessinerEnnemi(e, T){
     ctx.fillStyle = "#0b0b22"; const ey = e.t === "meduse" ? -5 : -1;
     ctx.beginPath(); ctx.arc(-r * .32, ey, r * .17, 0, 6.28); ctx.arc(r * .32, ey, r * .17, 0, 6.28); ctx.fill();
   }
-  if(e.hp > 1 && e.t === "blinde"){ ctx.fillStyle = "#fff"; ctx.font = "800 9px Nunito"; ctx.textAlign = "center"; ctx.fillText(e.hp, 0, r * .55 + 3); }
+  if(e.el){ ctx.strokeStyle = "#ffd34d"; ctx.lineWidth = 2; ctx.globalAlpha = .6 + .4 * Math.sin(ph * 1.5); ctx.beginPath(); ctx.arc(0, 0, r + 4, 0, 6.28); ctx.stroke(); ctx.globalAlpha = 1; }
+  if(e.hp > 1 && e.t === "blinde"){ ctx.fillStyle = "#fff"; ctx.font = "800 9px Nunito"; ctx.textAlign = "center"; ctx.fillText(Math.ceil(e.hp), 0, r * .55 + 3); }
   ctx.restore();
 }
 function dessinerOvni(o, T){
@@ -832,7 +848,7 @@ function envoyerEtat(){
   if(ph !== phaseEnvoyee || now - metaT > 1000){ phaseEnvoyee = ph; metaT = now; envoyerMeta(); }
   salle.envoyer({t: "s", ph: S.phase, w: S.w, sc: S.score,
     v: S.v.map(v => [r1(v.x), v.vies, v.invul > 0 ? 1 : 0, v.bouclier, v.mort ? 1 : 0, v.frenesie > 0 ? 1 : 0]),
-    e: S.en.map(e => [e.id, TNOMS.indexOf(e.t), r1(e.x), r1(e.y), e.hp, e.gel > 0 ? 1 : 0, e.m === "plonge" ? 1 : 0]),
+    e: S.en.map(e => [e.id, TNOMS.indexOf(e.t), r1(e.x), r1(e.y), Math.ceil(e.hp), e.gel > 0 ? 1 : 0, e.m === "plonge" ? 1 : 0, e.el ? 1 : 0]),
     b: S.tb.slice(-140).map(b => [r1(b.x), r1(b.y), r1(b.vx), r1(b.vy), b.o, b.k, Math.round(b.taille * 2)]),
     te: S.te.map(b => [r1(b.x), r1(b.y), r1(b.vx), r1(b.vy)]),
     bo: S.bo.map(b => [r1(b.x), r1(b.y), BONUS.indexOf(b.t)]),
@@ -859,7 +875,7 @@ function recuEtat(m){
   S.phase = m.ph; S.w = m.w; S.score = m.sc;
   m.v.forEach((x, i) => { const v = S.v[i]; if(!v) return; if(v.id !== salle.moi) v.cx = x[0]; v.vies = x[1]; v.invul = x[2] ? 1 : 0; v.bouclier = x[3]; v.mort = !!x[4]; v.frenesie = x[5] ? 1 : 0; });
   const par = new Map(S.en.map(e => [e.id, e]));
-  S.en = m.e.map(x => { const e = par.get(x[0]) || {id: x[0], x: x[2], y: x[3]}; e.t = TNOMS[x[1]]; e.cx = x[2]; e.cy = x[3]; e.hp = x[4]; e.gel = x[5]; e.m = x[6] ? "plonge" : "form"; return e; });
+  S.en = m.e.map(x => { const e = par.get(x[0]) || {id: x[0], x: x[2], y: x[3]}; e.t = TNOMS[x[1]]; e.cx = x[2]; e.cy = x[3]; e.hp = x[4]; e.gel = x[5]; e.el = x[7] || 0; e.m = x[6] ? "plonge" : "form"; return e; });
   S.tb = m.b.map(x => ({x: x[0], y: x[1], vx: x[2], vy: x[3], o: x[4], k: x[5], taille: x[6] / 2}));
   S.te = m.te.map(x => ({x: x[0], y: x[1], vx: x[2], vy: x[3]}));
   S.bo = m.bo.map(x => ({x: x[0], y: x[1], t: BONUS[x[2]]}));
@@ -912,7 +928,7 @@ function recevoirAttaque(n, de){
   const j = salle.joueurs.find(x => x.id === de);
   ajouterTexte(`⚠️ ${j ? j.pseudo : "Un rival"} t'envoie ${n} plongeur${n > 1 ? "s" : ""} !`, LW / 2, LH * .35, 15, 2, "#ff6f6f");
   son(220, .3, "sawtooth", .05);
-  for(let i = 0; i < Math.min(n, 8); i++) S.en.push({id: idSuiv++, t: "plongeur", hp: 1 + Math.floor(S.w / 6), x: 40 + Math.random() * (LW - 80), y: -20 - i * 30, m: "plonge", vx: 0, vy: 150 + S.w * 6, gel: 0, piege: true});
+  for(let i = 0; i < Math.min(n, 8); i++) S.en.push({id: idSuiv++, t: "plongeur", hp: Math.ceil((1 + Math.floor(S.w / 6)) * dur(S.w)), x: 40 + Math.random() * (LW - 80), y: -20 - i * 30, m: "plonge", vx: 0, vy: Math.min(380, 150 + S.w * 6), gel: 0, piege: true});
 }
 function duelMort(){
   if(!duel) return;
