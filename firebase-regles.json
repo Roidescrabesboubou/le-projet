@@ -2,7 +2,7 @@
   "rules": {
     "scores": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle|dactylo|tour)$/)",
+        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle|dactylo|tour|assaut)$/)",
         ".indexOn": [
           "s",
           "t",
@@ -10,7 +10,7 @@
           "d"
         ],
         "$id": {
-          ".write": "($jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle|dactylo|tour)$/) && auth != null && auth.uid === $id && newData.exists() && root.child('bannis_id').child($id).val() !== true && root.child('bannis').child(auth.uid).val() !== true && (!data.exists() || ($jeu.beginsWith('demineur_') ? newData.child('t').val() < data.child('t').val() : $jeu === 'coupdefeu' ? newData.child('k').val() > data.child('k').val() : newData.child('s').val() > data.child('s').val()))) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
+          ".write": "($jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle|dactylo|tour|assaut)$/) && auth != null && auth.uid === $id && newData.exists() && root.child('bannis_id').child($id).val() !== true && root.child('bannis').child(auth.uid).val() !== true && (!data.exists() || ($jeu.beginsWith('demineur_') ? newData.child('t').val() < data.child('t').val() : $jeu === 'coupdefeu' ? newData.child('k').val() > data.child('k').val() : newData.child('s').val() > data.child('s').val()))) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
           ".validate": "newData.hasChildren(['n', 'd']) && ($jeu.beginsWith('demineur_') ? newData.hasChildren(['t']) : $jeu === 'coupdefeu' ? newData.hasChildren(['s', 'lv', 'k']) : newData.hasChildren(['s', 'lv']))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
@@ -41,12 +41,12 @@
     },
     "scores_semaine": {
       "$jeu": {
-        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle|dactylo|tour)$/)",
+        ".read": "$jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle|dactylo|tour|assaut)$/)",
         ".indexOn": [
           "w"
         ],
         "$id": {
-          ".write": "($jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle|dactylo|tour)$/) && auth != null && auth.uid === $id && newData.exists() && root.child('bannis_id').child($id).val() !== true && root.child('bannis').child(auth.uid).val() !== true && (!data.exists() || newData.child('w').val() > data.child('w').val() || (newData.child('w').val() == data.child('w').val() && ($jeu.beginsWith('demineur_') ? newData.child('t').val() < data.child('t').val() : $jeu === 'coupdefeu' ? newData.child('k').val() > data.child('k').val() : newData.child('s').val() > data.child('s').val())))) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
+          ".write": "($jeu.matches(/^(blocs|labyrinthe|blindtest|geoguessr|demineur_facile|demineur_moyen|demineur_expert|coupdefeu|coupdefeu_plat|defense|chancedle|dactylo|tour|assaut)$/) && auth != null && auth.uid === $id && newData.exists() && root.child('bannis_id').child($id).val() !== true && root.child('bannis').child(auth.uid).val() !== true && (!data.exists() || newData.child('w').val() > data.child('w').val() || (newData.child('w').val() == data.child('w').val() && ($jeu.beginsWith('demineur_') ? newData.child('t').val() < data.child('t').val() : $jeu === 'coupdefeu' ? newData.child('k').val() > data.child('k').val() : newData.child('s').val() > data.child('s').val())))) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
           ".validate": "newData.hasChild('w') && newData.hasChildren(['n', 'd']) && ($jeu.beginsWith('demineur_') ? newData.hasChildren(['t']) : $jeu === 'coupdefeu' ? newData.hasChildren(['s', 'lv', 'k']) : newData.hasChildren(['s', 'lv']))",
           "n": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"

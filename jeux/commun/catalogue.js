@@ -401,6 +401,16 @@ window.SALLE_CATALOGUE = [
     badge: "Nouveau"
   },
   {
+    slug: "assaut",
+    title: "Assaut Galactique",
+    emoji: "👾",
+    desc: "Repousse des vagues d'aliens et empile les augments après chaque vague : tir triple, missiles, drones, éclairs en chaîne, rebonds, météores… Boss toutes les 5 vagues. Solo avec top 10, coop jusqu'à 4 ou duel où tes éliminations envoient des ennemis aux autres.",
+    tags: ["Arcade", "Action", "Multijoueur", "Solo"],
+    colors: ["#7b5cff", "#4fd1ff"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "dactylo",
     title: "Dactylo Défense",
     emoji: "⌨️",
@@ -527,7 +537,7 @@ window.SALLE_CATEGORIES = [
    jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran"]},
   {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
    desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
-   jeux: ["puissance4", "morpion", "tour", "minigolf", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
+   jeux: ["puissance4", "morpion", "tour", "minigolf", "assaut", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
   {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
    desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
    jeux: ["poker", "blackjack", "roulette"]},
@@ -536,7 +546,7 @@ window.SALLE_CATEGORIES = [
    jeux: ["quintuplees", "jdr"]},
   {id: "arcade", emoji: "🕹️", titre: "Arcade et solo", c: ["#1f9a66", "#9bd34a"],
    desc: "Arcade, réflexion et gestion : des records à battre quand tu as un moment.",
-   jeux: ["arene", "dactylo", "tour", "minigolf", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
+   jeux: ["arene", "assaut", "dactylo", "tour", "minigolf", "blocs", "labyrinthe", "demineur", "rocade", "defense", "eveil"]}
 ];
 
 /* Liste finale des catégories : celles du code, modifiées ou masquées

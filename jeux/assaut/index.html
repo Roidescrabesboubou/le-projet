@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Assaut Galactique</title>
+<link rel="stylesheet" href="../commun/base.css">
+<style>
+:root{--accent:#7b5cff;--fond1:rgba(123,92,255,.16);--fond2:rgba(79,209,255,.12)}
+.zone{position:relative;width:100%;max-width:520px}
+canvas{display:block;width:100%;border-radius:18px;border:2px solid var(--encre);box-shadow:var(--ombre);background:#05061a;touch-action:none;user-select:none;-webkit-user-select:none}
+.barre{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;max-width:520px;font-weight:800;flex-wrap:wrap}
+.voile{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:14px;border-radius:18px;background:rgba(5,6,26,.84);color:#eef;text-align:center;overflow:auto}
+.voile .boite{max-width:420px;width:100%}
+.voile h2{margin:0 0 6px;font-size:1.8rem}
+.voile p{margin:6px 0;color:#c8c6ee}
+.voile .champ{background:#fff;color:#1d1a3a}
+.voile .code{font-family:Fredoka,sans-serif;font-size:2.4rem;letter-spacing:.2em;font-weight:700;color:#ffd34d}
+.voile .ligne{display:flex;gap:6px;margin-top:6px}
+.voile .ligne .champ{flex:1;min-width:0}
+.boutons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.rang{list-style:none;padding:0;margin:10px 0;display:flex;flex-direction:column;gap:5px;text-align:left}
+.rang li{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 10px;font-weight:800}
+.rang li.moi{outline:2px solid #ffd34d}
+.rang li .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt{display:inline-block;width:12px;height:12px;border-radius:50%}
+.cartes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+@media (max-width:440px){.cartes{grid-template-columns:1fr}}
+.aug{border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.07);color:#fff;border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:800;transition:transform .12s}
+.aug:hover{transform:translateY(-3px);border-color:#fff}
+.aug .e{font-size:2rem;line-height:1}
+.aug small{font-weight:700;color:#c8c6ee;font-size:.78rem;line-height:1.25}
+.aug .r{font-size:.68rem;letter-spacing:.06em;text-transform:uppercase}
+.aug.rare{border-color:#4fd1ff}.aug.rare .r{color:#4fd1ff}
+.aug.epique{border-color:#d36bff;box-shadow:0 0 14px rgba(211,107,255,.45)}.aug.epique .r{color:#d36bff}
+.aug.on{outline:3px solid #ffd34d}
+.mesaug{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:8px;font-size:.85rem}
+.mesaug span{background:rgba(255,255,255,.1);border-radius:999px;padding:2px 8px}
+.lb{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px;text-align:left}
+.lb li{display:flex;justify-content:space-between;gap:8px;background:rgba(255,255,255,.1);border-radius:10px;padding:5px 10px;font-weight:700}
+.lb li.me{outline:2px solid #ffd34d}
+.namerow{display:flex;gap:6px;margin-top:8px}
+.namerow input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:0}
+.cl-note,.cl-titre{color:#c8c6ee}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <div class="barre"><span id="hInfo">👾 Assaut Galactique</span><span><button class="btn ghost petit" id="bSon">🔊</button> <button class="btn ghost petit" id="bPause">⏸️</button> <button class="btn ghost petit" id="bTop">🏆</button></span></div>
+  <div class="zone"><canvas id="cv"></canvas><div class="voile" id="voile"></div></div>
+  <p class="muted" style="margin:0;text-align:center;font-size:.88rem">← → (ou A/Q et D) pour bouger, ou glisse le doigt. Le tir est automatique.</p>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/classement.js"></script>
+<script src="../commun/reseau.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = Base.esc;
+const stock = Base.stock("assaut_");
+Base.entete({
+  titre: "Assaut Galactique", emoji: "👾",
+  aide: `<p>Des vagues d'aliens descendent vers toi : détruis-les avant qu'ils n'atteignent le sol !</p>
+    <ul><li>Bouge avec ← → (ou A/Q et D), ou glisse le doigt. <b>Le tir est automatique.</b></li>
+    <li>Après chaque vague, choisis <b>un augment parmi trois</b> : tir triple, missiles, drones, éclairs, rebonds… Ils se cumulent !</li>
+    <li>Bonus qui tombent : 💣 bombe, ⚡ frénésie, 🛡️ bouclier, ❤️ vie. L'OVNI qui passe en haut en lâche toujours un.</li>
+    <li>Toutes les 5 vagues : <b>la Mère-Ruche</b>, un boss.</li>
+    <li><b>Coop</b> (2 à 4) : même terrain, chacun ses augments. Un joueur abattu revient à la vague suivante.</li>
+    <li><b>Duel</b> (2 à 4) : chacun ses vagues (les mêmes pour tous). Tes éliminations envoient des plongeurs chez les autres. Le dernier en vie gagne !</li></ul>`
+});
+
+/* ================= DONNÉES ================= */
+const LW = 400, LH = 600, YV = 552;
+const COULS = ["#4fd1ff", "#ffd34d", "#ff6fb5", "#7dff8a"];
+const TYPES = {
+  bulle:    {hp: 1, pts: 10, r: 12, c: "#6fd3ff"},
+  meduse:   {hp: 2, pts: 20, r: 13, c: "#ff7ad9"},
+  tireur:   {hp: 2, pts: 30, r: 13, c: "#ffb347"},
+  blinde:   {hp: 4, pts: 40, r: 14, c: "#9aa7ff"},
+  plongeur: {hp: 1, pts: 25, r: 11, c: "#ff5d5d"},
+  scindeur: {hp: 3, pts: 35, r: 15, c: "#8bff9b"},
+  mini:     {hp: 1, pts: 5,  r: 8,  c: "#c6ffcf"},
+  ovni:     {hp: 4, pts: 150, r: 17, c: "#ffffff"}
+};
+const TNOMS = Object.keys(TYPES);
+const AUGS = [
+  {k: "triple",  e: "🔱", n: "Tir triple",      d: "+2 balles en éventail",                 r: "rare",   max: 3},
+  {k: "cadence", e: "⚡", n: "Cadence",          d: "Tu tires 25 % plus vite",               r: "commun", max: 5},
+  {k: "perce",   e: "🗡️", n: "Perforant",        d: "Tes balles traversent 1 ennemi de plus", r: "commun", max: 4},
+  {k: "gros",    e: "🔭", n: "Gros calibre",     d: "Balles plus grosses : +1 dégât",        r: "rare",   max: 3},
+  {k: "missile", e: "🚀", n: "Missiles",         d: "Un missile à tête chercheuse régulier",  r: "rare",   max: 3},
+  {k: "drone",   e: "🛸", n: "Drone allié",      d: "Un drone tire à tes côtés",             r: "epique", max: 2},
+  {k: "explo",   e: "💥", n: "Balles explosives", d: "Chaque impact explose autour",         r: "rare",   max: 3},
+  {k: "chaine",  e: "🌩️", n: "Éclair en chaîne",  d: "15 % : la foudre saute sur 2 voisins",  r: "rare",   max: 3},
+  {k: "crit",    e: "🎯", n: "Coup critique",    d: "15 % de dégâts x3",                     r: "commun", max: 4},
+  {k: "rebond",  e: "🪃", n: "Rebond",           d: "Après une victime, la balle repart vers une autre", r: "epique", max: 3},
+  {k: "gel",     e: "❄️", n: "Tirs gelants",     d: "Les ennemis touchés ne tirent plus 2 s", r: "commun", max: 1},
+  {k: "meteore", e: "☄️", n: "Pluie de météores", d: "Des météores frappent les ennemis",    r: "epique", max: 3},
+  {k: "bouclier",e: "🛡️", n: "Bouclier",         d: "Encaisse un tir, rechargé à chaque vague", r: "commun", max: 3},
+  {k: "vie",     e: "❤️", n: "Vie en plus",      d: "+1 vie tout de suite",                  r: "commun", max: 9},
+  {k: "vitesse", e: "🏃", n: "Réacteurs",        d: "Tu te déplaces 25 % plus vite",         r: "commun", max: 3},
+  {k: "esquive", e: "👻", n: "Fantôme",          d: "12 % d'esquiver un tir, invincible plus longtemps", r: "rare", max: 3},
+  {k: "jackpot", e: "🎰", n: "Jackpot",          d: "Les ennemis lâchent 2 fois plus de bonus", r: "commun", max: 2},
+  {k: "sabotage",e: "☠️", n: "Sabotage",         d: "Duel : chaque attaque envoie 1 plongeur de plus", r: "rare", max: 3, duel: true}
+];
+const AUG = Object.fromEntries(AUGS.map(a => [a.k, a]));
+const POIDS = {commun: 6, rare: 3, epique: 1.3};
+const BONUS = ["bombe", "frenesie", "bouclier", "vie"], BICO = {bombe: "💣", frenesie: "⚡", bouclier: "🛡️", vie: "❤️"};
+
+/* ================= TOILE ================= */
+const cv = $("cv"), ctx = cv.getContext("2d");
+let echelle = 1, dpr = 1;
+function taille(){
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.parentElement.clientWidth, h = Math.min(window.innerHeight - 180, w * LH / LW);
+  const ww = Math.min(w, h * LW / LH);
+  echelle = ww / LW;
+  cv.style.width = ww + "px"; cv.style.height = ww * LH / LW + "px"; cv.style.margin = "0 auto";
+  cv.width = Math.round(ww * dpr); cv.height = Math.round(ww * LH / LW * dpr);
+}
+window.addEventListener("resize", taille);
+const etoiles = Array.from({length: 90}, () => ({x: Math.random() * LW, y: Math.random() * LH, v: 10 + Math.random() * 50, r: Math.random() * 1.4 + .3}));
+
+/* ================= SON ================= */
+let sonOn = stock.lire("son", true), actx = null, dernierSon = {};
+function son(f, d, type, vol, cle){
+  if(!sonOn) return;
+  const now = performance.now(); if(cle){ if(now - (dernierSon[cle] || 0) < 45) return; dernierSon[cle] = now; }
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || "square"; o.frequency.value = f;
+    g.gain.setValueAtTime(vol || .03, actx.currentTime); g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + d);
+    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + d);
+  }catch(e){}
+}
+$("bSon").textContent = sonOn ? "🔊" : "🔇";
+$("bSon").onclick = () => { sonOn = !sonOn; stock.ecrire("son", sonOn); $("bSon").textContent = sonOn ? "🔊" : "🔇"; };
+
+/* ================= ÉTAT =================
+   mode : solo | coop | duel.  S = la simulation (en coop elle tourne chez l'hôte).
+   S.v = vaisseaux, S.en = ennemis, S.tb = balles des joueurs, S.te = balles ennemies, S.bo = bonus qui tombent */
+let mode = "solo", S = null, salle = null, moiIdx = 0, graine = 1, idSuiv = 1;
+let parts = [], textes = [], secousse = 0, pause = false;
+const estChef = () => mode !== "coop" || (salle && salle.hote);   // fait tourner la simulation
+
+function nouveauVaisseau(i, nom, id){ return {id: id || "moi", nom: nom || "Toi", coul: COULS[i % 4], x: LW / 2 + (i - .5) * 40 * (i % 2 ? 1 : -1), vies: 3, invul: 2, bouclier: 0, aug: {}, cd: 0, salve: 0, frenesie: 0, mort: false, droneCd: 0, meteoCd: 4, cible: null}; }
+function nouvelleSim(joueurs){
+  S = {w: 0, phase: "intro", t: 0, tp: 0, score: 0, v: joueurs.map((j, i) => nouveauVaisseau(i, j.nom, j.id)), en: [], tb: [], te: [], bo: [],
+       form: {x: 0, y: 0, dir: 1, n0: 1}, boss: null, ovni: null, ovniCd: 18, cdTir: 2, cdPlonge: 4, ev: [], kills: 0, debutVague: 0, offres: {}, choix: {}};
+  S.v.forEach((v, i) => v.x = LW / 2 + (i - (S.v.length - 1) / 2) * 70);
+  vagueSuivante();
+}
+const vivants = () => S.v.filter(v => !v.mort);
+const nb = (v, k) => v.aug[k] || 0;
+
+/* ---------- Vagues ---------- */
+function vagueSuivante(){
+  S.w++; S.phase = "intro"; S.tp = 0; S.te = []; S.tb = []; S.boss = null; S.debutVague = S.t;
+  S.v.forEach(v => { v.bouclier = nb(v, "bouclier"); if(v.mort && mode === "coop"){ v.mort = false; v.vies = 1; v.invul = 2.5; } });
+  const r = Base.rng(graine * 1000 + S.w * 7919);
+  S.en = S.en.filter(e => e.piege);       // les plongeurs envoyés par un rival restent
+  if(S.w % 5 === 0){
+    const lvl = S.w / 5;
+    S.boss = {x: LW / 2, y: -90, hp: 70 + 45 * lvl + (S.v.length - 1) * 40, max: 0, t: 0, cdSalve: 2, cdPonte: 4, cdSpirale: 0, ang: 0, lvl};
+    S.boss.max = S.boss.hp;
+  }else{
+    const lignes = Math.min(5, 3 + Math.floor((S.w - 1) / 2)), cols = 8;
+    const pool = ["bulle", "bulle", "meduse"];
+    if(S.w >= 2) pool.push("tireur");
+    if(S.w >= 3) pool.push("plongeur", "plongeur");
+    if(S.w >= 4) pool.push("blinde");
+    if(S.w >= 6) pool.push("scindeur");
+    for(let gy = 0; gy < lignes; gy++){
+      const t = gy === 0 && S.w >= 4 ? (r() < .5 ? "blinde" : "tireur") : pool[Math.floor(r() * pool.length)];
+      for(let gx = 0; gx < cols; gx++){
+        const T = TYPES[t], bonusHp = Math.floor(S.w / 7);
+        S.en.push({id: idSuiv++, t, hp: T.hp + bonusHp, gx, gy, x: 0, y: 0, m: "form", gel: 0, cd: 2 + r() * 4});
+      }
+    }
+    S.form = {x: 0, y: -220, dir: 1, n0: S.en.length};
+  }
+  ajouterTexte(S.w % 5 === 0 ? `⚠️ VAGUE ${S.w} : LA MÈRE-RUCHE` : `VAGUE ${S.w}`, LW / 2, LH * .45, 26, 2);
+}
+const posForm = e => [36 + e.gx * 47 + S.form.x, 70 + e.gy * 36 + S.form.y];
+
+/* ---------- Augments ---------- */
+function tirerOffres(v){
+  const dispo = AUGS.filter(a => nb(v, a.k) < a.max && (!a.duel || mode === "duel"));
+  const l = [];
+  while(l.length < 3 && dispo.length){
+    const tot = dispo.reduce((s, a) => s + POIDS[a.r], 0);
+    let x = Math.random() * tot, i = 0;
+    for(; i < dispo.length - 1; i++){ x -= POIDS[dispo[i].r]; if(x <= 0) break; }
+    l.push(dispo.splice(i, 1)[0].k);
+  }
+  return l;
+}
+function appliquerAug(v, k){
+  if(!AUG[k] || nb(v, k) >= AUG[k].max) return;
+  v.aug[k] = nb(v, k) + 1;
+  if(k === "vie") v.vies++;
+  if(k === "bouclier") v.bouclier++;
+}
+function finVague(){
+  S.score += 100 * S.w;
+  S.phase = "choix"; S.tp = 0; S.offres = {}; S.choix = {};
+  S.v.forEach(v => { S.offres[v.id] = tirerOffres(v); });
+  if(mode === "duel" && S.t - S.debutVague < 25) envoyerAttaque(2, "vague éclair");
+}
+function choisir(id, k){
+  if(S.phase !== "choix" || S.choix[id] != null) return;
+  const v = S.v.find(x => x.id === id); if(!v || !(S.offres[id] || []).includes(k)) return;
+  S.choix[id] = k; appliquerAug(v, k);
+  if(S.v.every(x => S.choix[x.id] != null)) vagueSuivante();
+}
+
+/* ================= SIMULATION ================= */
+function maj(dt){
+  S.t += dt; S.tp += dt;
+  if(S.phase === "fin" || S.phase === "choix"){ if(S.phase === "choix" && mode === "coop" && S.tp > 30) S.v.forEach(v => { if(S.choix[v.id] == null) choisir(v.id, S.offres[v.id][0]); }); bougerTirs(dt); return; }
+  // vaisseaux
+  for(const v of S.v){
+    if(v.mort) continue;
+    if(v.invul > 0) v.invul -= dt;
+    if(v.frenesie > 0) v.frenesie -= dt;
+    if(S.phase !== "jeu") continue;
+    v.cd -= dt * (v.frenesie > 0 ? 2 : 1);
+    if(v.cd <= 0){ v.cd = .34 / (1 + .25 * nb(v, "cadence")); salve(v); }
+    if(nb(v, "drone")){ v.droneCd -= dt; if(v.droneCd <= 0){ v.droneCd = .55; for(let k = 0; k < nb(v, "drone"); k++){ const dx = (k % 2 ? 1 : -1) * (28 + 12 * Math.floor(k / 2)); balle(v, v.x + dx, YV - 4, 0, -480, {deg: 1, taille: 2.5}); } } }
+    if(nb(v, "meteore")){ v.meteoCd -= dt; if(v.meteoCd <= 0){ v.meteoCd = 7.5 / nb(v, "meteore"); const c = cibles().sort(() => Math.random() - .5).slice(0, 3); c.forEach(e => balle(v, e.x + (Math.random() - .5) * 10, -20, 0, 650, {deg: 3, taille: 7, k: 2})); } }
+  }
+  // intro : la formation descend
+  if(S.phase === "intro"){
+    if(S.boss){ S.boss.y += (90 - S.boss.y) * Math.min(1, dt * 2); }
+    else S.form.y += (0 - S.form.y) * Math.min(1, dt * 3);
+    S.en.forEach(e => { if(e.m === "form"){ [e.x, e.y] = posForm(e); } });
+    if(S.tp > 1.6) S.phase = "jeu";
+    bougerTirs(dt); return;
+  }
+  // formation
+  const form = S.en.filter(e => e.m === "form");
+  if(form.length){
+    const vit = (20 + S.w * 3) * (1 + 2.2 * (1 - form.length / S.form.n0));
+    S.form.x += S.form.dir * vit * dt;
+    let mn = 1e9, mx = -1e9;
+    form.forEach(e => { const [x] = posForm(e); mn = Math.min(mn, x); mx = Math.max(mx, x); });
+    if(mx > LW - 18 && S.form.dir > 0){ S.form.dir = -1; S.form.y += 12; }
+    if(mn < 18 && S.form.dir < 0){ S.form.dir = 1; S.form.y += 12; }
+  }
+  for(const e of S.en){
+    if(e.gel > 0) e.gel -= dt;
+    const lent = e.gel > 0 ? .5 : 1;
+    if(e.m === "form"){
+      [e.x, e.y] = posForm(e);
+      if(e.y > YV - 18){ invasion(e); continue; }
+      if(e.t === "tireur" && e.gel <= 0){ e.cd -= dt; if(e.cd <= 0){ e.cd = 3 + Math.random() * 3; const c = vivants()[Math.floor(Math.random() * vivants().length)]; if(c){ const a = Math.atan2(YV - e.y, c.x - e.x); S.te.push({x: e.x, y: e.y + 10, vx: Math.cos(a) * 190, vy: Math.sin(a) * 190}); } } }
+    }else if(e.m === "plonge" || e.m === "libre"){
+      e.x += e.vx * dt * lent; e.y += e.vy * dt * lent;
+      if(e.m === "plonge"){ const c = proche(e.x); if(c) e.vx += Math.sign(c.x - e.x) * 140 * dt; e.vx = Math.max(-160, Math.min(160, e.vx)); }
+      if(e.m === "libre" && (e.x < 12 || e.x > LW - 12)) e.vx *= -1;
+      if(e.y > LH + 20){ if(e.retour){ e.m = "retour"; e.y = -30; } else e.mort = true; }
+      else if(e.y > YV - 18) touchePar(e);
+    }else if(e.m === "retour"){
+      const [hx, hy] = posForm(e); e.x += (hx - e.x) * Math.min(1, dt * 3); e.y += (hy - e.y) * Math.min(1, dt * 3);
+      if(Math.hypot(hx - e.x, hy - e.y) < 3) e.m = "form";
+    }
+  }
+  S.en = S.en.filter(e => !e.mort);
+  // plongeons
+  S.cdPlonge -= dt;
+  if(S.cdPlonge <= 0 && form.length){
+    S.cdPlonge = Math.max(1.1, 4 - S.w * .15) * (.7 + Math.random() * .6) / Math.sqrt(vivants().length || 1);
+    const cand = form.filter(e => e.t === "plongeur" || S.w >= 8);
+    const e = cand[Math.floor(Math.random() * cand.length)];
+    if(e){ e.m = "plonge"; e.vx = 0; e.vy = 150 + S.w * 6; e.retour = true; }
+  }
+  // tirs ennemis
+  S.cdTir -= dt;
+  if(S.cdTir <= 0 && form.length){
+    S.cdTir = Math.max(.3, 1.5 - S.w * .07) * (.6 + Math.random() * .8) / (1 + .4 * (vivants().length - 1));
+    const cols = {};
+    form.forEach(e => { if(e.gel <= 0 && (!cols[e.gx] || e.y > cols[e.gx].y)) cols[e.gx] = e; });
+    const l = Object.values(cols), e = l[Math.floor(Math.random() * l.length)];
+    if(e) S.te.push({x: e.x, y: e.y + 10, vx: 0, vy: 190 + S.w * 5});
+  }
+  // boss
+  if(S.boss) majBoss(dt);
+  // ovni
+  if(!S.boss){
+    S.ovniCd -= dt;
+    if(S.ovniCd <= 0 && !S.ovni){ S.ovniCd = 20 + Math.random() * 12; const g = Math.random() < .5; S.ovni = {x: g ? -20 : LW + 20, y: 32, vx: g ? 85 : -85, hp: TYPES.ovni.hp}; son(300, .3, "sine", .03); }
+  }
+  if(S.ovni){ S.ovni.x += S.ovni.vx * dt; if(S.ovni.x < -40 || S.ovni.x > LW + 40) S.ovni = null; }
+  bougerTirs(dt);
+  collisions();
+  // bonus qui tombent
+  for(const b of S.bo){
+    b.y += 85 * dt;
+    for(const v of vivants()) if(Math.abs(v.x - b.x) < 22 && Math.abs(YV - b.y) < 20){ prendreBonus(v, b); b.pris = true; break; }
+  }
+  S.bo = S.bo.filter(b => !b.pris && b.y < LH + 20);
+  // fin de vague
+  if(S.phase === "jeu" && !S.en.length && !S.boss) finVague();
+}
+function majBoss(dt){
+  const b = S.boss; b.t += dt;
+  if(b.y < 88){ b.y += (90 - b.y) * Math.min(1, dt * 2); return; }
+  b.x = LW / 2 + Math.sin(b.t * .7) * 130;
+  b.cdSalve -= dt; b.cdPonte -= dt;
+  if(b.cdSalve <= 0){
+    b.cdSalve = Math.max(.9, 1.8 - b.lvl * .15);
+    const n = 5 + b.lvl;
+    for(let i = 0; i < n; i++){ const a = Math.PI / 2 + (i - (n - 1) / 2) * .17; S.te.push({x: b.x, y: b.y + 30, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180}); }
+    son(160, .15, "sawtooth", .03, "boss");
+  }
+  if(b.cdPonte <= 0){
+    b.cdPonte = 5;
+    for(let i = 0; i < 2 + b.lvl; i++) S.en.push({id: idSuiv++, t: "plongeur", hp: 1, x: b.x + (i - 1) * 30, y: b.y + 30, m: "plonge", vx: (i - 1) * 40, vy: 160, gel: 0});
+  }
+  if(b.hp < b.max / 2){
+    b.cdSpirale -= dt;
+    if(b.cdSpirale <= 0){ b.cdSpirale = .22; b.ang += .5; for(let k = 0; k < 2; k++){ const a = b.ang + k * Math.PI; if(Math.sin(a) > -.2) S.te.push({x: b.x, y: b.y, vx: Math.cos(a) * 150, vy: Math.abs(Math.sin(a)) * 150 + 40}); } }
+  }
+}
+const cibles = () => S.en.concat(S.boss ? [{x: S.boss.x, y: S.boss.y, boss: true}] : []).concat(S.ovni ? [{x: S.ovni.x, y: S.ovni.y, ovni: true}] : []);
+const proche = x => vivants().reduce((a, v) => !a || Math.abs(v.x - x) < Math.abs(a.x - x) ? v : a, null);
+function balle(v, x, y, vx, vy, o){ S.tb.push({x, y, vx, vy, o: S.v.indexOf(v), deg: o.deg || 1, taille: o.taille || 3, perce: o.perce || 0, rebond: o.rebond || 0, k: o.k || 0, vus: []}); }
+function salve(v){
+  const n = 1 + 2 * nb(v, "triple"), deg = 1 + nb(v, "gros"), taille = 3 + 1.6 * nb(v, "gros");
+  for(let i = 0; i < n; i++){
+    const a = -Math.PI / 2 + (i - (n - 1) / 2) * .11;
+    balle(v, v.x, YV - 14, Math.cos(a) * 540, Math.sin(a) * 540, {deg, taille, perce: nb(v, "perce"), rebond: nb(v, "rebond")});
+  }
+  v.salve++;
+  if(nb(v, "missile") && v.salve % Math.max(1, 5 - nb(v, "missile")) === 0) balle(v, v.x, YV - 10, 0, -260, {deg: 2 + nb(v, "gros"), taille: 4, k: 1});
+  if(v.id === moi()) son(880, .03, "square", .012, "tir");
+}
+function bougerTirs(dt){
+  for(const b of S.tb){
+    if(b.k === 1){
+      const c = cibles().reduce((a, e) => { const d = Math.hypot(e.x - b.x, e.y - b.y); return !a || d < a.d ? {e, d} : a; }, null);
+      if(c){ const a0 = Math.atan2(b.vy, b.vx), a1 = Math.atan2(c.e.y - b.y, c.e.x - b.x); let da = a1 - a0; while(da > Math.PI) da -= 2 * Math.PI; while(da < -Math.PI) da += 2 * Math.PI; const a = a0 + Math.max(-5 * dt, Math.min(5 * dt, da)), sp = Math.min(420, Math.hypot(b.vx, b.vy) + 300 * dt); b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp; }
+      if(Math.random() < .5) parts.push({x: b.x, y: b.y, vx: 0, vy: 20, t: .3, c: "#ffb347", s: 2});
+    }
+    b.x += b.vx * dt; b.y += b.vy * dt;
+  }
+  S.tb = S.tb.filter(b => b.y > -30 && b.y < LH + 30 && b.x > -30 && b.x < LW + 30 && !b.fin);
+  for(const b of S.te){ b.x += b.vx * dt; b.y += b.vy * dt; }
+  S.te = S.te.filter(b => b.y < LH + 20 && b.y > -40 && b.x > -20 && b.x < LW + 20 && !b.fin);
+}
+function collisions(){
+  for(const b of S.tb){
+    if(b.fin) continue;
+    const v = S.v[b.o];
+    // ovni
+    if(S.ovni && Math.hypot(S.ovni.x - b.x, S.ovni.y - b.y) < 18 + b.taille){
+      S.ovni.hp -= b.deg; b.fin = true; ev(b.x, b.y, "#fff", 6);
+      if(S.ovni.hp <= 0){ S.score += TYPES.ovni.pts; ev(S.ovni.x, S.ovni.y, "#fff", 30); S.bo.push({x: S.ovni.x, y: S.ovni.y, t: BONUS[Math.floor(Math.random() * (Math.random() < .15 ? 4 : 3))]}); S.ovni = null; son(500, .3, "triangle", .05); }
+      continue;
+    }
+    // boss
+    if(S.boss && S.boss.y > 40 && Math.abs(S.boss.x - b.x) < 52 && Math.abs(S.boss.y - b.y) < 34){
+      let d = b.deg; if(v && Math.random() < .15 * nb(v, "crit")){ d *= 3; S.ev.push([b.x, b.y, 2]); }
+      S.boss.hp -= d; b.fin = true; ev(b.x, b.y, "#ff9de2", 4);
+      if(S.boss.hp <= 0) tuerBoss();
+      continue;
+    }
+    for(const e of S.en){
+      if(e.mort || b.vus.includes(e.id)) continue;
+      const r = TYPES[e.t].r + b.taille;
+      if(Math.abs(e.x - b.x) > r || Math.abs(e.y - b.y) > r) continue;
+      if(Math.hypot(e.x - b.x, e.y - b.y) > r) continue;
+      b.vus.push(e.id);
+      let d = b.deg;
+      if(v && Math.random() < .15 * nb(v, "crit")){ d *= 3; S.ev.push([e.x, e.y, 2]); }
+      blesser(e, d, v);
+      if(v && nb(v, "gel")) e.gel = 2;
+      if(v && nb(v, "explo")){ const R = 22 + 10 * nb(v, "explo"); S.ev.push([b.x, b.y, 3, R]); for(const o of S.en) if(o !== e && !o.mort && Math.hypot(o.x - b.x, o.y - b.y) < R) blesser(o, 1, v); }
+      if(v && Math.random() < .15 * nb(v, "chaine")){
+        S.en.filter(o => !o.mort && o !== e).map(o => ({o, d: Math.hypot(o.x - e.x, o.y - e.y)})).filter(x => x.d < 120).sort((p, q) => p.d - q.d).slice(0, 2)
+          .forEach(x => { S.ev.push([e.x, e.y, 4, x.o.x, x.o.y]); blesser(x.o, 1, v); });
+      }
+      if(e.mort && b.rebond > 0){
+        const c = S.en.filter(o => !o.mort && !b.vus.includes(o.id)).sort((p, q) => Math.hypot(p.x - b.x, p.y - b.y) - Math.hypot(q.x - b.x, q.y - b.y))[0];
+        if(c){ b.rebond--; const a = Math.atan2(c.y - b.y, c.x - b.x); b.vx = Math.cos(a) * 520; b.vy = Math.sin(a) * 520; continue; }
+      }
+      if(b.perce > 0){ b.perce--; continue; }
+      b.fin = true; break;
+    }
+  }
+  S.en = S.en.filter(e => !e.mort);
+  // tirs ennemis contre vaisseaux
+  for(const t of S.te){
+    for(const v of vivants()) if(Math.abs(t.x - v.x) < 12 && Math.abs(t.y - YV) < 12){ t.fin = true; toucher(v); break; }
+  }
+}
+function blesser(e, d, v){
+  if(e.mort) return;
+  e.hp -= d;
+  if(e.hp > 0){ ev(e.x, e.y, TYPES[e.t].c, 3); son(300, .02, "square", .01, "touche"); return; }
+  e.mort = true; S.kills++;
+  const T = TYPES[e.t];
+  S.score += T.pts;
+  ev(e.x, e.y, T.c, 16);
+  son(180 + Math.random() * 80, .1, "triangle", .04, "boum");
+  if(e.t === "scindeur") for(const s of [-1, 1]) S.en.push({id: idSuiv++, t: "mini", hp: 1, x: e.x + s * 8, y: e.y, m: "libre", vx: s * 60, vy: 40, gel: 0});
+  const chance = .035 * (1 + (v ? nb(v, "jackpot") : 0));
+  if(Math.random() < chance) S.bo.push({x: e.x, y: e.y, t: BONUS[Math.floor(Math.random() * (Math.random() < .1 ? 4 : 3))]});
+  if(mode === "duel" && S.kills % 12 === 0) envoyerAttaque(1, "série");
+}
+function tuerBoss(){
+  const b = S.boss; S.boss = null;
+  S.score += 1000 * b.lvl;
+  for(let i = 0; i < 4; i++) ev(b.x + (Math.random() - .5) * 80, b.y + (Math.random() - .5) * 40, ["#ff9de2", "#ffd34d", "#fff"][i % 3], 40);
+  S.bo.push({x: b.x - 20, y: b.y, t: "vie"}, {x: b.x + 20, y: b.y, t: "bombe"});
+  secousse = .6; son(70, .8, "sawtooth", .08);
+  ajouterTexte("👑 MÈRE-RUCHE VAINCUE !", LW / 2, LH * .4, 22, 2);
+  if(mode === "duel") envoyerAttaque(4, "boss");
+}
+function invasion(e){
+  e.mort = true; ev(e.x, e.y, "#ff5d5d", 20);
+  if(S.t - (S.tInv || -9) < 1) return;
+  S.tInv = S.t; S.form.y -= 110;          // la formation recule : une seule vie perdue
+  vivants().forEach(v => toucher(v, true));
+  ajouterTexte("⚠️ INVASION !", LW / 2, LH * .5, 24, 1.5);
+}
+function touchePar(e){
+  for(const v of vivants()) if(Math.abs(v.x - e.x) < 20 && Math.abs(YV - e.y) < 18){ e.mort = true; ev(e.x, e.y, TYPES[e.t].c, 14); toucher(v); return; }
+}
+function toucher(v, force){
+  if(v.mort || v.invul > 0) return;
+  if(!force && Math.random() < .12 * nb(v, "esquive")){ S.ev.push([v.x, YV - 20, 5]); v.invul = .4; return; }
+  if(v.bouclier > 0){ v.bouclier--; v.invul = .8; S.ev.push([v.x, YV, 6]); son(600, .15, "sine", .05); return; }
+  v.vies--; v.invul = 2 + .5 * nb(v, "esquive");
+  ev(v.x, YV, v.coul, 26); secousse = .4; son(90, .4, "sawtooth", .08);
+  if(v.vies <= 0){ v.mort = true; ev(v.x, YV, "#fff", 40); verifierFin(); }
+}
+function prendreBonus(v, b){
+  son(1000, .12, "triangle", .05);
+  ajouterTexte(BICO[b.t], v.x, YV - 40, 22, 1);
+  if(b.t === "vie") v.vies++;
+  if(b.t === "bouclier") v.bouclier++;
+  if(b.t === "frenesie") v.frenesie = 6;
+  if(b.t === "bombe"){ secousse = .5; S.ev.push([LW / 2, LH / 2, 7]); S.te = []; S.en.slice().forEach(e => blesser(e, 2, v)); if(S.boss){ S.boss.hp -= 15; if(S.boss.hp <= 0) tuerBoss(); } }
+}
+function verifierFin(){
+  if(vivants().length) return;
+  S.phase = "fin"; S.tp = 0;
+}
+function ev(x, y, c, n){ S.ev.push([x, y, 1, n, c]); }
+
+/* ================= EFFETS (locaux, aussi chez les invités) ================= */
+function jouerEvenements(l){
+  for(const e of l){
+    const [x, y, k] = e;
+    if(k === 1){ const n = e[3], c = e[4]; for(let i = 0; i < n; i++){ const a = Math.random() * 6.28, sp = 30 + Math.random() * (n > 20 ? 220 : 140); parts.push({x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: .4 + Math.random() * .5, c, s: n > 20 ? 3 : 2}); } }
+    if(k === 2) ajouterTexte("CRIT !", x, y - 10, 13, .6, "#ffd34d");
+    if(k === 3) parts.push({x, y, cercle: e[3], t: .3, c: "#ffb347"});
+    if(k === 4) parts.push({x, y, x2: e[3], y2: e[4], eclair: true, t: .2, c: "#bfe3ff"});
+    if(k === 5) ajouterTexte("ESQUIVE", x, y, 13, .7, "#c8c6ee");
+    if(k === 6) parts.push({x, y, cercle: 26, t: .35, c: "#4fd1ff"});
+    if(k === 7) parts.push({x, y, flash: true, t: .35, c: "#fff"});
+  }
+}
+function ajouterTexte(txt, x, y, taille, v, c){ textes.push({txt, x, y, taille, v, c: c || "#fff"}); }
+
+/* ================= ENTRÉES ================= */
+const touches = {};
+let doigt = null, xLocal = LW / 2;
+document.addEventListener("keydown", e => {
+  if(/INPUT|TEXTAREA/.test(document.activeElement.tagName) || document.querySelector("dialog[open]")) return;
+  touches[e.key.toLowerCase()] = true;
+  if(["arrowleft", "arrowright", " "].includes(e.key.toLowerCase())) e.preventDefault();
+  if(S && S.phase === "choix" && ["1", "2", "3"].includes(e.key)){ const o = mesOffres(); if(o && o[+e.key - 1]) cliquerAug(o[+e.key - 1]); }
+  if((e.key === "p" || e.key === "Escape") && mode === "solo") basculerPause();
+});
+document.addEventListener("keyup", e => { touches[e.key.toLowerCase()] = false; });
+function pointX(e){ const r = cv.getBoundingClientRect(); return (e.clientX - r.left) / echelle; }
+cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); doigt = {x0: pointX(e), v0: xLocal}; });
+cv.addEventListener("pointermove", e => { if(doigt) doigt.x = pointX(e); });
+cv.addEventListener("pointerup", () => doigt = null);
+cv.addEventListener("pointercancel", () => doigt = null);
+const moi = () => mode === "coop" || mode === "duel" ? (salle ? (mode === "duel" ? "moi" : salle.moi) : "moi") : "moi";
+function monVaisseau(){ return S && S.v.find(v => v.id === moi()); }
+function piloter(dt){
+  const v = monVaisseau(); if(!v || v.mort || !S || (S.phase !== "jeu" && S.phase !== "intro")) return;
+  const vit = 250 * (1 + .25 * nb(v, "vitesse"));
+  let dir = 0;
+  if(touches["arrowleft"] || touches["a"] || touches["q"]) dir -= 1;
+  if(touches["arrowright"] || touches["d"]) dir += 1;
+  if(dir) xLocal += dir * vit * dt;
+  else if(doigt && doigt.x != null){ const cible = doigt.v0 + (doigt.x - doigt.x0) * 1.3; xLocal += Math.max(-vit * dt * 1.6, Math.min(vit * dt * 1.6, cible - xLocal)); }
+  xLocal = Math.max(14, Math.min(LW - 14, xLocal));
+  v.x = xLocal;
+}
+
+/* ================= BOUCLE ================= */
+let avant = performance.now(), envoiT = 0;
+function boucle(t){
+  const dt = Math.min(.04, (t - avant) / 1000); avant = t;
+  if(S && !pause){
+    piloter(dt);
+    if(estChef()){
+      maj(dt);
+      if(S.ev.length){ jouerEvenements(S.ev); if(mode === "coop") evEnvoi.push(...S.ev); S.ev = []; }
+      if(mode === "coop" && t - envoiT > 66){ envoiT = t; envoyerEtat(); }
+    }else majInvite(dt, t);
+    if(mode === "duel" && t - envoiT > 500){ envoiT = t; envoyerStatut(); }
+    surveillerPhase();
+  }
+  // effets
+  for(const p of parts){ p.t -= dt; if(p.vx != null){ p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97; p.vy *= .97; } }
+  parts = parts.filter(p => p.t > 0);
+  for(const x of textes){ x.v -= dt; x.y -= 18 * dt; }
+  textes = textes.filter(x => x.v > 0);
+  for(const s of etoiles){ s.y += s.v * dt; if(s.y > LH){ s.y = 0; s.x = Math.random() * LW; } }
+  if(secousse > 0) secousse -= dt;
+  dessiner(t / 1000);
+  requestAnimationFrame(boucle);
+}
+
+/* ================= DESSIN ================= */
+function dessiner(T){
+  ctx.setTransform(echelle * dpr, 0, 0, echelle * dpr, 0, 0);
+  ctx.fillStyle = "#05061a"; ctx.fillRect(0, 0, LW, LH);
+  const g = ctx.createRadialGradient(LW * .7, LH * .2, 10, LW * .7, LH * .2, 300); g.addColorStop(0, "rgba(123,92,255,.18)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, LW, LH);
+  for(const s of etoiles){ ctx.globalAlpha = .3 + s.r * .4; ctx.fillStyle = "#fff"; ctx.fillRect(s.x, s.y, s.r, s.r * (1 + s.v / 30)); }
+  ctx.globalAlpha = 1;
+  if(!S) return;
+  ctx.save();
+  if(secousse > 0) ctx.translate((Math.random() - .5) * 12 * secousse, (Math.random() - .5) * 12 * secousse);
+  // sol
+  ctx.fillStyle = "rgba(255,93,93,.18)"; ctx.fillRect(0, YV + 18, LW, 2);
+  // bonus
+  for(const b of S.bo){ ctx.font = "18px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "rgba(255,255,255,.15)"; ctx.beginPath(); ctx.arc(b.x, b.y, 13 + Math.sin(T * 6) * 1.5, 0, 6.28); ctx.fill(); ctx.fillText(BICO[b.t], b.x, b.y + 1); }
+  // ennemis
+  for(const e of S.en) dessinerEnnemi(e, T);
+  if(S.ovni) dessinerOvni(S.ovni, T);
+  if(S.boss) dessinerBoss(S.boss, T);
+  // balles
+  for(const b of S.tb){
+    const c = (S.v[b.o] || {}).coul || "#fff";
+    if(b.k === 1){ ctx.fillStyle = "#ffb347"; ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillRect(-6, -2.5, 12, 5); ctx.restore(); continue; }
+    if(b.k === 2){ ctx.fillStyle = "#ff8a3d"; ctx.beginPath(); ctx.arc(b.x, b.y, b.taille, 0, 6.28); ctx.fill(); ctx.fillStyle = "rgba(255,180,80,.35)"; ctx.fillRect(b.x - 3, b.y - 30, 6, 28); continue; }
+    ctx.globalAlpha = .3; ctx.fillStyle = c; ctx.fillRect(b.x - b.taille, b.y - b.taille * 2.5, b.taille * 2, b.taille * 5);
+    ctx.globalAlpha = 1; ctx.fillRect(b.x - b.taille / 2, b.y - b.taille * 2, b.taille, b.taille * 4);
+  }
+  for(const b of S.te){ ctx.fillStyle = "#ff4d6d"; ctx.beginPath(); ctx.arc(b.x, b.y, 3.5, 0, 6.28); ctx.fill(); ctx.fillStyle = "rgba(255,77,109,.3)"; ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, 6.28); ctx.fill(); }
+  // vaisseaux
+  S.v.forEach((v, i) => { if(!v.mort) dessinerVaisseau(v, i, T); });
+  // particules
+  for(const p of parts){
+    ctx.globalAlpha = Math.max(0, Math.min(1, p.t * 2.5));
+    if(p.cercle){ ctx.strokeStyle = p.c; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.cercle * (1.3 - p.t), 0, 6.28); ctx.stroke(); }
+    else if(p.eclair){ ctx.strokeStyle = p.c; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); const n = 5; for(let k = 1; k <= n; k++){ const f = k / n; ctx.lineTo(p.x + (p.x2 - p.x) * f + (k < n ? (Math.random() - .5) * 14 : 0), p.y + (p.y2 - p.y) * f + (k < n ? (Math.random() - .5) * 14 : 0)); } ctx.stroke(); }
+    else if(p.flash){ ctx.fillStyle = p.c; ctx.fillRect(-20, -20, LW + 40, LH + 40); }
+    else { ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); }
+  }
+  ctx.globalAlpha = 1;
+  for(const x of textes){ ctx.globalAlpha = Math.min(1, x.v * 2); ctx.font = `800 ${x.taille}px Fredoka, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = x.c; ctx.fillText(x.txt, x.x, x.y); }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  dessinerHud();
+}
+function dessinerEnnemi(e, T){
+  const Ty = TYPES[e.t], r = Ty.r, c = e.gel > 0 ? "#bfe9ff" : Ty.c, ph = T * 4 + e.id;
+  ctx.save(); ctx.translate(e.x, e.y);
+  ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineWidth = 2;
+  if(e.t === "bulle" || e.t === "mini"){
+    ctx.beginPath(); ctx.arc(0, 0, r * (1 + Math.sin(ph) * .05), 0, 6.28); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.beginPath(); ctx.arc(-r * .35, -r * .35, r * .3, 0, 6.28); ctx.fill();
+  }else if(e.t === "meduse"){
+    ctx.beginPath(); ctx.arc(0, -2, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+    for(let k = -2; k <= 2; k++){ ctx.beginPath(); ctx.moveTo(k * 5, -1); ctx.quadraticCurveTo(k * 5 + Math.sin(ph + k) * 4, 7, k * 5, 13); ctx.stroke(); }
+  }else if(e.t === "tireur"){
+    ctx.beginPath(); for(let k = 0; k < 10; k++){ const a = k * Math.PI / 5 + ph * .2, rr = k % 2 ? r * .5 : r; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); ctx.fill();
+  }else if(e.t === "blinde"){
+    ctx.beginPath(); for(let k = 0; k < 6; k++){ const a = k * Math.PI / 3; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = 3; ctx.stroke();
+  }else if(e.t === "plongeur"){
+    ctx.rotate(e.m === "plonge" ? Math.atan2(e.vy || 1, e.vx || 0) - Math.PI / 2 : 0);
+    ctx.beginPath(); ctx.moveTo(0, r); ctx.lineTo(r, -r * .6); ctx.lineTo(0, -r * .2); ctx.lineTo(-r, -r * .6); ctx.closePath(); ctx.fill();
+  }else if(e.t === "scindeur"){
+    ctx.beginPath(); ctx.arc(-4, 0, r * .7, 0, 6.28); ctx.arc(4, 0, r * .7, 0, 6.28); ctx.fill();
+  }
+  // yeux
+  if(e.t !== "plongeur"){
+    ctx.fillStyle = "#0b0b22"; const ey = e.t === "meduse" ? -5 : -1;
+    ctx.beginPath(); ctx.arc(-r * .32, ey, r * .17, 0, 6.28); ctx.arc(r * .32, ey, r * .17, 0, 6.28); ctx.fill();
+  }
+  if(e.hp > 1 && e.t === "blinde"){ ctx.fillStyle = "#fff"; ctx.font = "800 9px Nunito"; ctx.textAlign = "center"; ctx.fillText(e.hp, 0, r * .55 + 3); }
+  ctx.restore();
+}
+function dessinerOvni(o, T){
+  ctx.save(); ctx.translate(o.x, o.y);
+  ctx.fillStyle = "#c9d3ff"; ctx.beginPath(); ctx.ellipse(0, 3, 20, 7, 0, 0, 6.28); ctx.fill();
+  ctx.fillStyle = "rgba(160,240,255,.8)"; ctx.beginPath(); ctx.arc(0, -1, 9, Math.PI, 0); ctx.fill();
+  for(let k = -2; k <= 2; k++){ ctx.fillStyle = Math.floor(T * 8 + k) % 2 ? "#ffd34d" : "#ff6fb5"; ctx.beginPath(); ctx.arc(k * 7, 4, 1.8, 0, 6.28); ctx.fill(); }
+  ctx.restore();
+}
+function dessinerBoss(b, T){
+  ctx.save(); ctx.translate(b.x, b.y);
+  const pul = 1 + Math.sin(T * 3) * .04;
+  ctx.fillStyle = "#5b2bd8"; ctx.beginPath(); ctx.ellipse(0, 0, 56 * pul, 34 * pul, 0, 0, 6.28); ctx.fill();
+  ctx.fillStyle = "#8b5cff"; for(let k = 0; k < 6; k++){ const a = k * Math.PI / 3 + T * .5; ctx.beginPath(); ctx.arc(Math.cos(a) * 36, Math.sin(a) * 20, 8, 0, 6.28); ctx.fill(); }
+  ctx.fillStyle = b.hp < b.max / 2 ? "#ff4d6d" : "#ff9de2"; ctx.beginPath(); ctx.arc(0, 0, 15 + Math.sin(T * 6) * 2, 0, 6.28); ctx.fill();
+  for(let k = -3; k <= 3; k++){ ctx.strokeStyle = "#8b5cff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(k * 12, 26); ctx.quadraticCurveTo(k * 14 + Math.sin(T * 3 + k) * 8, 44, k * 12, 58); ctx.stroke(); }
+  ctx.restore();
+  // barre de vie
+  ctx.fillStyle = "rgba(255,255,255,.15)"; ctx.fillRect(60, 14, LW - 120, 8);
+  ctx.fillStyle = "#ff6fb5"; ctx.fillRect(60, 14, (LW - 120) * Math.max(0, b.hp / b.max), 8);
+}
+function dessinerVaisseau(v, i, T){
+  if(v.invul > 0 && Math.floor(T * 12) % 2) ctx.globalAlpha = .45;
+  ctx.save(); ctx.translate(v.x, YV);
+  // flamme
+  ctx.fillStyle = v.frenesie > 0 ? "#ff4d6d" : "#ffb347"; ctx.beginPath(); ctx.moveTo(-5, 12); ctx.lineTo(0, 18 + Math.random() * 7); ctx.lineTo(5, 12); ctx.fill();
+  ctx.fillStyle = v.coul;
+  ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(7, -2); ctx.lineTo(16, 8); ctx.lineTo(16, 13); ctx.lineTo(5, 9); ctx.lineTo(-5, 9); ctx.lineTo(-16, 13); ctx.lineTo(-16, 8); ctx.lineTo(-7, -2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.beginPath(); ctx.ellipse(0, -3, 3, 6, 0, 0, 6.28); ctx.fill();
+  if(v.bouclier > 0){ ctx.strokeStyle = "rgba(79,209,255,.75)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 22, 0, 6.28); ctx.stroke(); }
+  // drones
+  for(let k = 0; k < nb(v, "drone"); k++){ const dx = (k % 2 ? 1 : -1) * (28 + 12 * Math.floor(k / 2)); ctx.fillStyle = v.coul; ctx.beginPath(); ctx.arc(dx, Math.sin(T * 5 + k) * 3, 4, 0, 6.28); ctx.fill(); }
+  ctx.restore(); ctx.globalAlpha = 1;
+  if(S.v.length > 1 && mode === "coop"){ ctx.font = "800 9px Nunito, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = v.coul; ctx.fillText(v.nom.slice(0, 10), v.x, YV + 30); }
+}
+function dessinerHud(){
+  ctx.font = "800 14px Fredoka, sans-serif"; ctx.textBaseline = "top";
+  ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.fillText(`⭐ ${S.score.toLocaleString("fr-FR")}`, 10, 28);
+  ctx.textAlign = "right"; ctx.fillText(`Vague ${S.w}`, LW - 10, 28);
+  // vies
+  ctx.textAlign = "left"; ctx.font = "800 12px Nunito, sans-serif";
+  S.v.forEach((v, i) => {
+    const y = LH - 16 - (S.v.length - 1 - i) * 15;
+    ctx.fillStyle = v.coul; ctx.fillText((S.v.length > 1 ? v.nom.slice(0, 8) + " " : "") + (v.mort ? "💀" : "❤️".repeat(Math.min(v.vies, 6)) + (v.vies > 6 ? "+" : "") + (v.bouclier ? " 🛡️" + v.bouclier : "")), 8, y);
+  });
+  // duel : les adversaires
+  if(mode === "duel" && duel){
+    ctx.textAlign = "right"; let y = 48;
+    for(const [id, st] of Object.entries(duel.statuts)){
+      const j = salle && salle.joueurs.find(x => x.id === id); if(!j) continue;
+      ctx.fillStyle = st.mort ? "#888" : "#ffd34d";
+      ctx.fillText(`${j.pseudo.slice(0, 9)} · V${st.w} · ${st.mort ? "💀" : "❤️" + st.vies}`, LW - 8, y); y += 15;
+    }
+  }
+}
+
+/* ================= ÉCRANS ================= */
+function voile(html){ const v = $("voile"); v.innerHTML = `<div class="boite">${html}</div>`; v.style.display = "flex"; v.dataset.k = ""; return v; }
+function cacherVoile(){ $("voile").style.display = "none"; $("voile").dataset.k = ""; }
+let phaseVue = "", wVue = 0;
+const mesOffres = () => S && S.offres && S.offres[moi()];
+function surveillerPhase(){
+  const cle = S.phase + ":" + S.w + ":" + (S.choix && S.choix[moi()] != null ? "c" : "") + ":" + (mode === "coop" ? Object.keys(S.choix || {}).length : "");
+  if(cle === phaseVue) return;
+  phaseVue = cle;
+  if(S.phase === "choix") ecranChoix();
+  else if(S.phase === "fin") ecranFin();
+  else if($("voile").dataset.k === "choix" || $("voile").dataset.k === "fin") cacherVoile();
+  majInfo();
+}
+function majInfo(){ $("hInfo").textContent = S ? `👾 ${{solo: "Solo", coop: "Coop", duel: "Duel"}[mode]} · vague ${S.w}` : "👾 Assaut Galactique"; }
+function ecranChoix(){
+  const o = mesOffres(), v = monVaisseau(), fait = S.choix[moi()] != null;
+  let h = `<h2>✨ Vague ${S.w} terminée !</h2>`;
+  if(!o || !v) h += `<p>⏳ Les autres choisissent…</p>`;
+  else if(fait){
+    const att = S.v.filter(x => S.choix[x.id] == null).map(x => esc(x.nom));
+    h += `<p>Tu as pris ${AUG[S.choix[moi()]].e} <b>${AUG[S.choix[moi()]].n}</b>.</p><p>⏳ On attend ${att.join(", ")}…</p>`;
+  }else{
+    h += `<p>Choisis un augment ${mode === "coop" ? "(chacun le sien)" : ""} : touche une carte ou 1, 2, 3.</p><div class="cartes">${o.map((k, i) => { const a = AUG[k]; return `<button class="aug ${a.r}" data-k="${k}"><span class="r">${i + 1} · ${{commun: "commun", rare: "rare", epique: "épique"}[a.r]}</span><span class="e">${a.e}</span>${a.n}${nb(v, k) ? ` (${nb(v, k) + 1})` : ""}<small>${a.d}</small></button>`; }).join("")}</div>`;
+  }
+  if(v && Object.keys(v.aug).length) h += `<div class="mesaug">${Object.entries(v.aug).map(([k, n]) => `<span>${AUG[k].e} ${n > 1 ? "x" + n : ""}</span>`).join("")}</div>`;
+  const el = voile(h); el.dataset.k = "choix";
+  el.querySelectorAll("[data-k]").forEach(b => b.onclick = () => cliquerAug(b.dataset.k));
+}
+function cliquerAug(k){
+  if(!S || S.phase !== "choix" || S.choix[moi()] != null) return;
+  son(700, .1, "triangle", .05);
+  if(estChef()) choisir(moi(), k);
+  else { S.choix[moi()] = k; salle.envoyer({t: "choix", w: S.w, k}); attenteChoix = {w: S.w, k, t: Date.now()}; phaseVue = ""; }
+}
+function ecranFin(){
+  if(mode === "duel"){ duelMort(); return; }
+  const el = voile(`<h2>💥 ${mode === "coop" ? "L'équipe est tombée !" : "Ton vaisseau est détruit !"}</h2>
+    <p style="font-size:1.2rem">⭐ <b>${S.score.toLocaleString("fr-FR")}</b> points · vague <b>${S.w}</b></p>
+    <div class="mesaug">${S.v.map(v => `<span style="color:${v.coul}">${esc(v.nom)} : ${Object.entries(v.aug).map(([k, n]) => AUG[k].e + (n > 1 ? n : "")).join(" ") || "aucun augment"}</span>`).join("")}</div>
+    <div id="cl"></div>
+    <div class="boutons">${estChef() ? `<button class="btn" id="re">Rejouer 🔁</button>` : `<p>⏳ L'hôte choisit la suite…</p>`}${mode === "coop" && salle && salle.hote ? `<button class="btn ghost" id="sal">👥 Salon</button>` : ""}<button class="btn ghost" id="men">🏠 Menu</button></div>`);
+  el.dataset.k = "fin";
+  const sal = el.querySelector("#sal"); if(sal) sal.onclick = () => { salle.envoyer({t: "salon", m: modeSalle}); salonLigne(); };
+  const re = el.querySelector("#re"); if(re) re.onclick = () => { if(mode === "coop") lancerCoop(); else lancerSolo(); };
+  el.querySelector("#men").onclick = quitter;
+  if(mode === "solo"){
+    if(S.score > stock.lire("record", 0)) stock.ecrire("record", S.score);
+    Base.record("assaut", S.score, {mieux: "haut", texte: S.score.toLocaleString("fr-FR") + " pts · vague " + S.w});
+    if(S.score > 0) Classement.finDePartie({zone: el.querySelector("#cl"), cle: "assaut", champ: "s", entree: {s: S.score, lv: Math.min(999, S.w)},
+      local: {qualifie: s => { const l = stock.lire("scores", []); return l.length < 10 || s > l[l.length - 1].s; }, ajouter: e => { const l = stock.lire("scores", []); l.push(e); l.sort((a, b) => b.s - a.s); l.splice(10); stock.ecrire("scores", l); return l.indexOf(e); }, liste: () => stock.lire("scores", [])}, rendu});
+  }
+}
+function rendu(el, list, hi){
+  el.innerHTML = "";
+  if(!list.length){ el.appendChild(Base.el("p", "Aucun score pour l'instant.", "cl-note")); return; }
+  const ol = Base.el("ol", null, "lb");
+  list.forEach((e, i) => { const li = Base.el("li", null, i === hi ? "me" : ""); li.append(Base.el("span", (["🥇", "🥈", "🥉"][i] || (i + 1) + ".") + " " + e.n), Base.el("b", e.s.toLocaleString("fr-FR") + " · vague " + e.lv)); ol.appendChild(li); });
+  el.appendChild(ol);
+}
+function basculerPause(){
+  if(!S || mode !== "solo" || S.phase === "fin" || S.phase === "choix") return;
+  pause = !pause;
+  if(pause) voile(`<h2>⏸️ Pause</h2><button class="btn" id="rep">Reprendre ▶</button>`).querySelector("#rep").onclick = basculerPause;
+  else { cacherVoile(); avant = performance.now(); }
+}
+$("bPause").onclick = basculerPause;
+document.addEventListener("visibilitychange", () => { if(document.hidden && mode === "solo" && S && !pause && S.phase !== "fin" && S.phase !== "choix") basculerPause(); });
+$("bTop").onclick = () => {
+  if(mode === "solo" && S && !pause && S.phase === "jeu") basculerPause();
+  const d = Base.el("div"); Base.fenetre("🏆 Classement (solo)", d);
+  Classement.tableau(d, {cle: "assaut", champ: "s", liste: () => stock.lire("scores", []), rendu: (el, l, hi) => { rendu(el, l, hi); el.querySelectorAll("li").forEach(li => li.style.background = "var(--soft)"); }});
+};
+
+function menu(){
+  S = null; mode = "solo"; pause = false; duel = null; majInfo();
+  const rec = stock.lire("record", 0);
+  const v = voile(`<h2>👾 Assaut Galactique</h2><p>Repousse les vagues d'aliens et empile les augments : tir triple, drones, éclairs, missiles, rebonds…</p>
+    ${rec ? `<p>🏆 Ton record : <b>${rec.toLocaleString("fr-FR")}</b></p>` : ""}
+    <div class="boutons"><button class="btn" id="solo" style="font-size:1.1rem;padding:12px 28px">Solo ▶</button></div>
+    <div class="boutons"><button class="btn" id="coop">🤝 Coop en ligne</button><button class="btn" id="duelB">⚔️ Duel en ligne</button></div>
+    <p style="font-size:.82rem">Coop : même terrain, de 2 à 4. Duel : chacun ses vagues, tes éliminations envoient des ennemis aux autres.</p>`);
+  v.querySelector("#solo").onclick = lancerSolo;
+  v.querySelector("#coop").onclick = () => menuLigne("coop");
+  v.querySelector("#duelB").onclick = () => menuLigne("duel");
+}
+function lancerSolo(){ mode = "solo"; graine = Math.floor(Math.random() * 1e6); idSuiv = 1; parts = []; nouvelleSim([{id: "moi", nom: Base.joueur.pseudo() || "Toi"}]); xLocal = LW / 2; S.v[0].x = xLocal; phaseVue = ""; cacherVoile(); }
+function quitter(){ if(salle){ salle.quitter(); salle = null; } menu(); }
+
+/* ================= EN LIGNE ================= */
+let modeSalle = "coop", evEnvoi = [], attenteChoix = null, duel = null;
+function menuLigne(m){
+  modeSalle = m;
+  const v = voile(`<h2>${m === "coop" ? "🤝 Coop" : "⚔️ Duel"} en ligne</h2><p>${m === "coop" ? "Le même terrain pour tout le monde, de 2 à 4 joueurs." : "Chacun ses vagues (les mêmes pour tous), de 2 à 4 joueurs. Le dernier en vie gagne !"}</p>
+    <input class="champ" id="pseudo" maxlength="16" placeholder="Ton pseudo" autocomplete="off" value="${esc(Base.joueur.pseudo())}">
+    <div class="boutons"><button class="btn" id="creer">🏠 Créer une salle</button></div>
+    <div class="ligne"><input class="champ" id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off" style="text-transform:uppercase"><button class="btn" id="rej">Rejoindre</button></div>
+    <p id="msg"></p><div class="boutons"><button class="btn ghost petit" id="ret">← Retour</button></div>`);
+  const msg = t => { const p = v.querySelector("#msg"); if(p) p.textContent = t; };
+  const pseudoOk = () => { const p = v.querySelector("#pseudo").value.trim(); if(!p){ msg("Choisis d'abord un pseudo."); return false; } Base.joueur.changerPseudo(p); return true; };
+  v.querySelector("#ret").onclick = menu;
+  v.querySelector("#creer").onclick = async () => {
+    if(!pseudoOk()) return;
+    msg("Création de la salle…");
+    try{
+      salle = await Reseau.creer("assaut", {max: 4, surEssai: msg,
+        surArrivee(j){ Base.toast(j.avatar + " " + j.pseudo + " est là !"); if(!S || $("voile").dataset.k === "salon") salonLigne(); },
+        surDepart(j){
+          Base.toast(j.pseudo + " est parti·e");
+          if(mode === "coop" && S){ const v = S.v.find(x => x.id === j.id); if(v){ v.mort = true; v.vies = 0; if(S.phase === "choix" && S.choix[v.id] == null){ S.choix[v.id] = "vie"; if(S.v.every(x => S.choix[x.id] != null)) vagueSuivante(); } verifierFin(); } }
+          else if(mode === "duel" && duel){ delete duel.statuts[j.id]; verifierVictoire(); }
+          else salonLigne();
+        },
+        surMessage: recu});
+      S = null; salonLigne();
+    }catch(e){ msg("❌ " + e.message); }
+  };
+  const rejoindre = async code => {
+    if(!pseudoOk()) return;
+    msg("Connexion à la salle " + code + "…");
+    try{
+      salle = await Reseau.rejoindre("assaut", code, {surMessage: recu,
+        surListe(){ if(!S || $("voile").dataset.k === "salon") salonLigne(); },
+        surFermeture(){ Base.toast("L'hôte a fermé la salle."); salle = null; menu(); },
+        surHotePerdu(){ Base.toast("L'hôte ne répond plus…"); }});
+      S = null; salonLigne(); salle.envoyer({t: "etat?"});
+    }catch(e){ msg("❌ " + e.message); }
+  };
+  v.querySelector("#rej").onclick = () => { const c = v.querySelector("#codeIn").value.trim().toUpperCase(); if(c) rejoindre(c); };
+  v.querySelector("#codeIn").addEventListener("keydown", e => { if(e.key === "Enter") v.querySelector("#rej").click(); });
+  menuLigne.rejoindre = rejoindre;
+}
+function salonLigne(){
+  if(!salle) return;
+  S = null; duel = null; mode = "solo";
+  const l = salle.joueurs, h = salle.hote;
+  const v = voile(`<h2>${modeSalle === "coop" ? "🤝 Coop" : "⚔️ Duel"}</h2><p>Code de la salle</p><div class="code">${salle.code}</div>
+    <div class="boutons" style="margin-top:2px"><button class="btn ghost petit" id="lien">🔗 Copier le lien</button></div>
+    ${h ? `<div class="boutons"><button class="btn ${modeSalle === "coop" ? "" : "ghost"} petit" id="mc">🤝 Coop</button><button class="btn ${modeSalle === "duel" ? "" : "ghost"} petit" id="md">⚔️ Duel</button></div>` : ""}
+    <ol class="rang">${l.map((j, i) => `<li class="${j.id === salle.moi ? "moi" : ""}"><span class="pt" style="background:${COULS[i % 4]}"></span><span>${esc(j.avatar)}</span><span class="n">${esc(j.pseudo)}${i === 0 ? " 👑" : ""}</span></li>`).join("")}</ol>
+    <p>${h ? (l.length < 2 ? "Envoie le code à tes amis (jusqu'à 4) !" : `${l.length} joueurs, prêts ?`) : "⏳ L'hôte va lancer la partie…"}</p>
+    <div class="boutons">${h ? `<button class="btn" id="lancer" ${l.length < 2 ? "disabled" : ""}>Lancer ▶</button>` : ""}<button class="btn ghost" id="q">🚪 Quitter</button></div>`);
+  v.dataset.k = "salon";
+  v.querySelector("#lien").onclick = async () => { try{ await navigator.clipboard.writeText(salle.lien); Base.toast("Lien copié ! 📨"); }catch(e){ Base.fenetre("Lien d'invitation", salle.lien); } };
+  const mc = v.querySelector("#mc"); if(mc) mc.onclick = () => { modeSalle = "coop"; salle.envoyer({t: "salon", m: modeSalle}); salonLigne(); };
+  const md = v.querySelector("#md"); if(md) md.onclick = () => { modeSalle = "duel"; salle.envoyer({t: "salon", m: modeSalle}); salonLigne(); };
+  const b = v.querySelector("#lancer"); if(b) b.onclick = () => modeSalle === "coop" ? lancerCoop() : lancerDuel();
+  v.querySelector("#q").onclick = quitter;
+}
+function recu(m, j){
+  if(!m || !m.t) return;
+  const de = m.de;
+  if(m.t === "etat?" && salle.hote){ if(mode === "coop" && S) envoyerMeta(); else if(mode === "duel" && duel) salle.envoyer({t: "duel", graine, ids: duel.ids, pid: duel.pid}); else salle.envoyer({t: "salon", m: modeSalle}); return; }
+  if(m.t === "salon" && !salle.hote){ modeSalle = m.m || modeSalle; salonLigne(); return; }
+  // coop
+  if(m.t === "x" && salle.hote && mode === "coop" && S){ const v = S.v.find(x => x.id === de); if(v && !v.mort && typeof m.x === "number") v.x = Math.max(14, Math.min(LW - 14, m.x)); return; }
+  if(m.t === "choix" && salle.hote && mode === "coop" && S && m.w === S.w){ choisir(de, m.k); envoyerMeta(); return; }
+  if(m.t === "meta" && !salle.hote){ recuMeta(m); return; }
+  if(m.t === "s" && !salle.hote && mode === "coop" && S){ recuEtat(m); return; }
+  // duel
+  if(m.t === "duel" && !salle.hote){ if(!duel || duel.pid !== m.pid) demarrerDuel(m.graine, m.ids, m.pid); return; }
+  if(m.t === "st" && mode === "duel" && duel){ duel.statuts[de] = {w: m.w | 0, vies: m.vies | 0, sc: m.sc | 0, mort: !!m.mort, pid: m.pid}; verifierVictoire(); return; }
+  if(m.t === "att" && mode === "duel" && duel && S && m.pid === duel.pid && m.a !== undefined){ if(m.a === salle.moi || m.a === "*") recevoirAttaque(m.n | 0, de); return; }
+}
+
+/* ---------- Coop : l'hôte fait tourner la simulation ---------- */
+function lancerCoop(){
+  mode = "coop"; graine = Math.floor(Math.random() * 1e6); idSuiv = 1; parts = [];
+  nouvelleSim(salle.joueurs.map(j => ({id: j.id, nom: j.pseudo})));
+  const me = S.v.find(v => v.id === salle.moi); xLocal = me.x;
+  phaseVue = ""; cacherVoile(); envoyerMeta();
+}
+const r1 = x => Math.round(x);
+function envoyerMeta(){
+  if(!salle || !S) return;
+  salle.envoyer({t: "meta", ph: S.phase, w: S.w, sc: S.score, v: S.v.map(v => ({id: v.id, nom: v.nom, coul: v.coul, aug: v.aug})), offres: S.offres, choix: S.choix});
+}
+let metaT = 0, phaseEnvoyee = "";
+function envoyerEtat(){
+  const now = performance.now();
+  const ph = S.phase + S.w + Object.keys(S.choix).length;
+  if(ph !== phaseEnvoyee || now - metaT > 1000){ phaseEnvoyee = ph; metaT = now; envoyerMeta(); }
+  salle.envoyer({t: "s", ph: S.phase, w: S.w, sc: S.score,
+    v: S.v.map(v => [r1(v.x), v.vies, v.invul > 0 ? 1 : 0, v.bouclier, v.mort ? 1 : 0, v.frenesie > 0 ? 1 : 0]),
+    e: S.en.map(e => [e.id, TNOMS.indexOf(e.t), r1(e.x), r1(e.y), e.hp, e.gel > 0 ? 1 : 0, e.m === "plonge" ? 1 : 0]),
+    b: S.tb.slice(-140).map(b => [r1(b.x), r1(b.y), r1(b.vx), r1(b.vy), b.o, b.k, Math.round(b.taille * 2)]),
+    te: S.te.map(b => [r1(b.x), r1(b.y), r1(b.vx), r1(b.vy)]),
+    bo: S.bo.map(b => [r1(b.x), r1(b.y), BONUS.indexOf(b.t)]),
+    bs: S.boss ? [r1(S.boss.x), r1(S.boss.y), Math.ceil(S.boss.hp), S.boss.max] : 0,
+    o: S.ovni ? [r1(S.ovni.x), r1(S.ovni.y)] : 0,
+    ev: evEnvoi.splice(0)});
+}
+setInterval(() => { evEnvoi.length > 200 && evEnvoi.splice(0, evEnvoi.length - 200); }, 1000);
+// invité
+function nouvelleSimInvite(){ S = {w: 0, phase: "intro", t: 0, tp: 0, score: 0, v: [], en: [], tb: [], te: [], bo: [], boss: null, ovni: null, ev: [], offres: {}, choix: {}, form: {x: 0, y: 0}}; }
+function recuMeta(m){
+  if(!S || mode !== "coop"){ mode = "coop"; nouvelleSimInvite(); parts = []; phaseVue = ""; cacherVoile(); }
+  S.phase = m.ph; S.w = m.w; S.score = m.sc; S.offres = m.offres || {}; S.choix = m.choix || {};
+  if(attenteChoix && (S.choix[moi()] != null || S.w !== attenteChoix.w)) attenteChoix = null;
+  if(attenteChoix){ S.choix[moi()] = attenteChoix.k; if(Date.now() - attenteChoix.t > 1500){ attenteChoix.t = Date.now(); salle.envoyer({t: "choix", w: attenteChoix.w, k: attenteChoix.k}); } }
+  m.v.forEach((x, i) => {
+    let v = S.v[i];
+    if(!v || v.id !== x.id){ v = S.v[i] = {...nouveauVaisseau(i, x.nom, x.id)}; if(x.id === salle.moi) xLocal = v.x; }
+    v.nom = x.nom; v.coul = x.coul; v.aug = x.aug || {};
+  });
+  S.v.length = m.v.length;
+}
+function recuEtat(m){
+  S.phase = m.ph; S.w = m.w; S.score = m.sc;
+  m.v.forEach((x, i) => { const v = S.v[i]; if(!v) return; if(v.id !== salle.moi) v.cx = x[0]; v.vies = x[1]; v.invul = x[2] ? 1 : 0; v.bouclier = x[3]; v.mort = !!x[4]; v.frenesie = x[5] ? 1 : 0; });
+  const par = new Map(S.en.map(e => [e.id, e]));
+  S.en = m.e.map(x => { const e = par.get(x[0]) || {id: x[0], x: x[2], y: x[3]}; e.t = TNOMS[x[1]]; e.cx = x[2]; e.cy = x[3]; e.hp = x[4]; e.gel = x[5]; e.m = x[6] ? "plonge" : "form"; return e; });
+  S.tb = m.b.map(x => ({x: x[0], y: x[1], vx: x[2], vy: x[3], o: x[4], k: x[5], taille: x[6] / 2}));
+  S.te = m.te.map(x => ({x: x[0], y: x[1], vx: x[2], vy: x[3]}));
+  S.bo = m.bo.map(x => ({x: x[0], y: x[1], t: BONUS[x[2]]}));
+  if(m.bs){ S.boss = S.boss || {x: m.bs[0], y: m.bs[1], t: 0}; S.boss.cx = m.bs[0]; S.boss.cy = m.bs[1]; S.boss.hp = m.bs[2]; S.boss.max = m.bs[3]; } else S.boss = null;
+  S.ovni = m.o ? {x: m.o[0], y: m.o[1]} : null;
+  if(m.ev && m.ev.length) jouerEvenements(m.ev);
+}
+let xEnvoi = 0;
+function majInvite(dt, t){
+  const k = Math.min(1, dt * 12);
+  for(const e of S.en){ if(e.cx != null){ e.x += (e.cx - e.x) * k; e.y += (e.cy - e.y) * k; } }
+  for(const v of S.v){ if(v.id !== salle.moi && v.cx != null) v.x += (v.cx - v.x) * k; if(v.invul > 0) v.invul -= dt; }
+  if(S.boss && S.boss.cx != null){ S.boss.x += (S.boss.cx - S.boss.x) * k; S.boss.y += (S.boss.cy - S.boss.y) * k; S.boss.t += dt; }
+  for(const b of S.tb){ b.x += b.vx * dt; b.y += b.vy * dt; }
+  for(const b of S.te){ b.x += b.vx * dt; b.y += b.vy * dt; }
+  for(const b of S.bo) b.y += 85 * dt;
+  if(t - xEnvoi > 50){ xEnvoi = t; const v = monVaisseau(); if(v && !v.mort) salle.envoyer({t: "x", x: Math.round(xLocal)}); }
+}
+
+/* ---------- Duel : chacun sa simulation, on s'envoie des attaques ---------- */
+function lancerDuel(){
+  const pid = ((duel && duel.pid) || 0) + 1, g = Math.floor(Math.random() * 1e6), ids = salle.joueurs.map(j => j.id);
+  salle.envoyer({t: "duel", graine: g, ids, pid});
+  demarrerDuel(g, ids, pid);
+}
+function demarrerDuel(g, ids, pid){
+  duel = {pid, ids, statuts: {}, mortOrdre: [], fini: false};
+  ids.forEach(id => { if(id !== salle.moi) duel.statuts[id] = {w: 1, vies: 3, sc: 0, mort: false, pid}; });
+  mode = "duel"; graine = g; idSuiv = 1; parts = [];
+  if(!ids.includes(salle.moi)){ voile(`<h2>⏳ Duel en cours</h2><p>Tu joueras le prochain !</p><div class="boutons"><button class="btn ghost" id="q">🚪 Quitter</button></div>`).querySelector("#q").onclick = quitter; S = null; return; }
+  nouvelleSim([{id: "moi", nom: Base.joueur.pseudo() || "Toi"}]);
+  xLocal = LW / 2; phaseVue = ""; cacherVoile();
+}
+function envoyerStatut(){
+  if(!duel || !S || !salle) return;
+  const v = S.v[0];
+  salle.envoyer({t: "st", pid: duel.pid, w: S.w, vies: v.vies, sc: S.score, mort: v.mort});
+}
+function envoyerAttaque(n, pourquoi){
+  if(!duel || !salle || duel.fini) return;
+  n += nb(S.v[0], "sabotage");
+  const cibles = Object.entries(duel.statuts).filter(([id, st]) => !st.mort).map(([id]) => id);
+  if(!cibles.length) return;
+  const a = cibles[Math.floor(Math.random() * cibles.length)], j = salle.joueurs.find(x => x.id === a);
+  salle.envoyer({t: "att", pid: duel.pid, a, n});
+  ajouterTexte(`☠️ ${n} plongeur${n > 1 ? "s" : ""} → ${j ? j.pseudo : "?"}`, LW / 2, LH * .62, 14, 1.6, "#ffb347");
+}
+function recevoirAttaque(n, de){
+  if(!S || S.phase === "fin") return;
+  const j = salle.joueurs.find(x => x.id === de);
+  ajouterTexte(`⚠️ ${j ? j.pseudo : "Un rival"} t'envoie ${n} plongeur${n > 1 ? "s" : ""} !`, LW / 2, LH * .35, 15, 2, "#ff6f6f");
+  son(220, .3, "sawtooth", .05);
+  for(let i = 0; i < Math.min(n, 8); i++) S.en.push({id: idSuiv++, t: "plongeur", hp: 1 + Math.floor(S.w / 6), x: 40 + Math.random() * (LW - 80), y: -20 - i * 30, m: "plonge", vx: 0, vy: 150 + S.w * 6, gel: 0, piege: true});
+}
+function duelMort(){
+  if(!duel) return;
+  envoyerStatut();
+  afficherDuel();
+}
+function verifierVictoire(){
+  if(!duel || !S) return;
+  const autresVivants = Object.values(duel.statuts).filter(s => !s.mort).length;
+  if(!autresVivants && !S.v[0].mort && !duel.fini){
+    duel.fini = true; S.phase = "fin"; S.v[0].mort = false;
+    son(660, .2, "triangle", .1); setTimeout(() => son(990, .3, "triangle", .1), 150);
+    envoyerStatut(); afficherDuel(true);
+  }else if(S.phase === "fin") afficherDuel();
+}
+function afficherDuel(gagne){
+  const moiSt = {id: salle.moi, nom: (salle.joueurs.find(x => x.id === salle.moi) || {}).pseudo || Base.joueur.pseudo(), w: S.w, sc: S.score, mort: S.v[0].mort, moi: true};
+  const l = [moiSt].concat(Object.entries(duel.statuts).map(([id, s]) => ({id, nom: (salle.joueurs.find(x => x.id === id) || {}).pseudo || "?", ...s})))
+    .sort((a, b) => (a.mort - b.mort) || (b.w - a.w) || (b.sc - a.sc));
+  const tous = l.filter(x => !x.mort).length <= 1;
+  const titre = gagne || (tous && !moiSt.mort) ? "🏆 Tu gagnes le duel !" : tous ? `🏆 ${esc(l[0].nom)} gagne !` : "💥 Éliminé !";
+  const cle = JSON.stringify([titre, l.map(x => [x.nom, x.w, x.sc, x.mort]), salle.hote]);
+  if(cle === afficherDuel.cle && $("voile").style.display !== "none") return;
+  afficherDuel.cle = cle;
+  const el = voile(`<h2>${titre}</h2><ol class="rang">${l.map((x, i) => `<li class="${x.moi ? "moi" : ""}"><span>${["🥇", "🥈", "🥉"][i] || i + 1 + "."}</span><span class="n">${esc(x.nom)}</span><span>V${x.w}</span><b>${(x.sc || 0).toLocaleString("fr-FR")}</b><span>${x.mort ? "💀" : "🚀"}</span></li>`).join("")}</ol>
+    ${tous ? "" : `<p>⏳ Les autres se battent encore…</p>`}
+    <div class="boutons">${tous && salle.hote ? `<button class="btn" id="rev">🔁 Revanche</button><button class="btn ghost" id="sal">👥 Salon</button>` : tous ? `<p>⏳ L'hôte choisit la suite…</p>` : ""}<button class="btn ghost" id="q">🚪 Quitter</button></div>`);
+  el.dataset.k = "fin";
+  const rev = el.querySelector("#rev"); if(rev) rev.onclick = lancerDuel;
+  const sal = el.querySelector("#sal"); if(sal) sal.onclick = () => { salle.envoyer({t: "salon", m: modeSalle}); salonLigne(); };
+  el.querySelector("#q").onclick = quitter;
+}
+
+/* ================= DÉMARRAGE ================= */
+taille(); menu(); requestAnimationFrame(boucle);
+const codeLien = Reseau.codeDansAdresse();
+if(codeLien){ menuLigne("coop"); $("codeIn").value = codeLien; if(Base.joueur.pseudo()) menuLigne.rejoindre(codeLien); }
+</script>
+</body>
+</html>
