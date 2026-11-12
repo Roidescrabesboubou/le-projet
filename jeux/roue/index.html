@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Roue de la fortune</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/casino.css">
+<style>
+:root{--accent:#9333ea;--fond1:rgba(147,51,234,.13);--fond2:rgba(242,193,78,.16)}
+.jeu{width:100%;max-width:520px;display:flex;flex-direction:column;gap:12px}
+.roue-zone{position:relative;width:min(100%,420px);margin:0 auto;aspect-ratio:1}
+.roue-zone svg.roue{width:100%;height:100%;transition:transform 6.5s cubic-bezier(.12,.7,.18,1);filter:drop-shadow(0 8px 18px rgba(0,0,0,.35))}
+.fleche{position:absolute;left:50%;top:-6px;transform:translateX(-50%);font-size:2.4rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));z-index:2}
+.centre{position:absolute;left:50%;top:50%;width:26%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff3c4,#e2b93b 60%,#a27a12);display:flex;align-items:center;justify-content:center;font-family:Fredoka,sans-serif;font-size:clamp(1.1rem,5vw,1.7rem);color:#3a1020;box-shadow:0 0 0 5px #fff,0 4px 10px rgba(0,0,0,.35);text-align:center;line-height:1}
+.bandeau{display:flex;justify-content:space-between;gap:8px;font-weight:800;background:#3b0764;color:#fff;border-radius:12px;padding:8px 14px}
+.paris{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.paris button{border-radius:14px;border:3px solid transparent;padding:10px 4px;color:#fff;font-weight:900;font-size:1.2rem;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.paris button small{font-size:.75rem;font-weight:700;opacity:.9}
+.paris button .m{font-size:.85rem;background:rgba(0,0,0,.3);border-radius:999px;padding:1px 8px;min-height:1.2em}
+.paris button.gagne{border-color:#fff;animation:pulse .6s ease-in-out infinite alternate}
+@keyframes pulse{to{transform:scale(1.06)}}
+.paris button:disabled{opacity:.55}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.histo{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.histo span{border-radius:8px;padding:2px 8px;font-weight:800;font-size:.8rem;color:#fff}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="porte"></section>
+  <div class="jeu">
+    <div class="bandeau"><span id="bTxt"></span><span id="bTemps"></span></div>
+    <div class="roue-zone"><div class="fleche">🔻</div><svg class="roue" id="roue" viewBox="-100 -100 200 200"></svg><div class="centre" id="centre">🎡</div></div>
+    <div class="histo" id="histo"></div>
+    <div class="ca-gros" id="msg"></div>
+    <section class="b-carte">
+      <div id="mises"></div>
+      <div class="paris" id="paris"></div>
+      <div class="actions"><button class="btn ghost petit" id="effacer">↩️ Reprendre mes mises</button><button class="btn ghost petit" id="refaire">🔁 Même mise</button></div>
+    </section>
+    <section class="b-carte"><h3 style="margin:0">🎡 Autour de la roue</h3><ul class="ca-live" id="live"></ul><p class="muted" id="liveNote" style="margin:6px 0 0;font-size:.82rem"></p></section>
+  </div>
+  <section class="b-carte" style="width:100%;max-width:520px"><h3 style="margin:0 0 10px">📊 Tes statistiques</h3><div class="ca-stats" id="stats"></div></section>
+  <section class="b-carte cache" id="top" style="width:100%;max-width:520px"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/jetons.js"></script>
+<script src="../commun/casino.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = Casino.fmt, esc = Base.esc, stock = Base.stock("roue_");
+// valeur → nombre de cases (50 en tout) : chaque pari rend entre 92 et 98 %
+const VALEURS = [[2, 24, "#2563eb"], [4, 12, "#16a34a"], [7, 7, "#f97316"], [12, 4, "#e11d48"], [23, 2, "#9333ea"], [48, 1, "#ca8a04"]];
+const NB = 50, MISES = 18, TOUR = 7, RES = 5, PERIODE = MISES + TOUR + RES;
+const coul = v => VALEURS.find(x => x[0] === v)[2];
+Base.entete({
+  titre: "Roue de la fortune", emoji: "💰",
+  aide: `<p>Une seule grande roue pour tout le site : elle tourne toutes les ${PERIODE} secondes.</p>
+    <ul><li>Pendant les ${MISES} premières secondes, pose tes jetons sur une ou plusieurs valeurs : x2, x4, x7, x12, x23 ou x48.</li>
+    <li>Si la roue s'arrête sur ta valeur, tu gagnes ta mise <b>multipliée</b> par cette valeur.</li>
+    <li>Plus la valeur est grosse, plus elle est rare : x2 occupe 24 cases sur 50, x48 une seule !</li>
+    <li>Tes mises restent en jeu si tu quittes la page.</li>
+    <li>${Casino.regle()}</li></ul>`
+});
+
+// cases réparties autour de la roue
+const CASES = (() => { const l = []; VALEURS.forEach(([v, n]) => { for(let i = 0; i < n; i++) l.push({v, k: (i + .5) / n + v * 1e-4}); }); return l.sort((a, b) => a.k - b.k).map(x => x.v); })();
+const tirage = r => Math.floor(Casino.hasard(r, 11) * NB);
+const sNow = () => Casino.maintenant() / 1000;
+const etat = s => { const r = Math.floor(s / PERIODE), t = s - r * PERIODE; return {r, t, ph: t < MISES ? "mises" : t < MISES + TOUR ? "tour" : "res"}; };
+
+let P = stock.lire("paris", null);         // {r, m: {valeur: jetons}}
+let avant = stock.lire("avant", {});
+const totalP = p => p ? Object.values(p.m).reduce((a, b) => a + b, 0) : 0;
+const enJeu = () => P && !P.fini ? totalP(P) : 0;
+Casino.init({jeu: "roue", enJeu});
+Casino.barre($("porte")); Casino.top($("top"));
+const mise = Casino.choixMise($("mises"), {def: 10});
+
+function poser(v){
+  const e = etat(sNow()); if(e.ph !== "mises") return;
+  const x = mise.val(); if(!Casino.miser(x)) return;
+  if(!P || P.r !== e.r) P = {r: e.r, m: {}};
+  P.m[v] = (P.m[v] || 0) + x; stock.ecrire("paris", P);
+  son(700, .05, "square"); publier(); dessinerParis();
+}
+function effacer(){
+  const e = etat(sNow()); if(e.ph !== "mises" || !P || P.r !== e.r || P.fini) return;
+  Casino.crediter(totalP(P)); P = null; stock.ecrire("paris", null); publier(); dessinerParis();
+}
+function refaire(){
+  const e = etat(sNow()); if(e.ph !== "mises" || (P && P.r === e.r)) return;
+  const t = Object.values(avant).reduce((a, b) => a + b, 0); if(!t || !Casino.miser(t)) return;
+  P = {r: e.r, m: {...avant}}; stock.ecrire("paris", P); publier(); dessinerParis();
+}
+function regler(){
+  if(!P || P.fini) return;
+  const s = sNow(), fin = P.r * PERIODE + MISES + TOUR;
+  if(s < fin) return;
+  const v = CASES[tirage(P.r)], mis = totalP(P), g = (P.m[v] || 0) * v;
+  if(g) Casino.crediter(g);
+  Casino.resultat(mis, g);
+  P.fini = true; P.g = g; P.v = v; stock.ecrire("paris", P);
+  avant = {...P.m}; stock.ecrire("avant", avant);
+  if(etat(s).r === P.r){
+    $("msg").textContent = g ? `🎉 x${v} ! +${fmt(g)} jetons` : `Perdu… la roue s'arrête sur x${v}`;
+    $("msg").className = "ca-gros " + (g ? "gagne" : "perdu");
+    if(g) [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => son(f, .2, "triangle"), i * 100));
+  }
+  publier(); majStats();
+}
+
+/* ---------- Dessin de la roue ---------- */
+const roue = $("roue");
+roue.innerHTML = CASES.map((v, i) => {
+  const a0 = (i / NB) * 2 * Math.PI - Math.PI / 2, a1 = ((i + 1) / NB) * 2 * Math.PI - Math.PI / 2, R = 96;
+  const p = a => `${(Math.cos(a) * R).toFixed(2)},${(Math.sin(a) * R).toFixed(2)}`;
+  const am = (a0 + a1) / 2, deg = am * 180 / Math.PI;
+  return `<path d="M0,0 L${p(a0)} A${R},${R} 0 0,1 ${p(a1)} Z" fill="${coul(v)}" stroke="#fff" stroke-width=".6"/>
+    <text x="${(Math.cos(am) * 80).toFixed(2)}" y="${(Math.sin(am) * 80).toFixed(2)}" transform="rotate(${deg + 90} ${(Math.cos(am) * 80).toFixed(2)} ${(Math.sin(am) * 80).toFixed(2)})" font-size="7" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Fredoka, sans-serif">${v}</text>`;
+}).join("") + `<circle r="97" fill="none" stroke="#e2b93b" stroke-width="4"/>`;
+let angle = 0, rTourne = null;
+function tourner(r, immediat){
+  const idx = tirage(r), cible = -((idx + .5) / NB) * 360;
+  const base = Math.ceil(angle / 360) * 360 + 360 * 6;
+  angle = base + ((cible % 360) + 360) % 360;
+  if(immediat){ roue.style.transition = "none"; roue.style.transform = `rotate(${angle}deg)`; roue.getBoundingClientRect(); roue.style.transition = ""; }
+  else roue.style.transform = `rotate(${angle}deg)`;
+}
+
+/* ---------- Boucle ---------- */
+let derPh = "", derR = -1;
+function boucle(){
+  const s = sNow(), e = etat(s);
+  if(e.r !== derR || e.ph !== derPh){
+    if(e.ph === "tour" && rTourne !== e.r){ rTourne = e.r; tourner(e.r, false); son(400, .3, "sawtooth", .03); }
+    if(e.ph === "res" && rTourne !== e.r){ rTourne = e.r; tourner(e.r, true); }
+    if(e.ph === "mises" && derPh !== "mises"){ $("msg").textContent = ""; $("centre").textContent = "🎡"; }
+    if(e.ph === "res"){ const v = CASES[tirage(e.r)]; $("centre").innerHTML = "x" + v; $("centre").style.color = coul(v); majHisto(); }
+    derR = e.r; derPh = e.ph; dessinerParis();
+  }
+  if(e.ph === "tour" && s - (e.r * PERIODE + MISES) > TOUR - .3) regler();
+  if(e.ph !== "mises") regler();
+  $("bTxt").textContent = e.ph === "mises" ? "🟢 Faites vos jeux !" : e.ph === "tour" ? "🎡 La roue tourne… rien ne va plus" : "🏁 Résultat";
+  $("bTemps").textContent = e.ph === "mises" ? Math.ceil(MISES - e.t) + " s" : "prochain tour dans " + Math.ceil(PERIODE - e.t) + " s";
+  majLive(e);
+  requestAnimationFrame(boucle);
+}
+function dessinerParis(){
+  const e = etat(sNow()), ouvert = e.ph === "mises", mien = P && P.r === e.r ? P.m : {};
+  const gagnant = e.ph === "res" ? CASES[tirage(e.r)] : null;
+  $("paris").innerHTML = VALEURS.map(([v, n, c]) => `<button data-v="${v}" style="background:${c}" class="${gagnant === v ? "gagne" : ""}" ${ouvert ? "" : "disabled"}>x${v}<small>${n} case${n > 1 ? "s" : ""}</small><span class="m">${mien[v] ? fmt(mien[v]) : ""}</span></button>`).join("");
+  $("paris").querySelectorAll("[data-v]").forEach(b => b.onclick = () => poser(+b.dataset.v));
+  $("effacer").disabled = !ouvert || !(P && P.r === e.r && !P.fini);
+  $("refaire").disabled = !ouvert || !!(P && P.r === e.r) || !Object.keys(avant).length;
+  mise.desactiver(!ouvert);
+}
+function majHisto(){
+  const r = etat(sNow()).r, l = [];
+  for(let k = 0; k < 14; k++){ const rr = r - k - (etat(sNow()).ph === "res" ? 0 : 1); l.push(CASES[tirage(rr)]); }
+  $("histo").innerHTML = l.map(v => `<span style="background:${coul(v)}">x${v}</span>`).join("");
+}
+let autres = [], liveCle = "";
+Casino.ecouter("roue", l => { autres = l; });
+function publier(){ const e = etat(sNow()); Casino.publier("roue", {r: P ? P.r : e.r, m: totalP(P), c: P ? Object.entries(P.m).map(([v, m]) => "x" + v + ":" + m).join(" ").slice(0, 24) : "", g: P && P.g || 0}); }
+function majLive(e){
+  const l = autres.filter(x => x.r === e.r && x.m > 0).map(x => ({n: x.a + " " + x.n, m: x.m, c: x.c, g: x.g}));
+  if(P && P.r === e.r) l.unshift({n: "⭐ Toi", m: totalP(P), c: Object.entries(P.m).map(([v, m]) => "x" + v).join(" "), g: P.g || 0});
+  const cle = JSON.stringify([l, e.ph]); if(cle === liveCle) return; liveCle = cle;
+  $("live").innerHTML = l.map(x => `<li class="${e.ph === "res" ? (x.g > 0 ? "ok" : "ko") : ""}"><span>${esc(x.n)}</span><span>${fmt(x.m)} · ${esc(x.c)}${e.ph === "res" && x.g > 0 ? " → +" + fmt(x.g) : ""}</span></li>`).join("") || `<li><span class="muted">Personne n'a misé pour l'instant.</span></li>`;
+  $("liveNote").textContent = window.Compte && Compte.pret && !(Compte.session && Compte.session()) ? "Connecte-toi pour apparaître dans la liste des autres joueurs." : "";
+}
+function majStats(){
+  const st = Casino.stats();
+  $("stats").innerHTML = [[st.n, "tours joués"], [fmt(st.mise), "misés"], [fmt(st.gain), "gagnés"], [fmt(st.gros), "plus gros gain net"]].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join("");
+}
+$("effacer").onclick = effacer; $("refaire").onclick = refaire;
+let ac = null;
+function son(f, d, type, vol){ try{ ac = ac || new AudioContext(); const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; g.gain.value = vol || .05; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); }catch(e){} }
+// au chargement : la roue est déjà à la bonne place
+{ const e = etat(sNow()); if(e.ph === "tour" || e.ph === "res"){ rTourne = e.r; tourner(e.r, true); } }
+regler(); majHisto(); majStats(); requestAnimationFrame(boucle);
+</script>
+</body>
+</html>

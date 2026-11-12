@@ -86,6 +86,76 @@ window.SALLE_CATALOGUE = [
     ia: true
   },
   {
+    slug: "crash",
+    title: "Crash",
+    emoji: "🚀",
+    desc: "Une fusée pour tout le site : mise avant le décollage, le multiplicateur monte… encaisse avant l'explosion ! x1,5, x10, x100 ? Encaissement automatique et mises des autres joueurs en direct.",
+    tags: ["Casino", "Multijoueur"],
+    colors: ["#f97316", "#1d1150"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "plinko",
+    title: "Plinko",
+    emoji: "🔴",
+    desc: "Lâche des billes sur une planche à clous : elles rebondissent jusqu'à une case qui multiplie ta mise, de x0,2 à x170. Trois niveaux de risque.",
+    tags: ["Casino", "Solo"],
+    colors: ["#db2777", "#3b1d5e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "mines",
+    title: "Mines",
+    emoji: "💣",
+    desc: "25 cases, des bombes cachées : chaque gemme trouvée fait grimper ton multiplicateur. Encaisse avant de tomber sur une bombe !",
+    tags: ["Casino", "Solo"],
+    colors: ["#0ea5a4", "#16324a"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "course",
+    title: "Course de chevaux",
+    emoji: "🏇",
+    desc: "Une course toutes les 50 secondes, la même pour tout le site : mise sur ton cheval selon sa cote et sa forme, puis encourage-le jusqu'à la ligne d'arrivée !",
+    tags: ["Casino", "Multijoueur"],
+    colors: ["#15803d", "#ca8a04"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "roue",
+    title: "Roue de la fortune",
+    emoji: "💰",
+    desc: "Une grande roue commune à tout le site : pose tes jetons sur x2, x4, x7, x12, x23 ou x48… et prie pour qu'elle s'arrête sur ta case.",
+    tags: ["Casino", "Multijoueur"],
+    colors: ["#9333ea", "#e2b93b"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "grattage",
+    title: "Grattage",
+    emoji: "🎟️",
+    desc: "Achète un ticket et gratte-le au doigt : trois symboles identiques et c'est gagné, jusqu'à 500 fois le prix du ticket !",
+    tags: ["Casino", "Solo"],
+    colors: ["#ca8a04", "#7a4524"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
+    slug: "machine",
+    title: "Machine à sous",
+    emoji: "🎰",
+    desc: "Tire le levier : 5 lignes, joker 🃏, tours gratuits avec les 🎁 et jackpot x1000 pour trois jokers alignés.",
+    tags: ["Casino", "Solo"],
+    colors: ["#e11d48", "#f2c14e"],
+    etat: "dispo",
+    badge: "Nouveau"
+  },
+  {
     slug: "poker",
     title: "Poker",
     emoji: "♠️",
@@ -590,7 +660,7 @@ window.SALLE_CATEGORIES = [
    jeux: ["puissance4", "morpion", "sumo", "serpents", "tour", "minigolf", "assaut", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
   {id: "casino", emoji: "🎰", titre: "Casino", c: ["#0f7a4a", "#d4a017"],
    desc: "Poker, blackjack et roulette avec de faux jetons : 1 000 pour commencer.",
-   jeux: ["poker", "blackjack", "roulette"]},
+   jeux: ["poker", "blackjack", "roulette", "crash", "roue", "course", "machine", "plinko", "mines", "grattage"]},
   {id: "ia", emoji: "🤖", titre: "Histoires avec l'IA", c: ["#5b2bd8", "#ff6a9a"],
    desc: "Des aventures racontées par une IA.",
    jeux: ["quintuplees", "jdr"]},

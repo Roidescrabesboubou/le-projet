@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Plinko</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/casino.css">
+<style>
+:root{--accent:#db2777;--fond1:rgba(219,39,119,.13);--fond2:rgba(124,58,237,.13)}
+.jeu{width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}
+canvas{display:block;width:100%;aspect-ratio:600/560;border-radius:20px;background:radial-gradient(ellipse at 50% 0%,#3b1d5e,#160c2b 80%);box-shadow:var(--ombre)}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.actions .btn{min-width:180px;font-size:1.1rem;padding:12px 20px}
+.histo{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;min-height:26px}
+.histo span{border-radius:8px;padding:2px 8px;font-weight:800;font-size:.8rem;color:#fff}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="porte"></section>
+  <div class="jeu">
+    <canvas id="cv" width="1200" height="1120"></canvas>
+    <div class="histo" id="histo"></div>
+    <section class="b-carte">
+      <div id="mises"></div>
+      <p style="margin:12px 0 6px;font-weight:800;text-align:center">🎢 Risque</p>
+      <div class="pilules" id="risque"></div>
+      <div class="actions"><button class="btn" id="go">Lâcher une bille 🔴</button><button class="btn ghost" id="go5">×5</button></div>
+    </section>
+  </div>
+  <section class="b-carte" style="width:100%;max-width:560px"><h3 style="margin:0 0 10px">📊 Tes statistiques</h3><div class="ca-stats" id="stats"></div></section>
+  <section class="b-carte cache" id="top" style="width:100%;max-width:560px"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/jetons.js"></script>
+<script src="../commun/casino.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = Casino.fmt, stock = Base.stock("plinko_");
+const RANGS = 12;
+const DEMI = {faible: [10, 3, 1.6, 1.4, 1.1, 1, .5], moyen: [33, 11, 4, 2, 1.1, .6, .3], eleve: [170, 24, 8.1, 2, .7, .2, .2]};
+const TABLES = Object.fromEntries(Object.entries(DEMI).map(([k, h]) => [k, h.concat(h.slice(0, 6).reverse())]));
+const NOMS = {faible: "😌 Faible", moyen: "😬 Moyen", eleve: "🔥 Élevé"};
+Base.entete({
+  titre: "Plinko", emoji: "🔴",
+  aide: `<p>Lâche une bille en haut de la planche : elle rebondit sur les clous et tombe dans une case qui multiplie ta mise.</p>
+    <ul><li>Les cases du bord rapportent gros, celles du milieu presque rien.</li>
+    <li>Le <b>risque</b> change les cases : en « Élevé », le bord paie jusqu'à x170… mais le centre x0,2.</li>
+    <li>Tu peux lâcher plusieurs billes à la fois.</li>
+    <li>${Casino.regle()}</li></ul>`
+});
+
+let risque = stock.lire("risque", "moyen"), billes = [], histo = [];
+const enJeu = () => billes.reduce((s, b) => s + (b.fini ? 0 : b.mise), 0);
+Casino.init({jeu: "plinko", enJeu});
+Casino.barre($("porte")); Casino.top($("top"));
+const mise = Casino.choixMise($("mises"), {def: 10});
+
+/* ---------- Planche ---------- */
+const W = 600, H = 560, CX = W / 2, ESP = 40, Y0 = 60, DY = 36;
+const pegX = (r, i) => CX + (i - (r + 2) / 2) * ESP, pegY = r => Y0 + r * DY;
+const caseX = k => CX + (k - RANGS / 2) * ESP, YCASE = pegY(RANGS) + 16;
+const couleurM = m => m >= 10 ? "#ff3d6e" : m >= 3 ? "#ff8a3d" : m >= 1.5 ? "#f2c14e" : m >= 1 ? "#62c370" : "#4f7cd6";
+const xM = m => "x" + (m >= 10 ? Math.round(m) : String(m).replace(".", ","));
+
+function lacher(){
+  const v = mise.val(); if(!Casino.miser(v)) return false;
+  const dirs = []; for(let r = 0; r < RANGS; r++) dirs.push(Math.random() < .5 ? 0 : 1);
+  billes.push({mise: v, dirs, t: 0, risque, fini: false, k: dirs.reduce((a, b) => a + b, 0), dx: (Math.random() - .5) * 6});
+  son(700, .05, "square"); return true;
+}
+// position de la bille : un petit saut d'un clou à l'autre
+function position(b){
+  const ROW = .17, r = Math.min(RANGS, Math.floor(b.t / ROW)), f = b.t / ROW - r;
+  let p = 0; for(let i = 0; i < r; i++) p += b.dirs[i];
+  if(b.t < 0) return [CX, Y0 - 40];
+  if(r >= RANGS){ const x = caseX(p); return [x, Math.min(YCASE + 10, pegY(RANGS) - 10 + (b.t - RANGS * ROW) * 120)]; }
+  const x0 = r === 0 ? CX + b.dx : CX + (p - r / 2) * ESP, x1 = CX + (p + b.dirs[r] - (r + 1) / 2) * ESP;
+  const y0 = (r === 0 ? Y0 - 40 : pegY(r)) - 10, y1 = pegY(r + 1) - 10;
+  const x = x0 + (x1 - x0) * f, y = y0 + (y1 - y0) * f - Math.sin(f * Math.PI) * 14;
+  return [x, y];
+}
+const cv = $("cv"), ctx = cv.getContext("2d"), K = cv.width / W;
+let bosses = {}, textes = [];
+function dessiner(dt){
+  ctx.setTransform(K, 0, 0, K, 0, 0); ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#fff";
+  for(let r = 0; r < RANGS; r++) for(let i = 0; i < r + 3; i++){ ctx.beginPath(); ctx.arc(pegX(r, i), pegY(r), 4, 0, 6.3); ctx.fill(); }
+  const t = TABLES[risque];
+  t.forEach((m, k) => {
+    const x = caseX(k), bo = bosses[k] || 0; bosses[k] = Math.max(0, bo - dt * 4);
+    ctx.fillStyle = couleurM(m); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - 18, YCASE - 14 + bo * 8, 36, 28, 7) : ctx.rect(x - 18, YCASE - 14, 36, 28); ctx.fill();
+    ctx.fillStyle = "#1a1030"; ctx.font = "800 11px Nunito, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(xM(m), x, YCASE + bo * 8);
+  });
+  for(const b of billes){
+    const [x, y] = position(b);
+    ctx.fillStyle = "#ff4f7b"; ctx.beginPath(); ctx.arc(x, y, 8, 0, 6.3); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.arc(x - 2.5, y - 2.5, 2.5, 0, 6.3); ctx.fill();
+  }
+  textes = textes.filter(x => (x.v -= dt) > 0);
+  for(const x of textes){ ctx.globalAlpha = Math.min(1, x.v * 2); ctx.fillStyle = x.c; ctx.font = "800 16px Fredoka, sans-serif"; ctx.fillText(x.t, x.x, x.y - (1.2 - x.v) * 40); ctx.globalAlpha = 1; }
+}
+function boucle(){
+  let tp = performance.now();
+  const f = t => {
+    const dt = Math.min(.05, (t - tp) / 1000); tp = t;
+    for(const b of billes){
+      const avant = Math.floor(b.t / .17);
+      b.t += dt;
+      const apres = Math.floor(b.t / .17);
+      if(apres > avant && apres <= RANGS) son(900 + Math.random() * 300, .03, "sine", .02);
+      if(!b.fini && b.t > RANGS * .17 + .25) atterrir(b);
+    }
+    billes = billes.filter(b => !b.fini || b.t < RANGS * .17 + .5);
+    dessiner(dt);
+    requestAnimationFrame(f);
+  };
+  requestAnimationFrame(f);
+}
+function atterrir(b){
+  b.fini = true;
+  const m = TABLES[b.risque][b.k], g = Math.floor(b.mise * m);
+  if(g > 0) Casino.crediter(g);
+  Casino.resultat(b.mise, g);
+  bosses[b.k] = 1;
+  textes.push({t: (g >= b.mise ? "+" : "") + fmt(g), x: caseX(b.k), y: YCASE - 30, v: 1.2, c: g >= b.mise ? "#7dffb0" : "#ffb0b0"});
+  histo.unshift(m); histo = histo.slice(0, 12);
+  $("histo").innerHTML = histo.map(x => `<span style="background:${couleurM(x)}">${xM(x)}</span>`).join("");
+  son(m >= 3 ? 1200 : m >= 1 ? 800 : 300, m >= 3 ? .3 : .12, "triangle", .05);
+  majStats();
+}
+function majStats(){
+  const st = Casino.stats();
+  $("stats").innerHTML = [[st.n, "billes"], [fmt(st.mise), "misés"], [fmt(st.gain), "gagnés"], [fmt(st.gros), "plus gros gain net"]].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join("");
+}
+let cleRisque = "";
+function majRisque(){
+  const occupe = billes.some(b => !b.fini);
+  if(cleRisque === risque + occupe) return; cleRisque = risque + occupe;
+  $("risque").innerHTML = Object.keys(TABLES).map(k => `<button data-r="${k}" class="${k === risque ? "on" : ""}" ${occupe ? "disabled" : ""}>${NOMS[k]}</button>`).join("");
+  $("risque").querySelectorAll("[data-r]").forEach(b => b.onclick = () => { risque = b.dataset.r; stock.ecrire("risque", risque); majRisque(); });
+}
+$("go").onclick = () => { lacher(); majRisque(); };
+$("go5").onclick = () => { let n = 0; const f = () => { if(n++ < 5 && lacher()){ majRisque(); setTimeout(f, 180); } }; f(); };
+setInterval(majRisque, 500);
+addEventListener("keydown", e => { if(e.code === "Space" && e.target === document.body){ e.preventDefault(); lacher(); } });
+let ac = null;
+function son(f, d, type, vol){ try{ ac = ac || new AudioContext(); const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; g.gain.value = vol || .04; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); }catch(e){} }
+// une bille perdue (page fermée en pleine chute) est réglée au retour
+addEventListener("pagehide", () => { billes.filter(b => !b.fini).forEach(atterrir); });
+majRisque(); majStats(); boucle();
+</script>
+</body>
+</html>

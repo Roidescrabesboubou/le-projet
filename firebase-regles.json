@@ -696,6 +696,70 @@
           ".validate": false
         }
       }
+    },
+    "casino": {
+      ".read": true,
+      ".indexOn": [
+        "s"
+      ],
+      "$uid": {
+        ".write": "(auth != null && auth.uid === $uid && newData.exists() && root.child('bannis').child(auth.uid).val() !== true) || (auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists())",
+        ".validate": "newData.hasChildren(['n', 's', 'j', 'm', 'd'])",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "s": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+        },
+        "j": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() * 86400000 <= now + 50400000 && (!data.exists() || newData.val() >= data.val())"
+        },
+        "m": {
+          ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('s').val() && (!data.exists() || newData.val() >= data.val())"
+        },
+        "d": {
+          ".validate": "newData.val() == now"
+        },
+        "b": {
+          ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() * 86400000 <= now + 50400000"
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
+    },
+    "casinoLive": {
+      ".read": true,
+      "$jeu": {
+        "$uid": {
+          ".write": "$jeu.matches(/^(crash|roue|course)$/) && auth != null && ((auth.uid === $uid && newData.exists() && root.child('bannis').child(auth.uid).val() !== true) || (root.child('admins').child(auth.uid).val() === true && !newData.exists()))",
+          ".validate": "newData.hasChildren(['n', 'r', 'm', 'd'])",
+          "n": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "a": {
+            ".validate": "newData.isString() && newData.val().length <= 8"
+          },
+          "r": {
+            ".validate": "newData.isNumber()"
+          },
+          "m": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+          },
+          "c": {
+            ".validate": "newData.isString() && newData.val().length <= 24"
+          },
+          "g": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+          },
+          "d": {
+            ".validate": "newData.val() == now"
+          },
+          "$autre": {
+            ".validate": false
+          }
+        }
+      }
     }
   }
 }

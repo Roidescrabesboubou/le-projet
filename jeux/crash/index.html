@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Crash</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/casino.css">
+<style>
+:root{--accent:#f97316;--fond1:rgba(249,115,22,.14);--fond2:rgba(59,130,246,.12)}
+.jeu{width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}
+.ecran{position:relative;border-radius:20px;overflow:hidden;background:linear-gradient(#0b1030,#1d1150);box-shadow:var(--ombre)}
+canvas{display:block;width:100%;aspect-ratio:16/10}
+.grand{position:absolute;left:0;right:0;top:28%;text-align:center;font-family:Fredoka,sans-serif;font-size:clamp(2.6rem,12vw,4.2rem);color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.6);pointer-events:none}
+.grand small{display:block;font-size:1rem;font-family:Nunito,sans-serif;font-weight:800;opacity:.85}
+.grand.boum{color:#ff4d5e}
+.histo{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.histo span{border-radius:8px;padding:2px 8px;font-weight:800;font-size:.8rem;color:#fff}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.actions .btn{min-width:220px;font-size:1.15rem;padding:13px 20px}
+.btn.or{background:#e2b93b;color:#22192b}
+.auto{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;font-weight:700;flex-wrap:wrap}
+.auto input[type=number]{width:90px}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="porte"></section>
+  <div class="jeu">
+    <div class="histo" id="histo"></div>
+    <div class="ecran"><canvas id="cv" width="1120" height="700"></canvas><div class="grand" id="grand"></div></div>
+    <section class="b-carte">
+      <div id="mises"></div>
+      <div class="auto"><label><input type="checkbox" id="autoOn"> Encaisser tout seul à</label><input class="champ" type="number" id="autoX" min="1.01" max="100" step="0.01" value="2"> <b>x</b></div>
+      <div class="actions"><button class="btn" id="go">Miser</button></div>
+      <p class="muted" id="note" style="text-align:center;margin:8px 0 0;font-size:.85rem"></p>
+    </section>
+    <section class="b-carte"><h3 style="margin:0">🚀 Dans la fusée</h3><ul class="ca-live" id="live"></ul><p class="muted" id="liveNote" style="margin:6px 0 0;font-size:.82rem"></p></section>
+  </div>
+  <section class="b-carte" style="width:100%;max-width:560px"><h3 style="margin:0 0 10px">📊 Tes statistiques</h3><div class="ca-stats" id="stats"></div></section>
+  <section class="b-carte cache" id="top" style="width:100%;max-width:560px"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/jetons.js"></script>
+<script src="../commun/casino.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = Casino.fmt, stock = Base.stock("crash_");
+const MISE = 7, APRES = 3.5, K = .09, HEURE = 3600;
+Base.entete({
+  titre: "Crash", emoji: "🚀",
+  aide: `<p>Une seule fusée pour tout le site ! Mise avant le décollage, puis le multiplicateur monte : x1,5… x2… x10…</p>
+    <ul><li><b>Encaisse</b> avant que la fusée n'explose pour gagner ta mise × le multiplicateur.</li>
+    <li>Si elle explose avant, tu perds ta mise. Elle peut exploser à x1,00 comme à x100 !</li>
+    <li>« Encaisser tout seul » encaisse pour toi au multiplicateur choisi, même si tu quittes la page.</li>
+    <li>Connecté, tu vois les autres joueurs miser et encaisser en direct.</li>
+    <li>${Casino.regle()}</li></ul>`
+});
+
+/* ---------- Les tours : les mêmes pour tout le monde, calculés depuis l'heure ---------- */
+const fx = x => "x" + x.toLocaleString("fr-FR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const multA = t => Math.floor(Math.exp(K * Math.max(0, t)) * 100) / 100;
+const cache = new Map();
+function toursDe(h){
+  if(cache.has(h)) return cache.get(h);
+  const l = [], debut = h * HEURE, fin = debut + HEURE;
+  let t = debut;
+  for(let k = 0; k < 2000; k++){
+    const r = h * 1000 + k, u = Casino.hasard(r, 77);
+    let X = Math.min(100, Math.max(1, Math.floor(97 / (1 - u)) / 100));
+    let vol = Math.log(X) / K;
+    if(t + MISE + vol + APRES > fin){
+      const reste = fin - t - MISE - APRES;
+      if(reste < 2) break;
+      vol = reste; X = multA(vol);
+    }
+    l.push({r, t0: t, X, vol, dec: t + MISE, boum: t + MISE + vol, fin: t + MISE + vol + APRES});
+    t += MISE + vol + APRES;
+  }
+  cache.set(h, l); if(cache.size > 4) cache.delete(cache.keys().next().value);
+  return l;
+}
+function tourDe(s){
+  const h = Math.floor(s / HEURE), l = toursDe(h);
+  const T = l.find(x => s >= x.t0 && s < x.fin);
+  if(T) return T;
+  return {r: -1, attente: (h + 1) * HEURE};        // petite pause avant l'heure pile
+}
+const tourParId = r => toursDe(Math.floor(r / 1000)).find(x => x.r === r);
+const sNow = () => Casino.maintenant() / 1000;
+
+/* ---------- Mise du joueur ---------- */
+let M = stock.lire("mise", null);         // {r, m, auto, cash}
+let prochain = null;                      // mise en attente du tour suivant
+const enJeu = () => M && M.cash == null ? M.m : 0;
+Casino.init({jeu: "crash", enJeu});
+Casino.barre($("porte")); Casino.top($("top"));
+const mise = Casino.choixMise($("mises"), {def: 25});
+$("autoOn").checked = stock.lire("autoOn", false); $("autoX").value = stock.lire("autoX", 2);
+$("autoOn").onchange = () => stock.ecrire("autoOn", $("autoOn").checked);
+$("autoX").onchange = () => { const v = Math.min(100, Math.max(1.01, +$("autoX").value || 2)); $("autoX").value = v; stock.ecrire("autoX", v); };
+const autoVal = () => $("autoOn").checked ? Math.min(100, Math.max(1.01, +$("autoX").value || 2)) : 0;
+
+function miser(T){
+  const v = mise.val(); if(!Casino.miser(v)) return false;
+  M = {r: T.r, m: v, auto: autoVal(), cash: null}; stock.ecrire("mise", M);
+  son(600, .08, "square"); publier(); return true;
+}
+function encaisser(x){
+  if(!M || M.cash != null) return;
+  const T = tourParId(M.r); if(!T) return;
+  const s = sNow(); if(s < T.dec || s >= T.boum) return;
+  x = Math.min(x || multA(s - T.dec), T.X);
+  const g = Math.floor(M.m * x);
+  M.cash = x; M.g = g; stock.ecrire("mise", M);
+  Casino.crediter(g); Casino.resultat(M.m, g);
+  son(880, .15, "triangle"); setTimeout(() => son(1320, .25, "triangle"), 100);
+  publier();
+}
+// tour terminé : on règle (encaissement auto ou perte)
+function regler(){
+  if(!M) return;
+  const T = tourParId(M.r), s = sNow();
+  if(T && s < T.boum) return;
+  if(M.cash == null){
+    if(T && M.auto && M.auto <= T.X){ M.cash = M.auto; M.g = Math.floor(M.m * M.auto); Casino.crediter(M.g); Casino.resultat(M.m, M.g); }
+    else { M.cash = 0; M.g = 0; Casino.resultat(M.m, 0); }
+  }
+  M.fini = true; stock.ecrire("mise", M);
+}
+
+/* ---------- Joueurs en direct ---------- */
+let autres = [];
+Casino.ecouter("crash", l => { autres = l; });
+function publier(){ if(M) Casino.publier("crash", {r: M.r, m: M.m, c: M.cash ? fx(M.cash) : M.auto ? "auto " + fx(M.auto) : "", g: M.g || 0}); }
+
+/* ---------- Affichage ---------- */
+const cv = $("cv"), ctx = cv.getContext("2d"), W = 560, H = 350, KX = cv.width / W;
+let etoiles = Array.from({length: 60}, () => [Math.random() * W, Math.random() * H, Math.random() * 1.5 + .3]);
+let derniereR = null, boumVu = null;
+function dessiner(){
+  const s = sNow(), T = tourDe(s);
+  ctx.setTransform(KX, 0, 0, KX, 0, 0); ctx.clearRect(0, 0, W, H);
+  const enVol = T.r >= 0 && s >= T.dec && s < T.boum, t = T.r >= 0 ? Math.min(s, T.boum) - T.dec : 0;
+  for(const e of etoiles){ e[0] -= (enVol ? 40 + t * 8 : 6) / 60 * e[2]; if(e[0] < 0) e[0] = W; ctx.fillStyle = `rgba(255,255,255,${.3 + e[2] / 3})`; ctx.fillRect(e[0], e[1], e[2], e[2]); }
+  const grand = $("grand");
+  if(T.r < 0){ grand.className = "grand"; grand.innerHTML = `<small>Pause de l'heure pile</small>${Math.ceil(T.attente - s)} s`; return; }
+  // courbe
+  if(s >= T.dec){
+    const tm = Math.max(8, t * 1.15), xm = Math.max(2, Math.exp(K * tm));
+    const px = u => 30 + u / tm * (W - 70), py = m => H - 30 - (m - 1) / (xm - 1) * (H - 80);
+    ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 1; ctx.font = "700 11px Nunito"; ctx.fillStyle = "rgba(255,255,255,.4)";
+    [1.5, 2, 3, 5, 10, 20, 50, 100].filter(m => m < xm).forEach(m => { ctx.beginPath(); ctx.moveTo(30, py(m)); ctx.lineTo(W - 20, py(m)); ctx.stroke(); ctx.fillText("x" + m, 4, py(m) + 4); });
+    const g = ctx.createLinearGradient(0, H, W, 0); g.addColorStop(0, "#f97316"); g.addColorStop(1, "#facc15");
+    ctx.strokeStyle = s >= T.boum ? "#ff4d5e" : g; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath();
+    for(let i = 0; i <= 60; i++){ const u = t * i / 60; const m = Math.exp(K * u); i ? ctx.lineTo(px(u), py(m)) : ctx.moveTo(px(u), py(m)); }
+    ctx.stroke();
+    const x = px(t), y = py(Math.exp(K * t));
+    ctx.save(); ctx.translate(x, y); ctx.font = "34px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if(s >= T.boum){ ctx.fillText("💥", 0, 0); }
+    else { ctx.rotate(-.5); ctx.fillText("🚀", 0, 0); }
+    ctx.restore();
+  }
+  if(s < T.dec){ grand.className = "grand"; grand.innerHTML = `<small>Décollage dans</small>${Math.ceil(T.dec - s)} s`; }
+  else if(s < T.boum){ grand.className = "grand"; grand.textContent = fx(multA(t)); }
+  else { grand.className = "grand boum"; grand.innerHTML = `<small>💥 Explosion à</small>${fx(T.X)}`; if(boumVu !== T.r){ boumVu = T.r; son(90, .6, "sawtooth"); } }
+}
+function boucle(){
+  const s = sNow(), T = tourDe(s);
+  // encaissement automatique (page ouverte)
+  if(M && M.cash == null && T.r === M.r && M.auto && s >= T.dec && multA(s - T.dec) >= M.auto && s < T.boum) encaisser(M.auto);
+  if(M && !M.fini){ const TM = tourParId(M.r); if(!TM || s >= TM.boum) regler(); }
+  // mise en attente pour le tour suivant
+  if(prochain && T.r >= 0 && s < T.dec && (!M || M.fini)){ prochain = null; miser(T); }
+  dessiner(); majBouton(T, s);
+  if(T.r !== derniereR){ derniereR = T.r; majHisto(T); majStats(); }
+  majLive(T);
+  requestAnimationFrame(boucle);
+}
+function majBouton(T, s){
+  const go = $("go"), note = $("note");
+  const monTour = M && T.r === M.r;
+  let txt, cls = "btn", dis = false, n = "";
+  if(T.r < 0){ txt = "Pause…"; dis = true; }
+  else if(monTour && M.cash == null && s >= T.dec && s < T.boum){ txt = `Encaisser ${fmt(Math.floor(M.m * multA(s - T.dec)))} 💰`; cls = "btn or"; }
+  else if(monTour && s < T.dec){ txt = `Misé ${fmt(M.m)} ✓`; dis = true; n = M.auto ? `Encaissement auto à ${fx(M.auto)}` : "Encaisse avant l'explosion !"; }
+  else if(monTour && M.cash > 0){ txt = `Encaissé ${fx(M.cash)} : +${fmt(M.g)}`; dis = true; }
+  else if(monTour && s >= T.boum){ txt = "💥 Perdu"; dis = true; }
+  else if(s < T.dec){ txt = `Miser ${fmt(mise.val())} 🚀`; }
+  else { txt = prochain ? "⏳ Mise au prochain tour (annuler)" : `Miser ${fmt(mise.val())} au prochain tour`; cls = prochain ? "btn ghost" : "btn"; }
+  if(go.textContent !== txt) go.textContent = txt;
+  go.className = cls; go.disabled = dis; note.textContent = n;
+  mise.desactiver(!!(monTour && !M.fini) || !!prochain);
+}
+$("go").onclick = () => {
+  const s = sNow(), T = tourDe(s); if(T.r < 0) return;
+  if(M && T.r === M.r && M.cash == null && s >= T.dec && s < T.boum){ encaisser(); return; }
+  if(M && T.r === M.r) return;
+  if(s < T.dec){ miser(T); return; }
+  prochain = !prochain;
+};
+addEventListener("keydown", e => { if(e.code === "Space" && e.target === document.body){ e.preventDefault(); $("go").click(); } });
+function majHisto(T){
+  const s = sNow(), h = Math.floor(s / HEURE), l = toursDe(h - 1).concat(toursDe(h)).filter(x => x.boum <= s).slice(-14).reverse();
+  $("histo").innerHTML = l.map(x => `<span style="background:${x.X >= 10 ? "#a855f7" : x.X >= 2 ? "#16a34a" : "#64748b"}">${fx(x.X)}</span>`).join("");
+}
+let liveCle = "";
+function majLive(T){
+  const s = sNow(), l = autres.filter(x => x.r === T.r).map(x => ({n: x.a + " " + x.n, m: x.m, c: x.c, g: x.g}));
+  if(M && M.r === T.r) l.unshift({n: "⭐ Toi", m: M.m, c: M.cash ? fx(M.cash) : "", g: M.g || 0, moi: true});
+  const fini = T.r >= 0 && s >= T.boum;
+  const cle = JSON.stringify([l, fini]); if(cle === liveCle) return; liveCle = cle;
+  $("live").innerHTML = l.map(x => `<li class="${x.g > 0 ? "ok" : fini ? "ko" : ""}"><span>${Base.esc(x.n)}</span><span>${fmt(x.m)} ${x.g > 0 ? "→ " + Base.esc(x.c) + " +" + fmt(x.g) : fini ? "💥" : x.c ? "(" + Base.esc(x.c) + ")" : ""}</span></li>`).join("") || `<li><span class="muted">Personne n'a misé ce tour-ci.</span></li>`;
+  $("liveNote").textContent = window.Compte && Compte.pret && !(Compte.session && Compte.session()) ? "Connecte-toi pour apparaître dans la liste des autres joueurs." : "";
+}
+function majStats(){
+  const st = Casino.stats();
+  $("stats").innerHTML = [[st.n, "tours joués"], [fmt(st.mise), "misés"], [fmt(st.gain), "gagnés"], [fmt(st.gros), "plus gros gain net"]].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join("");
+}
+let ac = null;
+function son(f, d, type, vol){ try{ ac = ac || new AudioContext(); const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; g.gain.value = vol || .05; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); }catch(e){} }
+regler();
+requestAnimationFrame(boucle);
+</script>
+</body>
+</html>

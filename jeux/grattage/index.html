@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Grattage</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/casino.css">
+<style>
+:root{--accent:#ca8a04;--fond1:rgba(202,138,4,.14);--fond2:rgba(219,39,119,.1)}
+.jeu{width:100%;max-width:460px;display:flex;flex-direction:column;gap:12px}
+.choix{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.choix button{border-radius:14px;border:2px solid var(--line);padding:10px 6px;font-weight:800;color:#fff;display:flex;flex-direction:column;align-items:center;gap:2px}
+.choix button small{font-weight:700;opacity:.85}
+.choix button:disabled{opacity:.45}
+.t-bronze{background:linear-gradient(150deg,#c27c4a,#7a4524)}
+.t-argent{background:linear-gradient(150deg,#8fa3b8,#4b5d70)}
+.t-or{background:linear-gradient(150deg,#f2c14e,#b07d0c)}
+.ticket{border-radius:20px;padding:14px;color:#fff;box-shadow:var(--ombre);position:relative}
+.ticket h2{margin:0;text-align:center;font-size:1.4rem;letter-spacing:.05em}
+.ticket .regle{text-align:center;font-size:.82rem;opacity:.9;margin:2px 0 10px}
+.zone{position:relative;border-radius:14px;overflow:hidden;background:#fffaf0}
+.cases{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px}
+.cases div{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(2rem,10vw,2.8rem);border-radius:10px;background:#fff3d6}
+.cases div.gagne{background:#b6f2c9;animation:brille .8s ease-in-out infinite alternate}
+@keyframes brille{to{transform:scale(1.08)}}
+.zone canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+.table-gains{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:10px;font-size:.8rem;font-weight:800}
+.table-gains span{background:rgba(0,0,0,.25);border-radius:999px;padding:2px 8px}
+.vide{text-align:center;padding:40px 10px;border:3px dashed var(--line);border-radius:20px;color:var(--muted);font-weight:700}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="porte"></section>
+  <div class="jeu">
+    <section class="b-carte"><p style="margin:0 0 8px;font-weight:800;text-align:center">🎟️ Acheter un ticket</p><div class="choix" id="choix"></div></section>
+    <div id="place"></div>
+    <div class="ca-gros" id="msg"></div>
+    <div class="actions" id="actions"></div>
+  </div>
+  <section class="b-carte" style="width:100%;max-width:460px"><h3 style="margin:0 0 10px">📊 Tes statistiques</h3><div class="ca-stats" id="stats"></div></section>
+  <section class="b-carte cache" id="top" style="width:100%;max-width:460px"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/jetons.js"></script>
+<script src="../commun/casino.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = Casino.fmt, stock = Base.stock("grattage_");
+const TICKETS = {bronze: {nom: "Petit Trio", prix: 10}, argent: {nom: "Trio d'Argent", prix: 50}, or: {nom: "Trio d'Or", prix: 250}};
+// symbole → multiplicateur du prix du ticket, et chance d'être le gagnant
+const SYM = [["🍒", 1, .15], ["🍋", 2, .08], ["🍀", 3, .04], ["🔔", 5, .025], ["💎", 10, .012], ["👑", 50, .003], ["🌟", 500, .0002]];
+Base.entete({
+  titre: "Grattage", emoji: "🎟️",
+  aide: `<p>Achète un ticket et gratte-le au doigt (ou à la souris) !</p>
+    <ul><li><b>3 symboles identiques</b> = tu gagnes le prix du ticket multiplié par la valeur du symbole : 🍒 x1 jusqu'à 🌟 x500.</li>
+    <li>Le bouton « Tout gratter » révèle tout d'un coup.</li>
+    <li>Le ticket reste en attente si tu quittes la page.</li>
+    <li>${Casino.regle()}</li></ul>`
+});
+
+let T = stock.lire("ticket", null);
+Casino.init({jeu: "grattage", enJeu: () => T && !T.fini ? T.prix : 0});
+Casino.barre($("porte")); Casino.top($("top"));
+
+function tirer(){
+  let x = Math.random(), gagne = null;
+  for(const s of SYM){ if(x < s[2]){ gagne = s; break; } x -= s[2]; }
+  const cases = [], compte = {};
+  if(gagne){ cases.push(gagne[0], gagne[0], gagne[0]); compte[gagne[0]] = 3; }
+  while(cases.length < 9){
+    const s = SYM[Math.floor(Math.random() * SYM.length)][0];
+    if((compte[s] || 0) >= 2 || (gagne && s === gagne[0])) continue;
+    compte[s] = (compte[s] || 0) + 1; cases.push(s);
+  }
+  for(let i = 8; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [cases[i], cases[j]] = [cases[j], cases[i]]; }
+  return {cases, gagne: gagne ? gagne[0] : null, mult: gagne ? gagne[1] : 0};
+}
+function acheter(type){
+  if(T && !T.fini) return;
+  const t = TICKETS[type]; if(!Casino.miser(t.prix)) return;
+  T = {type, prix: t.prix, ...tirer(), fini: false, gratte: 0};
+  stock.ecrire("ticket", T); $("msg").textContent = ""; $("msg").className = "ca-gros";
+  dessiner();
+}
+function terminer(){
+  if(!T || T.fini) return;
+  T.fini = true;
+  const g = T.prix * T.mult;
+  if(g) Casino.crediter(g);
+  Casino.resultat(T.prix, g);
+  stock.ecrire("ticket", T);
+  if(g){ $("msg").textContent = `🎉 ${T.gagne}${T.gagne}${T.gagne} : +${fmt(g)} jetons !`; $("msg").className = "ca-gros gagne"; son(880, .2); setTimeout(() => son(1320, .35), 150); if(T.mult >= 10) confettis(); }
+  else { $("msg").textContent = "Perdu… pas de trio cette fois."; $("msg").className = "ca-gros perdu"; }
+  dessiner();
+}
+
+function dessiner(){
+  const occupe = T && !T.fini;
+  $("choix").innerHTML = Object.entries(TICKETS).map(([k, t]) => `<button class="t-${k}" data-t="${k}" ${occupe ? "disabled" : ""}>🎟️ ${t.nom}<small>${fmt(t.prix)} jetons</small><small>jusqu'à ${fmt(t.prix * 500)}</small></button>`).join("");
+  $("choix").querySelectorAll("[data-t]").forEach(b => b.onclick = () => acheter(b.dataset.t));
+  const place = $("place");
+  if(!T){ place.innerHTML = `<div class="vide">Choisis un ticket pour commencer 🍀</div>`; $("actions").innerHTML = ""; majStats(); return; }
+  const info = TICKETS[T.type];
+  place.innerHTML = `<div class="ticket t-${T.type}"><h2>${info.nom.toUpperCase()}</h2><p class="regle">3 symboles identiques = gagné !</p>
+    <div class="zone"><div class="cases">${T.cases.map(s => `<div class="${T.fini && s === T.gagne ? "gagne" : ""}">${s}</div>`).join("")}</div>${T.fini ? "" : `<canvas id="couche"></canvas>`}</div>
+    <div class="table-gains">${SYM.map(([s, m]) => `<span>${s}${s}${s} ${fmt(m * T.prix)}</span>`).join("")}</div></div>`;
+  $("actions").innerHTML = T.fini ? `<button class="btn" id="encore">🎟️ Encore un ${info.nom} (${fmt(T.prix)})</button>` : `<button class="btn ghost" id="tout">🪙 Tout gratter</button>`;
+  const e = $("encore"); if(e) e.onclick = () => acheter(T.type);
+  const t = $("tout"); if(t) t.onclick = terminer;
+  if(!T.fini) couche();
+  majStats();
+}
+function couche(){
+  const cv = $("couche"), r = cv.getBoundingClientRect(), ctx = cv.getContext("2d");
+  cv.width = r.width * 2; cv.height = r.height * 2;
+  const g = ctx.createLinearGradient(0, 0, cv.width, cv.height);
+  g.addColorStop(0, "#c9ccd6"); g.addColorStop(.5, "#eef0f5"); g.addColorStop(1, "#a9adba");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = "rgba(90,95,110,.35)"; ctx.font = `800 ${cv.width / 9}px Fredoka, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("GRATTE ICI", cv.width / 2, cv.height / 2);
+  for(let i = 0; i < 40; i++){ ctx.fillText("✦", Math.random() * cv.width, Math.random() * cv.height); }
+  ctx.globalCompositeOperation = "destination-out";
+  let bas = false, prec = null, n = 0;
+  const pt = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) * 2, (e.clientY - b.top) * 2]; };
+  const gratter = p => {
+    ctx.lineWidth = cv.width / 9; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(...(prec || p)); ctx.lineTo(...p); ctx.stroke(); prec = p;
+    if(++n % 6 === 0){ son(200 + Math.random() * 300, .03, "sawtooth", .008); verifier(); }
+  };
+  cv.onpointerdown = e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); bas = true; prec = null; gratter(pt(e)); };
+  cv.onpointermove = e => { if(bas) gratter(pt(e)); };
+  cv.onpointerup = cv.onpointercancel = () => { bas = false; prec = null; verifier(); };
+  function verifier(){
+    const d = ctx.getImageData(0, 0, cv.width, cv.height).data; let vide = 0, tot = 0;
+    for(let i = 3; i < d.length; i += 4 * 37){ tot++; if(d[i] < 40) vide++; }
+    if(vide / tot > .62) terminer();
+  }
+}
+function majStats(){
+  const st = Casino.stats();
+  $("stats").innerHTML = [[st.n, "tickets"], [fmt(st.mise), "dépensés"], [fmt(st.gain), "gagnés"], [fmt(st.gros), "plus gros gain net"]].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join("");
+}
+let ac = null;
+function son(f, d, type, vol){ try{ ac = ac || new AudioContext(); const o = ac.createOscillator(), g = ac.createGain(); o.type = type || "triangle"; o.frequency.value = f; g.gain.value = vol || .05; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); }catch(e){} }
+function confettis(){
+  const c = ["#ff4f7b", "#f2c14e", "#3aa76d", "#5b6bd0"];
+  for(let i = 0; i < 60; i++){ const p = document.createElement("i"); p.style.cssText = `position:fixed;top:-10px;left:${Math.random() * 100}%;width:8px;height:12px;background:${c[i % 4]};z-index:50;pointer-events:none;transition:transform ${1.5 + Math.random()}s ease-out,opacity .4s 2s`; document.body.appendChild(p); requestAnimationFrame(() => requestAnimationFrame(() => { p.style.transform = `translate(${(Math.random() - .5) * 200}px,${innerHeight + 30}px) rotate(${Math.random() * 720}deg)`; p.style.opacity = 0; })); setTimeout(() => p.remove(), 3000); }
+}
+dessiner();
+</script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mines</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/casino.css">
+<style>
+:root{--accent:#0ea5a4;--fond1:rgba(14,165,164,.13);--fond2:rgba(242,193,78,.13)}
+.jeu{width:100%;max-width:520px;display:flex;flex-direction:column;gap:12px}
+.grille{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px;border-radius:20px;background:linear-gradient(160deg,#16324a,#0d1f30);box-shadow:var(--ombre)}
+.case{aspect-ratio:1;border-radius:12px;border:0;background:linear-gradient(160deg,#2f5576,#22425e);box-shadow:inset 0 -4px 0 rgba(0,0,0,.25);font-size:clamp(1.3rem,6vw,2rem);display:flex;align-items:center;justify-content:center;transition:transform .12s}
+.case:not(:disabled):hover{transform:translateY(-3px);background:linear-gradient(160deg,#3a6890,#2a5072)}
+.case:disabled{cursor:default}
+.case.gemme{background:linear-gradient(160deg,#1fbf8f,#11916b);animation:retourne .35s}
+.case.bombe{background:linear-gradient(160deg,#e5484d,#a8262b);animation:retourne .35s}
+.case.cache-g{background:rgba(31,191,143,.25);opacity:.7}
+.case.cache-b{background:rgba(229,72,77,.25);opacity:.7}
+@keyframes retourne{from{transform:rotateY(90deg) scale(.8)}to{transform:none}}
+.infos{display:flex;justify-content:space-between;gap:8px;font-weight:800;flex-wrap:wrap}
+.infos span{background:var(--soft);border-radius:999px;padding:4px 12px}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.actions .btn{min-width:200px;font-size:1.1rem;padding:12px 20px}
+.btn.or{background:#e2b93b;color:#22192b}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="porte"></section>
+  <div class="jeu">
+    <div class="infos"><span id="iMult">x1,00</span><span id="iSuiv">Prochaine : —</span><span id="iGain">Gain : —</span></div>
+    <div class="grille" id="grille"></div>
+    <div class="ca-gros" id="msg"></div>
+    <section class="b-carte">
+      <div id="mises"></div>
+      <p style="margin:12px 0 6px;font-weight:800;text-align:center">💣 Nombre de bombes</p>
+      <div class="pilules" id="bombes"></div>
+      <div class="actions" style="margin-top:12px"><button class="btn" id="go">Jouer 💎</button></div>
+    </section>
+  </div>
+  <section class="b-carte" style="width:100%;max-width:520px"><h3 style="margin:0 0 10px">📊 Tes statistiques</h3><div class="ca-stats" id="stats"></div></section>
+  <section class="b-carte cache" id="top" style="width:100%;max-width:520px"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/jetons.js"></script>
+<script src="../commun/casino.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = Casino.fmt, stock = Base.stock("mines_");
+const N = 25, BOMBES = [1, 3, 5, 10, 15, 24];
+Base.entete({
+  titre: "Mines", emoji: "💣",
+  aide: `<p>Une grille de 25 cases cache des bombes. Retourne des cases : chaque <b>💎 gemme</b> fait monter ton multiplicateur.</p>
+    <ul><li>Tombe sur une <b>💣</b> et tu perds ta mise.</li>
+    <li>Tu peux <b>encaisser</b> à tout moment.</li>
+    <li>Plus il y a de bombes, plus chaque gemme rapporte.</li>
+    <li>${Casino.regle()}</li></ul>`
+});
+
+let P = stock.lire("partie", null), nbB = stock.lire("bombes", 3);
+const enJeu = () => P && !P.fini ? P.mise : 0;
+Casino.init({jeu: "mines", enJeu});
+Casino.barre($("porte")); Casino.top($("top"));
+const mise = Casino.choixMise($("mises"), {def: 25});
+
+// multiplicateur après k gemmes (jeu équitable × 0,97)
+function mult(k, b){ let m = .97; for(let i = 0; i < k; i++) m *= (N - i) / (N - b - i); return m; }
+const fx = m => "x" + m.toLocaleString("fr-FR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+function jouer(){
+  if(P && !P.fini){ encaisser(); return; }
+  const v = mise.val(); if(!Casino.miser(v)) return;
+  const l = [...Array(N).keys()]; for(let i = N - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; }
+  P = {mise: v, b: nbB, mines: l.slice(0, nbB), rev: [], fini: false};
+  sauver(); $("msg").textContent = ""; $("msg").className = "ca-gros"; dessiner();
+}
+function retourner(i){
+  if(!P || P.fini || P.rev.includes(i)) return;
+  P.rev.push(i);
+  if(P.mines.includes(i)){ P.fini = true; P.perdu = i; Casino.resultat(P.mise, 0); son(120, .5, "sawtooth"); secouer(); $("msg").textContent = `💥 Boum ! −${fmt(P.mise)}`; $("msg").className = "ca-gros perdu"; }
+  else{
+    son(500 + P.rev.length * 60, .12, "triangle");
+    if(P.rev.length === N - P.b){ sauver(); encaisser(); return; }
+  }
+  sauver(); dessiner();
+}
+function encaisser(){
+  if(!P || P.fini || !P.rev.length) return;
+  const g = Math.floor(P.mise * mult(P.rev.length, P.b));
+  P.fini = true; P.gain = g; Casino.crediter(g); Casino.resultat(P.mise, g);
+  $("msg").textContent = `💰 +${fmt(g)} jetons (${fx(mult(P.rev.length, P.b))})`; $("msg").className = "ca-gros gagne";
+  son(880, .25, "triangle"); setTimeout(() => son(1320, .3, "triangle"), 120);
+  sauver(); dessiner();
+}
+function sauver(){ stock.ecrire("partie", P); }
+
+function dessiner(){
+  const g = $("grille"); g.innerHTML = "";
+  for(let i = 0; i < N; i++){
+    const b = document.createElement("button"); b.className = "case";
+    const vu = P && P.rev.includes(i), bombe = P && P.mines.includes(i);
+    if(vu){ b.classList.add(bombe ? "bombe" : "gemme"); b.textContent = bombe ? "💣" : "💎"; }
+    else if(P && P.fini){ b.classList.add(bombe ? "cache-b" : "cache-g"); b.textContent = bombe ? "💣" : "💎"; }
+    b.disabled = !P || P.fini || vu;
+    b.onclick = () => retourner(i);
+    g.appendChild(b);
+  }
+  const actif = P && !P.fini, k = P ? P.rev.length : 0, b = actif ? P.b : nbB;
+  $("iMult").textContent = actif ? fx(mult(k, b)) : "x1,00";
+  $("iSuiv").textContent = "Prochaine : " + (k < N - b || !actif ? fx(mult(actif ? k + 1 : 1, b)) : "—");
+  $("iGain").textContent = "Gain : " + (actif && k ? fmt(Math.floor(P.mise * mult(k, b))) : "—");
+  const go = $("go");
+  go.textContent = actif ? (k ? `Encaisser ${fmt(Math.floor(P.mise * mult(k, b)))} 💰` : "Retourne une case…") : `Jouer ${fmt(mise.val())} 💎`;
+  go.className = "btn" + (actif && k ? " or" : "");
+  go.disabled = actif && !k;
+  mise.desactiver(actif);
+  $("bombes").innerHTML = BOMBES.map(n => `<button data-b="${n}" class="${n === b ? "on" : ""}" ${actif ? "disabled" : ""}>${n}</button>`).join("");
+  $("bombes").querySelectorAll("[data-b]").forEach(x => x.onclick = () => { nbB = +x.dataset.b; stock.ecrire("bombes", nbB); dessiner(); });
+  const st = Casino.stats();
+  $("stats").innerHTML = [[st.n, "parties"], [fmt(st.mise), "misés"], [fmt(st.gain), "gagnés"], [fmt(st.gros), "plus gros gain net"]].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join("");
+}
+$("go").onclick = jouer;
+Casino.surChange(() => { if(!(P && !P.fini)) $("go").textContent = `Jouer ${fmt(mise.val())} 💎`; });
+$("mises").addEventListener("click", () => setTimeout(dessiner));
+addEventListener("keydown", e => { if(e.code === "Space" && e.target === document.body){ e.preventDefault(); jouer(); } });
+
+let ac = null;
+function son(f, d, type){ try{ ac = ac || new AudioContext(); const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; g.gain.value = .05; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); }catch(e){} }
+function secouer(){ const g = $("grille"); g.animate([{transform: "translateX(-8px)"}, {transform: "translateX(8px)"}, {transform: "translateX(-5px)"}, {transform: "none"}], {duration: 300}); }
+dessiner();
+</script>
+</body>
+</html>

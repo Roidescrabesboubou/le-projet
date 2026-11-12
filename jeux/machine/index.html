@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Machine à sous</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/casino.css">
+<style>
+:root{--accent:#e11d48;--fond1:rgba(225,29,72,.13);--fond2:rgba(242,193,78,.16)}
+.jeu{width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px}
+.caisse{border-radius:26px;padding:16px;background:linear-gradient(170deg,#e11d48,#8a1030);box-shadow:var(--ombre),inset 0 0 0 4px #f2c14e;color:#fff}
+.fronton{text-align:center;font-family:Fredoka,sans-serif;font-size:1.5rem;letter-spacing:.08em;text-shadow:0 2px 0 rgba(0,0,0,.35);margin-bottom:8px}
+.fronton small{display:block;font-family:Nunito,sans-serif;font-size:.8rem;letter-spacing:0;opacity:.9}
+.vitre{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#1b0b14;border-radius:16px;padding:8px;border:4px solid #f2c14e}
+.rouleau{height:calc(var(--h) * 3);overflow:hidden;border-radius:10px;background:linear-gradient(#fff,#f3eee4 50%,#fff);position:relative}
+.bande{position:absolute;left:0;right:0;top:0;will-change:transform}
+.bande div{height:var(--h);display:flex;align-items:center;justify-content:center;font-size:calc(var(--h) * .58)}
+.rouleau::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.25),transparent 25%,transparent 75%,rgba(0,0,0,.25));pointer-events:none}
+.vitre svg{position:absolute;inset:8px;width:calc(100% - 16px);height:calc(100% - 16px);pointer-events:none}
+.affiche{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-weight:800}
+.affiche span{background:rgba(0,0,0,.3);border-radius:999px;padding:4px 12px}
+.gros-btn{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.levier{font-size:1.3rem;padding:14px 34px;background:#f2c14e;color:#3a1020;border-radius:999px;font-weight:900;border:0;box-shadow:0 5px 0 #a27a12}
+.levier:active{transform:translateY(3px);box-shadow:0 2px 0 #a27a12}
+.levier:disabled{opacity:.6}
+.paie{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px;font-size:.85rem;font-weight:800}
+.paie span{background:var(--soft);border-radius:8px;padding:4px 8px;display:flex;justify-content:space-between}
+.gratuit{background:#f2c14e;color:#3a1020;border-radius:999px;padding:4px 12px;font-weight:900;text-align:center}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="porte"></section>
+  <div class="jeu">
+    <div class="caisse">
+      <div class="fronton">🎰 LUCKY 7 <small>5 lignes · 🃏 joker · 3 🎁 = 5 tours gratuits (gains x2)</small></div>
+      <div class="vitre" id="vitre"></div>
+      <div class="affiche"><span id="aGain">Gain : 0</span><span id="aLibre"></span></div>
+      <div class="ca-gros" id="msg" style="color:#fff"></div>
+    </div>
+    <section class="b-carte">
+      <div id="mises"></div>
+      <div class="gros-btn"><button class="levier" id="go">TOURNER 🎰</button><button class="btn ghost" id="auto">🔁 Auto ×10</button></div>
+    </section>
+    <section class="b-carte"><h3 style="margin:0 0 8px">💰 Table des gains <small class="muted">(pour 3 sur une ligne, × la mise par ligne)</small></h3><div class="paie" id="paie"></div></section>
+  </div>
+  <section class="b-carte" style="width:100%;max-width:480px"><h3 style="margin:0 0 10px">📊 Tes statistiques</h3><div class="ca-stats" id="stats"></div></section>
+  <section class="b-carte cache" id="top" style="width:100%;max-width:480px"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/jetons.js"></script>
+<script src="../commun/casino.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = Casino.fmt;
+const SYM = ["🍒", "🍋", "🍊", "🍇", "🔔", "⭐", "7️⃣", "💎", "🃏", "🎁"], POIDS = [8, 7, 6, 5, 4, 3, 2, 1, 1, 1.2];
+const PAY = {"🍒": 10, "🍋": 15, "🍊": 20, "🍇": 30, "🔔": 50, "⭐": 80, "7️⃣": 200, "💎": 500, "🃏": 1000};
+const LIGNES = [[1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 1, 2], [2, 1, 0]];
+const COUL = ["#f2c14e", "#4fd1ff", "#7dff8a", "#ff6fb5", "#c084fc"];
+Base.entete({
+  titre: "Machine à sous", emoji: "🎰",
+  aide: `<p>Tire le levier ! Ta mise est répartie sur <b>5 lignes</b> (3 horizontales + 2 diagonales).</p>
+    <ul><li>3 symboles identiques sur une ligne : gain selon la table. Deux 🍒 à gauche : x2.</li>
+    <li>Le <b>🃏 joker</b> remplace n'importe quel symbole. Trois 🃏 : le jackpot (x1000 la mise de la ligne) !</li>
+    <li>3 <b>🎁</b> n'importe où : <b>5 tours gratuits</b> avec gains doublés.</li>
+    <li>${Casino.regle()}</li></ul>`
+});
+
+let tourne = false, libres = 0, misLibre = 0, auto = 0;
+Casino.init({jeu: "machine", enJeu: () => tourne ? (libres ? 0 : mise.val()) : 0});
+Casino.barre($("porte")); Casino.top($("top"));
+const mise = Casino.choixMise($("mises"), {def: 25, valeurs: [5, 10, 25, 50, 100, 250, 500, 1000]});
+const total = POIDS.reduce((a, b) => a + b);
+const tire = () => { let x = Math.random() * total; for(let i = 0; i < SYM.length; i++){ x -= POIDS[i]; if(x < 0) return SYM[i]; } return SYM[0]; };
+
+function gainLigne(a){
+  const n = a.filter(s => s !== "🃏");
+  if(!n.length) return PAY["🃏"];
+  const s = n[0]; if(s === "🎁") return 0;
+  if(n.every(x => x === s)) return PAY[s];
+  if((a[0] === "🍒" || a[0] === "🃏") && (a[1] === "🍒" || a[1] === "🃏") && (a[0] === "🍒" || a[1] === "🍒")) return 2;
+  return 0;
+}
+function evaluer(g){
+  const lignes = [];
+  LIGNES.forEach((L, i) => { const m = gainLigne([g[0][L[0]], g[1][L[1]], g[2][L[2]]]); if(m) lignes.push({i, m}); });
+  return {lignes, mult: lignes.reduce((s, l) => s + l.m, 0) / 5, bonus: g.flat().filter(s => s === "🎁").length >= 3};
+}
+
+/* ---------- Rouleaux ---------- */
+const vitre = $("vitre");
+let H = 70, grille = [[tire(), tire(), tire()], [tire(), tire(), tire()], [tire(), tire(), tire()]];
+function construire(){
+  H = Math.min(90, Math.max(56, (vitre.clientWidth - 40) / 3 * .8));
+  vitre.style.setProperty("--h", H + "px");
+  vitre.innerHTML = grille.map((c, i) => `<div class="rouleau"><div class="bande" id="b${i}">${c.map(s => `<div>${s}</div>`).join("")}</div></div>`).join("") + `<svg id="traits" preserveAspectRatio="none"></svg>`;
+}
+function lancer(){
+  if(tourne) return;
+  const v = libres ? misLibre : mise.val();
+  if(!libres && !Casino.miser(v)) { auto = 0; majBoutons(); return; }
+  tourne = true; majBoutons(); $("msg").textContent = ""; $("traits").innerHTML = "";
+  const gratuit = libres > 0; if(gratuit) libres--;
+  const nouv = [0, 1, 2].map(() => [tire(), tire(), tire()]);
+  son(300, .1, "square");
+  let finis = 0;
+  nouv.forEach((c, i) => {
+    const N = 18 + i * 6, bande = $("b" + i);
+    const sym = grille[i].concat(Array.from({length: N}, tire), c);
+    bande.innerHTML = sym.map(s => `<div>${s}</div>`).join("");
+    bande.style.transition = "none"; bande.style.transform = "translateY(0)";
+    bande.getBoundingClientRect();
+    bande.style.transition = `transform ${.9 + i * .35}s cubic-bezier(.2,.75,.25,1.04)`;
+    bande.style.transform = `translateY(${-(sym.length - 3) * H}px)`;
+    setTimeout(() => {
+      son(180 + i * 40, .08, "triangle");
+      bande.style.transition = "none"; bande.innerHTML = c.map(s => `<div>${s}</div>`).join(""); bande.style.transform = "translateY(0)";
+      if(++finis === 3){ grille = nouv; regler(v, gratuit); }
+    }, (.9 + i * .35) * 1000 + 40);
+  });
+}
+function regler(v, gratuit){
+  const r = evaluer(grille), g = Math.floor(v * r.mult * (gratuit ? 2 : 1));
+  if(g) Casino.crediter(g);
+  Casino.resultat(gratuit ? 0 : v, g);
+  $("aGain").textContent = "Gain : " + fmt(g);
+  const svg = $("traits"); const w = svg.clientWidth, h = svg.clientHeight;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.innerHTML = r.lignes.map(l => { const L = LIGNES[l.i]; const pts = L.map((row, c) => `${(c + .5) * w / 3},${(row + .5) * h / 3}`).join(" "); return `<polyline points="${pts}" fill="none" stroke="${COUL[l.i]}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>`; }).join("");
+  if(g >= v * 10){ $("msg").textContent = `🎉 GROS GAIN ! +${fmt(g)}`; fanfare(); }
+  else if(g) { $("msg").textContent = `+${fmt(g)}`; son(880, .15, "triangle"); }
+  if(r.bonus){ libres += 5; misLibre = v; $("msg").textContent += " 🎁 5 TOURS GRATUITS !"; fanfare(); }
+  $("aLibre").textContent = libres ? `🎁 ${libres} tour${libres > 1 ? "s" : ""} gratuit${libres > 1 ? "s" : ""}` : "";
+  tourne = false; majBoutons(); majStats();
+  if(libres) setTimeout(lancer, 1200);
+  else if(auto > 0){ auto--; majBoutons(); if(auto > 0) setTimeout(lancer, 900); }
+}
+function majBoutons(){
+  $("go").disabled = tourne || libres > 0;
+  $("go").textContent = libres ? "🎁 GRATUIT…" : "TOURNER 🎰";
+  $("auto").textContent = auto > 0 ? `⏹️ Stop (${auto})` : "🔁 Auto ×10";
+  mise.desactiver(tourne || libres > 0);
+}
+function majStats(){
+  const st = Casino.stats();
+  $("stats").innerHTML = [[st.n, "tours"], [fmt(st.mise), "misés"], [fmt(st.gain), "gagnés"], [fmt(st.gros), "plus gros gain net"]].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join("");
+}
+$("go").onclick = lancer;
+$("auto").onclick = () => { if(auto > 0){ auto = 0; majBoutons(); return; } auto = 10; majBoutons(); if(!tourne) lancer(); };
+addEventListener("keydown", e => { if(e.code === "Space" && e.target === document.body){ e.preventDefault(); lancer(); } });
+$("paie").innerHTML = Object.entries(PAY).reverse().map(([s, m]) => `<span>${s}${s}${s}<b>x${m}</b></span>`).join("") + `<span>🍒🍒<b>x2</b></span><span>🎁🎁🎁<b>5 gratuits</b></span>`;
+let ac = null;
+function son(f, d, type, vol){ try{ ac = ac || new AudioContext(); const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; g.gain.value = vol || .05; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); }catch(e){} }
+function fanfare(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => son(f, .25, "triangle", .06), i * 110)); }
+construire(); majStats(); majBoutons();
+</script>
+</body>
+</html>

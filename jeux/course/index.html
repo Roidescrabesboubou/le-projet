@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Course de chevaux</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/casino.css">
+<style>
+:root{--accent:#15803d;--fond1:rgba(21,128,61,.14);--fond2:rgba(202,138,4,.13)}
+.jeu{width:100%;max-width:600px;display:flex;flex-direction:column;gap:12px}
+.bandeau{display:flex;justify-content:space-between;gap:8px;font-weight:800;background:#14532d;color:#fff;border-radius:12px;padding:8px 14px}
+canvas{display:block;width:100%;aspect-ratio:600/330;border-radius:18px;box-shadow:var(--ombre);background:#3f8f3a}
+.partants{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.partant{display:grid;grid-template-columns:28px 1fr auto auto;align-items:center;gap:8px;background:var(--soft);border-radius:12px;padding:6px 10px;font-weight:800}
+.partant .num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem}
+.partant .nom{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.partant .nom small{display:block;font-weight:700;color:var(--muted);font-size:.75rem}
+.partant .cote{font-family:Fredoka,sans-serif;font-size:1.1rem}
+.partant button{min-width:92px}
+.partant.gagne{outline:3px solid #e2b93b;background:color-mix(in srgb,#e2b93b 25%,var(--card))}
+.histo{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;font-size:.8rem;font-weight:800}
+.histo span{background:var(--soft);border-radius:8px;padding:2px 8px}
+</style>
+</head>
+<body>
+<main class="b-page">
+  <section id="porte"></section>
+  <div class="jeu">
+    <div class="bandeau"><span id="bTxt"></span><span id="bTemps"></span></div>
+    <canvas id="cv" width="1200" height="660"></canvas>
+    <div class="ca-gros" id="msg"></div>
+    <section class="b-carte">
+      <div id="mises"></div>
+      <div class="partants" id="partants"></div>
+    </section>
+    <section class="b-carte"><h3 style="margin:0">🏟️ Dans les tribunes</h3><ul class="ca-live" id="live"></ul><p class="muted" id="liveNote" style="margin:6px 0 0;font-size:.82rem"></p></section>
+    <div class="histo" id="histo"></div>
+  </div>
+  <section class="b-carte" style="width:100%;max-width:600px"><h3 style="margin:0 0 10px">📊 Tes statistiques</h3><div class="ca-stats" id="stats"></div></section>
+  <section class="b-carte cache" id="top" style="width:100%;max-width:600px"></section>
+</main>
+
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/jetons.js"></script>
+<script src="../commun/casino.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = Casino.fmt, esc = Base.esc, stock = Base.stock("course_");
+const MISES = 25, COURSE = 18, RES = 7, PERIODE = MISES + COURSE + RES, NBC = 6;
+const NOMS = ["Éclair de Lune", "Petit Tonnerre", "Croquette", "Fée Clochette", "Turbo Biscotte", "Roi du Foin", "Pomme d'Api", "Comète", "Fripouille", "Sabot d'Or", "Marmelade", "Galopin", "Caramel Mou", "Vent du Nord", "Patatras", "Bourrasque", "Choupette", "Flash Mcqueue", "Princesse Paillette", "Tornado", "Nougat", "Capitaine Crinière", "Zébulon", "Pépite"];
+const COULS = ["#e11d48", "#2563eb", "#16a34a", "#f59e0b", "#9333ea", "#0891b2"];
+const FORMES = ["💪 en forme", "😐 moyen", "🥱 fatigué", "🔥 favori", "🍀 outsider"];
+Base.entete({
+  titre: "Course de chevaux", emoji: "🏇",
+  aide: `<p>Une course toutes les ${PERIODE} secondes, la même pour tout le site !</p>
+    <ul><li>Pendant ${MISES} secondes, mise sur un ou plusieurs chevaux.</li>
+    <li>Si ton cheval gagne, tu touches ta mise × sa <b>cote</b>. Les favoris ont une petite cote, les outsiders une grosse.</li>
+    <li>Tes paris restent en jeu si tu quittes la page.</li>
+    <li>${Casino.regle()}</li></ul>`
+});
+
+const sNow = () => Casino.maintenant() / 1000;
+const etat = s => { const r = Math.floor(s / PERIODE), t = s - r * PERIODE; return {r, t, ph: t < MISES ? "mises" : t < MISES + COURSE ? "course" : "res"}; };
+// la course r : partants, cotes, ordre d'arrivée — la même pour tout le monde
+const cacheC = new Map();
+function course(r){
+  if(cacheC.has(r)) return cacheC.get(r);
+  const h = k => Casino.hasard(r, k);
+  const noms = NOMS.slice(); for(let i = noms.length - 1; i > 0; i--){ const j = Math.floor(h(200 + i) * (i + 1)); [noms[i], noms[j]] = [noms[j], noms[i]]; }
+  const force = [...Array(NBC)].map((_, i) => Math.pow(.35 + h(i + 1), 2.2));
+  const tot = force.reduce((a, b) => a + b), p = force.map(f => f / tot);
+  const cote = p.map(x => Math.max(1.2, Math.round(.93 / x * 10) / 10));
+  // ordre d'arrivée tiré selon les chances
+  const reste = [...Array(NBC).keys()], ordre = [];
+  for(let k = 0; k < NBC; k++){
+    const t = reste.reduce((a, i) => a + p[i], 0); let x = h(99 + k) * t, c = reste[reste.length - 1];
+    for(const i of reste){ x -= p[i]; if(x < 0){ c = i; break; } }
+    ordre.push(c); reste.splice(reste.indexOf(c), 1);
+  }
+  const arrivee = []; ordre.forEach((i, k) => arrivee[i] = 13.2 + k * .55 + h(300 + k) * .3);
+  const ondes = [...Array(NBC)].map((_, i) => [1 + h(400 + i) * 2, h(500 + i), .06 + h(600 + i) * .08]);
+  const c = {noms: noms.slice(0, NBC), p, cote, ordre, arrivee, ondes, forme: p.map(x => x > .3 ? FORMES[3] : x > .2 ? FORMES[0] : x > .12 ? FORMES[1] : x > .07 ? FORMES[2] : FORMES[4])};
+  cacheC.set(r, c); if(cacheC.size > 30) cacheC.delete(cacheC.keys().next().value);
+  return c;
+}
+function avancee(c, i, t){
+  const u = Math.min(1, Math.max(0, t / c.arrivee[i])), [f, ph, a] = c.ondes[i];
+  return u + a * Math.sin(2 * Math.PI * (u * f + ph)) * u * (1 - u);
+}
+
+let P = stock.lire("paris", null);       // {r, m: {cheval: jetons}}
+const totalP = p => p ? Object.values(p.m).reduce((a, b) => a + b, 0) : 0;
+Casino.init({jeu: "course", enJeu: () => P && !P.fini ? totalP(P) : 0});
+Casino.barre($("porte")); Casino.top($("top"));
+const mise = Casino.choixMise($("mises"), {def: 25});
+
+function parier(i){
+  const e = etat(sNow()); if(e.ph !== "mises") return;
+  const x = mise.val(); if(!Casino.miser(x)) return;
+  if(!P || P.r !== e.r) P = {r: e.r, m: {}};
+  P.m[i] = (P.m[i] || 0) + x; stock.ecrire("paris", P);
+  son(700, .05, "square"); publier(); dessinerPartants();
+}
+function regler(){
+  if(!P || P.fini) return;
+  const s = sNow(); if(s < P.r * PERIODE + MISES + COURSE) return;
+  const c = course(P.r), w = c.ordre[0], g = Math.floor((P.m[w] || 0) * c.cote[w]);
+  if(g) Casino.crediter(g);
+  Casino.resultat(totalP(P), g);
+  P.fini = true; P.g = g; stock.ecrire("paris", P);
+  if(etat(s).r === P.r){
+    $("msg").textContent = g ? `🏆 ${c.noms[w]} gagne ! +${fmt(g)} jetons` : `${c.noms[w]} gagne… pas ton cheval cette fois.`;
+    $("msg").className = "ca-gros " + (g ? "gagne" : "perdu");
+    if(g) [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => son(f, .2, "triangle"), k * 100));
+  }
+  publier(); majStats();
+}
+
+/* ---------- Piste ---------- */
+const cv = $("cv"), ctx = cv.getContext("2d"), W = 600, H = 330, KX = cv.width / W, X0 = 40, X1 = W - 50, Y0 = 34, LH = (H - 50) / NBC;
+function dessiner(){
+  const s = sNow(), e = etat(s), c = course(e.r), t = e.ph === "mises" ? 0 : Math.min(COURSE, e.t - MISES);
+  ctx.setTransform(KX, 0, 0, KX, 0, 0);
+  ctx.fillStyle = "#3f8f3a"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#2f6e2b"; ctx.fillRect(0, 0, W, 24);
+  ctx.font = "15px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for(let i = 0; i < 24; i++) ctx.fillText(["🙋", "🙆", "🧍", "🙌"][(i + Math.floor(t * 3)) % 4], 12 + i * 25, 12 + (e.ph === "course" ? Math.sin(t * 10 + i) * 2 : 0));
+  for(let i = 0; i < NBC; i++){
+    const y = Y0 + i * LH;
+    ctx.fillStyle = i % 2 ? "#c99a5c" : "#d4a86a"; ctx.fillRect(0, y, W, LH);
+    ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.fillRect(0, y, W, 1.5);
+    ctx.fillStyle = COULS[i]; ctx.beginPath(); ctx.arc(16, y + LH / 2, 10, 0, 6.3); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = "800 11px Nunito"; ctx.fillText(i + 1, 16, y + LH / 2 + 1);
+  }
+  // ligne d'arrivée en damier
+  for(let k = 0; k < (H - Y0) / 8; k++){ ctx.fillStyle = k % 2 ? "#fff" : "#111"; ctx.fillRect(X1 + 14, Y0 + k * 8, 6, 8); ctx.fillStyle = k % 2 ? "#111" : "#fff"; ctx.fillRect(X1 + 20, Y0 + k * 8, 6, 8); }
+  for(let i = 0; i < NBC; i++){
+    const y = Y0 + i * LH + LH / 2, x = X0 + avancee(c, i, t) * (X1 - X0), saut = e.ph === "course" && t < c.arrivee[i] ? Math.abs(Math.sin(t * 14 + i)) * 3 : 0;
+    ctx.save(); ctx.translate(x, y - saut); ctx.scale(-1, 1); ctx.font = `${LH * .85}px serif`; ctx.fillText("🏇", 0, 0); ctx.restore();
+    if(P && P.r === e.r && P.m[i]){ ctx.fillStyle = "#ffd34d"; ctx.font = "13px serif"; ctx.fillText("⭐", x - LH * .55, y - LH * .3); }
+  }
+  if(e.ph === "res"){
+    const w = c.ordre[0];
+    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(W / 2 - 170, H / 2 - 28, 340, 56);
+    ctx.fillStyle = "#ffd34d"; ctx.font = "800 20px Fredoka, sans-serif"; ctx.fillText(`🏆 ${w + 1}. ${c.noms[w]}`, W / 2, H / 2 - 6);
+    ctx.fillStyle = "#fff"; ctx.font = "700 12px Nunito"; ctx.fillText(`2e ${c.noms[c.ordre[1]]} · 3e ${c.noms[c.ordre[2]]}`, W / 2, H / 2 + 15);
+  }
+}
+let derCle = "";
+function dessinerPartants(){
+  const e = etat(sNow()), c = course(e.r), ouvert = e.ph === "mises", mien = P && P.r === e.r ? P.m : {};
+  const cle = JSON.stringify([e.r, e.ph, mien, mise.val(), Casino.solde() >= mise.val()]); if(cle === derCle) return; derCle = cle;
+  $("partants").innerHTML = c.noms.map((n, i) => `<div class="partant ${e.ph === "res" && c.ordre[0] === i ? "gagne" : ""}"><span class="num" style="background:${COULS[i]}">${i + 1}</span><span class="nom">${esc(n)}<small>${c.forme[i]}${mien[i] ? " · ⭐ " + fmt(mien[i]) + " misés" : ""}</small></span><span class="cote">x${String(c.cote[i]).replace(".", ",")}</span><button class="btn petit" data-c="${i}" ${ouvert ? "" : "disabled"}>Miser ${fmt(mise.val())}</button></div>`).join("");
+  $("partants").querySelectorAll("[data-c]").forEach(b => b.onclick = () => parier(+b.dataset.c));
+  mise.desactiver(!ouvert);
+}
+let derPh = "";
+function boucle(){
+  const s = sNow(), e = etat(s);
+  if(e.ph !== "mises") regler();
+  if(e.ph !== derPh){ if(e.ph === "mises"){ $("msg").textContent = ""; majHisto(); } if(e.ph === "course") son(500, .4, "square", .04); derPh = e.ph; }
+  $("bTxt").textContent = e.ph === "mises" ? "🟢 Les paris sont ouverts !" : e.ph === "course" ? "🏇 Ils sont partis !" : "🏁 Arrivée";
+  $("bTemps").textContent = e.ph === "mises" ? "départ dans " + Math.ceil(MISES - e.t) + " s" : "prochaine course dans " + Math.ceil(PERIODE - e.t) + " s";
+  dessiner(); dessinerPartants(); majLive(e);
+  requestAnimationFrame(boucle);
+}
+function majHisto(){
+  const r = etat(sNow()).r, l = [];
+  for(let k = 1; k <= 8; k++){ const c = course(r - k); l.push(`${c.noms[c.ordre[0]]} x${String(c.cote[c.ordre[0]]).replace(".", ",")}`); }
+  $("histo").innerHTML = "🏁 Derniers gagnants : " + l.map(x => `<span>${esc(x)}</span>`).join("");
+}
+let autres = [], liveCle = "";
+Casino.ecouter("course", l => { autres = l; });
+function publier(){ if(!P) return; const c = course(P.r); Casino.publier("course", {r: P.r, m: totalP(P), c: Object.keys(P.m).map(i => "n°" + (+i + 1)).join(" "), g: P.g || 0}); }
+function majLive(e){
+  const l = autres.filter(x => x.r === e.r && x.m > 0).map(x => ({n: x.a + " " + x.n, m: x.m, c: x.c, g: x.g}));
+  if(P && P.r === e.r) l.unshift({n: "⭐ Toi", m: totalP(P), c: Object.keys(P.m).map(i => "n°" + (+i + 1)).join(" "), g: P.g || 0});
+  const cle = JSON.stringify([l, e.ph]); if(cle === liveCle) return; liveCle = cle;
+  $("live").innerHTML = l.map(x => `<li class="${e.ph === "res" ? (x.g > 0 ? "ok" : "ko") : ""}"><span>${esc(x.n)}</span><span>${fmt(x.m)} sur ${esc(x.c)}${e.ph === "res" && x.g > 0 ? " → +" + fmt(x.g) : ""}</span></li>`).join("") || `<li><span class="muted">Personne n'a parié pour l'instant.</span></li>`;
+  $("liveNote").textContent = window.Compte && Compte.pret && !(Compte.session && Compte.session()) ? "Connecte-toi pour apparaître dans les tribunes." : "";
+}
+function majStats(){
+  const st = Casino.stats();
+  $("stats").innerHTML = [[st.n, "courses jouées"], [fmt(st.mise), "misés"], [fmt(st.gain), "gagnés"], [fmt(st.gros), "plus gros gain net"]].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join("");
+}
+let ac = null;
+function son(f, d, type, vol){ try{ ac = ac || new AudioContext(); const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; g.gain.value = vol || .05; g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); }catch(e){} }
+regler(); majHisto(); majStats(); requestAnimationFrame(boucle);
+</script>
+</body>
+</html>

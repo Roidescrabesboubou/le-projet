@@ -1,0 +1,30 @@
+/* Style commun des jeux du casino (casino.js) */
+.ca-porte{width:100%}
+.ca-ligne{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ca-solde{font-family:Fredoka,sans-serif;font-size:2rem;line-height:1}
+.ca-solde small{display:block;font-family:Nunito,sans-serif;font-size:.8rem;color:var(--muted);font-weight:700;margin-bottom:4px}
+.ca-cadeau{font-size:.85rem;text-align:right}
+.ca-sync{font-size:.8rem;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ca-mises{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.ca-jeton{width:44px;height:44px;border-radius:50%;border:3px dashed rgba(255,255,255,.75);background:#3b6fd6;color:#fff;font-weight:800;font-size:.8rem;box-shadow:0 2px 0 rgba(0,0,0,.3);transition:transform .1s}
+.ca-jeton:nth-child(3){background:#2c9a62}.ca-jeton:nth-child(4){background:#c0303c}.ca-jeton:nth-child(5){background:#2b2b2b}
+.ca-jeton:nth-child(6){background:#8a4fd0}.ca-jeton:nth-child(7){background:#e07a2e}.ca-jeton:nth-child(8){background:#c99a1e}
+.ca-jeton.on{transform:translateY(-4px) scale(1.08);outline:3px solid var(--text);outline-offset:2px}
+.ca-jeton:disabled,.ca-pm:disabled{opacity:.45}
+.ca-pm{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);background:var(--card);font-weight:800;font-size:1.1rem}
+.ca-mise{width:100%;text-align:center;font-weight:700;font-size:.9rem;color:var(--muted)}
+.ca-mise b{color:var(--text)}
+.ca-top{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:4px}
+.ca-top li{display:flex;justify-content:space-between;gap:8px;background:var(--soft);border-radius:10px;padding:6px 10px;font-weight:700}
+.ca-top li.moi{outline:2px solid var(--accent)}
+.ca-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.ca-stats div{background:var(--soft);border-radius:12px;padding:8px;text-align:center;font-size:.8rem;color:var(--muted);font-weight:700}
+.ca-stats b{display:block;font-family:Fredoka,sans-serif;font-size:1.3rem;color:var(--text)}
+.ca-gros{font-family:Fredoka,sans-serif;font-size:1.6rem;text-align:center;min-height:1.4em}
+.ca-gros.gagne{color:#1f9d55;animation:caPop .5s cubic-bezier(.3,1.6,.5,1)}
+.ca-gros.perdu{color:var(--bad)}
+@keyframes caPop{from{transform:scale(.4)}to{transform:scale(1)}}
+.ca-live{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px;font-size:.88rem}
+.ca-live li{display:flex;justify-content:space-between;gap:8px;background:var(--soft);border-radius:10px;padding:5px 10px;font-weight:700}
+.ca-live li.ok{background:color-mix(in srgb,#1f9d55 20%,var(--card))}
+.ca-live li.ko{opacity:.6}
