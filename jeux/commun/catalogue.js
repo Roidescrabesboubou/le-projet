@@ -28,7 +28,7 @@ window.SALLE_CATALOGUE = [
     slug: "freestyle",
     title: "Freestyle",
     emoji: "🎤",
-    desc: "Une prod de rap tourne (boom bap, lo-fi ou trap), une boule rebondit sur les 4 temps de chaque ligne : pose le mot affiché sur le 4ᵉ temps, il rime avec celui de la ligne d'après. En solo ou en ligne à plusieurs : partagez-vous les lignes comme vous voulez. Juge au micro et enregistrement de ta prise.",
+    desc: "5 vraies prods de rap libres de droit (boom bap, old school, chill, trap), une boule rebondit sur les 4 temps de chaque ligne : pose le mot affiché sur le 4ᵉ temps, il rime avec celui de la ligne d'après. En solo ou en ligne à plusieurs : partagez-vous les lignes comme vous voulez. Juge au micro et enregistrement de ta prise.",
     tags: ["Musique", "Party", "Multijoueur", "Solo"],
     colors: ["#e0457b", "#ffc93c"],
     etat: "dispo",

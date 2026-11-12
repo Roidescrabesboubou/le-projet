@@ -31,6 +31,9 @@
 #finScores div{display:flex;justify-content:space-between;padding:8px 12px;border:2px solid var(--line);border-radius:12px;font-weight:800}
 #finScores div.moi{border-color:var(--accent)}
 .cache{display:none!important}
+.credit{font-size:.78rem;margin:4px 0}
+.credit a{color:inherit}
+.barre .credit{flex-basis:100%;color:#8d87b5}
 </style>
 </head>
 <body>
@@ -50,7 +53,7 @@
     <p class="muted" style="margin-top:0">La boule tape les 4 temps de chaque ligne. Pose le mot affiché sur le <b>4ᵉ temps</b> : il rime avec celui de la ligne suivante.</p>
 
     <div class="reglage hote-seul"><h3>🎧 La prod</h3><div class="pilules" id="choixProd"></div></div>
-    <div class="reglage hote-seul"><h3>⏱️ Vitesse</h3><div class="pilules" id="choixVitesse"></div></div>
+    <p class="muted hote-seul credit" id="creditProd"></p>
     <div class="reglage hote-seul"><h3>📏 Durée</h3><div class="pilules" id="choixDuree"></div></div>
 
     <div class="options">
@@ -85,6 +88,7 @@
       <span class="vol">🔊 <input type="range" id="volume" min="0" max="100" value="80"></span>
       <button class="btn ghost petit" id="stop">⏹ Stop</button>
       <span class="entendu" id="entendu"></span>
+      <span class="credit" id="creditScene"></span>
     </div>
   </section>
 
@@ -92,6 +96,7 @@
   <section class="b-carte cache" id="fin" style="text-align:center">
     <p class="gros" id="finTitre">🎤 Bien joué !</p>
     <p id="finTexte" class="muted"></p>
+    <p class="muted credit" id="creditFin"></p>
     <div id="finScores"></div>
     <div id="finAudio"></div>
     <div class="lancer">
@@ -118,38 +123,60 @@ Base.entete({
            <li>Sur le <b>4ᵉ temps</b>, place le mot affiché.</li>
            <li>Les lignes vont par deux : leurs mots riment (même couleur). Regarde la ligne d'après pour préparer ta rime !</li>
            <li>Avec le <b>juge au micro</b>, chaque mot posé dans le temps rapporte un point.</li>
+           <li>Les prods sont des instrus libres de droit trouvées sur <a href="https://ccmixter.org" target="_blank" rel="noopener">ccMixter</a> (licences Creative Commons) : Crate Digger (Coruscate), These MCs (DJ.E-State), Spheres, Whisper et Trap Monopoly (Robbero).</li>
            <li><b>À plusieurs</b> : crée une salle, tes potes la rejoignent avec le code. Tout le monde a la même prod et les mêmes lignes. Touchez une ligne pour la prendre (ou la rendre) : son nom s'affiche dessus et le juge ne compte que tes lignes.</li>
          </ul>`
 });
 
 /* ================= Réglages ================= */
+/* Prods libres de droit (ccMixter, Creative Commons). Fichiers recoupés à
+   42 mesures et réencodés en 128 kb/s : le 1er temps de la mesure d'intro
+   tombe à DEBUT secondes, puis BOUCLE mesures pleines (boucle du mode ∞).
+   bpm = tempo mesuré sur le fichier (grille sans dérive) ; pour la trap,
+   la boule va à la blanche (136 → 68). */
 const PRODS = {
-  boombap: {nom:"Boom bap", emoji:"🥁", bpm:90, swing:.16, couleur:"#ffb347",
-    kick:"x.....x...x..x..", snare:"....x.......x...", hat:"x.x.x.x.x.x.x.xx", ghost:"...x.........x..",
-    basse:"x.....x...x..x..", accords:[[45,[57,60,64,67]],[41,[57,60,64,65]],[38,[57,60,62,65]],[40,[56,59,62,64]]], style:"rhodes"},
-  lofi: {nom:"Lo-fi", emoji:"☕", bpm:78, swing:.22, couleur:"#8fd3c7",
-    kick:"x.......x.x.....", snare:"....x.......x...", hat:"x.x.x.x.x.x.x.x.", ghost:"",
-    basse:"x.......x.x.....", accords:[[48,[59,64,67,71]],[45,[60,64,67,69]],[38,[60,62,65,69]],[43,[59,62,65,67]]], style:"pad", vinyle:true},
-  trap: {nom:"Trap", emoji:"🔥", bpm:72, swing:0, couleur:"#b388ff",
-    kick:"x......x..x.....", snare:"........x.......", hat:"xxxxxxxxxxxxxxxx", ghost:"",
-    basse:"x......x..x.....", accords:[[36,[60,63,67]],[36,[60,63,67]],[44,[60,63,68]],[43,[59,62,67]]], style:"cloche", roulements:true, s808:true}
+  cratedigger: {nom:"Crate Digger", emoji:"📦", genre:"Boom bap", bpm:85.005, affBpm:85,
+    auteur:"Coruscate", licence:"CC BY 4.0", lien:"https://ccmixter.org/files/Coruscate/69534"},
+  thesemcs: {nom:"These MCs", emoji:"🎹", genre:"Boom bap piano", bpm:87.001, affBpm:87,
+    auteur:"DJ.E-State", licence:"CC BY 3.0", lien:"https://ccmixter.org/files/E_State/23054"},
+  spheres: {nom:"Spheres", emoji:"🔮", genre:"Old school", bpm:92.999, affBpm:93,
+    auteur:"Robbero", licence:"CC BY 3.0", lien:"https://ccmixter.org/files/Robbero/43483"},
+  whisper: {nom:"Whisper", emoji:"🌙", genre:"Chill", bpm:80.001, affBpm:80,
+    auteur:"Robbero", licence:"CC BY 3.0", lien:"https://ccmixter.org/files/Robbero/44803"},
+  trap: {nom:"Trap Monopoly", emoji:"🔥", genre:"Trap", bpm:67.999, affBpm:136,
+    auteur:"Robbero", licence:"CC BY 3.0", lien:"https://ccmixter.org/files/Robbero/51732", fichier:"trapmonopoly"}
 };
-const VITESSES = {lent:{nom:"Tranquille", k:.88}, normal:{nom:"Normal", k:1}, rapide:{nom:"Vénère", k:1.12}};
+const DEBUT = .2, BOUCLE = 40;
+const fichierProd = id => "prods/" + (PRODS[id].fichier || id) + ".mp3";
+const credit = p => `« ${p.nom} » par ${p.auteur} (${p.licence}, ccMixter)`;
 const DUREES = {8:"8 lignes", 16:"16 lignes", 32:"32 lignes", 0:"∞ Sans fin"};
 
-const choix = Object.assign({prod:"boombap", vitesse:"normal", duree:"16"}, stock.lire("choix", {}));
-function pilules(id, obj, cle, texte){
+const choix = Object.assign({prod:"cratedigger", duree:"16"}, stock.lire("choix", {}));
+if(!PRODS[choix.prod]) choix.prod = "cratedigger";
+function pilules(id, obj, cle, texte, quand){
   const box = $(id); box.innerHTML = "";
   for(const k in obj){
     const b = Base.el("button", texte(obj[k], k)); b.type = "button";
+    if(obj[k].genre) b.title = obj[k].genre + " · " + obj[k].affBpm + " bpm";
     if(String(k) === String(choix[cle])) b.classList.add("on");
-    b.onclick = () => { choix[cle] = k; stock.ecrire("choix", choix); pilules(id, obj, cle, texte); };
+    b.onclick = () => { choix[cle] = k; stock.ecrire("choix", choix); pilules(id, obj, cle, texte, quand); if(quand) quand(k); };
     box.appendChild(b);
   }
 }
-pilules("choixProd", PRODS, "prod", p => p.emoji + " " + p.nom);
-pilules("choixVitesse", VITESSES, "vitesse", v => v.nom);
+function lienCredit(p){ const a = Base.el("a", credit(p)); a.href = p.lien; a.target = "_blank"; a.rel = "noopener"; return a; }
+function afficherCredit(id){
+  const p = PRODS[id];
+  $("creditProd").innerHTML = "";
+  $("creditProd").append(p.genre + " · " + p.affBpm + " bpm — ", lienCredit(p));
+}
+function prodChoisie(id){
+  afficherCredit(id);
+  charger(id).catch(() => {});
+  if(estHote()) salle.envoyer({t: "prod", id});
+}
+pilules("choixProd", PRODS, "prod", p => p.emoji + " " + p.nom, prodChoisie);
 pilules("choixDuree", DUREES, "duree", d => d);
+afficherCredit(choix.prod);
 
 const Reco = window.SpeechRecognition || window.webkitSpeechRecognition;
 if(!Reco){ $("juge").disabled = true; $("optJuge").style.opacity = .5; $("optJuge").querySelector("small").textContent = "Pas disponible sur ce navigateur (essaie Chrome ou Edge)."; }
@@ -159,144 +186,56 @@ $("theme").checked = stock.lire("theme", true);
 ["juge","enreg","theme"].forEach(k => $(k).onchange = () => stock.ecrire(k, $(k).checked));
 
 /* ================= Moteur audio ================= */
-let ctx = null, sortie, maitre, bruit, enregDest = null;
-const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+let ctx = null, sortie, maitre, enregDest = null;
 
 function initAudio(){
   if(ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = .005; comp.release.value = .15;
+  comp.threshold.value = -10; comp.ratio.value = 3; comp.attack.value = .005; comp.release.value = .15;
   maitre = ctx.createGain(); maitre.gain.value = 0;
   sortie = ctx.createGain(); sortie.gain.value = $("volume").value / 100;
   maitre.connect(comp); comp.connect(sortie); sortie.connect(ctx.destination);
-  bruit = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-  const d = bruit.getChannelData(0);
-  for(let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
 }
 $("volume").oninput = () => { if(sortie) sortie.gain.setTargetAtTime($("volume").value / 100, ctx.currentTime, .05); };
 
-function env(g, t, v, a, dec){
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(v, t + a);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec);
-}
-function source(t, dur){ const s = ctx.createBufferSource(); s.buffer = bruit; s.start(t); s.stop(t + dur); return s; }
-
-function kick(t, v = 1){
-  const o = ctx.createOscillator(), g = ctx.createGain();
-  o.frequency.setValueAtTime(165, t); o.frequency.exponentialRampToValueAtTime(48, t + .11);
-  env(g, t, v, .002, .42); o.connect(g); g.connect(maitre); o.start(t); o.stop(t + .5);
-}
-function snare(t, v = .7){
-  const s = source(t, .25), f = ctx.createBiquadFilter(), g = ctx.createGain();
-  f.type = "highpass"; f.frequency.value = 1300;
-  env(g, t, v, .002, .19); s.connect(f); f.connect(g); g.connect(maitre);
-  const o = ctx.createOscillator(), g2 = ctx.createGain();
-  o.type = "triangle"; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(140, t + .08);
-  env(g2, t, v * .6, .002, .1); o.connect(g2); g2.connect(maitre); o.start(t); o.stop(t + .15);
-}
-function clap(t, v = .6){
-  const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 1600; f.Q.value = .8; f.connect(maitre);
-  [0, .012, .024].forEach((dt, i) => {
-    const s = source(t + dt, .2), g = ctx.createGain();
-    env(g, t + dt, v, .001, i === 2 ? .16 : .012); s.connect(g); g.connect(f);
-  });
-}
-function hat(t, v = .25, ouvert = false){
-  const s = source(t, .3), f = ctx.createBiquadFilter(), g = ctx.createGain();
-  f.type = "highpass"; f.frequency.value = 7500;
-  env(g, t, v, .001, ouvert ? .22 : .035); s.connect(f); f.connect(g); g.connect(maitre);
-}
-function basse(t, m, dur){
-  const o = ctx.createOscillator(), o2 = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
-  o.type = "triangle"; o2.type = "sine"; o.frequency.value = mtof(m); o2.frequency.value = mtof(m);
-  f.type = "lowpass"; f.frequency.value = 520;
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.5, t + .01);
-  g.gain.setValueAtTime(.42, t + dur * .7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(f); o2.connect(f); f.connect(g); g.connect(maitre);
-  [o, o2].forEach(x => { x.start(t); x.stop(t + dur + .05); });
-}
-let distorsion = null;
-function b808(t, m, dur, glisse){
-  if(!distorsion){
-    distorsion = ctx.createWaveShaper(); const c = new Float32Array(256);
-    for(let i = 0; i < 256; i++){ const x = i / 128 - 1; c[i] = Math.tanh(x * 2.2); }
-    distorsion.curve = c; distorsion.connect(maitre);
+/* Une seule prod décodée à la fois (≈ 45 Mo en mémoire). */
+const tampons = {};
+function charger(id){
+  initAudio();
+  for(const k in tampons) if(k !== id) delete tampons[k];
+  if(!tampons[id]){
+    tampons[id] = fetch(fichierProd(id))
+      .then(r => { if(!r.ok) throw new Error("prod introuvable"); return r.arrayBuffer(); })
+      .then(b => new Promise((ok, ko) => ctx.decodeAudioData(b, ok, ko)));
+    tampons[id].catch(() => { delete tampons[id]; });
   }
-  const o = ctx.createOscillator(), g = ctx.createGain(), f = mtof(m);
-  o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + .04);
-  if(glisse) o.frequency.exponentialRampToValueAtTime(mtof(glisse), t + dur * .8);
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.55, t + .005);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(distorsion); o.start(t); o.stop(t + dur + .05);
-}
-function accord(t, notes, dur, style){
-  const f = ctx.createBiquadFilter(); f.type = "lowpass";
-  f.frequency.setValueAtTime(style === "pad" ? 1100 : 2400, t); f.frequency.exponentialRampToValueAtTime(700, t + dur);
-  f.connect(maitre);
-  notes.forEach((m, i) => {
-    const fr = mtof(m), g = ctx.createGain();
-    const o = ctx.createOscillator(); o.type = style === "pad" ? "triangle" : "sine"; o.frequency.value = fr;
-    o.detune.value = (i % 2 ? 6 : -6);
-    if(style === "pad"){
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.06, t + .25);
-      g.gain.setValueAtTime(.05, t + dur * .8); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    } else env(g, t + i * .012, .085, .006, dur);
-    o.connect(g); g.connect(f); o.start(t); o.stop(t + dur + .1);
-    if(style === "rhodes"){
-      const o2 = ctx.createOscillator(), g2 = ctx.createGain();
-      o2.frequency.value = fr * 2; env(g2, t, .03, .003, .35);
-      o2.connect(g2); g2.connect(f); o2.start(t); o2.stop(t + .5);
-    }
-  });
-}
-function cloche(t, m, v = .07){
-  const fr = mtof(m), g = ctx.createGain(), g2 = ctx.createGain();
-  const o = ctx.createOscillator(), o2 = ctx.createOscillator();
-  o.frequency.value = fr; o2.frequency.value = fr * 3.01;
-  env(g, t, v, .003, .9); env(g2, t, v * .35, .002, .25);
-  o.connect(g); o2.connect(g2); g.connect(maitre); g2.connect(maitre);
-  [o, o2].forEach(x => { x.start(t); x.stop(t + 1); });
+  return tampons[id];
 }
 
-function lancerVinyle(){
-  const n = ctx.sampleRate * 2, b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
-  for(let i = 0; i < n; i++) d[i] = Math.random() < .0009 ? (Math.random() * 2 - 1) : (Math.random() * 2 - 1) * .015;
-  const vinyle = ctx.createBufferSource(); vinyle.buffer = b; vinyle.loop = true;
-  const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 3000; f.Q.value = .5;
-  const g = ctx.createGain(); g.gain.value = .35;
-  vinyle.connect(f); f.connect(g); g.connect(maitre); vinyle.start();
-  return vinyle;
+/* Lance le fichier pour que le temps 0 du jeu (mesure d'intro) tombe à t0.
+   En retard (invité qui a fini de charger après le départ), on reprend au bon endroit. */
+function jouerProd(p, tampon){
+  const barS = 240 / bpm, src = ctx.createBufferSource();
+  src.buffer = tampon; src.connect(maitre);
+  if(!p.duree){ src.loop = true; src.loopStart = DEBUT + barS; src.loopEnd = Math.min(tampon.duration, DEBUT + (1 + BOUCLE) * barS); }
+  const maintenant = ctx.currentTime + .05;
+  if(p.t0 - DEBUT >= maintenant) src.start(p.t0 - DEBUT, 0);
+  else {
+    let off = DEBUT + (maintenant - p.t0);
+    if(src.loop && off > src.loopEnd) off = src.loopStart + (off - src.loopStart) % (src.loopEnd - src.loopStart);
+    if(off < tampon.duration) src.start(maintenant, off);
+  }
+  if(p.duree){
+    // fin : la mesure qui suit la dernière ligne, en fondu
+    const fin = p.t0 + (p.duree + 2) * barS;
+    maitre.gain.setValueAtTime(.9, Math.max(ctx.currentTime + .2, fin - 1.5));
+    maitre.gain.linearRampToValueAtTime(.0001, fin);
+    try{ src.stop(fin + .05); }catch(e){}
+  }
+  return src;
 }
-
-/* Programme une double-croche (pas absolu s). */
-function jouerPas(s, t, prod, finale){
-  const st = s % 16, mesure = Math.floor(s / 16), [racine, notes] = prod.accords[mesure % 4];
-  const pasDur = 60 / bpm / 4;
-  if(finale){ if(st === 0){ kick(t); accord(t, notes, pasDur * 16, prod.style); if(prod.s808) b808(t, racine, 2); else basse(t, racine, 1.5); } return; }
-  if(prod.kick[st] === "x") kick(t, st === 0 ? 1 : .85);
-  if(prod.snare[st] === "x"){ snare(t); if(prod.roulements) clap(t); }
-  if(prod.ghost && prod.ghost[st] === "x") snare(t, .18);
-  if(prod.hat[st] === "x"){
-    const accent = st % 4 === 0 ? .26 : st % 2 === 0 ? .2 : .12;
-    hat(t, prod.roulements ? accent * .8 : accent, !prod.roulements && st === 14);
-    if(prod.roulements && (st === 7 || (st === 15 && mesure % 2 === 1)))
-      for(let k = 1; k < 3; k++) hat(t + k * pasDur / 3, .12);
-  }
-  if(prod.basse[st] === "x"){
-    let fin = st + 1; while(fin < 16 && prod.basse[fin] !== "x") fin++;
-    const dur = (fin - st) * pasDur;
-    if(prod.s808) b808(t, racine, Math.max(dur, .4), st === 10 && mesure % 4 === 3 ? racine + 7 : null);
-    else basse(t, racine + (st === 13 ? 12 : 0), dur * .9);
-  }
-  if(st === 0) accord(t, notes, prod.style === "pad" ? pasDur * 16 : pasDur * 9, prod.style);
-  if(prod.style === "rhodes" && st === 10) accord(t, notes.slice(1), pasDur * 5, "rhodes");
-  if(prod.style === "cloche" && st % 4 === 0){
-    const arp = [notes[0], notes[2], notes[1] + 12, notes[2]];
-    cloche(t, arp[st / 4] + 12, .05);
-  }
-}
+function couperProd(p){ if(p && p.src){ try{ p.src.stop(); }catch(e){} p.src = null; } }
 
 /* ================= Partie ================= */
 let partie = null, bpm = 90;
@@ -319,7 +258,7 @@ function motLigne(L){
 }
 
 function cfgDepuisChoix(ecouteSeule){
-  return {prod: choix.prod, vitesse: choix.vitesse, duree: ecouteSeule ? 0 : +choix.duree,
+  return {prod: choix.prod, duree: ecouteSeule ? 0 : +choix.duree,
     theme: !ecouteSeule && $("theme").checked ? THEMES[Math.floor(Math.random() * THEMES.length)] : null,
     graine: Math.floor(Math.random() * 1e9)};
 }
@@ -330,10 +269,17 @@ async function demarrer(ecouteSeule, cfg, debut){
   if(ctx.state === "suspended") await ctx.resume();
   cfg = cfg || cfgDepuisChoix(ecouteSeule);
   const prod = PRODS[cfg.prod];
-  bpm = prod.bpm * VITESSES[cfg.vitesse].k;
 
   // une partie encore en cours (l'hôte relance) : on la coupe sans écran de fin
   if(partie && !partie.fini){ partie.remplacee = true; partie.tFin = tempsCourant(); terminer(true); }
+
+  let tampon;
+  const bouton = $("go"), texteBouton = bouton.textContent;
+  if(!tampons[cfg.prod]){ bouton.disabled = true; bouton.textContent = "⏳ Chargement de la prod…"; if(debut) Base.toast("⏳ Chargement de la prod…"); }
+  try{ tampon = await charger(cfg.prod); }
+  catch(e){ Base.toast("Impossible de charger la prod (connexion ?)"); return; }
+  finally{ bouton.disabled = false; bouton.textContent = texteBouton; }
+  bpm = prod.bpm;
 
   const juge = !ecouteSeule && $("juge").checked && !!Reco;
   const enreg = !ecouteSeule && $("enreg").checked && !!window.MediaRecorder;
@@ -346,16 +292,15 @@ async function demarrer(ecouteSeule, cfg, debut){
   const lat = ctx.outputLatency || 0;
   const t0 = ctx.currentTime + Math.max(.25, ((debut || 0) - Date.now()) / 1000) - lat;
   const p = partie = {prod, duree: cfg.duree, juge, ecouteSeule, ronde: cfg.graine, rng: Base.rng(cfg.graine),
-    mots: [], utilises: new Set(), pas: 0, t0, points: 0, serie: 0, meilleureSerie: 0, fini: false,
-    theme: cfg.theme, prises: {}, micro, enregistreur: null, morceaux: [], reco: null, flash: [], vinyle: null};
+    mots: [], utilises: new Set(), t0, points: 0, serie: 0, meilleureSerie: 0, fini: false,
+    theme: cfg.theme, prises: {}, micro, enregistreur: null, morceaux: [], reco: null, flash: [], src: null};
   p.tirage = tirerLignes(p.rng);
-  if(debut && t0 + lat < ctx.currentTime) p.pas = Math.ceil((ctx.currentTime - t0) / (60 / bpm / 4)); // arrivé en retard : on rattrape
   scores = {ronde: p.ronde, liste: {}};
 
   maitre.gain.cancelScheduledValues(ctx.currentTime);
   maitre.gain.setValueAtTime(.0001, ctx.currentTime);
   maitre.gain.exponentialRampToValueAtTime(.9, ctx.currentTime + .1);
-  if(prod.vinyle) p.vinyle = lancerVinyle();
+  p.src = jouerProd(p, tampon);   // en retard (invité), la prod reprend au bon endroit
 
   if(micro){
     enregDest = ctx.createMediaStreamDestination();
@@ -368,28 +313,22 @@ async function demarrer(ecouteSeule, cfg, debut){
   if(juge) lancerJuge();
 
   ecran("scene");
+  $("creditScene").innerHTML = ""; $("creditScene").append("♪ ", lienCredit(prod));
   $("score").textContent = juge ? "🎯 0" : "";
   $("entendu").textContent = juge ? "Le juge écoute…" : ecouteSeule ? "Écoute de la prod — appuie sur Stop pour revenir."
     : enSalle() ? "Touche une ligne pour la prendre (ou la rendre)." : "";
   $("stop").textContent = ecouteSeule ? "⏹ Retour" : enSalle() && !salle.hote ? "⏹ Sortir" : "⏹ Stop";
   dimensionner();
-  p.minuteur = setInterval(programmer, 25);
-  programmer();
+  p.minuteur = setInterval(surveiller, 50);
   cancelAnimationFrame(idAnim); idAnim = requestAnimationFrame(dessiner);
 }
 
-function programmer(){
+/* Juge + fin de partie : 1 mesure d'intro, les lignes, 1 mesure de fin (en fondu). */
+function surveiller(){
   const p = partie; if(!p || p.fini) return;
-  const pasDur = 60 / bpm / 4;
-  marquerRates(tempsCourant());
-  const finPas = p.duree ? (p.duree + 1) * 16 : Infinity; // 1 mesure d'intro + les lignes
-  while(p.t0 + p.pas * pasDur < ctx.currentTime + .15){
-    const s = p.pas;
-    if(s > finPas){ p.dernier = p.t0 + s * pasDur; terminer(false); return; }
-    const t = p.t0 + s * pasDur + (s % 2 ? p.prod.swing * pasDur : 0);
-    jouerPas(s, t, p.prod, s === finPas);
-    p.pas++;
-  }
+  const t = tempsCourant();
+  marquerRates(t);
+  if(p.duree && t >= (p.duree + 2) * 4) terminer(false);
 }
 
 /* Temps musical courant (en temps), aligné sur ce que l'on entend. */
@@ -401,12 +340,12 @@ function tempsCourant(){
 function terminer(manuel){
   const p = partie; if(!p || p.fini) return;
   p.fini = true; clearInterval(p.minuteur);
-  const attente = manuel ? 0 : Math.max(0, (p.dernier || ctx.currentTime) - ctx.currentTime) + 1.6;
-  if(manuel && !p.remplacee){ maitre.gain.cancelScheduledValues(ctx.currentTime); maitre.gain.setTargetAtTime(.0001, ctx.currentTime, .08); }
+  const attente = manuel ? .3 : .4;
+  if(p.remplacee) couperProd(p);
+  else if(manuel){ maitre.gain.cancelScheduledValues(ctx.currentTime); maitre.gain.setTargetAtTime(.0001, ctx.currentTime, .08); }
   if(p.reco){ try{ p.reco.onend = null; p.reco.abort(); }catch(e){} }
-  if(p.vinyle && p.remplacee){ try{ p.vinyle.stop(); }catch(e){} }
   setTimeout(() => {
-    if(p.vinyle){ try{ p.vinyle.stop(); }catch(e){} }
+    couperProd(p);
     const fini = () => { if(partie === p && !p.remplacee) afficherFin(p, manuel); };
     if(p.enregistreur && p.enregistreur.state !== "inactive"){ p.enregistreur.onstop = fini; p.enregistreur.stop(); }
     else fini();
@@ -437,6 +376,7 @@ function afficherFin(p, manuel){
     }
   } else $("finTitre").textContent = manuel ? "🎤 Coupé !" : "🎤 Bien joué !";
   $("finTexte").textContent = texte;
+  $("creditFin").innerHTML = ""; $("creditFin").append("♪ Prod : ", lienCredit(p.prod));
   afficherScores();
   const box = $("finAudio"); box.innerHTML = "";
   if(p.morceaux.length){
@@ -491,21 +431,30 @@ function majSalle(){
   $("salleCode").textContent = salle.code;
   const box = $("joueurs"); box.innerHTML = "";
   salle.joueurs.forEach((j, i) => box.appendChild(Base.el("button", j.avatar + " " + j.pseudo + (i === 0 ? " 👑" : ""))));
-  $("salleInfo").textContent = invite ? "L'hôte choisit la prod et lance. Tu peux régler ton juge et ton enregistrement ci-dessous."
+  $("salleInfo").textContent = invite ? (prodSalle ? "Prod choisie : " + PRODS[prodSalle].emoji + " " + PRODS[prodSalle].nom + ". " : "") + "L'hôte lance quand tout le monde est là. Tu peux régler ton juge et ton enregistrement ci-dessous."
     : salle.joueurs.length < 2 ? "Donne le code ou le lien à tes potes." : "Choisis la prod puis lance quand tout le monde est là.";
 }
 
 /* Horloge : l'invité mesure l'écart avec l'heure de l'hôte (aller-retour le plus court). */
-function synchroniser(){
-  meilleurRtt = Infinity;
-  for(let i = 0; i < 8; i++) setTimeout(() => { if(enSalle()) salle.envoyer({t: "ping", c: Date.now()}); }, i * 300);
+function synchroniser(n = 8){
+  for(let i = 0; i < n; i++) setTimeout(() => { if(enSalle()) salle.envoyer({t: "ping", c: Date.now()}); }, i * 300);
 }
+/* Dans la salle, l'invité refait quelques mesures de temps en temps : on garde
+   l'aller-retour le plus court, donc la meilleure estimation. */
+setInterval(() => { if(enSalle() && !salle.hote && (!partie || partie.fini)) synchroniser(3); }, 15000);
 
-function lancerPourTous(){
-  const cfg = cfgDepuisChoix(false), T = Date.now() + 3000;
+async function lancerPourTous(){
+  const cfg = cfgDepuisChoix(false), b = $("go"), txt = b.textContent;
+  // l'hôte charge d'abord la prod ; les invités l'ont préchargée (message « prod »)
+  if(!tampons[cfg.prod]){ b.disabled = true; b.textContent = "⏳ Chargement de la prod…"; }
+  try{ await charger(cfg.prod); }catch(e){ Base.toast("Impossible de charger la prod (connexion ?)"); b.disabled = false; b.textContent = txt; return; }
+  b.disabled = false; b.textContent = txt;
+  const T = Date.now() + 3000;
   salle.envoyer({t: "depart", cfg, T});
   demarrer(false, cfg, T);
 }
+const estProd = id => typeof id === "string" && Object.prototype.hasOwnProperty.call(PRODS, id);
+let prodSalle = null;
 
 function recu(m, j){
   if(!enSalle() || !m) return;
@@ -519,10 +468,15 @@ function recu(m, j){
   }
   if(m.t === "depart" && !salle.hote && deHote){
     const c = m.cfg || {};
-    if(!PRODS[c.prod] || !VITESSES[c.vitesse] || ![0, 8, 16, 32].includes(c.duree) || typeof c.graine !== "number") return;
-    const cfg = {prod: c.prod, vitesse: c.vitesse, duree: c.duree, graine: c.graine,
+    if(!estProd(c.prod) || ![0, 8, 16, 32].includes(c.duree) || typeof c.graine !== "number") return;
+    const cfg = {prod: c.prod, duree: c.duree, graine: c.graine,
       theme: typeof c.theme === "string" ? c.theme.slice(0, 60) : null};
     demarrer(false, cfg, +m.T - decalage);
+    return;
+  }
+  if(m.t === "prod" && !salle.hote && deHote && estProd(m.id)){
+    prodSalle = m.id; charger(m.id).catch(() => {});   // préchargement pendant qu'on attend
+    if(!$("accueil").classList.contains("cache")) majSalle();
     return;
   }
   if(m.t === "stop" && !salle.hote && deHote){
@@ -572,7 +526,7 @@ $("creer").onclick = async () => {
   const b = $("creer"); b.disabled = true; b.textContent = "Création…";
   try{
     salle = await Reseau.creer("freestyle", {max: 12,
-      surArrivee: majSalle, surDepart: majSalle, surMessage: (m, j) => recu(m, j),
+      surArrivee: () => { majSalle(); salle.envoyer({t: "prod", id: choix.prod}); }, surDepart: majSalle, surMessage: (m, j) => recu(m, j),
       surEssai: t => Base.toast(t)});
     ecran("accueil");
   }catch(e){ Base.toast(e.message); }
@@ -592,7 +546,7 @@ $("rejoindre").onclick = async () => {
         else if(!$("accueil").classList.contains("cache")) ecran("accueil");
       }
     });
-    salle = s; ecran("accueil"); synchroniser();
+    salle = s; meilleurRtt = Infinity; ecran("accueil"); synchroniser();
   }catch(e){ Base.toast(e.message); }
   b.disabled = false; b.textContent = "Rejoindre";
 };
@@ -687,7 +641,7 @@ function dessiner(){
 
   // en-tête de scène
   c2.textAlign = "left"; c2.textBaseline = "top"; c2.fillStyle = "#a6a2cc"; c2.font = "700 14px Nunito, sans-serif";
-  c2.fillText(p.prod.emoji + " " + p.prod.nom + " · " + Math.round(bpm) + " bpm", 14, 12);
+  c2.fillText(p.prod.emoji + " " + p.prod.nom + " · " + p.prod.affBpm + " bpm", 14, 12);
   if(p.theme){
     const th = "💡 Thème : " + p.theme, etroit = c2.measureText(th).width + c2.measureText(p.prod.nom + " · 000 bpm").width + 60 > W;
     c2.textAlign = etroit ? "left" : "right"; c2.fillStyle = "#ffc93c"; c2.fillText(th, etroit ? 14 : W - 14, etroit ? 32 : 12);
