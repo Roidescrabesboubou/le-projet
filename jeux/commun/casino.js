@@ -1,16 +1,17 @@
 /* ============================================================
    CASINO COMMUN  →  window.Casino
-   Un seul portefeuille pour les jeux : crash, plinko, mines,
-   course, roue, grattage, machine (la Roulette, le Blackjack
-   et le Poker gardent chacun le leur).
+   Outils communs des jeux crash, plinko, mines, course, roue,
+   grattage, machine. Chaque jeu a SON portefeuille (comme la
+   Roulette, le Blackjack et le Poker) : les jetons ne passent
+   pas d'un jeu à l'autre.
    Règle des dons : ../commun/jetons.js (1 000 de bienvenue, 500 le
    lendemain sous 50). Jetons gardés sur l'appareil, et sur le compte
-   (casino/<uid>) quand on est connecté. À inclure après base.js et
+   (casino/<jeu>/<uid>) quand on est connecté. À inclure après base.js et
    jetons.js (+ casino.css).
 
    Casino.init({jeu, enJeu})  enJeu() = jetons misés pas encore réglés
    Casino.barre(el)           affiche le solde, le cadeau, la synchro
-   Casino.top(el)             classement des plus riches (connectés)
+   Casino.top(el)             classement des plus riches du jeu (connectés)
    Casino.solde() · Casino.miser(n) → true/false · Casino.crediter(n)
    Casino.resultat(mise, gain) statistiques + record du jeu
    Casino.surChange(cb)       appelé quand le solde change
@@ -30,12 +31,13 @@
   const vide = () => ({s: 0, j: -1, b: -1, m: 0, t: 0, st: {}});
   const session = () => window.Compte && Compte.pret && Compte.session && Compte.session();
 
-  function charger(){ porte = Object.assign(vide(), S.lire("porte_" + uid, {})); porte.st = porte.st || {}; }
+  const cle = () => "porte_" + jeu + "_" + uid;
+  function charger(){ porte = Object.assign(vide(), S.lire(cle(), {})); porte.st = porte.st || {}; }
   function sauver(distant){
     Jetons.examiner(porte, enJeuFn());
     porte.t = Date.now();
     if(porte.s > porte.m) porte.m = porte.s;
-    S.ecrire("porte_" + uid, porte);
+    S.ecrire(cle(), porte);
     if(distant !== false) syncBientot();
     signaler();
   }
@@ -46,11 +48,11 @@
     if(uid === "invite"){ pret = true; return; }
     syncEtat = "…"; signaler();
     try{
-      const r = await Compte.db("casino/" + uid);
+      const r = await Compte.db("casino/" + jeu + "/" + uid);
       if(r && typeof r.s === "number"){
         porte.j = Math.max(porte.j, r.j == null ? -1 : r.j);
         porte.m = Math.max(porte.m || 0, r.m || 0);
-        if((r.d || 0) > (porte.t || 0) && !enJeuFn()){ porte.s = r.s; porte.t = r.d; if(typeof r.b === "number") porte.b = r.b; S.ecrire("porte_" + uid, porte); }
+        if((r.d || 0) > (porte.t || 0) && !enJeuFn()){ porte.s = r.s; porte.t = r.d; if(typeof r.b === "number") porte.b = r.b; S.ecrire(cle(), porte); }
         else if((r.d || 0) < (porte.t || 0) || r.s !== porte.s) await syncEcrire();
       }else await syncEcrire();
       syncEtat = "ok";
@@ -61,7 +63,7 @@
     if(uid === "invite") return;
     const s = session();
     try{
-      await Compte.db("casino/" + uid, {method: "PUT", body: {n: (s && s.pseudo || Base.joueur.pseudo() || "Joueur").slice(0, 16), s: Math.floor(porte.s), j: Math.max(0, porte.j), b: typeof porte.b === "number" ? porte.b : -1, m: Math.floor(Math.max(porte.m, porte.s)), d: {".sv": "timestamp"}}});
+      await Compte.db("casino/" + jeu + "/" + uid, {method: "PUT", body: {n: (s && s.pseudo || Base.joueur.pseudo() || "Joueur").slice(0, 16), s: Math.floor(porte.s), j: Math.max(0, porte.j), b: typeof porte.b === "number" ? porte.b : -1, m: Math.floor(Math.max(porte.m, porte.s)), d: {".sv": "timestamp"}}});
       syncEtat = "ok";
     }catch(e){ syncEtat = "ko"; }
     signaler();
@@ -80,7 +82,7 @@
     const avant = porte.b, d = Jetons.examiner(porte, enJeuFn());
     if(!d || d.type === "attente"){ if(porte.b !== avant) sauver(); return; }
     Jetons.verser(porte, d); sauver();
-    Base.toast(d.type === "bienvenue" ? `🎁 Bienvenue au casino ! ${fmt(d.n)} jetons pour commencer.` : `🎁 +${fmt(d.n)} jetons pour te refaire. Bonne chance !`, 4000);
+    Base.toast(d.type === "bienvenue" ? `🎁 Bienvenue ! ${fmt(d.n)} jetons pour commencer.` : `🎁 +${fmt(d.n)} jetons pour te refaire. Bonne chance !`, 4000);
   }
   function texteCadeau(){
     const d = porte && Jetons.examiner({...porte}, enJeuFn());
@@ -92,7 +94,7 @@
   /* ---------- Affichage du portefeuille ---------- */
   function barre(el){
     el.classList.add("b-carte", "ca-porte");
-    el.innerHTML = `<div class="ca-ligne"><div class="ca-solde"><small>💰 Jetons du casino</small><span>—</span></div><div class="ca-cadeau muted"></div></div><div class="ca-sync"></div>`;
+    el.innerHTML = `<div class="ca-ligne"><div class="ca-solde"><small>💰 Tes jetons</small><span>—</span></div><div class="ca-cadeau muted"></div></div><div class="ca-sync"></div>`;
     barres.push(el); if(porte) dessiner(el);
   }
   function dessiner(el){
@@ -103,17 +105,17 @@
     if(uid === "invite"){
       sy.append(window.Compte && Compte.pret ? "👤 Jetons gardés sur cet appareil. Connecte-toi pour les retrouver partout et entrer au classement." : "Jetons gardés sur cet appareil.");
       if(window.Compte && Compte.pret){ const b = Base.el("button", "Se connecter", "btn ghost petit"); b.onclick = () => Compte.ouvrir("connexion"); sy.appendChild(b); }
-    }else sy.textContent = syncEtat === "ok" ? "☁️ Jetons liés à ton compte · les mêmes dans tous les jeux du casino" : syncEtat === "ko" ? "⚠️ Sauvegarde en ligne indisponible (tes jetons restent sur cet appareil)" : "☁️ Synchronisation…";
+    }else sy.textContent = syncEtat === "ok" ? "☁️ Jetons liés à ton compte" : syncEtat === "ko" ? "⚠️ Sauvegarde en ligne indisponible (tes jetons restent sur cet appareil)" : "☁️ Synchronisation…";
   }
   const topEls = [];
   async function top(el){
     if(!topEls.includes(el)) topEls.push(el);
     if(!window.Compte || !Compte.pret){ el.classList.add("cache"); return; }
     try{
-      const r = await Compte.db("casino", {auth: false, query: 'orderBy="s"&limitToLast=10'});
+      const r = await Compte.db("casino/" + jeu, {auth: false, query: 'orderBy="s"&limitToLast=10'});
       const l = Object.entries(r || {}).map(([id, v]) => ({id, ...v})).filter(x => typeof x.s === "number").sort((a, b) => b.s - a.s);
       if(!l.length){ el.classList.add("cache"); return; }
-      el.innerHTML = `<h3 style="margin:0">🏆 Les plus riches du casino</h3><ol class="ca-top">${l.map((x, k) => `<li class="${x.id === uid ? "moi" : ""}"><span>${["🥇", "🥈", "🥉"][k] || (k + 1) + "."} ${esc(x.n)}</span><b>${fmt(x.s)}</b></li>`).join("")}</ol>`;
+      el.innerHTML = `<h3 style="margin:0">🏆 Les plus riches</h3><ol class="ca-top">${l.map((x, k) => `<li class="${x.id === uid ? "moi" : ""}"><span>${["🥇", "🥈", "🥉"][k] || (k + 1) + "."} ${esc(x.n)}</span><b>${fmt(x.s)}</b></li>`).join("")}</ol>`;
       el.classList.remove("cache");
     }catch(e){ el.classList.add("cache"); }
   }
@@ -204,5 +206,5 @@
   }
 
   window.Casino = {init, barre, top, solde, miser, crediter, resultat, stats, surChange: f => ecouteurs.push(f), choixMise,
-    maintenant, hasard, ecouter, publier, fmt, verifierDon, regle: () => Jetons.regle() + " Ces jetons sont <b>communs aux jeux du casino</b> (Crash, Plinko, Mines, Course, Roue, Grattage, Machine à sous)."};
+    maintenant, hasard, ecouter, publier, fmt, verifierDon, regle: () => Jetons.regle() + " Ces jetons sont <b>propres à ce jeu</b>."};
 })();
