@@ -8,31 +8,43 @@
 <link rel="stylesheet" href="../commun/soiree.css">
 <style>
 :root{--accent:#2f8fce;--fond1:rgba(47,143,206,.15);--fond2:rgba(229,72,77,.12)}
-.cadran{width:100%;max-width:520px;margin:6px auto 0;display:block}
-.cadran svg{width:100%;height:auto;display:block;touch-action:manipulation}
-.cadran path.cran{stroke:var(--card);stroke-width:2;transition:opacity .2s}
-.cadran.clic path.cran{cursor:pointer}
-.cadran.clic path.cran:hover{opacity:.8}
-.cadran text{font-family:Fredoka,sans-serif;font-weight:700;pointer-events:none}
-.bornes{display:flex;justify-content:space-between;gap:10px;margin-top:4px;font-weight:800}
-.bornes span{max-width:48%;padding:4px 10px;border-radius:10px;color:#fff;font-size:.95rem;line-height:1.2}
-.bornes .g{background:hsl(210 70% 48%)}
-.bornes .d{background:hsl(3 70% 52%);text-align:right}
+.dial{width:100%;max-width:540px;margin:6px auto 0;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
+.dial svg{width:100%;height:auto;display:block;overflow:visible}
+.dial.bouge{cursor:grab}
+.dial.bouge:active{cursor:grabbing}
+.dial #volet{transform-origin:160px 160px;transition:transform 1.3s cubic-bezier(.5,0,.3,1)}
+.dial #volet.ouvert{transform:rotate(180deg)}
+.dial text{font-family:Fredoka,sans-serif;font-weight:700;pointer-events:none}
+.bornes{display:flex;justify-content:space-between;gap:10px;margin-top:6px;font-weight:800}
+.bornes span{max-width:48%;padding:5px 12px;border-radius:12px;color:#fff;font-size:1rem;line-height:1.2}
+.bornes .g{background:#2f8fce}
+.bornes .d{background:#e5484d;text-align:right}
 .indice{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.7rem;text-align:center;margin:4px 0;word-wrap:break-word}
 .indice small{display:block;font-family:Nunito,sans-serif;font-size:.85rem;color:var(--muted);font-weight:700}
-.cible{text-align:center;font-weight:800;margin:4px 0}
-.cible b{font-family:Fredoka,sans-serif;font-size:1.6rem;color:var(--accent)}
+.score{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.score .eq{display:flex;align-items:center;gap:8px;border-radius:14px;padding:6px 12px;color:#fff;font-weight:800}
+.score .eq b{font-family:Fredoka,sans-serif;font-size:1.5rem}
+.score .eq.actif{outline:3px solid var(--text);outline-offset:2px}
+.membres{font-size:.75rem;font-weight:700;opacity:.9;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.piste{height:8px;border-radius:999px;background:var(--soft);overflow:hidden;margin-top:6px}
+.piste i{display:block;height:100%}
 .paires{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .paires button{border:2px solid var(--line);background:var(--card);border-radius:12px;padding:8px;font-weight:800;font-size:.9rem}
 .paires button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,var(--card))}
 .paires button.large{grid-column:1/-1}
 .perso{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-.gains{display:flex;flex-direction:column;gap:5px;margin-top:10px}
-.gains div{display:flex;align-items:center;gap:8px;background:var(--soft);border-radius:10px;padding:5px 10px;font-weight:700}
-.gains div b{margin-left:auto}
-.gains .d3{background:color-mix(in srgb,var(--ok) 26%,var(--card))}
-.gains .d2{background:color-mix(in srgb,var(--ok) 15%,var(--card))}
-.bareme{font-size:.85rem;color:var(--muted);text-align:center;margin:6px 0 0}
+.note{font-size:.88rem;color:var(--muted);text-align:center;margin:8px 0 0;font-weight:700}
+.role{text-align:center;font-weight:800;margin:6px 0 0;padding:6px 10px;border-radius:12px;background:var(--soft)}
+.cote{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.cote button{font-size:1.15rem;padding:14px 8px;border-radius:14px;font-weight:900;border:2px solid var(--line);background:var(--card)}
+.cote button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+.bilan{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.bilan div{border-radius:12px;padding:8px 12px;font-weight:800;background:var(--soft);text-align:center}
+.bilan .gros{font-family:Fredoka,sans-serif;font-size:1.5rem}
+.bilan .ok{background:color-mix(in srgb,var(--ok) 22%,var(--card))}
+.equipes-fin{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.equipes-fin div{border-radius:14px;padding:10px;color:#fff;text-align:center;font-weight:800}
+.equipes-fin b{display:block;font-family:Fredoka,sans-serif;font-size:2rem}
 </style>
 </head>
 <body>
@@ -42,242 +54,354 @@
 <script src="../commun/soiree.js"></script>
 <script src="paires.js"></script>
 <script>
-const {melanger, propre, podium, pastilles} = Soiree;
+const {melanger, propre} = Soiree;
 const esc = Base.esc;
 const PAIRES = window.CADRAN_PAIRES;
-const N = 10;   // nombre de crans
+const L = 4.4;           // largeur d'une bande de la cible (sur 100)
+const BUT = 10;          // points pour gagner en équipes
+const EQ = [{nom: "Équipe Bleue", coul: "#2f8fce", em: "🔵"}, {nom: "Équipe Rouge", coul: "#e5484d", em: "🔴"}];
 
 Base.entete({
   titre: "Le Cadran",
   emoji: "🎯",
-  aide: `<p>Un demi-cadran va d'un mot à son opposé (ex. <b>Froid → Chaud</b>), découpé en ${N} crans.</p>
-    <ul><li>À chaque manche, un joueur reçoit un <b>cran secret</b> (de 1 à ${N}).</li>
-    <li>Il donne un <b>indice</b> : un mot ou une idée qui, selon lui, tombe pile sur ce cran. Pour le cran 8 de Froid → Chaud : « un bain »…</li>
-    <li>Les autres placent l'aiguille où ils pensent que se trouve le cran. Débattez en vocal !</li>
-    <li>Pile sur le cran : <b>3 pts</b> · à 1 cran : <b>2 pts</b> · à 2 crans : <b>1 pt</b>. Celui qui donne l'indice gagne la moyenne des points des autres.</li>
-    <li>À deux, on joue en équipe : faites le meilleur score possible ensemble !</li></ul>`
+  aide: `<p>Un demi-cadran va d'un mot à son opposé (ex. <b>Froid ↔ Chaud</b>). Quelque part dessus se cache une <b>cible</b> que seul le <b>devin</b> voit.</p>
+    <ul><li>Le devin donne un <b>indice</b> qui, selon lui, tombe pile sur la cible. Pour une cible côté « chaud » : « un bain »…</li>
+    <li>Son équipe débat et tourne <b>l'aiguille commune</b>, puis la verrouille.</li>
+    <li>L'autre équipe parie : la cible est-elle <b>à gauche ou à droite</b> de l'aiguille ? Bon pari : <b>+1</b>.</li>
+    <li>On ouvre le volet : centre de la cible <b>4 pts</b>, autour <b>3</b>, puis <b>2</b>.</li>
+    <li><b>Rattrapage</b> : une équipe qui fait 4 pts alors qu'elle est derrière rejoue tout de suite.</li>
+    <li>La première équipe à <b>${BUT} points</b> gagne.</li>
+    <li>À 2 ou 3 (ou en mode coop) : tout le monde ensemble, sur un nombre de cartes. Un 4 pts fait gagner une carte en plus !</li></ul>`
 });
 
 const jDe = (G, id) => G.J.find(j => j.id === id);
 const presents = G => G.J.filter(j => !j.parti);
-const ptsEcart = d => d === 0 ? 3 : d === 1 ? 2 : d === 2 ? 1 : 0;
+const ptsDe = d => d <= L / 2 ? 4 : d <= L * 1.5 ? 3 : d <= L * 2.5 ? 2 : 0;
+const devinsDe = G => G.mode === "coop" ? presents(G).filter(j => j.id !== G.donneur) : presents(G).filter(j => j.eq === G.tour && j.id !== G.donneur);
+const adversesDe = G => G.mode === "coop" ? [] : presents(G).filter(j => j.eq !== G.tour);
 
+function prochainDonneur(G){
+  if(G.mode === "coop"){
+    const l = presents(G); if(l.length < 2) return null;
+    G.rot = (G.rot + 1) % l.length; return l[G.rot].id;
+  }
+  const e = G.E[G.tour], l = presents(G).filter(j => j.eq === G.tour);
+  if(!l.length) return null;
+  e.i = (e.i + 1) % l.length; return l[e.i].id;
+}
 function manche(G){
-  while(G.m < G.ordre.length && (!jDe(G, G.ordre[G.m]) || jDe(G, G.ordre[G.m]).parti)) G.m++;
-  if(G.m >= G.ordre.length || presents(G).length < 2){ G.phase = "fin"; return; }
-  G.donneur = G.ordre[G.m];
-  G.cible = 1 + Math.floor(Math.random() * N);
+  if(G.mode === "equipes" && (presents(G).filter(j => j.eq === 0).length < 1 || presents(G).filter(j => j.eq === 1).length < 1)){ G.phase = "fin"; return; }
+  G.donneur = prochainDonneur(G);
+  if(!G.donneur){ G.phase = "fin"; return; }
+  G.cible = 5 + Math.random() * 90;
   if(G.pioche.length < 2) G.pioche = melanger(PAIRES);
   G.propos = [G.pioche.pop(), G.pioche.pop()];
-  G.phase = "indice"; G.paire = null; G.indice = null; G.choix = {}; G.res = null;
+  Object.assign(G, {phase: "indice", paire: null, indice: null, v: 50, cote: null, res: null, n: G.n + 1});
 }
 function reveler(G){
-  const gains = {}, l = Object.entries(G.choix);
-  l.forEach(([id, v]) => gains[id] = ptsEcart(Math.abs(v - G.cible)));
-  if(l.length) gains[G.donneur] = Math.round(l.reduce((s, [id]) => s + gains[id], 0) / l.length);
-  for(const id in gains){ const j = jDe(G, id); if(j) j.pts += gains[id]; }
-  // à deux : score d'équipe (points des devineurs sur le maximum possible)
-  if(G.coop){ l.forEach(([id]) => G.equipe += gains[id]); G.max += 3 * l.length; }
-  G.res = {gains};
-  G.phase = "revele";
+  const d = Math.abs(G.v - G.cible), pts = ptsDe(d), res = {pts, d};
+  if(G.mode === "coop"){
+    G.score += pts; G.faites++;
+    if(pts === 4){ G.cartes++; res.bonus = true; }
+  }else{
+    const e = G.E[G.tour], o = G.E[1 - G.tour];
+    e.pts += pts;
+    if(G.cote && pts < 4){
+      const bon = G.cible < G.v ? "g" : "d";
+      res.coteBon = G.cote === bon;
+      if(res.coteBon) o.pts += 1;
+    }
+    res.rattrapage = pts === 4 && e.pts < o.pts;
+  }
+  G.res = res; G.phase = "revele";
 }
-function verifier(G){
-  if(G.phase === "placer" && presents(G).every(j => j.id === G.donneur || G.choix[j.id] != null)) reveler(G);
+function suite(G){
+  if(G.mode === "coop"){ if(G.faites >= G.cartes){ G.phase = "fin"; return; } manche(G); return; }
+  const [a, b] = G.E;
+  if((a.pts >= BUT || b.pts >= BUT) && a.pts !== b.pts){ G.phase = "fin"; return; }
+  if(!G.res.rattrapage) G.tour = 1 - G.tour;
+  manche(G);
 }
-function suivante(G){ G.m++; manche(G); }
 
 Soiree.demarrer({
   jeu: "cadran", titre: "Le Cadran", emoji: "🎯", min: 2, max: 12,
   hero: {
-    texte: `Un demi-cadran va d'un mot à son opposé (Froid → Chaud, Nul → Génial…). Un joueur reçoit un cran secret et donne un indice ; les autres débattent et placent l'aiguille. Pile poil ?`,
-    etapes: ["1 · Cran secret", "2 · Un indice", "3 · Placez l'aiguille", "4 · Révélation"]
+    texte: `Un demi-cadran va d'un mot à son opposé (Froid ↔ Chaud, Nul ↔ Génial…). Le devin voit une cible cachée et donne un indice ; son équipe tourne l'aiguille, l'autre parie à gauche ou à droite. Ouvrez le volet !`,
+    etapes: ["1 · Le devin voit la cible", "2 · Un indice", "3 · L'équipe tourne l'aiguille", "4 · Ouvrez le volet"]
   },
   reglages: [
-    {k: "tours", titre: "Indices par joueur", options: [[1, "1"], [2, "2"], [3, "3"]], def: 2}
+    {k: "mode", titre: "Mode", options: [["auto", "🎲 Auto (équipes dès 4)"], ["equipes", "⚔️ Deux équipes"], ["coop", "🤝 Tous ensemble"]], def: "auto"},
+    {k: "cartes", titre: "Cartes en mode « tous ensemble »", options: [[7, "7"], [10, "10"], [13, "13"]], def: 7}
   ],
   nouvelle(joueurs, R){
-    let ordre = [];
-    for(let t = 0; t < R.tours; t++) ordre = ordre.concat(melanger(joueurs.map(j => j.id)));
-    const G = {hote: joueurs[0].id, J: joueurs.map(j => ({...j, pts: 0})), ordre, m: 0, pioche: melanger(PAIRES), coop: joueurs.length === 2, equipe: 0, max: 0};
+    const mode = R.mode === "coop" || joueurs.length < 4 && R.mode !== "equipes" || joueurs.length < 3 ? "coop" : "equipes";
+    const J = melanger(joueurs).map((j, i) => ({...j, eq: i % 2}));
+    const G = {hote: joueurs[0].id, J, mode, pioche: melanger(PAIRES), n: 0, rot: -1,
+      E: EQ.map(e => ({...e, pts: 0, i: -1})), tour: Math.random() < .5 ? 0 : 1, score: 0, faites: 0, cartes: R.cartes};
+    if(mode === "equipes") G.E[1 - G.tour].pts = 1;   // l'équipe qui ne commence pas part avec 1 point
     manche(G);
     return G;
   },
   action(G, id, a){
     const j = jDe(G, id); if(!j || j.parti) return false;
-    if(a.t === "indice" && G.phase === "indice" && id === G.donneur && a.m === G.m){
+    if(a.t === "indice" && G.phase === "indice" && id === G.donneur && a.n === G.n){
       const txt = propre(a.txt, 60); if(!txt) return false;
       if(Array.isArray(a.perso)){
         const g = propre(a.perso[0], 30), d = propre(a.perso[1], 30);
         if(!g || !d) return false;
         G.paire = [g, d];
       }else G.paire = G.propos[a.p === 1 ? 1 : 0];
-      G.indice = txt; G.phase = "placer";
-      verifier(G); return true;
+      G.indice = txt; G.phase = "regler"; return true;
     }
-    if(a.t === "cran" && G.phase === "placer" && id !== G.donneur && a.m === G.m && G.choix[id] == null){
-      const v = a.v | 0; if(v < 1 || v > N) return false;
-      G.choix[id] = v; verifier(G); return true;
+    const devin = devinsDe(G).some(x => x.id === id);
+    if(a.t === "aig" && G.phase === "regler" && devin && a.n === G.n){
+      const v = Math.max(0, Math.min(100, +a.v)); if(!isFinite(v)) return false;
+      G.v = Math.round(v * 10) / 10; G.qui = id; return true;
     }
-    if(a.t === "suite" && G.phase === "revele" && (id === G.hote || id === G.donneur)){ suivante(G); return true; }
+    if(a.t === "verrou" && G.phase === "regler" && devin && a.n === G.n){
+      if(typeof a.v === "number") G.v = Math.max(0, Math.min(100, a.v));
+      if(G.mode === "coop") reveler(G); else G.phase = "contre";
+      return true;
+    }
+    if(a.t === "cote" && G.phase === "contre" && adversesDe(G).some(x => x.id === id) && a.n === G.n && (a.c === "g" || a.c === "d")){
+      G.cote = a.c; reveler(G); return true;
+    }
+    if(a.t === "suite" && G.phase === "revele" && (id === G.hote || id === G.donneur)){ suite(G); return true; }
     if(id !== G.hote) return false;
     if(a.t === "passer"){
-      if(G.phase === "indice"){ suivante(G); return true; }
-      if(G.phase === "placer"){ reveler(G); return true; }
+      if(G.phase === "indice"){ manche(G); return true; }
+      if(G.phase === "regler"){ if(G.mode === "coop") reveler(G); else G.phase = "contre"; return true; }
+      if(G.phase === "contre"){ reveler(G); return true; }
     }
+    if(a.t === "changer" && G.mode === "equipes" && a.id && jDe(G, a.id)){ const x = jDe(G, a.id); x.eq = 1 - x.eq; if(x.id === G.donneur) manche(G); return true; }
     return false;
   },
   depart(G, id){
     const j = jDe(G, id); if(!j) return;
     j.parti = true;
     if(presents(G).length < 2){ G.phase = "fin"; return; }
-    if(id === G.donneur && G.phase === "indice") suivante(G);
-    else verifier(G);
+    if(id === G.donneur && G.phase !== "revele" && G.phase !== "fin") manche(G);
+    else if(G.mode === "equipes" && G.phase !== "fin" && (!presents(G).some(x => x.eq === 0) || !presents(G).some(x => x.eq === 1))) G.phase = "fin";
   },
-  arrivee(G, j){ if(!jDe(G, j.id)) G.J.push({...j, pts: 0}); },
+  arrivee(G, j){
+    if(jDe(G, j.id)){ jDe(G, j.id).parti = false; return; }
+    const n0 = presents(G).filter(x => x.eq === 0).length, n1 = presents(G).filter(x => x.eq === 1).length;
+    G.J.push({...j, eq: n0 <= n1 ? 0 : 1});
+  },
   publique(G){
-    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), m: G.m, nm: G.ordre.length, donneur: G.donneur, coop: G.coop, equipe: G.equipe, max: G.max};
-    if(G.phase === "placer" || G.phase === "revele"){ V.paire = G.paire; V.indice = G.indice; V.faits = Object.keys(G.choix); }
-    if(G.phase === "revele"){ V.cible = G.cible; V.choix = G.choix; V.gains = G.res.gains; }
+    const V = {phase: G.phase, hote: G.hote, mode: G.mode, n: G.n, donneur: G.donneur, tour: G.tour,
+      J: G.J.map(({id, nom, av, eq, parti}) => ({id, nom, av, eq, parti})), E: G.E.map(({nom, coul, em, pts}) => ({nom, coul, em, pts})),
+      score: G.score, faites: G.faites, cartes: G.cartes, v: G.v, qui: G.qui};
+    if(G.phase !== "indice"){ V.paire = G.paire; V.indice = G.indice; }
+    if(G.phase === "revele"){ V.cible = G.cible; V.res = G.res; V.cote = G.cote; }
+    if(G.phase === "fin" && G.mode === "coop") V.cible = null;
     return V;
   },
   privee(G, id){
     if(id === G.donneur && G.phase === "indice") return {cible: G.cible, propos: G.propos};
-    if(id === G.donneur && G.phase === "placer") return {cible: G.cible};
-    if(G.phase === "placer") return {choix: G.choix[id] || null};
+    if(id === G.donneur && (G.phase === "regler" || G.phase === "contre")) return {cible: G.cible};
     return null;
   },
   rendre
 });
 
-/* ---------- Dessin du cadran ---------- */
+/* ================= LE CADRAN (gardé d'un affichage à l'autre) ================= */
 const CX = 160, CY = 160, RAY = 150;
-const pt = (deg, r) => [CX + r * Math.cos(deg * Math.PI / 180), CY - r * Math.sin(deg * Math.PI / 180)];
-const couleur = i => `hsl(${210 - (i - 1) * (207 / (N - 1))} 70% ${i === 1 || i === N ? 48 : 54}%)`;
-const milieu = i => 180 - (i - .5) * (180 / N);
-function cadran(o){
-  let s = `<svg viewBox="0 0 320 168" role="img" aria-label="Cadran">`;
-  for(let i = 1; i <= N; i++){
-    const a1 = 180 - (i - 1) * 180 / N, a2 = 180 - i * 180 / N, [x1, y1] = pt(a1, RAY), [x2, y2] = pt(a2, RAY);
-    const terne = (o.cible || o.sel) && i !== o.cible && i !== o.sel;
-    s += `<path class="cran" data-c="${i}" d="M${CX} ${CY} L${x1.toFixed(1)} ${y1.toFixed(1)} A${RAY} ${RAY} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="${couleur(i)}" style="opacity:${terne ? .45 : 1}"/>`;
-    const [tx, ty] = pt(milieu(i), RAY - 16);
-    s += `<text x="${tx.toFixed(1)}" y="${(ty + 5).toFixed(1)}" text-anchor="middle" font-size="14" fill="#fff">${i}</text>`;
-  }
-  if(o.cible){
-    const a1 = 180 - (o.cible - 1) * 180 / N, a2 = 180 - o.cible * 180 / N, [x1, y1] = pt(a1, RAY), [x2, y2] = pt(a2, RAY);
-    s += `<path d="M${CX} ${CY} L${x1.toFixed(1)} ${y1.toFixed(1)} A${RAY} ${RAY} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="none" stroke="var(--text)" stroke-width="4" stroke-linejoin="round" pointer-events="none"/>`;
-    const [tx, ty] = pt(milieu(o.cible), RAY + 0);
-    s += `<text x="${tx.toFixed(1)}" y="${(ty + 2).toFixed(1)}" text-anchor="middle" font-size="18">🎯</text>`;
-  }
-  // aiguilles : {v, av}
-  const parCran = {};
-  (o.aiguilles || []).forEach(a => (parCran[a.v] = parCran[a.v] || []).push(a));
-  for(const v in parCran){
-    const [ex, ey] = pt(milieu(+v), RAY - 32);
-    s += `<line x1="${CX}" y1="${CY}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round" pointer-events="none"/>`;
-    parCran[v].forEach((a, k) => {
-      const [ax, ay] = pt(milieu(+v), RAY - 46 - k * 21);
-      s += `<circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="11" fill="var(--card)" stroke="var(--text)" stroke-width="1.5" pointer-events="none"/><text x="${ax.toFixed(1)}" y="${(ay + 5).toFixed(1)}" text-anchor="middle" font-size="13">${esc(a.av)}</text>`;
-    });
-  }
-  s += `<circle cx="${CX}" cy="${CY}" r="9" fill="var(--text)"/></svg>`;
-  return `<div class="cadran ${o.clic ? "clic" : ""}">${s}</div>` + (o.paire ? `<div class="bornes"><span class="g">◀ ${esc(o.paire[0])}</span><span class="d">${esc(o.paire[1])} ▶</span></div>` : "");
+const ang = v => (180 - v * 1.8) * Math.PI / 180;
+const pt = (v, r) => [CX + r * Math.cos(ang(v)), CY - r * Math.sin(ang(v))];
+const f1 = x => x.toFixed(1);
+function secteur(a, b, r){
+  a = Math.max(0, a); b = Math.min(100, b); if(b <= a) return "";
+  const [x1, y1] = pt(a, r), [x2, y2] = pt(b, r);
+  return `M${CX} ${CY} L${f1(x1)} ${f1(y1)} A${r} ${r} 0 0 1 ${f1(x2)} ${f1(y2)} Z`;
 }
+const dial = document.createElement("div");
+dial.className = "dial";
+dial.innerHTML = `<svg viewBox="0 -8 320 176" role="img" aria-label="Cadran">
+  <defs><linearGradient id="fond" x1="0" x2="1"><stop offset="0" stop-color="#d7ebf8"/><stop offset=".5" stop-color="#fbf4e6"/><stop offset="1" stop-color="#fbdcdc"/></linearGradient>
+  <pattern id="hach" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="10" height="10" fill="#243a5e"/><rect width="5" height="10" fill="#2b4570"/></pattern>
+  <clipPath id="haut"><rect x="-20" y="-20" width="360" height="181"/></clipPath></defs>
+  <g clip-path="url(#haut)">
+    <path d="${secteur(0, 100, RAY)}" fill="url(#fond)" stroke="#1d1a3a" stroke-width="3"/>
+    <g id="zones"></g>
+    <g id="graduations"></g>
+    <g id="volet"><path d="M${CX - RAY - 6} ${CY} A${RAY + 6} ${RAY + 6} 0 0 1 ${CX + RAY + 6} ${CY} Z" fill="url(#hach)" stroke="#1d1a3a" stroke-width="3"/>
+      <text x="${CX}" y="${CY - 80}" text-anchor="middle" font-size="44" fill="#fff" opacity=".9">?</text></g>
+  </g>
+  <g id="aiguille"><line id="aigL" x1="${CX}" y1="${CY}" x2="${CX}" y2="${CY - RAY + 8}" stroke="#e5484d" stroke-width="6" stroke-linecap="round"/><circle id="aigB" cx="${CX}" cy="${CY - RAY + 8}" r="9" fill="#e5484d" stroke="#fff" stroke-width="3"/></g>
+  <circle cx="${CX}" cy="${CY}" r="16" fill="#1d1a3a"/><circle cx="${CX}" cy="${CY}" r="7" fill="#f2c14e"/>
+</svg>`;
+const $d = id => dial.querySelector("#" + id);
+$d("graduations").innerHTML = [...Array(21).keys()].map(k => { const v = k * 5, [x1, y1] = pt(v, RAY), [x2, y2] = pt(v, RAY - (k % 5 ? 6 : 12)); return `<line x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}" stroke="#1d1a3a" stroke-width="${k % 5 ? 1 : 2}" opacity=".5"/>`; }).join("");
+let dialEtat = {};
+function majDial(o){
+  // zones de la cible
+  const zk = o.cible == null ? "" : o.cible.toFixed(2);
+  if(dialEtat.zk !== zk){
+    dialEtat.zk = zk;
+    if(o.cible == null) $d("zones").innerHTML = "";
+    else{
+      const t = o.cible, B = [[2.5, 1.5, "#f2c14e", 2], [1.5, .5, "#f08a3c", 3]], h = [];
+      for(const [a, b, c, n] of B){ h.push(`<path d="${secteur(t - a * L, t - b * L, RAY - 2)}" fill="${c}"/>`, `<path d="${secteur(t + b * L, t + a * L, RAY - 2)}" fill="${c}"/>`); }
+      h.push(`<path d="${secteur(t - L / 2, t + L / 2, RAY - 2)}" fill="#2f8fce"/>`);
+      [[-2, 2], [-1, 3], [0, 4], [1, 3], [2, 2]].forEach(([k, n]) => { const v = t + k * L; if(v < 0 || v > 100) return; const [x, y] = pt(v, RAY - 22); h.push(`<text x="${f1(x)}" y="${f1(y + 5)}" text-anchor="middle" font-size="13" fill="#fff" stroke="#1d1a3a" stroke-width=".6">${n}</text>`); });
+      $d("zones").innerHTML = h.join("");
+    }
+  }
+  $d("volet").classList.toggle("ouvert", !!o.ouvert);
+  if(o.instantane){ $d("volet").style.transition = "none"; $d("volet").getBoundingClientRect(); $d("volet").style.transition = ""; }
+  const v = o.v == null ? 50 : o.v, [x, y] = pt(v, RAY - 8);
+  $d("aigL").setAttribute("x2", f1(x)); $d("aigL").setAttribute("y2", f1(y));
+  $d("aigB").setAttribute("cx", f1(x)); $d("aigB").setAttribute("cy", f1(y));
+  $d("aiguille").style.display = o.aiguille === false ? "none" : "";
+  dial.classList.toggle("bouge", !!o.bouge);
+}
+// glisser l'aiguille
+let glisse = false, vLocal = null, envoiT = 0, C = null;
+function vDepuis(e){
+  const svg = dial.querySelector("svg"), p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  const q = p.matrixTransform(svg.getScreenCTM().inverse());
+  let a = Math.atan2(CY - q.y, q.x - CX) * 180 / Math.PI;
+  if(a < 0) a = q.x < CX ? 180 : 0;
+  return Math.max(0, Math.min(100, (180 - a) / 1.8));
+}
+function bouger(e){
+  vLocal = vDepuis(e); majDial({...dernierDial, v: vLocal});
+  const now = performance.now();
+  if(now - envoiT > 140){ envoiT = now; C.envoyer({t: "aig", n: C.V.n, v: Math.round(vLocal * 10) / 10}); }
+}
+dial.addEventListener("pointerdown", e => { if(!dernierDial.bouge) return; e.preventDefault(); dial.setPointerCapture(e.pointerId); glisse = true; bouger(e); });
+dial.addEventListener("pointermove", e => { if(glisse) bouger(e); });
+const lacher = () => { if(!glisse) return; glisse = false; if(C && vLocal != null) C.envoyer({t: "aig", n: C.V.n, v: Math.round(vLocal * 10) / 10}); };
+dial.addEventListener("pointerup", lacher); dial.addEventListener("pointercancel", lacher);
+let dernierDial = {};
 
-/* ---------- Affichage ---------- */
-let loc = {m: -1};   // choix locaux de la manche (paire choisie, cran visé)
+/* ================= AFFICHAGE ================= */
+let loc = {k: ""}, phaseVue = "";
+let cleRendu = "";
 function rendre(box, c){
+  C = c;
   const {V, P, moi} = c;
-  if(loc.m !== V.m + ":" + V.phase.slice(0, 1) + (V.gid || 0)){ loc = {m: V.m + ":" + V.phase.slice(0, 1) + (V.gid || 0), p: 0, sel: null}; }
+  // seule l'aiguille a bougé : on ne redessine que le cadran (le glisser n'est pas coupé)
+  const cle = JSON.stringify([{...V, v: 0, qui: 0}, P, c.attente("indice")]);
+  if(cle === cleRendu && dial.isConnected){ if(!glisse) majDial({...dernierDial, v: V.v}); return; }
+  cleRendu = cle;
+  const k = V.n + ":" + (V.gid || 0);
+  if(loc.k !== k){ loc = {k, p: 0}; vLocal = null; }
   const moiJ = V.J.find(j => j.id === moi), joue = moiJ && !moiJ.parti;
   const jo = id => V.J.find(j => j.id === id) || {av: "❓", nom: "?"};
-  const don = jo(V.donneur), jeDonne = V.donneur === moi;
+  const don = jo(V.donneur), jeDonne = V.donneur === moi, coop = V.mode === "coop";
+  const monEq = moiJ ? moiJ.eq : -1, eqT = V.E[V.tour], eqO = V.E[1 - V.tour];
+  const jeDevine = joue && !jeDonne && (coop || monEq === V.tour), jeParie = joue && !coop && monEq !== V.tour;
   let h = "";
 
-  if(V.phase !== "fin") h += `<div class="so-haut"><span>Manche ${Math.min(V.m + 1, V.nm)} / ${V.nm}</span><span>${V.coop ? `🤝 Équipe : ${V.equipe} / ${V.max}` : V.J.filter(j => !j.parti).sort((a, b) => b.pts - a.pts).slice(0, 3).map(j => esc(j.av) + " " + j.pts).join(" · ")}</span></div>`;
+  // tableau des scores
+  if(coop) h += `<div class="so-haut"><span>Carte ${Math.min(V.faites + 1, V.cartes)} / ${V.cartes}</span><span>🤝 Score : ${V.score}</span></div>`;
+  else h += `<div class="score">${V.E.map((e, i) => `<div class="eq ${V.tour === i && V.phase !== "fin" ? "actif" : ""}" style="background:${e.coul}">${e.em}<span>${esc(e.nom)}<div class="membres">${V.J.filter(j => j.eq === i && !j.parti).map(j => esc(j.av)).join(" ")}</div></span><b>${e.pts}</b></div>`).join("")}</div>
+    <div class="piste"><i style="width:${Math.min(100, V.E[0].pts / BUT * 100)}%;background:${V.E[0].coul};float:left"></i><i style="width:${Math.min(100, V.E[1].pts / BUT * 100)}%;background:${V.E[1].coul};float:right"></i></div>`;
+
+  const roleTxt = () => {
+    if(!joue) return "👀 Tu regardes cette manche.";
+    if(jeDonne) return "🔮 C'est toi le devin !";
+    if(coop) return "🧭 Vous tournez l'aiguille ensemble";
+    return monEq === V.tour ? `🧭 Ton équipe (${eqT.em}) tourne l'aiguille` : `🎲 Ton équipe (${eqO.em}) pariera à gauche ou à droite`;
+  };
+  const bornes = paire => paire ? `<div class="bornes"><span class="g">◀ ${esc(paire[0])}</span><span class="d">${esc(paire[1])} ▶</span></div>` : "";
+  let dopt = {cible: null, ouvert: false, v: V.v, aiguille: true, bouge: false};
 
   if(V.phase === "indice"){
     h += `<section class="b-carte">`;
     if(jeDonne && P && P.propos){
       const perso = loc.p === 2, paire = perso ? [loc.g || "…", loc.d || "…"] : P.propos[loc.p];
-      h += `<p class="cible">🤫 Ton cran secret : <b>${P.cible}</b> / ${N}</p>${cadran({paire, cible: P.cible})}
-        <p style="font-weight:800;margin:14px 0 0">Choisis le cadran :</p>
-        <div class="paires">${P.propos.map((p, i) => `<button data-p="${i}" class="${loc.p === i ? "on" : ""}">${esc(p[0])} → ${esc(p[1])}</button>`).join("")}
-          <button data-p="2" class="large ${perso ? "on" : ""}">✏️ Inventer ma paire</button></div>
-        ${perso ? `<div class="perso"><input class="champ" id="g-${V.m}" maxlength="30" placeholder="Mot de gauche (1)" autocomplete="off"><input class="champ" id="d-${V.m}" maxlength="30" placeholder="Mot de droite (${N})" autocomplete="off"></div>` : ""}
-        <label class="etiquette" for="i-${V.m}">Ton indice</label>
-        <div class="so-ligne"><input class="champ" id="i-${V.m}" maxlength="60" placeholder="Un mot, un perso, une idée…" autocomplete="off"><button class="btn" id="envoyer">Envoyer</button></div>
-        <p class="bareme">Pas de chiffre ni de « un peu chaud » : donne une chose qui tombe sur ce cran !</p>`;
+      dopt = {cible: P.cible, ouvert: true, aiguille: false};
+      h += `<p class="role">🔮 Toi seul vois la cible : trouve un indice qui tombe pile dessus !</p><div id="placeDial"></div>${bornes(paire)}
+        <p style="font-weight:800;margin:14px 0 0">Choisis la carte :</p>
+        <div class="paires">${P.propos.map((p, i) => `<button data-p="${i}" class="${loc.p === i ? "on" : ""}">${esc(p[0])} ↔ ${esc(p[1])}</button>`).join("")}
+          <button data-p="2" class="large ${perso ? "on" : ""}">✏️ Inventer ma carte</button></div>
+        ${perso ? `<div class="perso"><input class="champ" id="g-${V.n}" maxlength="30" placeholder="Mot de gauche" autocomplete="off"><input class="champ" id="d-${V.n}" maxlength="30" placeholder="Mot de droite" autocomplete="off"></div>` : ""}
+        <label class="etiquette" for="i-${V.n}">Ton indice</label>
+        <div class="so-ligne"><input class="champ" id="i-${V.n}" maxlength="60" placeholder="Un mot, un perso, une idée…" autocomplete="off"><button class="btn" id="envoyer">Envoyer</button></div>
+        <p class="note">Pas de chiffre ni de « un peu chaud » : une chose qui tombe pile sur la cible !</p>`;
     }else{
-      h += `<p class="so-grand">${esc(don.av)} ${esc(don.nom)} cherche un indice…</p>${cadran({})}<p class="so-attente">⏳ Préparez-vous à débattre !</p>`;
+      dopt = {cible: null, ouvert: false, aiguille: false};
+      h += `<p class="so-grand">🔮 ${esc(don.av)} ${esc(don.nom)} ${coop ? "" : `(${V.E[V.tour].em}) `}cherche un indice…</p><div id="placeDial"></div><p class="role">${roleTxt()}</p>`;
     }
     h += (c.hote && !jeDonne ? `<div class="so-hote"><button class="btn ghost petit" id="passer">⏩ Passer son tour</button></div>` : "") + `</section>`;
   }
 
-  else if(V.phase === "placer"){
-    h += `<section class="b-carte"><div class="indice"><small>Indice de ${esc(don.av)} ${esc(don.nom)}</small>« ${esc(V.indice)} »</div>`;
-    if(jeDonne){
-      h += cadran({paire: V.paire, cible: P && P.cible}) + `<p class="so-attente">🤐 Les autres placent l'aiguille… pas d'aide, hein !</p>`;
-    }else if(!joue){
-      h += cadran({paire: V.paire}) + `<p class="so-attente">👀 Tu regardes cette manche.</p>`;
+  else if(V.phase === "regler" || V.phase === "contre"){
+    const vAff = glisse && vLocal != null ? vLocal : V.v;
+    h += `<section class="b-carte"><div class="indice"><small>Indice de 🔮 ${esc(don.av)} ${esc(don.nom)}</small>« ${esc(V.indice)} »</div>`;
+    dopt = {cible: jeDonne && P ? P.cible : null, ouvert: jeDonne, v: vAff, bouge: V.phase === "regler" && jeDevine};
+    h += `<div id="placeDial"></div>${bornes(V.paire)}<p class="role">${roleTxt()}</p>`;
+    if(V.phase === "regler"){
+      if(jeDevine) h += `<p class="note">Faites glisser l'aiguille ensemble, débattez… puis verrouillez !</p><div class="so-actions"><button class="btn so-gros" id="verrou">🔒 Verrouiller l'aiguille</button></div>`;
+      else if(jeDonne) h += `<p class="note">🤐 Pas un mot ! Regarde ton équipe tourner l'aiguille.</p>`;
+      else h += `<p class="note">${eqT.em} ${esc(eqT.nom)} règle l'aiguille… Écoutez bien leurs hésitations 👂</p>`;
     }else{
-      const valide = P && P.choix, envoi = c.attente("cran");
-      const sel = valide || loc.sel;
-      h += cadran({paire: V.paire, sel, aiguilles: sel ? [{v: sel, av: moiJ.av}] : [], clic: !valide && !envoi});
-      h += valide || envoi
-        ? `<p class="so-attente">${valide ? "✔ Aiguille sur le cran " + valide + ". On attend les autres…" : "Envoi…"}</p>`
-        : `<p class="bareme">Touche le cadran pour placer ton aiguille, discutez-en, puis valide.</p><div class="so-actions"><button class="btn so-gros" id="valider" ${sel ? "" : "disabled"}>${sel ? "Valider le cran " + sel + " ✔" : "Place ton aiguille"}</button></div>`;
+      if(jeParie) h += `<p style="font-weight:800;text-align:center;margin:10px 0 0">La cible est-elle à gauche ou à droite de l'aiguille ?</p><div class="cote"><button data-c="g">◀ À gauche</button><button data-c="d">À droite ▶</button></div>`;
+      else h += `<p class="note">🔒 Aiguille verrouillée. ${eqO.em} ${esc(eqO.nom)} parie : à gauche ou à droite ?</p>`;
     }
-    h += pastilles(V.J, V.faits, {sauf: [V.donneur]}) + (c.hote ? `<div class="so-hote"><button class="btn ghost petit" id="passer">⏩ Révéler sans attendre</button></div>` : "") + `</section>`;
+    h += (c.hote ? `<div class="so-hote"><button class="btn ghost petit" id="passer">⏩ ${V.phase === "regler" ? "Verrouiller sans attendre" : "Révéler sans attendre"}</button></div>` : "") + `</section>`;
   }
 
   else if(V.phase === "revele"){
-    const aig = Object.entries(V.choix).map(([id, v]) => ({v, av: jo(id).av}));
-    const l = Object.entries(V.choix).sort((a, b) => Math.abs(a[1] - V.cible) - Math.abs(b[1] - V.cible));
-    h += `<section class="b-carte"><div class="indice"><small>Indice de ${esc(don.av)} ${esc(don.nom)}</small>« ${esc(V.indice)} »</div>
-      ${cadran({paire: V.paire, cible: V.cible, aiguilles: aig})}
-      <p class="cible">C'était le cran <b>${V.cible}</b> !</p>
-      <div class="gains">${l.map(([id, v]) => { const d = Math.abs(v - V.cible); return `<div class="d${ptsEcart(d)}">${esc(jo(id).av)} ${esc(jo(id).nom)} <span class="muted">cran ${v}${d === 0 ? " 🎯" : ""}</span><b>+${ptsEcart(d)}</b></div>`; }).join("")}
-        ${V.gains[V.donneur] != null ? `<div>${esc(don.av)} ${esc(don.nom)} <span class="muted">(indice)</span><b>+${V.gains[V.donneur]}</b></div>` : ""}</div>
-      ${c.hote || jeDonne ? `<div class="so-actions"><button class="btn so-gros" id="suite">${V.m + 1 < V.nm ? "Manche suivante ▶" : "Résultats 🏆"}</button></div>` : `<p class="so-attente">⏳ On passe bientôt à la suite…</p>`}
+    const r = V.res;
+    dopt = {cible: V.cible, ouvert: true, v: V.v, instantane: phaseVue === "revele:" + V.n};
+    h += `<section class="b-carte"><div class="indice"><small>Indice de 🔮 ${esc(don.av)} ${esc(don.nom)}</small>« ${esc(V.indice)} »</div><div id="placeDial"></div>${bornes(V.paire)}
+      <div class="bilan"><div class="gros ${r.pts ? "ok" : ""}">${r.pts === 4 ? "🎯 En plein dans le mille ! +4" : r.pts ? `+${r.pts} point${r.pts > 1 ? "s" : ""}` : "😬 Raté… 0 point"}${coop ? "" : " pour " + eqT.em + " " + esc(eqT.nom)}</div>
+      ${!coop && V.cote ? `<div class="${r.coteBon ? "ok" : ""}">${eqO.em} a parié « ${V.cote === "g" ? "à gauche" : "à droite"} » : ${r.pts === 4 ? "peu importe, c'était dans le mille !" : r.coteBon ? "bien vu, +1 ✔" : "raté ✘"}</div>` : ""}
+      ${r.rattrapage ? `<div class="ok">🔁 Rattrapage ! ${eqT.em} ${esc(eqT.nom)} était derrière : elle rejoue tout de suite.</div>` : ""}
+      ${r.bonus ? `<div class="ok">🎁 Dans le mille : une carte en plus !</div>` : ""}</div>
+      ${c.hote || jeDonne ? `<div class="so-actions"><button class="btn so-gros" id="suite">Suite ▶</button></div>` : `<p class="so-attente">⏳ On passe bientôt à la suite…</p>`}
     </section>`;
   }
 
   else if(V.phase === "fin"){
-    if(V.coop){
-      const t = V.max ? V.equipe / V.max : 0;
-      const avis = t >= .85 ? "🧠 Télépathes ! Vous partagez le même cerveau." : t >= .65 ? "🔥 Belle complicité !" : t >= .4 ? "🙂 Pas mal, ça se travaille." : "😅 Vous ne vivez pas sur la même planète…";
+    dopt = null;
+    if(coop){
+      const t = V.score / Math.max(1, V.faites * 4);
+      const avis = t >= .75 ? "🧠 Télépathes ! Vous partagez le même cerveau." : t >= .55 ? "🔥 Belle complicité !" : t >= .35 ? "🙂 Pas mal, ça se travaille." : "😅 Vous ne vivez pas sur la même planète…";
       h += `<section class="b-carte" style="text-align:center"><h2 style="margin:0">🤝 Score d'équipe</h2>
-        <p class="indice" style="font-size:2.6rem;margin:10px 0 0">${V.equipe} / ${V.max}</p>
+        <p class="indice" style="font-size:2.6rem;margin:10px 0 0">${V.score} pts</p><p class="muted">en ${V.faites} carte${V.faites > 1 ? "s" : ""}</p>
         <p style="font-weight:800;font-size:1.1rem">${avis}</p>
-        <p class="muted">${V.J.map(j => esc(j.av + " " + j.nom)).join(" & ")}</p>${c.finHtml()}</section>`;
-    }else h += `<section class="b-carte"><h2 style="text-align:center;margin:0">🏆 Résultats</h2>${podium(V.J, moi)}${c.finHtml()}</section>`;
+        <p class="muted">${V.J.filter(j => !j.parti).map(j => esc(j.av + " " + j.nom)).join(" & ")}</p>${c.finHtml()}</section>`;
+    }else{
+      const g = V.E[0].pts === V.E[1].pts ? null : V.E[0].pts > V.E[1].pts ? 0 : 1;
+      h += `<section class="b-carte" style="text-align:center"><h2 style="margin:0">${g == null ? "🤝 Égalité !" : `🏆 ${V.E[g].em} ${esc(V.E[g].nom)} gagne !`}</h2>
+        <div class="equipes-fin">${V.E.map((e, i) => `<div style="background:${e.coul}">${e.em} ${esc(e.nom)}<b>${e.pts}</b>${V.J.filter(j => j.eq === i).map(j => esc(j.av + " " + j.nom)).join("<br>")}</div>`).join("")}</div>${c.finHtml()}</section>`;
+    }
     if(rendre.finVue !== V.gid){ rendre.finVue = V.gid; Soiree.confettis(); }
   }
 
-  box.innerHTML = h;
+  // les équipes (l'hôte peut changer quelqu'un d'équipe)
+  if(!coop && V.phase !== "fin" && c.hote) h += `<details class="b-carte"><summary style="font-weight:800;cursor:pointer">👥 Changer les équipes</summary><div class="so-choix">${V.J.filter(j => !j.parti).map(j => `<button data-sw="${esc(j.id)}">${esc(j.av)} ${esc(j.nom)} ${V.E[j.eq].em} → ${V.E[1 - j.eq].em}</button>`).join("")}</div></details>`;
 
-  // donneur : choix de la paire et indice
-  box.querySelectorAll("[data-p]").forEach(b => b.onclick = () => { loc.p = +b.dataset.p; rendre(box, c); });
-  ["g", "d"].forEach(k => { const e = box.querySelector(`#${k}-${V.m}`); if(e){ e.value = loc[k] || ""; e.oninput = () => { loc[k] = e.value; const s = box.querySelector(".bornes ." + k); if(s) s.textContent = k === "g" ? "◀ " + (e.value || "…") : (e.value || "…") + " ▶"; }; } });
-  const ind = box.querySelector(`#i-${V.m}`), env = box.querySelector("#envoyer");
+  box.innerHTML = h;
+  const place = box.querySelector("#placeDial");
+  if(place && dopt){ place.replaceWith(dial); dernierDial = dopt; majDial(dopt); }
+  phaseVue = V.phase + ":" + V.n;
+
+  // devin : carte et indice
+  box.querySelectorAll("[data-p]").forEach(b => b.onclick = () => { loc.p = +b.dataset.p; cleRendu = ""; rendre(box, c); });
+  ["g", "d"].forEach(x => { const e = box.querySelector(`#${x}-${V.n}`); if(e){ e.value = loc[x] || ""; e.oninput = () => { loc[x] = e.value; const s = box.querySelector(".bornes ." + x); if(s) s.textContent = x === "g" ? "◀ " + (e.value || "…") : (e.value || "…") + " ▶"; }; } });
+  const ind = box.querySelector(`#i-${V.n}`), env = box.querySelector("#envoyer");
   if(ind){ ind.value = loc.i || ""; ind.oninput = () => { loc.i = ind.value; }; }
   if(env){
     const go = () => {
       const txt = propre(ind.value, 60); if(!txt){ ind.focus(); return; }
-      const a = {t: "indice", m: V.m, txt};
+      const a = {t: "indice", n: V.n, txt};
       if(loc.p === 2){
-        if(!propre(loc.g, 30) || !propre(loc.d, 30)){ Base.toast("Écris les deux mots de ta paire"); return; }
+        if(!propre(loc.g, 30) || !propre(loc.d, 30)){ Base.toast("Écris les deux mots de ta carte"); return; }
         a.perso = [loc.g, loc.d];
       }else a.p = loc.p;
       c.envoyer(a);
     };
     env.onclick = go; ind.onkeydown = e => { if(e.key === "Enter") go(); };
   }
-  // devineurs : aiguille
-  if(box.querySelector(".cadran.clic")) box.querySelectorAll(".cadran.clic [data-c]").forEach(p => p.onclick = () => { loc.sel = +p.dataset.c; rendre(box, c); });
-  const val = box.querySelector("#valider");
-  if(val) val.onclick = () => { if(loc.sel) c.envoyer({t: "cran", m: V.m, v: loc.sel}); };
+  const vr = box.querySelector("#verrou"); if(vr) vr.onclick = () => c.envoyer({t: "verrou", n: V.n, v: vLocal != null ? Math.round(vLocal * 10) / 10 : V.v});
+  box.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { box.querySelectorAll("[data-c]").forEach(x => x.classList.toggle("on", x === b)); c.envoyer({t: "cote", n: V.n, c: b.dataset.c}); });
+  box.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => c.envoyer({t: "changer", id: b.dataset.sw}));
   const p = box.querySelector("#passer"); if(p) p.onclick = () => c.envoyer({t: "passer"});
   const s = box.querySelector("#suite"); if(s) s.onclick = () => c.envoyer({t: "suite"});
 }
