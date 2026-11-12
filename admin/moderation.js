@@ -50,7 +50,7 @@
              paysdle: e => lin(e, 1, 8), connexions: e => lin(e, 0, 4), sudoku: e => lin(e, 0, 5), motscroises: e => lin(e, 0, 5), motsfleches: e => lin(e, 0, 5), shikaku: e => lin(e, 0, 5), chancedle: e => lin(e, 0, 6), chronologie: e => lin(e, 0, 2)};
   const gain = (slug, e, g) => slug === "coupdefeu" ? (g ? 10 : 2 + Math.floor((Math.max(1, e) - 1) * 5 / 8)) : Q[slug] ? (g ? 5 + Math.round(5 * Q[slug](e)) : 2) : null;
   /* Temps minimum crédible pour finir un défi (secondes) */
-  const TMIN = {wordle: 20, loldle: 15, anidle: 15, onepiecedle: 15, pokedle: 15, electrodle: 15, paysdle: 15, connexions: 40, sudoku: 120, motscroises: 90, motsfleches: 90, shikaku: 30, chancedle: 2, coupdefeu: 300, chronologie: 15};
+  const TMIN = {wordle: 20, loldle: 15, anidle: 15, onepiecedle: 15, pokedle: 15, electrodle: 15, paysdle: 15, connexions: 0, sudoku: 120, motscroises: 90, motsfleches: 90, shikaku: 0, chancedle: 2, coupdefeu: 300, chronologie: 15};
   const DLE = ["wordle", "loldle", "anidle", "onepiecedle", "pokedle", "electrodle", "paysdle", "connexions", "sudoku", "chronologie"];
   const titre = slug => { const g = (window.SALLE_CATALOGUE || []).find(x => x.slug === slug); return g ? (g.emoji ? g.emoji + " " : "") + g.title : slug; };
 
@@ -115,7 +115,7 @@
           if(attendu != null && attendu !== v.m) pb.push(`médaille ${v.m} au lieu de ${attendu}`);
           if(v.d && jourDe(v.d) !== +j) pb.push(`écrit le ${dateParis(v.d)} pour le jour ${dateDuJour(+j)}`);
           if(+j > J) pb.push("jour dans le futur");
-          if(v.t != null && v.t < (TMIN[k] || 15)) pb.push(`fini en ${duree(v.t)}`);
+          if(v.t != null && v.t < (TMIN[k] ?? 15)) pb.push(`fini en ${duree(v.t)}`);
           if(v.g && Q[k] && Q[k](v.e) === 1) parfaits++;
           details.push({j: +j, k, v, pb: vu && (v.d || 0) <= vu.t ? [] : pb});
         }
@@ -204,7 +204,7 @@
       t.innerHTML = "<thead><tr><th>Joueur</th><th>Résultat</th><th>Temps</th><th>Envoyé</th><th></th></tr></thead>"; t.appendChild(tb);
       l.sort((a, b) => (a.t == null ? 1e9 : a.t) - (b.t == null ? 1e9 : b.t)).forEach(x => {
         const pb = [];
-        if(x.t != null && x.t < (TMIN[jeu] || 15)) pb.push(`fini en ${duree(x.t)}`);
+        if(x.t != null && x.t < (TMIN[jeu] ?? 15)) pb.push(`fini en ${duree(x.t)}`);
         if(x.g && jeu !== "connexions" && jeu !== "sudoku" && x.e === 1) pb.push("trouvé du 1er coup");
         const nom = (ser && ser[x.id] && ser[x.id].n) || "anonyme";
         const tr = el("tr", null, pb.length ? "sus" : "");
