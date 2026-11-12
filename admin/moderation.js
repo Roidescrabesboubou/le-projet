@@ -104,6 +104,8 @@
       let total = 0, parfaits = 0, defis = 0;
       const details = [], vu = vus[uid] || null;   // « ✅ Vérifié » : on ne signale plus que ce qui est écrit après
       for(const [j, entree] of Object.entries(jours)){
+        /* Firebase renvoie un tableau quand les jours se suivent (clés 7, 8, 9…) : les trous valent null */
+        if(!entree || typeof entree !== "object") continue;
         const slugs = Object.keys(entree).filter(k => k[0] !== "_");
         for(const [k, v] of Object.entries(entree)){
           if(k[0] === "_"){ total += +v || 0; continue; }
