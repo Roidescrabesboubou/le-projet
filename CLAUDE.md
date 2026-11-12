@@ -28,6 +28,7 @@ jeux/commun/        code partagé
   soiree.js/css       salon en ligne commun des jeux de soirée (quiaditca, emojis, cadran, menteur, pireconseil, aveugle) : le jeu fournit nouvelle/action/publique/privee/rendre, l'hôte fait tourner G
   dle.js/dle.css      moteur commun des -dle à tableau (loldle, onepiecedle, pokedle, anidle, electrodle) : chaque jeu = une config
   casino.js/css       portefeuille propre à chaque jeu (casino/<jeu>/<uid>, pas de jetons partagés) des 7 jeux de casino récents, sélecteur de mise, heure calée, hasard commun, mises des autres en direct (casinoLive/<jeu>)
+  casinototal.js      classement « Les plus riches du casino » : somme des jetons de roulette/, blackjack/ et casino/<jeu>/ par compte (bouton dans la catégorie Casino de l'accueil et dans chaque jeu de casino ; le Poker n'a pas de jetons en ligne)
   classement.js, series.js, medailles.js, jetons.js, compte.js, groupe.js, cartes.js
 jeux/<slug>/        un dossier par jeu
 ```

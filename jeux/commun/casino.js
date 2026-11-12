@@ -94,7 +94,8 @@
   /* ---------- Affichage du portefeuille ---------- */
   function barre(el){
     el.classList.add("b-carte", "ca-porte");
-    el.innerHTML = `<div class="ca-ligne"><div class="ca-solde"><small>💰 Tes jetons</small><span>—</span></div><div class="ca-cadeau muted"></div></div><div class="ca-sync"></div>`;
+    el.innerHTML = `<div class="ca-ligne"><div class="ca-solde"><small>💰 Tes jetons</small><span>—</span></div><div class="ca-cadeau muted"></div></div><div class="ca-sync"></div><div class="ca-total"></div>`;
+    if(window.CasinoTotal) CasinoTotal.bouton(el.querySelector(".ca-total"));
     barres.push(el); if(porte) dessiner(el);
   }
   function dessiner(el){

@@ -143,12 +143,14 @@
     <h3 style="margin:0">🏆 Les plus riches</h3>
     <ol class="top" id="top"></ol>
   </section>
+  <div id="casinoTotal" style="text-align:center"></div>
 
 </main>
 
 <script src="../commun/garde.js"></script>
 <script src="../commun/base.js"></script>
 <script src="../commun/jetons.js"></script>
+<script src="../commun/casinototal.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -688,6 +690,7 @@ setInterval(publier, 30000);
   if(n < 60) setTimeout(() => attendreCompte(n + 1), 100);
   else { pret = true; verifierDon(); }
 })(0);
+CasinoTotal.bouton(document.getElementById("casinoTotal"));
 </script>
 </body>
 </html>

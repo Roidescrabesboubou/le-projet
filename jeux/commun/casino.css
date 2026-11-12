@@ -28,3 +28,4 @@
 .ca-live li{display:flex;justify-content:space-between;gap:8px;background:var(--soft);border-radius:10px;padding:5px 10px;font-weight:700}
 .ca-live li.ok{background:color-mix(in srgb,#1f9d55 20%,var(--card))}
 .ca-live li.ko{opacity:.6}
+.ca-total{margin-top:8px}

@@ -231,6 +231,7 @@ dialog.b-fen p{margin:0 0 12px;line-height:1.5}
 <script src="jeux/commun/groupe.js"></script>
 <script src="jeux/commun/medailles.js"></script>
 <script src="jeux/commun/base.js"></script>
+<script src="jeux/commun/casinototal.js"></script>
 <script>
 /* Titre en tuiles de lettres (décoratif : les lecteurs d'écran lisent « Salle de jeux ») */
 (function(){
@@ -569,6 +570,7 @@ function renderEntete(cat){
   const t = el("div", null, "titres");
   t.append(el("h2", cat.titre), el("p", cat.desc));
   z.append(r, el("span", cat.emoji, "gros"), t);
+  if(cat.id === "casino" && window.CasinoTotal) CasinoTotal.bouton(z, "🏆 Les plus riches du casino");
 }
 
 function afficher(){
