@@ -1,0 +1,14 @@
+// Serveur des parties en ligne en temps réel (Cloudflare Workers + Durable Objects).
+// Une salle = un Durable Object, placé près du premier joueur, qui fait tourner la partie.
+// Déployer : depuis ce dossier, `npx.cmd wrangler deploy`  (essai local : `npx.cmd wrangler dev`)
+{
+  "name": "salle-de-jeux",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "durable_objects": {
+    "bindings": [{"name": "SALLES", "class_name": "Salle"}]
+  },
+  "migrations": [
+    {"tag": "v1", "new_sqlite_classes": ["Salle"]}
+  ]
+}

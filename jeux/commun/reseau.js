@@ -185,6 +185,14 @@
 
   async function creer(jeu, o){
     o = o || {};
+    if(o.serveur && adresseServeur() && window.WebSocket){
+      for(let k = 0; k < 2; k++){
+        const code = Array.from({length: 4}, () => LETTRES[Math.floor(Math.random() * LETTRES.length)]).join("") + "9";
+        try{ return await serveurSalle(jeu, code, o, true); }
+        catch(e){ if(!/déjà pris/.test(e.message)) break; }
+      }
+      o.surEssai && o.surEssai("Serveur indisponible, passage par le relais…");
+    }
     for(const i of ORDRE){
       try{
         const c = await connecter(i);
@@ -200,6 +208,11 @@
   async function rejoindre(jeu, code, o){
     o = o || {};
     code = String(code || "").trim().toUpperCase();
+    if(estCodeServeur(code)){
+      if(!adresseServeur()) throw new Error("Ce code est celui d'une salle sur le serveur, qui n'est pas encore en service.");
+      try{ return await serveurSalle(jeu, code, o, false); }
+      catch(e){ throw new Error(/injoignable/.test(e.message) ? "Serveur de jeu injoignable depuis ce réseau." : e.message); }
+    }
     const bi = parseInt(code.slice(-1)) - 1;
     if(code.length !== 5 || !BROKERS[bi]) throw new Error("Code invalide (5 caractères, par exemple KXRT1).");
     let c;
@@ -262,6 +275,103 @@
     c.on("connect", () => { b(""); c.subscribe(sujet, qos); });
     return {code, envoyer(m){ try{ c.publish(sujet, JSON.stringify(m), qos); }catch(e){} }, end(f){ try{ c.end(f); }catch(e){} }};
   }
+
+
+  /* ============================================================
+     SERVEUR (Cloudflare, dossier serveur/) : pour les jeux en temps réel qui ont
+     un module côté serveur (Sumo…). La partie tourne sur le serveur, plus chez l'hôte :
+     un seul trajet réseau, et rien ne se fige si quelqu'un change d'appli.
+     Codes en « 9 » final (ex. KXRT9). Pour le jeu : salle.serveur = true, salle.hote = false
+     pour tout le monde, salle.chef() = vrai pour le premier de la liste (lance, revanche, salon).
+     Reseau.creer(jeu, {serveur: true, …}) essaie le serveur, puis le relais si besoin.
+     ============================================================ */
+  const SERVEUR = "";      // adresse du Worker après `wrangler deploy` (https://salle-de-jeux.<compte>.workers.dev)
+  function adresseServeur(){
+    let a = SERVEUR;
+    try{ a = localStorage.getItem("salle_serveur") || a; }catch(e){}       // essai en local : ws://localhost:8787
+    return a ? a.replace(/^http/, "ws").replace(/\/$/, "") : "";
+  }
+  function serveurConnecter(jeu, code, moi, creer){
+    const me = moiInfos(moi);
+    const q = new URLSearchParams({id: moi, pseudo: me.pseudo, avatar: me.avatar}); if(creer) q.set("creer", "1");
+    const ws = new WebSocket(adresseServeur() + "/s/" + jeu + "/" + code + "?" + q);
+    return new Promise((ok, ko) => {
+      let fini = false;
+      const fin = (e, v) => { if(fini) return; fini = true; clearTimeout(t); e ? ko(e) : ok(v); };
+      const t = setTimeout(() => { try{ ws.close(); }catch(e){} fin(new Error("Serveur injoignable.")); }, 6000);
+      ws.onmessage = ev => {
+        let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+        if(m.t === "_bienvenue") fin(null, ws);
+        else if(m.t === "_refus") fin(new Error(m.pourquoi || "Accès refusé."));
+      };
+      ws.onerror = () => fin(new Error("Serveur injoignable."));
+      ws.onclose = () => fin(new Error("Serveur injoignable."));
+    });
+  }
+  async function serveurSalle(jeu, code, o, creer){
+    const moi = uid() + uid();
+    let ws = await serveurConnecter(jeu, code, moi, creer);
+    const salle = {
+      code, hote: false, serveur: true, moi, ferme: false, relais: "Serveur", ping: 0,
+      lien: location.origin + location.pathname + "?salle=" + code,
+      joueurs: [],
+      chef: () => !!(salle.joueurs[0] && salle.joueurs[0].id === moi),
+      envoyer(m){ if(!salle.ferme && ws.readyState === 1) try{ ws.send(JSON.stringify(m)); }catch(e){} },
+      quitter(){
+        if(salle.ferme) return;
+        salle.envoyer({t: "_depart"}); salle.ferme = true; clearInterval(pingIt); bandeau(""); pastille("");
+        setTimeout(() => { try{ ws.close(1000); }catch(e){} }, 200);
+      }
+    };
+    function majPastille(){
+      if(salle.ferme || o.pastille === false) return;
+      const p = salle.ping;
+      pastille(`⚡ Serveur${p ? " · " + p + " ms" : ""}`, p > 250 ? "#e8574a" : p > 120 ? "#f2c14e" : "#3fb37f");
+    }
+    function brancher(){
+      ws.onmessage = ev => {
+        let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+        if(!m || typeof m !== "object" || salle.ferme) return;
+        if(m.t === "_pong"){ const r = performance.now() - m.ts; if(r >= 0) salle.ping = Math.round(salle.ping ? salle.ping * .6 + r * .4 : r); majPastille(); return; }
+        if(m.t === "_liste"){
+          const avant = salle.joueurs, l = (Array.isArray(m.joueurs) ? m.joueurs : []).filter(j => j && typeof j === "object");
+          salle.joueurs = l.filter(j => !j.absent);
+          if(avant.length){
+            salle.joueurs.forEach(j => { if(!avant.some(a => a.id === j.id)) o.surArrivee && o.surArrivee(j); });
+            avant.forEach(a => { if(!salle.joueurs.some(j => j.id === a.id)) o.surDepart && o.surDepart(a); });
+          }
+          o.surListe && o.surListe(salle.joueurs);
+          return;
+        }
+        if(typeof m.t === "string" && m.t[0] === "_") return;
+        try{ o.surMessage && o.surMessage(m); }catch(e){ console.warn("Message serveur ignoré", e); }
+      };
+      ws.onclose = () => { if(!salle.ferme) reconnecter(); };
+      ws.onerror = () => {};
+    }
+    let essais = 0;
+    async function reconnecter(){
+      bandeau("⚠️ Connexion perdue… reconnexion en cours");
+      while(!salle.ferme && essais < 6){
+        essais++;
+        await new Promise(r => setTimeout(r, 1500));
+        try{ ws = await serveurConnecter(jeu, code, moi, false); essais = 0; bandeau(""); brancher(); salle.envoyer({t: "etat?"}); return; }
+        catch(e){ if(/Aucune salle/.test(e.message)) break; }
+      }
+      if(salle.ferme) return;
+      salle.ferme = true; clearInterval(pingIt); pastille("");
+      bandeau("La connexion à la salle est perdue.");
+      o.surFermeture && o.surFermeture();
+    }
+    brancher();
+    const pingIt = setInterval(() => salle.envoyer({t: "_ping", ts: performance.now()}), 2000);
+    salle.envoyer({t: "_ping", ts: performance.now()});
+    majPastille();
+    window.addEventListener("beforeunload", () => salle.quitter());
+    try{ if(creer && window.Groupe) Groupe.salleCreee(code); }catch(e){}
+    return salle;
+  }
+  const estCodeServeur = code => /^[A-Z]{4}9$/.test(code);
 
   const codeDansAdresse = () => (new URLSearchParams(location.search).get("salle") || "").toUpperCase();
 
