@@ -262,7 +262,13 @@ function lireCommande(n){
 let dashSeq = 0;
 function charge(n){
   if(!S || S.ph !== "jeu") return;
-  if(mode === "ligne" && !salle.hote){ dashSeq++; envoyerEntree(true); return; }
+  if(mode === "ligne" && !salle.hote){
+    dashSeq++; envoyerEntree(true);
+    // élan donné tout de suite à l'écran (l'hôte fait le même de son côté)
+    const p = S.p.find(estMoi);
+    if(p && p.vivant && p.cd <= 0){ let [dx, dy] = lireCommande(0); if(!dx && !dy){ dx = p.vx; dy = p.vy; } const d = Math.hypot(dx, dy) || 1; p.vx += dx / d * DASH; p.vy += dy / d * DASH; p.cd = DASH_CD; p.dashT = .35; son(220, .15, "sawtooth", .05); }
+    return;
+  }
   const l = S.p.filter(p => mode === "deux" ? !p.bot : p.id === moiId());
   if(l[n]) l[n].veut = true;
 }
@@ -419,14 +425,36 @@ function recu(m){
     }
     const avant = S.ph;
     S.ph = m.ph; S.tp = m.tp; S.R = m.R; S.manche = m.m; S.msg = m.msg; S.bonus = m.b ? {x: m.b[0], y: m.b[1]} : null;
-    m.p.forEach((x, i) => { const p = S.p[i]; if(!p) return; p.cx = x[0]; p.cy = x[1]; p.vx = x[2]; p.vy = x[3]; if(p.vivant && !x[4]) son(300, .5, "sine", .06, 0, -250); p.vivant = !!x[4]; p.chute = x[5]; p.geant = x[6] ? 1 : 0; p.dashT = x[7] ? 1 : 0; p.cd = x[8]; p.pts = x[9]; });
+    m.p.forEach((x, i) => { const p = S.p[i]; if(!p) return; const saut = p.cx == null || Math.hypot(x[0] - p.x, x[1] - p.y) > 90; p.cx = x[0]; p.cy = x[1]; p.svx = x[2]; p.svy = x[3]; p.tRecu = performance.now(); if(saut || !estMoi(p)){ p.vx = x[2]; p.vy = x[3]; } if(saut){ p.x = x[0]; p.y = x[1]; } if(p.vivant && !x[4]) son(300, .5, "sine", .06, 0, -250); p.vivant = !!x[4]; p.chute = x[5]; p.geant = x[6] ? 1 : 0; p.dashT = x[7] ? 1 : 0; p.cd = x[8]; p.pts = x[9]; });
     if(S.ph === "fin" && avant !== "fin") setTimeout(() => { if(S && S.ph === "fin" && !finVue) finPartie(); }, 400);
     if(S.ph !== "fin" && $("voile").dataset.k === "fin"){ finVue = false; cacherVoile(); }
   }
 }
+/* Invité : chaque lutteur avance avec sa vitesse (pas d'attente du paquet suivant), puis est ramené en douceur
+   vers la position de l'hôte projetée dans le présent. Le sien bouge tout de suite avec ses propres commandes
+   (même physique que chez l'hôte), sans attendre l'aller-retour ; les chocs restent décidés par l'hôte. */
 function interpoler(dt){
-  const k = Math.min(1, dt * 14);
-  for(const p of S.p){ if(p.cx == null) continue; p.x += (p.cx - p.x) * k; p.y += (p.cy - p.y) * k; if(!p.vivant && p.chute > 0) p.chute -= dt * 1.4; }
+  const now = performance.now(), ping = (salle && salle.ping) || 80;
+  for(const p of S.p){
+    if(p.cx == null) continue;
+    if(!p.vivant){ if(p.chute > 0){ p.chute -= dt * 1.4; p.x += (p.cx - p.x) * Math.min(1, dt * 10); p.y += (p.cy - p.y) * Math.min(1, dt * 10); } continue; }
+    const moi = estMoi(p) && S.ph === "jeu";
+    // âge de la position reçue : un aller simple pour les autres, un aller-retour pour soi (nos commandes ont de l'avance)
+    const age = Math.min(.3, (now - p.tRecu) / 1000 + (moi ? ping : ping / 2) / 1000);
+    const tx = p.cx + p.svx * age, ty = p.cy + p.svy * age;
+    if(moi){
+      let [ax, ay] = lireCommande(0); const n = Math.hypot(ax, ay); if(n > 1){ ax /= n; ay /= n; }
+      p.vx += ax * ACC * dt; p.vy += ay * ACC * dt;
+      const v = Math.hypot(p.vx, p.vy), vm = p.dashT > 0 ? VMAX + DASH : VMAX;
+      if(v > vm){ p.vx *= vm / v; p.vy *= vm / v; }
+      const fr = Math.pow(.18, dt); p.vx *= fr; p.vy *= fr;
+      // vitesse ramenée vers celle de l'hôte (un choc reçu se ressent vite)
+      const kv = Math.min(1, dt * 3); p.vx += (p.svx - p.vx) * kv; p.vy += (p.svy - p.vy) * kv;
+    }else{ p.vx = p.svx; p.vy = p.svy; }
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    const k = Math.min(1, dt * (moi ? 5 : 9));
+    p.x += (tx - p.x) * k; p.y += (ty - p.y) * k;
+  }
 }
 let entreeT = 0, derniereEntree = "";
 function envoyerEntree(force){

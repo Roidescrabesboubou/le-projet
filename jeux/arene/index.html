@@ -1340,9 +1340,12 @@ function creerPair(id, initiateur){
   pc.onconnectionstatechange = () => { if(["failed", "closed"].includes(pc.connectionState) && pairs.get(id) === p) fermerPair(id); };
   return p;
 }
+// Coupé (nov. 2026) : le direct buguait sur de vrais appareils (canal « ouvert » mais muet en 4G = partie figée),
+// et le relais HiveMQ/Mosquitto répond en ~30 ms. Remettre à true pour le réessayer.
+const DIRECT = false;
 async function rtcAppeler(){            // invité → hôte
   const h = salle && salle.joueurs[0];
-  if(!window.RTCPeerConnection || !h || estHote) return;
+  if(!DIRECT || !window.RTCPeerConnection || !h || estHote) return;
   rtcEssais++;
   const p = creerPair(h.id, true);
   try{
@@ -1666,8 +1669,8 @@ function maj(dt){
   }
   majRoquettes(dt);
   if(salle && now - dernierUI > 1000){ dernierUI = now; majReseauUI(); }
-  // 15 envois/s par le relais, 30/s quand tout le monde est en direct ; un tir qui touche ou un frag part tout de suite
-  const urgent = sortie.h.length || sortie.k.length, freq = toutDirect() ? 30 : 15;
+  // 20 envois/s par le relais, 30/s quand tout le monde est en direct ; un tir qui touche ou un frag part tout de suite
+  const urgent = sortie.h.length || sortie.k.length, freq = toutDirect() ? 30 : 20;
   if(salle && (Tg - dernierEnvoi > 1 / freq - 0.002 || (urgent && Tg - dernierEnvoi > 1 / 40))){ dernierEnvoi = Tg; envoyerPaquet(); }
 }
 function rendu(dt){
@@ -1829,7 +1832,7 @@ $("creer").onclick = async () => {
   if(!pseudoOK()) return;
   $("msgLigne").textContent = "Création de la salle…";
   try{
-    salle = await Reseau.creer("arene", {
+    salle = await Reseau.creer("arene", {pastille: false,
       max: 8,
       surEssai: t => $("msgLigne").textContent = t,
       surArrivee(j){
@@ -1877,7 +1880,7 @@ async function rejoindre(code){
   if(!pseudoOK()) return;
   $("msgLigne").textContent = "Connexion à la salle…";
   try{
-    salle = await Reseau.rejoindre("arene", code, {
+    salle = await Reseau.rejoindre("arene", code, {pastille: false,
       surMessage(m){
         if(m.t === "p") recuRelais(m, m.de);
         else if(m.t === "rtc"){ const hote = salle.joueurs[0]; if(hote && m.de === hote.id) rtcSignal(m, m.de); }

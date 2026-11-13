@@ -10,8 +10,10 @@
        max: 2,                              // joueurs max, hôte compris (facultatif)
        surArrivee(j){},                     // j = {id, pseudo, avatar}
        surDepart(j){},
-       surMessage(m, j){}                   // m = ce qu'un invité a envoyé
+       surMessage(m, j){},                  // m = ce qu'un invité a envoyé
+       pastille: false                      // facultatif : cache la pastille « 🌐 relais · ping » (le jeu a la sienne)
      });
+     salle.ping → aller-retour invité ↔ hôte en ms (côté invité), salle.relais → nom du relais
      salle.code   → "KXRT1"  (à donner aux amis)
      salle.lien   → adresse à partager (…?salle=KXRT1)
    INVITÉ :
@@ -71,6 +73,15 @@
     b.textContent = t;
   }
 
+  function pastille(t, coul){
+    let b = document.querySelector(".r-ping");
+    if(!t){ if(b) b.remove(); return; }
+    if(!b){ b = document.createElement("div"); b.className = "r-ping"; b.title = "Relais utilisé et temps d'aller-retour avec l'hôte";
+      b.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:9999;font:700 11px/1.2 system-ui,sans-serif;padding:3px 7px;border-radius:9px;background:rgba(0,0,0,.55);color:#fff;pointer-events:none";
+      document.body.appendChild(b); }
+    b.textContent = t; b.style.borderLeft = "4px solid " + (coul || "#3fb37f");
+  }
+
   function moiInfos(id){
     const J = window.Base ? Base.joueur : {pseudo: () => "Joueur", avatar: () => "😀"};
     return {id, pseudo: J.pseudo() || "Joueur", avatar: J.avatar()};
@@ -78,11 +89,12 @@
 
   /* Salle commune aux deux rôles */
   function fabriquer(client, jeu, code, hote, o){
+    const relais = (BROKERS[parseInt(code.slice(-1)) - 1] || {}).n || "?";
     const sujet = "salledejeux-" + jeu + "/v1/" + code;
     const moi = uid() + uid();
     const vus = {};          // id → dernier signe de vie
     const salle = {
-      code, hote, moi, ferme: false,
+      code, hote, moi, ferme: false, relais, ping: 0,
       lien: location.origin + location.pathname + "?salle=" + code,
       joueurs: hote ? [moiInfos(moi)] : [],
       envoyer(m){
@@ -93,7 +105,7 @@
       quitter(){
         if(salle.ferme) return;
         salle.envoyer({t: hote ? "_fermeture" : "_depart"});
-        salle.ferme = true; clearInterval(vie); bandeau("");
+        salle.ferme = true; clearInterval(vie); clearInterval(pingIt); bandeau(""); pastille("");
         setTimeout(() => client.end(true), 300);
       }
     };
@@ -124,6 +136,7 @@
       }
       if(m.t === "_depart"){ if(j) partir(j); return; }
       if(m.t === "_vie") return;
+      if(m.t === "_ping"){ salle.envoyer({t: "_pong", a: m.de, ts: m.ts}); if(j){ j.ping = +m.p || 0; majPastille(); } return; }
       if(!j) return;                       // message d'un inconnu : ignoré
       o.surMessage && o.surMessage(m, j);
     }
@@ -136,7 +149,9 @@
     let hoteVu = Date.now(), perduSignale = false;
     function recuInvite(m){
       if(m.t === "_liste"){ salle.joueurs = Array.isArray(m.joueurs) ? m.joueurs.filter(j => j && typeof j === "object") : []; hoteVu = Date.now(); o.surListe && o.surListe(salle.joueurs); return; }
-      if(m.t === "_fermeture"){ salle.ferme = true; clearInterval(vie); bandeau("La salle a été fermée par l'hôte."); o.surFermeture && o.surFermeture(); setTimeout(() => client.end(true), 300); return; }
+      if(m.t === "_fermeture"){ salle.ferme = true; clearInterval(vie); clearInterval(pingIt); pastille(""); bandeau("La salle a été fermée par l'hôte."); o.surFermeture && o.surFermeture(); setTimeout(() => client.end(true), 300); return; }
+      if(m.t === "_pong"){ if(m.a === moi && typeof m.ts === "number"){ const r = performance.now() - m.ts; salle.ping = Math.round(salle.ping ? salle.ping * .6 + r * .4 : r); hoteVu = Date.now(); majPastille(); } return; }
+      if(m.t === "_ping") return;
       if(m.t === "_vie"){ if(salle.joueurs[0] && m.de === salle.joueurs[0].id) hoteVu = Date.now(); return; }
       if(typeof m.t === "string" && m.t[0] === "_") { salle._interne && salle._interne(m); return; }
       if(salle.joueurs[0] && m.de === salle.joueurs[0].id) hoteVu = Date.now();
@@ -155,6 +170,15 @@
         }else if(perduSignale){ perduSignale = false; bandeau(""); }
       }
     }, 5000);
+    // ping invité ↔ hôte (aller-retour par le relais), affiché dans un coin : « 🌐 HiveMQ · 42 ms »
+    const pingIt = setInterval(() => { if(!hote && !salle.ferme) salle.envoyer({t: "_ping", ts: performance.now(), p: salle.ping}); }, 2000);
+    function majPastille(){
+      if(salle.ferme || o.pastille === false) return;
+      const p = hote ? Math.max(0, ...salle.joueurs.slice(1).map(j => j.ping || 0)) : salle.ping;
+      pastille(`🌐 ${relais}${p ? " · " + p + " ms" : ""}`, p > 250 ? "#e8574a" : p > 120 ? "#f2c14e" : "#3fb37f");
+    }
+    salle._majPastille = majPastille;
+    majPastille();
     window.addEventListener("beforeunload", () => salle.quitter());
     return salle;
   }
@@ -186,11 +210,11 @@
       salle._interne = m => {
         if(fini || m.a !== salle.moi) return;
         if(m.t === "_bienvenue"){ fini = true; clearInterval(it); ok(salle); }
-        if(m.t === "_refus"){ fini = true; clearInterval(it); salle.ferme = true; c.end(true); ko(new Error(m.pourquoi || "Accès refusé.")); }
+        if(m.t === "_refus"){ fini = true; clearInterval(it); salle.ferme = true; pastille(""); c.end(true); ko(new Error(m.pourquoi || "Accès refusé.")); }
       };
       const bonjour = () => {
         if(fini) return;
-        if(++essais > 10){ fini = true; clearInterval(it); salle.ferme = true; c.end(true); ko(new Error("Aucune salle avec ce code (ou l'hôte a fermé la page).")); return; }
+        if(++essais > 10){ fini = true; clearInterval(it); salle.ferme = true; pastille(""); c.end(true); ko(new Error("Aucune salle avec ce code (ou l'hôte a fermé la page).")); return; }
         const me = moiInfos(salle.moi);
         salle.envoyer({t: "_bonjour", pseudo: me.pseudo, avatar: me.avatar});
       };
