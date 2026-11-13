@@ -34,6 +34,11 @@
     {n: "HiveMQ",    u: "wss://broker.hivemq.com:8884/mqtt"},
     {n: "Mosquitto", u: "wss://test.mosquitto.org:8081/mqtt"}
   ];
+  // Ordre d'essai pour créer une salle (le chiffre du code reste l'indice dans BROKERS + 1).
+  // EMQX en dernier : mesuré le 13/11/2026, il ne laisse passer qu'une quarantaine de messages
+  // puis en jette un sur deux (~13/s max) avec ~190 ms de délai, ce qui rend injouables les jeux
+  // en temps réel (Sumo, Serpents, Assaut, Arène…). HiveMQ et Mosquitto : 0 perte à 30/s, ~30 ms.
+  const ORDRE = [1, 2, 0];
   const LIB = "https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js";
   const LETTRES = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   const uid = () => Math.random().toString(36).slice(2, 10);
@@ -156,7 +161,7 @@
 
   async function creer(jeu, o){
     o = o || {};
-    for(let i = 0; i < BROKERS.length; i++){
+    for(const i of ORDRE){
       try{
         const c = await connecter(i);
         const code = Array.from({length: 4}, () => LETTRES[Math.floor(Math.random() * LETTRES.length)]).join("") + (i + 1);
@@ -213,12 +218,13 @@
     o = o || {};
     let c, i;
     if(!code){
-      for(i = 0; i < BROKERS.length && !c; i++){
-        try{ c = await connecter(i); }
-        catch(e){ o.surEssai && o.surEssai(`Serveur ${BROKERS[i].n} indisponible, essai suivant…`); }
+      for(const k of ORDRE){
+        if(c) break;
+        try{ c = await connecter(k); i = k; }
+        catch(e){ o.surEssai && o.surEssai(`Serveur ${BROKERS[k].n} indisponible, essai suivant…`); }
       }
       if(!c) throw new Error("❌ Impossible de joindre un relais en ligne depuis ce réseau.");
-      code = Array.from({length: 4}, () => LETTRES[Math.floor(Math.random() * LETTRES.length)]).join("") + i;
+      code = Array.from({length: 4}, () => LETTRES[Math.floor(Math.random() * LETTRES.length)]).join("") + (i + 1);
       try{ if(window.Groupe) Groupe.salleCreee(code); }catch(e){}
     }else{
       code = String(code).trim().toUpperCase(); i = parseInt(code.slice(-1)) - 1;
