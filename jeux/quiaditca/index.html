@@ -30,6 +30,7 @@
 .bestof details{background:var(--soft);border-radius:12px;padding:8px 12px;margin-top:6px}
 .bestof summary{font-weight:800;cursor:pointer}
 .bestof p{margin:6px 0}
+.champ.manque{border-color:var(--bad);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 25%,transparent)}
 </style>
 </head>
 <body>
@@ -46,8 +47,9 @@ const Q = window.QADC_QUESTIONS;
 Base.entete({
   titre: "Qui a dit ça ?",
   emoji: "🕵️",
-  aide: `<p>Une question tombe, tout le monde y répond <b>en secret</b>. Puis les réponses s'affichent une par une : à vous de deviner <b>qui a écrit quoi</b> !</p>
-    <ul><li>Trouver l'auteur d'une réponse : <b>+2</b>.</li>
+  aide: `<p>Tout le monde répond d'abord <b>en secret à toutes les questions</b>. Ensuite, des réponses tirées au hasard s'affichent une par une, dans le désordre : à vous de deviner <b>qui a écrit quoi</b> !</p>
+    <ul><li>Toutes les réponses ne sortent pas : certaines resteront secrètes… 🙈</li>
+    <li>Trouver l'auteur d'une réponse : <b>+2</b>.</li>
     <li>Ta réponse piège quelqu'un : <b>+1</b> par joueur trompé.</li>
     <li>Quand c'est ta réponse, vote quand même pour quelqu'un d'autre pour brouiller les pistes 😏</li>
     <li>Débattez en vocal : accusez, niez, mentez !</li></ul>`
@@ -55,6 +57,7 @@ Base.entete({
 
 const jDe = (G, id) => G.J.find(j => j.id === id);
 const presents = G => G.J.filter(j => !j.parti);
+const PART = {moitie: .5, "2tiers": .67, toutes: 1};
 
 function banque(R){
   let l = [];
@@ -64,38 +67,45 @@ function banque(R){
   const perso = melanger(String(R.perso || "").split("\n").map(s => propre(s, 160)).filter(Boolean));
   return perso.concat(l).slice(0, R.nb);
 }
-function poser(G){
-  G.phase = "ecrire"; G.reps = {}; G.votes = {}; G.res = null;
-  let q = G.Q[G.qi];
-  if(q.includes("{x}")) q = q.replace(/\{x\}/g, hasard(presents(G)).nom);
-  G.q = q;
-}
+// toutes les réponses sont écrites : on en tire une partie, mélangées
 function lancerVotes(G){
   const auteurs = Object.keys(G.reps).filter(id => jDe(G, id));
-  if(auteurs.length < 2){ questionSuivante(G); return; }
-  G.ordre = melanger(auteurs); G.ri = 0; G.phase = "vote"; G.votes = {}; G.res = null;
+  if(auteurs.length < 2){ G.phase = "fin"; return; }
+  let pool = [];
+  auteurs.forEach(a => G.reps[a].forEach((txt, qi) => { if(txt) pool.push({a, qi}); }));
+  pool = melanger(pool);
+  const n = Math.max(Math.min(pool.length, 3), Math.round(pool.length * (PART[G.R.part] || .67)));
+  // chaque joueur sort au moins une fois, puis le reste au hasard
+  const choisis = [];
+  auteurs.forEach(a => { const i = pool.findIndex(x => x.a === a); if(i >= 0) choisis.push(pool.splice(i, 1)[0]); });
+  while(choisis.length < n && pool.length) choisis.push(pool.shift());
+  let ordre = melanger(choisis);
+  // éviter deux fois de suite le même auteur ou la même question
+  for(let i = 1; i < ordre.length; i++){
+    if(ordre[i].a === ordre[i - 1].a || ordre[i].qi === ordre[i - 1].qi){
+      const j = ordre.findIndex((x, k) => k > i && x.a !== ordre[i - 1].a && x.qi !== ordre[i - 1].qi);
+      if(j > 0) [ordre[i], ordre[j]] = [ordre[j], ordre[i]];
+    }
+  }
+  G.ordre = ordre; G.caches = pool.length; G.ri = 0; G.phase = "vote"; G.votes = {}; G.res = null;
 }
 function reveler(G){
-  const a = G.ordre[G.ri], gains = {};
+  const e = G.ordre[G.ri], a = e.a, gains = {};
   let pieges = 0;
   for(const [v, c] of Object.entries(G.votes)){
     if(v === a) continue;
     if(c === a){ gains[v] = 2; const j = jDe(G, v); if(j) j.trouve++; }
     else pieges++;
   }
-  if(pieges){ gains[a] = pieges; jDe(G, a).piege += pieges; }
+  if(pieges && jDe(G, a)){ gains[a] = pieges; jDe(G, a).piege += pieges; }
   for(const id in gains) jDe(G, id).pts += gains[id];
   G.res = {a, gains, votes: Object.assign({}, G.votes)};
-  G.hist.push({q: G.q, txt: G.reps[a], a});
+  G.hist.push({q: G.Q[e.qi], txt: G.reps[a][e.qi], a});
   G.phase = "revele";
-}
-function questionSuivante(G){
-  G.qi++;
-  if(G.qi >= G.Q.length) G.phase = "fin"; else poser(G);
 }
 function suite(G){
   if(G.ri + 1 < G.ordre.length){ G.ri++; G.phase = "vote"; G.votes = {}; G.res = null; }
-  else questionSuivante(G);
+  else G.phase = "fin";
 }
 function verifier(G){
   if(presents(G).length < 2 && G.phase !== "fin"){ G.phase = "fin"; return; }
@@ -106,26 +116,28 @@ function verifier(G){
 Soiree.demarrer({
   jeu: "quiaditca", titre: "Qui a dit ça ?", emoji: "🕵️", min: 3, max: 12,
   hero: {
-    texte: "Tout le monde répond en secret à une question perso, puis on devine qui a écrit chaque réponse. Accusez, niez, bluffez !",
-    etapes: ["1 · Répondez en secret", "2 · Devinez l'auteur", "3 · Bluffez !"]
+    texte: "Tout le monde répond en secret à une série de questions perso. Puis des réponses tirées au hasard s'affichent dans le désordre : devinez qui a écrit chacune. Accusez, niez, bluffez !",
+    etapes: ["1 · Réponds à toutes les questions", "2 · Les réponses sortent au hasard", "3 · Devine l'auteur", "4 · Bluffe !"]
   },
   reglages: [
     {k: "nb", titre: "Nombre de questions", options: [[3, "3"], [5, "5"], [8, "8"], [10, "10"]], def: 5},
+    {k: "part", titre: "Réponses dévoilées", options: [["moitie", "La moitié"], ["2tiers", "Les deux tiers"], ["toutes", "Toutes"]], def: "2tiers"},
     {k: "theme", titre: "Questions", options: [["classique", "😇 Classiques"], ["mix", "🎲 Mélange"], ["piment", "🌶️ Pimentées"]], def: "mix"},
     {k: "perso", titre: "Vos propres questions (une par ligne, facultatif)", type: "texte", def: "", placeholder: "Ex. : Le pire souvenir de colo ?"}
   ],
   nouvelle(joueurs, R){
-    const G = {hote: joueurs[0].id, J: joueurs.map(j => ({...j, pts: 0, trouve: 0, piege: 0})), Q: banque(R), qi: 0, hist: [], ordre: [], ri: 0};
-    poser(G);
+    const G = {hote: joueurs[0].id, R, J: joueurs.map(j => ({...j, pts: 0, trouve: 0, piege: 0})), hist: [], ordre: [], ri: 0, reps: {}, phase: "ecrire", caches: 0};
+    G.Q = banque(R).map(q => q.includes("{x}") ? q.replace(/\{x\}/g, hasard(joueurs).nom) : q);
     return G;
   },
   action(G, id, a){
     const j = jDe(G, id); if(!j || j.parti) return false;
-    if(a.t === "rep" && G.phase === "ecrire" && a.qi === G.qi){
-      const txt = propre(a.txt, 140); if(!txt || G.reps[id] != null) return false;
-      G.reps[id] = txt; verifier(G); return true;
+    if(a.t === "reps" && G.phase === "ecrire" && G.reps[id] == null && Array.isArray(a.txts) && a.txts.length === G.Q.length){
+      const l = a.txts.map(t => propre(t, 140));
+      if(l.some(t => !t)) return false;
+      G.reps[id] = l; verifier(G); return true;
     }
-    if(a.t === "vote" && G.phase === "vote" && a.qi === G.qi && a.ri === G.ri){
+    if(a.t === "vote" && G.phase === "vote" && a.ri === G.ri){
       if(a.c === id || !jDe(G, a.c)) return false;
       G.votes[id] = a.c; verifier(G); return true;
     }
@@ -140,21 +152,21 @@ Soiree.demarrer({
   depart(G, id){ const j = jDe(G, id); if(j) j.parti = true; verifier(G); },
   arrivee(G, j){ if(!jDe(G, j.id)) G.J.push({...j, pts: 0, trouve: 0, piege: 0}); },
   publique(G){
-    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), qi: G.qi, nq: G.Q.length, q: G.q};
-    if(G.phase === "ecrire") V.faits = Object.keys(G.reps);
-    if(G.phase === "vote" || G.phase === "revele"){ V.ri = G.ri; V.nr = G.ordre.length; V.txt = G.reps[G.ordre[G.ri]]; V.faits = Object.keys(G.votes); }
+    const V = {phase: G.phase, hote: G.hote, J: G.J.map(({id, nom, av, pts, parti}) => ({id, nom, av, pts, parti})), nq: G.Q.length};
+    if(G.phase === "ecrire"){ V.Q = G.Q; V.faits = Object.keys(G.reps); }
+    if(G.phase === "vote" || G.phase === "revele"){ const e = G.ordre[G.ri]; V.ri = G.ri; V.nr = G.ordre.length; V.q = G.Q[e.qi]; V.txt = G.reps[e.a][e.qi]; V.faits = Object.keys(G.votes); V.caches = G.caches; }
     if(G.phase === "revele") V.res = G.res;
     if(G.phase === "fin"){
       const tri = k => G.J.slice().sort((a, b) => b[k] - a[k])[0];
       const d = tri("trouve"), b = tri("piege");
       V.prix = {detective: d && d.trouve ? {nom: d.nom, av: d.av, n: d.trouve} : null, bluff: b && b.piege ? {nom: b.nom, av: b.av, n: b.piege} : null};
-      V.hist = G.hist;
+      V.hist = G.hist; V.caches = G.caches;
     }
     return V;
   },
   privee(G, id){
-    if(G.phase === "ecrire") return {rep: G.reps[id] || null};
-    if(G.phase === "vote") return {mien: G.ordre[G.ri] === id, vote: G.votes[id] || null};
+    if(G.phase === "ecrire") return {fait: G.reps[id] != null};
+    if(G.phase === "vote"){ const e = G.ordre[G.ri]; return {mien: e.a === id, vote: G.votes[id] || null}; }
     return null;
   },
   rendre
@@ -168,24 +180,24 @@ function rendre(box, c){
   const hoteBtns = l => c.hote ? `<div class="so-hote">${l}</div>` : "";
   let h = "";
 
-  if(V.phase !== "fin"){
-    h += `<div class="so-haut"><span>Question ${V.qi + 1} / ${V.nq}</span>${V.phase !== "ecrire" ? `<span>Réponse ${V.ri + 1} / ${V.nr}</span>` : ""}</div>`;
-  }
+  if(V.phase === "ecrire") h += `<div class="so-haut"><span>📝 ${V.nq} questions</span><span>${V.faits.length} / ${V.J.filter(j => !j.parti).length} ont fini</span></div>`;
+  else if(V.phase !== "fin") h += `<div class="so-haut"><span>Réponse ${V.ri + 1} / ${V.nr}</span><span>🙈 ${V.caches} resteront secrètes</span></div>`;
 
   if(V.phase === "ecrire"){
-    const fait = P && P.rep, envoi = c.attente("rep");
-    h += `<section class="b-carte"><p class="so-grand">${esc(V.q)}</p>`;
-    if(!joue) h += `<p class="so-attente">👀 Tu regardes cette manche, tu joueras à la prochaine question.</p>`;
-    else if(fait || envoi){
-      h += `<p class="moi-note">✍️ Ta réponse : « ${esc(fait || "…")} »</p><p class="so-attente">${envoi && !fait ? "Envoi…" : "⏳ On attend les autres…"}</p>`;
-    }else{
-      h += `<div class="so-ligne" style="margin-top:12px"><input class="champ" id="rep-${V.qi}" maxlength="140" placeholder="Ta réponse (personne ne saura que c'est toi…)" autocomplete="off"><button class="btn" id="envoyer">Envoyer</button></div>`;
+    const fait = P && P.fait, envoi = c.attente("reps");
+    h += `<section class="b-carte">`;
+    if(!joue) h += `<p class="so-attente">👀 Tu regardes cette partie.</p>`;
+    else if(fait || envoi) h += `<p class="moi-note">✍️ Tes ${V.nq} réponses sont envoyées${envoi && !fait ? "…" : " !"}</p><p class="so-attente">⏳ On attend les autres… Ensuite, les réponses sortiront au hasard et dans le désordre.</p>`;
+    else{
+      h += `<p style="font-weight:800;text-align:center;margin:0 0 6px">Réponds à toutes les questions en secret (personne ne saura que c'est toi…)</p>`;
+      h += V.Q.map((q, i) => `<div class="qbloc"><p class="question" style="text-align:left;margin:10px 0 4px">${i + 1}. ${esc(q)}</p><input class="champ" id="r-${i}" maxlength="140" placeholder="Ta réponse" autocomplete="off"></div>`).join("");
+      h += `<div class="so-actions"><button class="btn so-gros" id="envoyer">Envoyer mes réponses ✔</button></div>`;
     }
     h += pastilles(V.J, V.faits) + hoteBtns(`<button class="btn ghost petit" id="passer">⏩ Ne plus attendre</button>`) + `</section>`;
   }
 
   else if(V.phase === "vote"){
-    const cle = V.qi + "-" + V.ri;
+    const cle = "v" + V.ri;
     if(!choixLocal || choixLocal.cle !== cle) choixLocal = {cle, c: null};
     const choisi = choixLocal.c || (P && P.vote);
     h += `<section class="b-carte"><p class="question">${esc(V.q)}</p><div class="reponse">${esc(V.txt)}</div>`;
@@ -206,7 +218,7 @@ function rendre(box, c){
       <div class="coupable"><span class="av">${esc(auteur.av)}</span>C'était ${esc(auteur.nom)} !</div>
       <div class="votes">${lignes.length ? lignes.map(ci => `<div class="l ${ci === r.a ? "bon" : ""}"><span class="n">${ci === r.a ? "✅" : "❌"} ${esc(nom(ci))}</span><span class="qui" title="${esc(recus[ci].map(nom).join(", "))}">${recus[ci].map(v => esc((V.J.find(j => j.id === v) || {}).av || "?")).join("")}</span></div>`).join("") : `<p class="so-attente">Personne n'a voté…</p>`}</div>
       <div class="gains">${Object.entries(r.gains).map(([id, g]) => `<span>${esc(nom(id))} +${g}</span>`).join("") || `<span style="background:var(--soft)">Aucun point cette fois</span>`}</div>
-      ${c.hote ? `<div class="so-actions"><button class="btn so-gros" id="suite">${V.ri + 1 < V.nr ? "Réponse suivante ▶" : V.qi + 1 < V.nq ? "Question suivante ▶" : "Résultats 🏆"}</button></div>` : `<p class="so-attente">⏳ L'hôte passe à la suite…</p>`}
+      ${c.hote ? `<div class="so-actions"><button class="btn so-gros" id="suite">${V.ri + 1 < V.nr ? "Réponse suivante ▶" : "Résultats 🏆"}</button></div>` : `<p class="so-attente">⏳ L'hôte passe à la suite…</p>`}
     </section>`;
   }
 
@@ -216,22 +228,29 @@ function rendre(box, c){
         <div>🕵️ Détective<b>${V.prix.detective ? esc(V.prix.detective.av) : "—"}</b>${V.prix.detective ? esc(V.prix.detective.nom) + " · " + V.prix.detective.n + " trouvé" + (V.prix.detective.n > 1 ? "s" : "") : "personne"}</div>
         <div>🎭 Roi du bluff<b>${V.prix.bluff ? esc(V.prix.bluff.av) : "—"}</b>${V.prix.bluff ? esc(V.prix.bluff.nom) + " · " + V.prix.bluff.n + " piégé" + (V.prix.bluff.n > 1 ? "s" : "") : "personne"}</div>
       </div>
-      <div class="bestof"><b>📜 Toutes les réponses</b>${groupes(V.hist).map(([q, l]) => `<details><summary>${esc(q)}</summary>${l.map(x => `<p>« ${esc(x.txt)} » — <b>${esc(nom(x.a))}</b></p>`).join("")}</details>`).join("")}</div>
+      ${V.caches ? `<p class="so-note">🙈 ${V.caches} réponse${V.caches > 1 ? "s" : ""} ${V.caches > 1 ? "resteront" : "restera"} à jamais secrète${V.caches > 1 ? "s" : ""}…</p>` : ""}
+      <div class="bestof"><b>📜 Les réponses dévoilées</b>${groupes(V.hist).map(([q, l]) => `<details><summary>${esc(q)}</summary>${l.map(x => `<p>« ${esc(x.txt)} » — <b>${esc(nom(x.a))}</b></p>`).join("")}</details>`).join("")}</div>
       ${c.finHtml()}</section>`;
     if(rendre.finVue !== V.gid){ rendre.finVue = V.gid; Soiree.confettis(); }
   }
 
   box.innerHTML = h;
 
-  const champ = box.querySelector(`#rep-${V.qi}`), env = box.querySelector("#envoyer");
+  const env = box.querySelector("#envoyer");
   if(env){
-    const go = () => { const t = propre(champ.value, 140); if(!t){ champ.focus(); return; } c.envoyer({t: "rep", qi: V.qi, txt: t}); };
-    env.onclick = go; champ.onkeydown = e => { if(e.key === "Enter") go(); };
+    const champs = [...box.querySelectorAll('[id^="r-"]')];
+    const go = () => {
+      const l = champs.map(e => propre(e.value, 140)), vide = champs.find((e, i) => !l[i]);
+      if(vide){ vide.focus(); vide.classList.add("manque"); Base.toast("Réponds à toutes les questions 🙂"); return; }
+      c.envoyer({t: "reps", txts: l});
+    };
+    env.onclick = go;
+    champs.forEach((e, i) => e.onkeydown = ev => { if(ev.key === "Enter"){ ev.preventDefault(); if(champs[i + 1]) champs[i + 1].focus(); else go(); } });
   }
   box.querySelectorAll("[data-c]").forEach(b => b.onclick = () => {
     choixLocal.c = b.dataset.c;
     box.querySelectorAll("[data-c]").forEach(x => x.classList.toggle("on", x === b));
-    c.envoyer({t: "vote", qi: V.qi, ri: V.ri, c: b.dataset.c});
+    c.envoyer({t: "vote", ri: V.ri, c: b.dataset.c});
   });
   const p = box.querySelector("#passer"); if(p) p.onclick = () => c.envoyer({t: "passer"});
   const s = box.querySelector("#suite"); if(s) s.onclick = () => c.envoyer({t: "suite"});

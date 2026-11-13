@@ -278,7 +278,7 @@ window.SALLE_CATALOGUE = [
     slug: "quiaditca",
     title: "Qui a dit ça ?",
     emoji: "🕵️",
-    desc: "Une question perso tombe (« ton pire achat ? »), tout le monde répond en secret… puis devinez qui a écrit chaque réponse ! Bluffez pour piéger les autres. En ligne, de 3 à 12 joueurs : parfait sur Discord.",
+    desc: "Tout le monde répond en secret à une série de questions perso (« ton pire achat ? »)… puis des réponses tirées au hasard sortent dans le désordre : devinez qui a écrit chacune ! Certaines resteront secrètes. En ligne, de 3 à 12 joueurs : parfait sur Discord.",
     tags: ["Party", "Multijoueur"],
     colors: ["#d9468f", "#f2c14e"],
     etat: "dispo",
