@@ -1711,7 +1711,7 @@ function findDuel(st){
 }
 const duelSis=(st,d)=>st.cinq?SISTERS[d.k].name:(st.mystery&&!st.revealed?"Elle":SISTERS[current].name);
 function duelLabel(st,d){
-  return"⚔️ Duel pour "+duelSis(st,d)+" : "+d.pl.map(i=>st.players[i].name).join(" contre ")+" — "+(d.kind==="final"?"son cœur est en jeu !":"l'étape « "+MS[d.lv].ico+" "+MS[d.lv].name+" » est en jeu. Elle va poser une question décisive : la meilleure réponse l'emporte.");
+  return"⚔️ Duel pour "+duelSis(st,d)+" : "+(n=>n.length>2?n.slice(0,-1).join(", ")+" et "+n[n.length-1]:n.join(" contre "))(d.pl.map(i=>st.players[i].name))+" — "+(d.kind==="final"?"son cœur est en jeu !":"l'étape « "+MS[d.lv].ico+" "+MS[d.lv].name+" » est en jeu. Elle va poser une question décisive : la meilleure réponse l'emporte.");
 }
 function duelNext(st){if(!st.duel||!st.duel.open)return-1;const i=st.duel.pl.find(i=>!(i in st.duel.ans)&&!st.players[i].out);return i==null?-1:i;}
 function duelTxt(st,players){
@@ -1748,7 +1748,7 @@ async function sceneDuel(st,id,d,hraw,speaker){
 function resolveDuel(st,name){
   const d=st.duel;if(!d)return;st.duel=null;
   let w=matchPlayer(st,name),rnd=false;if(w<0||!d.pl.includes(w)){w=d.pl[Math.floor(Math.random()*d.pl.length)];rnd=true;}
-  const S=duelSis(st,d),W=st.players[w],los=d.pl.filter(i=>i!==w).map(i=>st.players[i].name).join(" et "),vis=st.split?d.pl:null;
+  const S=duelSis(st,d),W=st.players[w],lo=d.pl.filter(i=>i!==w).map(i=>st.players[i].name),los=lo.length>1?lo.slice(0,-1).join(", ")+" et "+lo[lo.length-1]:lo[0],pl2=lo.length>1,vis=st.split?d.pl:null;
   if(d.kind==="final"){
     d.pl.forEach(i=>{if(i===w)return;const p=st.players[i];if(st.cinq){p.h[d.k]=Math.min(p.h[d.k],95);p.aff=Math.max(...Object.values(p.h));}else p.aff=Math.min(p.aff,95);});
     sysLineV(st,`⚔️ ${S} a tranché${rnd?" (sans hésiter longtemps)":""} : c'est ${W.name} qu'elle choisit !`,vis);
@@ -1757,8 +1757,8 @@ function resolveDuel(st,name){
     d.pl.forEach(i=>{const p=st.players[i];
       if(st.cinq){const r=p.m[d.k];if(i===w){r.ms++;p.h[d.k]=Math.min(CAPS[r.ms],p.h[d.k]+4);}else{r.tries[d.lv]=(r.tries[d.lv]||0)+1;p.h[d.k]=Math.max(1,p.h[d.k]-8);}p.aff=Math.max(...Object.values(p.h));}
       else{if(i===w){p.ms++;p.aff=Math.min(CAPS[p.ms],p.aff+4);}else{p.tries[d.lv]=(p.tries[d.lv]||0)+1;p.aff=Math.max(1,p.aff-8);}}});
-    sysLineV(st,`⚔️ ${S} a départagé : ${W.name} franchit l'étape « ${m.ico} ${m.name} » ! ${los} devra retenter plus tard (−8).`,vis);
-    st.inject.push(`TRANSITION : après le duel, ${W.name} a franchi l'étape « ${m.name} »${st.cinq?" avec "+S:""} ; ${los} est un peu déçu. Reprends naturellement.`);
+    sysLineV(st,`⚔️ ${S} a départagé : ${W.name} franchit l'étape « ${m.ico} ${m.name} » ! ${los} devr${pl2?"ont":"a"} retenter plus tard (−8).`,vis);
+    st.inject.push(`TRANSITION : après le duel, ${W.name} a franchi l'étape « ${m.name} »${st.cinq?" avec "+S:""} ; ${los} ${pl2?"sont un peu déçus":"est un peu déçu"}. Reprends naturellement.`);
   }
   burst("⚔️",6);
 }
