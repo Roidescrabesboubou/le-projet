@@ -126,7 +126,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.4 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.5 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -1508,7 +1508,7 @@ function score(st,pl,d,tooFast,other){
   const prev=pl.aff;if(!other)pl.turns++;pl.aff=Math.max(0,Math.min(100,pl.aff+d));
   if(pl.turns<6)pl.aff=Math.min(pl.aff,99);
   const cap=CAPS[pl.ms==null?4:pl.ms];
-  if(pl.aff>cap){pl.aff=Math.max(prev,cap);if(raw0>0)note+=" 🔒 un jalon à valider";}
+  if(pl.aff>cap){pl.aff=Math.max(prev,cap);if(raw0>0&&pl.trial!==2)note+=" 🔒 un jalon à valider";}
   return {d:pl.aff-prev,note};
 }
 function matchPlayer(st,name){
@@ -1533,7 +1533,7 @@ function applyEffects(st,o,s){
   const multi=st.players.length>1,tags=[];let spk=0,best=0,sum=0;
   [...eff.keys()].sort((a,b)=>a===s?-1:b===s?1:a-b).forEach(i=>{
     const p=st.players[i],c=eff.get(i),x=score(st,p,c.delta,i===s?c.tooFast:false,i!==s);
-    if(i===s)spk=x.d;
+    if(i===s)spk=c.delta;   // verdict d'étape : note donnée par l'IA, avant le plafond du palier
     sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
     noteConduct(st,i,x.d,c.why);
     if(x.d!==0||x.note||(multi&&c.why))tags.push((multi?p.name+" : ":"")+(x.d>0?"+":x.d===0?"±":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
@@ -1551,8 +1551,8 @@ function applyEffects5(st,o,s,pass){
     c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;c.ms=c.ms||e.ms;acc.set(key,c);
   });
   [...acc.values()].sort((a,b)=>(a.i===s?0:1)-(b.i===s?0:1)||a.i-b.i).forEach(c=>{
-    const p=st.players[c.i],me=c.i===s&&!pass,r={aff:p.h[c.k],turns:p.turns,ms:p.m?p.m[c.k].ms:4},x=score(st,r,c.delta,me&&c.tooFast,!me);
-    p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,d:x.d};sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
+    const p=st.players[c.i],me=c.i===s&&!pass,r={aff:p.h[c.k],turns:p.turns,ms:p.m?p.m[c.k].ms:4,trial:p.m?p.m[c.k].trial:0},x=score(st,r,c.delta,me&&c.tooFast,!me);
+    p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,d:c.delta};sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
     noteConduct(st,c.i,x.d,c.why);
     if(x.d!==0||x.note||c.why)tags.push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":x.d===0?"±":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
   });
@@ -1619,8 +1619,8 @@ async function runRound5(st,intro){
       (o.fx||[]).forEach(e=>{if(!e.sister)return;const i=matchPlayer(st,e.player);if(i<0||st.players[i].out)return;
         const key=i+"|"+e.sister,c=acc.get(key)||{i,k:e.sister,delta:0,tooFast:false,why:"",ms:""};
         c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;c.ms=c.ms||e.ms;acc.set(key,c);});
-      acc.forEach(c=>{if(dj&&dj.pl.includes(c.i))return;const p=st.players[c.i],r={aff:p.h[c.k],turns:p.turns,ms:p.m[c.k].ms},x=score(st,r,c.delta,c.tooFast,false);
-        p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,spk:x.d};if(Math.abs(x.d)>Math.abs(best))best=x.d;
+      acc.forEach(c=>{if(dj&&dj.pl.includes(c.i))return;const p=st.players[c.i],r={aff:p.h[c.k],turns:p.turns,ms:p.m[c.k].ms,trial:p.m[c.k].trial},x=score(st,r,c.delta,c.tooFast,false);
+        p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,spk:c.delta};if(Math.abs(x.d)>Math.abs(best))best=x.d;
         noteConduct(st,c.i,x.d,c.why);
         if(x.d!==0||x.note||c.why)(tagsBy[c.i]=tagsBy[c.i]||[]).push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":x.d===0?"±":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));});
       st.players.forEach(p=>{if(!p.out)p.turns++;p.aff=Math.max(...Object.values(p.h));});
@@ -1748,7 +1748,7 @@ async function runRound(st){
     const tags=[],verd=[];let sum=0,best=0;
     const alive=st.players.map((p,i)=>[p,i]).filter(([p])=>!p.out), eff=collectEffects(st,o);
     if(!eff.size&&o.res)alive.forEach(([p,i],k)=>{const r=o.res[k];if(r)eff.set(i,{delta:r.delta,tooFast:r.tooFast,ms:r.ms,why:""});});
-    alive.forEach(([p,i])=>{if(dj&&dj.pl.includes(i))return;const c=eff.get(i)||{delta:0,tooFast:false,ms:"",why:""},x=score(st,p,c.delta,c.tooFast);verd.push([p,c.ms,x.d]);
+    alive.forEach(([p,i])=>{if(dj&&dj.pl.includes(i))return;const c=eff.get(i)||{delta:0,tooFast:false,ms:"",why:""},x=score(st,p,c.delta,c.tooFast);verd.push([p,c.ms,c.delta]);
       noteConduct(st,i,x.d,c.why);
       tags.push(`${p.name} : ${x.d>0?"+":x.d===0?"±":""}${x.d} ❤${x.note}${c.why?" ("+c.why+")":""}`);sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;if(p.aff<=0)p.out=true;});
     if(o.stalled)st.unblock=true;
