@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.1 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.2 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -460,7 +460,7 @@ function sendState(st,b,slot,to){
   const P=slot!=null;
   let lines=P&&!isGhost(st,slot)?st.lines.filter(l=>!l.vis||l.vis.includes(slot)):st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,cinq:st.cinq,wins:st.wins,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,cinq:st.cinq,wins:st.wins,duel:st.duel?{kind:st.duel.kind,k:st.duel.k,lv:st.duel.lv,pl:st.duel.pl,open:st.duel.open,ans:Object.fromEntries(Object.keys(st.duel.ans).map(k=>[k,1]))}:null,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<16000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -899,7 +899,7 @@ ${jal}
 ${evTxt}
 ${fil}
 ${prog}
-${duel}${qui}
+${duel}${duelTxt(st,players)}${qui}
 RÈGLES DE FORME :
 - Réponds toujours en français.
 - NARRATEUR ET DIALOGUE SÉPARÉS (très important) : "narration" = la voix du narrateur, à la troisième personne et au présent, style visual novel, 0 à 3 phrases courtes : décor, gestes et expressions de ${nm}, actions des garçons, événements, passage du temps, ambiance. "reply" = UNIQUEMENT ce que ${nm} dit à voix haute, 1 à 4 phrases, à la première personne, strictement dans son caractère, SANS astérisques ni description de gestes. Si rien à décrire, narration = "". Le narrateur ne parle jamais à la place de ${nm} et ${nm} ne décrit jamais ses propres gestes. N'invente pas de paroles pour les garçons.
@@ -909,7 +909,7 @@ RÈGLES DE FORME :
 - Ne sors jamais du personnage, ne mentionne ni IA ni règles. Contenu tout public uniquement.
 
 FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour, sans balises markdown :
-{"narration":"voix du narrateur ou \"\"","reply":"ce que dit ${nm}","affection_delta":<entier de -15 à 12>,"too_fast":<true|false>,"why":"raison de la note en 3 à 8 mots","mood":"un mot-émotion court (ex: gênée, méfiante, vexée, touchée)","milestone":null,"choices":[],"stalled":false,"cut":false${players.length>1?',"to":"Prénom ou tous","effects":[]':''}}
+{"narration":"voix du narrateur ou \"\"","reply":"ce que dit ${nm}","affection_delta":<entier de -15 à 12>,"too_fast":<true|false>,"why":"raison de la note en 3 à 8 mots","mood":"un mot-émotion court (ex: gênée, méfiante, vexée, touchée)","milestone":null,"choices":[],"stalled":false,"cut":false${players.length>1?',"to":"Prénom ou tous","effects":[]':''}${st&&st.duel?',"duel_winner":""':''}}
 (choices : tableau de 2 à 4 options courtes quand tu proposes un choix, sinon []. milestone : "pass" ou "fail" UNIQUEMENT pendant une ÉPREUVE DÉCISIVE, sinon null. stalled : true seulement en cas d'impasse de la discussion. cut : voir COUPER LA PAROLE, presque toujours false.${players.length>1?' to : le garçon à qui tu parles. effects : voir ÉVALUATION CROISÉE.':''})`;
 }
 
@@ -1100,15 +1100,15 @@ RÉALISME : ce sont des lycéennes japonaises : elles ne connaissent que ce qu'u
 ${mem}${evTxt}
 FIL DE DISCUSSION : développe un sujet sur plusieurs échanges tant qu'il est vivant ; le lore inventé par les garçons devient vrai s'il est plausible et cohérent. Si la discussion tourne en rond, "stalled":true.
 
-${momentTxt(st)}${st.split?splitTxt(st,players):""}${presTxt(st)}${extraTxt(st,players)}RÈGLES DE FORME :
+${momentTxt(st)}${st.split?splitTxt(st,players):""}${presTxt(st)}${extraTxt(st,players)}${duelTxt(st,players)}RÈGLES DE FORME :
 - Réponds en français. "narration" = voix du narrateur, 3e personne, présent, 0 à 3 phrases (décor, gestes, réactions muettes des sœurs, événements). Dans "lines", "text" = UNIQUEMENT les paroles de la sœur, 1 à 3 phrases, sans astérisques ni description de gestes. N'invente pas de paroles pour les garçons.
 - Ce n'est pas un interrogatoire : réactions, anecdotes, taquineries entre sœurs. ${st.split?"Dans chaque scène, au plus UNE question par garçon, et chaque garçon de la scène doit pouvoir répondre quelque chose.":"AU PLUS UNE question au garçon dans tout le message (posée de préférence par la dernière sœur qui parle)."}
 - Les questions simples (goûts, A ou B) se posent avec 2 à 4 options courtes dans choices (« Je … »), aucune évidemment « la bonne » ; sinon choices = [].
 - Ne sors jamais du personnage, ne mentionne ni IA ni règles ni scores. Contenu tout public.
 
 FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour :
-${st.split&&!st.over?`{"scenes":[{"players":["Prénom"],"place":"lieu court","sisters":["nino"],"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"choices":[]}],"away":{"miku":{"place":"sa chambre","far":false}},"effects":[],"missions_done":[],"stalled":false}
-(scenes : la situation APRÈS ce tour, une entrée par endroit : où est chaque garçon, avec quelles sœurs, et ce qui s'y passe. TOUS les garçons encore en jeu y figurent, chacun dans une seule scène. lines : 0 à 3 sœurs par scène. choices : options pour les garçons de cette scène, ou [].)`:`{"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"here":["ichika","nino","miku","yotsuba","itsuki"],"away":{},"effects":[],"choices":[],"stalled":false,"timed":false}
+${st.split&&!st.over?`{"scenes":[{"players":["Prénom"],"place":"lieu court","sisters":["nino"],"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"choices":[]}],"away":{"miku":{"place":"sa chambre","far":false}},"effects":[],"missions_done":[]${st.duel?',"duel_winner":""':''},"stalled":false}
+(scenes : la situation APRÈS ce tour, une entrée par endroit : où est chaque garçon, avec quelles sœurs, et ce qui s'y passe. TOUS les garçons encore en jeu y figurent, chacun dans une seule scène. lines : 0 à 3 sœurs par scène. choices : options pour les garçons de cette scène, ou [].)`:`{"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"here":["ichika","nino","miku","yotsuba","itsuki"],"away":{},"effects":[],"choices":[]${st.duel?',"duel_winner":""':''},"stalled":false,"timed":false}
 (lines : 1 à 3 sœurs PRÉSENTES, dans l'ordre où elles parlent ; "sister" parmi ichika, nino, miku, yotsuba, itsuki. here : les sœurs présentes dans la scène après ce message ; away : les absentes, avec lieu et far.)`}`;
 }
 
@@ -1168,7 +1168,7 @@ function parseAI(text){
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
       cut:o.cut===true,to:String(o.to||"").trim().slice(0,40),
       guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),gto:String(o.guest_to||"").trim().slice(0,40),
-      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,missionsDone:Array.isArray(o.missions_done)?o.missions_done.map(String):[],here:Array.isArray(o.here)?o.here.map(sisKey).filter(Boolean):null,away:o.away&&typeof o.away==="object"&&!Array.isArray(o.away)?Object.fromEntries(Object.entries(o.away).map(([k,v])=>[sisKey(k),v]).filter(([k])=>k)):null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
+      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,duelWinner:String(o.duel_winner||"").trim().slice(0,40),missionsDone:Array.isArray(o.missions_done)?o.missions_done.map(String):[],here:Array.isArray(o.here)?o.here.map(sisKey).filter(Boolean):null,away:o.away&&typeof o.away==="object"&&!Array.isArray(o.away)?Object.fromEntries(Object.entries(o.away).map(([k,v])=>[sisKey(k),v]).filter(([k])=>k)):null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
     return {reply:"…",narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
@@ -1504,6 +1504,7 @@ async function runRound5(st,intro){
     st.ghostMsg=st.players.map(()=>"");st.ghostCd=(st.ghostCd||[]).map(c=>Math.max(0,c-1));
     rollEvent(st);
   }
+  const dj=!intro&&st.duel&&st.duel.open?st.duel:null;if(dj)dj.pl.forEach(i=>{dj.ans[i]=st.pending[i];});
   st.history.push({role:"user",content:msg});
   broadcast(true);
   const wait=addMsg("sys","…");
@@ -1519,7 +1520,7 @@ async function runRound5(st,intro){
       (o.fx||[]).forEach(e=>{if(!e.sister)return;const i=matchPlayer(st,e.player);if(i<0||st.players[i].out)return;
         const key=i+"|"+e.sister,c=acc.get(key)||{i,k:e.sister,delta:0,tooFast:false,why:"",ms:""};
         c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;c.ms=c.ms||e.ms;acc.set(key,c);});
-      acc.forEach(c=>{const p=st.players[c.i],r={aff:p.h[c.k],turns:p.turns,ms:p.m[c.k].ms},x=score(st,r,c.delta,c.tooFast,false);
+      acc.forEach(c=>{if(dj&&dj.pl.includes(c.i))return;const p=st.players[c.i],r={aff:p.h[c.k],turns:p.turns,ms:p.m[c.k].ms},x=score(st,r,c.delta,c.tooFast,false);
         p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,spk:x.d};if(Math.abs(x.d)>Math.abs(best))best=x.d;
         if(x.d!==0||x.note)(tagsBy[c.i]=tagsBy[c.i]||[]).push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));});
       st.players.forEach(p=>{if(!p.out)p.turns++;p.aff=Math.max(...Object.values(p.h));});
@@ -1530,6 +1531,7 @@ async function runRound5(st,intro){
     if(st.event){const ln=sc.map(c=>c.narr.length),mx=Math.max(...ln);if(mx>25)evIdx=ln.indexOf(mx);}
     const evKeep=evIdx<0?st.event:null;consumeTurn(st);if(evKeep)st.event=evKeep;
     // jalon lancé ce tour-ci
+    const dLaunch=st.duelLaunch;st.duelLaunch=null;if(dLaunch)st.duel={...dLaunch,ans:{},open:true};
     const launched=st.launch;st.launch=null;
     if(launched&&st.players[launched.i].m[launched.k].ms<4){const p=st.players[launched.i],r=p.m[launched.k];p.trial=2;r.trial=2;st.trial5=launched;}
     // affichage, scène par scène (chacun ne voit que la sienne)
@@ -1537,6 +1539,7 @@ async function runRound5(st,intro){
     sc.forEach((c,n)=>{
       const vis=c.players,sig=c.place+"|"+c.sisters.join(",")+"|"+vis.join(",");
       if(vis.some(i=>prevSig[i]!==sig))sysLineV(st,"📍 "+(c.place||"Même endroit")+" · "+(c.sisters.length?"avec "+c.sisters.map(k=>SISTERS[k].name).join(", "):"sans les sœurs")+(vis.length>1?" · "+vis.map(i=>st.players[i].name).join(", "):""),vis);
+      if(dLaunch&&st.duel&&vis.some(i=>st.duel.pl.includes(i)))sysLineV(st,duelLabel(st,st.duel),vis.filter(i=>st.duel.pl.includes(i)));
       if(launched&&st.trial5===launched&&vis.includes(launched.i)){const M=MS[st.players[launched.i].m[launched.k].ms];sysLineV(st,`📍 Moment décisif pour ${st.players[launched.i].name} avec ${SISTERS[launched.k].name} : « ${M.ico} ${M.name} »`,[launched.i]);}
       if(c.narr){const N={cls:n===evIdx?"evt":"nar",text:(n===evIdx?"🎲 "+(evForced?"La discussion s'essoufflait… ":""):"")+c.narr,vis};st.lines.push(N);renderLine(N);}
       const tags=vis.flatMap(i=>tagsBy[i]||[]);
@@ -1552,14 +1555,16 @@ async function runRound5(st,intro){
     st.choices=st.choicesBy[0]||[];st.spk=st.spkBy[0]||st.spk;st.mood=st.moodBy[0]||st.mood;st.timed=0;st.qid=(st.qid||0)+1;
     fx(best);
     if(T&&!intro)resolveTrial5(st,st.players[T.i],vd||{ms:"",spk:0});
+    if(dj)resolveDuel(st,o.duelWinner);
     (o.missionsDone||[]).forEach(n=>{const i=matchPlayer(st,n),p=st.players[i];
       if(p&&p.mission&&!p.mission.done){p.mission.done=true;sysLineV(st,"🎯 Mission secrète réussie : « "+p.mission.t+" » ! (+15 points au classement final)",[i]);burst("🎯",6);}});
     st.players.forEach((q,i)=>{if(!q.out&&q.aff<=0){q.out=true;sysLineV(st,`💔 ${q.name} a perdu l'intérêt des cinq sœurs et quitte la course. 👻 Nouveau rôle : ami de la famille, avec vue sur toutes les scènes et une rumeur à glisser tous les 3 tours.`,null);}});
     if(!intro)advanceTime(st);
+    if(!st.duel&&!st.duelLaunch){const d=findDuel(st);if(d)st.duelLaunch=d;}
     if(!st.trial5&&!st.launch){const d=dueTrial5(st);if(d)st.launch=d;}
     st.pending=st.players.map(()=>null);st.answered=st.players.map(p=>!!p.out);
     const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
-    if(win){updateBar();await finish(st,id,"win",win);}
+    if(win&&!st.duel&&!st.duelLaunch){updateBar();await finish(st,id,"win",win);}
     else if(st.players.every(p=>p.out)){updateBar();await finish(st,id,"lose",st.players[0]);}
   }catch(e){
     wait.textContent="Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();
@@ -1569,7 +1574,7 @@ async function runRound5(st,intro){
   if(net.role==="host")broadcast(false);
 }
 function dueTrial5(st){
-  if(st.players.some(p=>p.trial)||st.trial5)return null;
+  if(st.players.some(p=>p.trial)||st.trial5||st.duel||st.duelLaunch)return null;
   for(let i=0;i<st.players.length;i++){const p=st.players[i];if(p.out||!p.m)continue;
     for(const k of Object.keys(SISTERS)){const r=p.m[k];if(r.ms<4&&!r.trial&&p.h[k]>0&&p.h[k]>=CAPS[r.ms])return{i,k};}}
   return null;
@@ -1627,6 +1632,7 @@ async function runRound(st){
   if(st.split)return runRound5(st);
   busy=true;$("btnSend").disabled=true;const id=current;
   st.players.forEach((p,i)=>{if(!p.out){const c=pcls(i),t=p.name+" : "+st.pending[i];addMsg(c,t);st.lines.push({cls:c,text:t});}});
+  const dj=st.duel&&st.duel.open?st.duel:null;if(dj)dj.pl.forEach(i=>{dj.ans[i]=st.pending[i];});
   st.history.push({role:"user",content:"[Réponses simultanées] "+st.players.map((p,i)=>p.out?"":p.name+" : "+st.pending[i]).filter(Boolean).join(" | ")});
   {const ts=st.players.map((p,i)=>p.out?null:st.pending[i]).filter(t=>t!=null),isCh=t=>(st.choices||[]).includes(t);
    st.flat=(ts.length&&ts.every(t=>t.length<15&&!isCh(t)))?(st.flat||0)+1:0;
@@ -1642,7 +1648,7 @@ async function runRound(st){
     const tags=[],verd=[];let sum=0,best=0;
     const alive=st.players.map((p,i)=>[p,i]).filter(([p])=>!p.out), eff=collectEffects(st,o);
     if(!eff.size&&o.res)alive.forEach(([p,i],k)=>{const r=o.res[k];if(r)eff.set(i,{delta:r.delta,tooFast:r.tooFast,ms:r.ms,why:""});});
-    alive.forEach(([p,i])=>{const c=eff.get(i)||{delta:0,tooFast:false,ms:"",why:""},x=score(st,p,c.delta,c.tooFast);verd.push([p,c.ms,x.d]);
+    alive.forEach(([p,i])=>{if(dj&&dj.pl.includes(i))return;const c=eff.get(i)||{delta:0,tooFast:false,ms:"",why:""},x=score(st,p,c.delta,c.tooFast);verd.push([p,c.ms,x.d]);
       tags.push(`${p.name} : ${x.d>0?"+":""}${x.d} ❤${x.note}${c.why?" ("+c.why+")":""}`);sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;if(p.aff<=0)p.out=true;});
     if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
@@ -1651,13 +1657,16 @@ async function runRound(st){
     consumeTurn(st);if(evKeep)st.event=evKeep;
     const judged=new Set(st.players.filter(p=>p.trial===2));
     let shown=o;
-    const due=(judged.size||st.players.some(p=>p.aff>=100))?null:dueTrial(st);
-    if(due){const o2=await sceneJalon(st,id,due,hraw,"les garçons");if(o2)shown=o2;}
+    const duelNew=(!dj&&!judged.size)?findDuel(st):null;
+    const due=(duelNew||dj||judged.size||st.players.some(p=>p.aff>=100))?null:dueTrial(st);
+    if(duelNew){const o2=await sceneDuel(st,id,duelNew,hraw,"les garçons");if(o2)shown=o2;}
+    else if(due){const o2=await sceneJalon(st,id,due,hraw,"les garçons");if(o2)shown=o2;}
     pushAI(st,shown,{tag:tags.join("\n"),up:sum>=0,dv:best});fx(best);
+    if(dj)resolveDuel(st,o.duelWinner);
     verd.forEach(([p,v,dd])=>{if(judged.has(p))resolveTrial(st,p,v,dd);});
     st.pending=st.players.map(()=>null);st.answered=st.players.map(()=>false);
     const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
-    if(win){updateBar();await finish(st,id,"win",win);}
+    if(win&&!st.duel){updateBar();await finish(st,id,"win",win);}
     else if(st.players.every(p=>p.out)){updateBar();await finish(st,id,"lose",st.players[0]);}
   }catch(e){
     wait.textContent="Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();
@@ -1684,7 +1693,77 @@ function resolveTrial(st,pl,verdict,d){
   }
 }
 /* Jalon : un seul joueur par tour, détecté juste après la notation */
+/* ===== Duel : deux garçons (ou plus) arrivent en même temps au même palier, ou à 100 %, avec la même sœur ===== */
+function findDuel(st){
+  if(!st||st.duel||st.duelLaunch||st.players.length<2)return null;
+  const al=st.players.map((p,i)=>[p,i]).filter(([p])=>!p.out);
+  if(st.cinq){
+    for(const k of Object.keys(SISTERS)){const f=al.filter(([p])=>p.h&&p.h[k]>=100);if(f.length>=2)return{kind:"final",k,pl:f.map(([,i])=>i)};}
+    for(const k of Object.keys(SISTERS))for(let lv=0;lv<4;lv++){
+      const f=al.filter(([p])=>p.m&&p.m[k].ms===lv&&!p.m[k].trial&&!p.trial&&p.h[k]>0&&p.h[k]>=CAPS[lv]);
+      if(f.length>=2)return{kind:"palier",k,lv,pl:f.map(([,i])=>i)};
+    }
+  }else{
+    const f=al.filter(([p])=>p.aff>=100);if(f.length>=2)return{kind:"final",k:current,pl:f.map(([,i])=>i)};
+    for(let lv=0;lv<4;lv++){const g=al.filter(([p])=>p.ms===lv&&!p.trial&&p.aff>0&&p.aff>=CAPS[lv]);if(g.length>=2)return{kind:"palier",k:current,lv,pl:g.map(([,i])=>i)};}
+  }
+  return null;
+}
+const duelSis=(st,d)=>st.cinq?SISTERS[d.k].name:(st.mystery&&!st.revealed?"Elle":SISTERS[current].name);
+function duelLabel(st,d){
+  return"⚔️ Duel pour "+duelSis(st,d)+" : "+d.pl.map(i=>st.players[i].name).join(" contre ")+" — "+(d.kind==="final"?"son cœur est en jeu !":"l'étape « "+MS[d.lv].ico+" "+MS[d.lv].name+" » est en jeu. Elle va poser une question décisive : la meilleure réponse l'emporte.");
+}
+function duelNext(st){if(!st.duel||!st.duel.open)return-1;const i=st.duel.pl.find(i=>!(i in st.duel.ans)&&!st.players[i].out);return i==null?-1:i;}
+function duelTxt(st,players){
+  const d=st.duel||st.duelLaunch;if(!d)return"";
+  const S=st.cinq?SISTERS[d.k].name:"toi",nm=d.pl.map(i=>players[i]&&players[i].name),enjeu=d.kind==="final"?"le cœur de "+S+" pour toujours":"l'étape « "+MS[d.lv].name+" » avec "+S;
+  if(!st.duel)return`DUEL À LANCER MAINTENANT (impératif) : ${nm.join(" et ")} sont arrivés EN MÊME TEMPS au même stade avec ${S} (enjeu : ${enjeu}). Dans ta réponse, réunis-les avec ${S} dans UNE même scène (transition naturelle), et ${st.cinq?S+" leur pose":"pose-leur"} UNE question décisive, la même pour tous, adressée à tous, pour les départager. Ne tranche pas encore. Personne ne se déclare.
+`;
+  const left=d.pl.filter(i=>!(i in d.ans)&&players[i]&&!players[i].out);
+  if(left.length)return`DUEL EN COURS (enjeu : ${enjeu}) entre ${nm.join(" et ")} : la question décisive a été posée, on attend la réponse de chacun. Pour ce message : réagis à peine (un regard, une phrase neutre), N'ANNONCE PAS le choix, et laisse la parole à ${left.map(i=>players[i].name).join(" puis ")}. "duel_winner" = "".
+`;
+  return`DUEL : VERDICT MAINTENANT (impératif). Enjeu : ${enjeu}. Réponses à la question décisive : ${d.pl.map(i=>players[i].name+" : « "+(d.ans[i]||"(rien)")+" »").join(" | ")}. ${st.cinq?S+" compare":"Compare"} ces réponses (sincérité, cohérence avec tout ce qu'ils ont dit avant, respect de ${st.cinq?"son":"ton"} caractère, originalité) et TRANCHE : mets le prénom du gagnant dans "duel_winner" et ${st.cinq?"fais-la annoncer":"annonce"} ce choix clairement, avec émotion, en ménageant le perdant selon ${st.cinq?"son":"ton"} caractère. Aucun effet d'affection pour les participants au duel dans ce message.
+`;
+}
+async function sceneDuel(st,id,d,hraw,speaker){
+  const S=st.cinq?SISTERS[d.k].name:"toi",names=d.pl.map(i=>st.players[i].name);
+  const enjeu=d.kind==="final"?`celui que ${st.cinq?S:"tu"} choisi${st.cinq?"ra":"ras"} pour toujours (${names.join(" et ")} ont atteint 100 % en même temps)`:`celui qui franchira l'étape « ${MS[d.lv].name} » (${names.join(" et ")} y sont arrivés en même temps ; l'autre devra retenter plus tard)`;
+  st.duel={...d,ans:{},open:true};
+  sysLineV(st,duelLabel(st,d),null);updateBar();
+  const w=addMsg("sys","…");
+  st.history.pop();
+  st.history.push({role:"user",content:`[DUEL] Écris UN SEUL message qui, dans l'ordre : 1) réagit brièvement à ce que ${speaker} vient de dire ; 2) par une transition naturelle dans la narration, réunit ${names.join(" et ")} ${st.cinq?"avec "+S:"face à toi"} ; 3) ${st.cinq?S+" leur pose":"tu leur poses"} UNE question décisive, la même pour tous, adressée à tous ("to":"tous"), pour les départager : l'enjeu est ${enjeu}. Ne tranche pas encore et personne ne se déclare. ${st.cinq?"effects = []":"affection_delta = 0, effects = []"}, timed = false, cut = false.`});
+  try{
+    const raw=await callAI(id,st.history);const o=parseAI(raw);maskO(st,o);
+    if(st.cinq?!(o.lines5&&o.lines5.length):!o.reply||o.reply==="…")throw new Error("Réponse vide");
+    st.history.push({role:"assistant",content:st.cinq?JSON.stringify({narration:o.narr,lines:o.lines5.map(l=>({sister:l.s,to:l.to,mood:l.mood,text:l.text})),effects:[]}):JSON.stringify({narration:o.narr,reply:o.reply,affection_delta:0,mood:o.mood,to:"tous",choices:[]})});
+    w.remove();st.timed=0;st.choices=[];st.inject=[];st.event=null;if(o.mood)st.mood=o.mood;
+    return o;
+  }catch(e){
+    st.history.pop();st.history.push({role:"assistant",content:hraw});w.remove();st.duel=null;
+    sysLine(st,"⚠️ Le duel n'a pas pu être lancé (erreur IA) : il sera retenté au prochain tour.");
+    return null;
+  }
+}
+function resolveDuel(st,name){
+  const d=st.duel;if(!d)return;st.duel=null;
+  let w=matchPlayer(st,name),rnd=false;if(w<0||!d.pl.includes(w)){w=d.pl[Math.floor(Math.random()*d.pl.length)];rnd=true;}
+  const S=duelSis(st,d),W=st.players[w],los=d.pl.filter(i=>i!==w).map(i=>st.players[i].name).join(" et "),vis=st.split?d.pl:null;
+  if(d.kind==="final"){
+    d.pl.forEach(i=>{if(i===w)return;const p=st.players[i];if(st.cinq){p.h[d.k]=Math.min(p.h[d.k],95);p.aff=Math.max(...Object.values(p.h));}else p.aff=Math.min(p.aff,95);});
+    sysLineV(st,`⚔️ ${S} a tranché${rnd?" (sans hésiter longtemps)":""} : c'est ${W.name} qu'elle choisit !`,vis);
+  }else{
+    const m=MS[d.lv];
+    d.pl.forEach(i=>{const p=st.players[i];
+      if(st.cinq){const r=p.m[d.k];if(i===w){r.ms++;p.h[d.k]=Math.min(CAPS[r.ms],p.h[d.k]+4);}else{r.tries[d.lv]=(r.tries[d.lv]||0)+1;p.h[d.k]=Math.max(1,p.h[d.k]-8);}p.aff=Math.max(...Object.values(p.h));}
+      else{if(i===w){p.ms++;p.aff=Math.min(CAPS[p.ms],p.aff+4);}else{p.tries[d.lv]=(p.tries[d.lv]||0)+1;p.aff=Math.max(1,p.aff-8);}}});
+    sysLineV(st,`⚔️ ${S} a départagé : ${W.name} franchit l'étape « ${m.ico} ${m.name} » ! ${los} devra retenter plus tard (−8).`,vis);
+    st.inject.push(`TRANSITION : après le duel, ${W.name} a franchi l'étape « ${m.name} »${st.cinq?" avec "+S:""} ; ${los} est un peu déçu. Reprends naturellement.`);
+  }
+  burst("⚔️",6);
+}
 function dueTrial(st){
+  if(st.duel||st.duelLaunch)return null;
   return st.players.find(p=>!p.out&&p.ms<4&&p.trial===0&&p.aff>0&&p.aff>=CAPS[p.ms])||null;
 }
 /* La réponse déjà reçue (hraw) est retenue : on redemande UN message qui réagit, fait la transition et lance la scène.
@@ -1735,6 +1814,7 @@ function updateBar(){
     row.style.setProperty("--pc",i===0?SISTERS[current].c:PCOL[i]);
     const lab=document.createElement("div");
     lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"% · "+STAGES[stageOf(pl)].name+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
+    if(st.duel&&st.duel.pl.includes(i))lab.textContent+=" ⚔️ duel";
     const big=document.createElement("div");big.className="big";
     const f=document.createElement("i");f.style.width=pl.aff+"%";big.appendChild(f);
     const trk=document.createElement("small");trk.className="hint";
@@ -1781,6 +1861,7 @@ function updateBar5(st,el){
     const row=document.createElement("div");row.className="prow";
     const lab=document.createElement("div");
     lab.textContent=(multi?pl.name:"Affection")+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
+    if(st.duel&&st.duel.pl.includes(i))lab.textContent+=" ⚔️ duel";
     if(st.split&&i!==me){row.append(lab);el.appendChild(row);return;}   // scènes séparées : on ne voit que ses propres jauges
     if(st.split&&pl.mission){const ms=document.createElement("small");ms.className="hint";ms.style.display="block";ms.textContent="🎯 Mission secrète : « "+pl.mission.t+" »"+(pl.mission.done?" ✅":"");lab.appendChild(ms);}
     const g=document.createElement("div");g.style.cssText="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:3px";
@@ -1885,6 +1966,7 @@ function context(st,text,self){
 function canPass(st){
   if(!st||st.over||st.sim)return false;
   const pl=st.players[st.cur];if(!pl||pl.trial===2)return false;
+  if(st.duel&&st.duel.pl.includes(st.cur)&&!(st.cur in st.duel.ans))return false;
   if(st.players.length<2)return(st.silent||0)<2&&st.history.length>0;
   return(st.passRow||0)<st.players.filter(p=>!p.out).length-1;
 }
@@ -1930,6 +2012,7 @@ async function turn(userText,hidden,kind){
     if(st.cinq&&/^📱/.test(userText))stat(pl,"",0),pl.stats.sms++;
     sent=(multi?`[${pl.name} parle] ${userText}`:userText)+context(st,userText,st.cur)+(multi?`\n(Garçon qui aura la parole ensuite : ${st.players[nextAlive(st)].name})`:"");
     st.silent=0;st.passRow=0;st.passNote=[];
+    if(st.duel&&st.duel.open&&st.duel.pl.includes(st.cur)&&!(st.cur in st.duel.ans)){st.duel.ans[st.cur]=userText;sent+="\n(⚔️ C'est sa réponse à la question décisive du duel.)";}
   }
   if(!hidden)st.lastGuest="";
   const canCut=!hidden&&cutAllowed(st);
@@ -1956,15 +2039,18 @@ async function turn(userText,hidden,kind){
     st.history.push({role:"assistant",content:hraw});
     clearInterval(tick);wait.remove();
     let eff=null;
-    if(!hidden)eff=st.cinq?applyEffects5(st,o,st.cur,pass):applyEffects(st,o,st.cur);
+    const duelTurn=!hidden&&!pass&&!!st.duel&&st.duel.pl.includes(st.cur)&&(st.cur in st.duel.ans);
+    if(!hidden&&!duelTurn)eff=st.cinq?applyEffects5(st,o,st.cur,pass):applyEffects(st,o,st.cur);
     if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
     const evKeep=markEvent(st,o);
     consumeTurn(st);if(evKeep)st.event=evKeep;
     let shown=o;const judged=!hidden&&pl.trial===2;
-    const due=(!hidden&&!judged&&!st.players.some(p=>p.aff>=100))?(st.cinq?dueTrial5(st):dueTrial(st)):null;
-    if(due){const o2=st.cinq?await sceneJalon5(st,id,due,hraw,multi?pl.name:"le garçon"):await sceneJalon(st,id,due,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
+    const duelNew=(!hidden&&!judged&&!duelTurn&&multi)?findDuel(st):null;
+    const due=(!duelNew&&!hidden&&!judged&&!st.players.some(p=>p.aff>=100))?(st.cinq?dueTrial5(st):dueTrial(st)):null;
+    if(duelNew){const o2=await sceneDuel(st,id,duelNew,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
+    else if(due){const o2=st.cinq?await sceneJalon5(st,id,due,hraw,multi?pl.name:"le garçon"):await sceneJalon(st,id,due,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
     const [L0,m]=pushAI(st,shown);
     if(eff&&eff.tags.length){
       const sp=document.createElement("span");sp.className="delta";
@@ -1974,8 +2060,9 @@ async function turn(userText,hidden,kind){
     }
     if(!hidden){
       if(judged){if(st.cinq)resolveTrial5(st,pl,eff);else resolveTrial(st,pl,eff.ms,eff.spk);}
+      if(duelTurn&&st.duel&&st.duel.pl.every(i=>(i in st.duel.ans)||st.players[i].out))resolveDuel(st,o.duelWinner);
       const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
-      if(win){ updateBar(); await finish(st,id,"win",win); }
+      if(win&&!st.duel){ updateBar(); await finish(st,id,"win",win); }
       else{
         st.players.forEach(q=>{
           if(!q.out&&q.aff<=0){
@@ -1997,7 +2084,7 @@ async function turn(userText,hidden,kind){
             const sk=st.players[skip].name;
             (st.passNote=[]).push(sk+" n'a pas pu parler : tu ne l'as pas laissé répondre");
             sysLine(st,`✋ ${who} ne laisse pas ${sk} répondre`);
-          }else st.cur=ti>=0?ti:nextAlive(st);
+          }else{const dn=duelNext(st);st.cur=dn>=0?dn:ti>=0?ti:nextAlive(st);}
           if(st.cinq&&multi)advanceTime(st);
           if(multi){const t=`👉 Au tour de ${st.players[st.cur].name}`;addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
           updateBar();
