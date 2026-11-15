@@ -870,6 +870,7 @@ function maskO(st,o){
   o.narr=rep(o.narr||"","la jeune fille","une de ses sœurs");
   o.reply=rep(o.reply||"","moi","une de mes sœurs");
   o.why=rep(o.why||"","elle","sa sœur");o.mood=rep(o.mood||"","elle","sa sœur");
+  (o.fx||[]).forEach(e=>{e.why=rep(e.why||"","elle","sa sœur");});
   return ch;
 }
 function histOf(st,o,raw){
@@ -1141,7 +1142,7 @@ async function runRound(st){
     consumeTurn(st);
     const judged=new Set(st.players.filter(p=>p.trial===2));
     let shown=o;
-    const due=st.players.some(p=>p.aff>=100)?null:dueTrial(st);
+    const due=(judged.size||st.players.some(p=>p.aff>=100))?null:dueTrial(st);
     if(due){const o2=await sceneJalon(st,id,due,hraw,"les garçons");if(o2)shown=o2;}
     if(shown.narr){const N={cls:"nar",text:shown.narr};st.lines.push(N);renderLine(N);}
     const L={cls:"her",text:shown.reply,tag:tags.join(" · "),up:sum>=0,dv:best};st.lines.push(L);renderLine(L);fx(best);addGuest(st,shown);
@@ -1387,7 +1388,7 @@ async function turn(userText,hidden,kind){
     if(st.event){sysLine(st,"🎲 Événement imprévu"+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
     consumeTurn(st);
     let shown=o;const judged=!hidden&&pl.trial===2;
-    const due=(!hidden&&!st.players.some(p=>p.aff>=100))?dueTrial(st):null;
+    const due=(!hidden&&!judged&&!st.players.some(p=>p.aff>=100))?dueTrial(st):null;
     if(due){const o2=await sceneJalon(st,id,due,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
     const [L0,m]=pushAI(st,shown);
     if(eff&&eff.tags.length){
