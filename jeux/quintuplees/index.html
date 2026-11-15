@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.1 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.2 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -169,7 +169,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
 
   <h3>🎯 Le principe</h3>
   <ul>
-    <li>Choisis une sœur (ou <b>❓ Sœur mystère</b> : une sœur au hasard dont tu dois deviner l'identité, ou <b>👭 Les cinq à la fois</b> : toutes les sœurs dans la même scène, chacune avec sa propre jauge, la première conquise l'emporte), puis une <b>situation de départ</b>.</li>
+    <li>Choisis une sœur (ou <b>❓ Sœur mystère</b> : une sœur au hasard dont tu dois deviner l'identité, ou <b>👭 Les cinq à la fois</b> : toutes les sœurs dans la même scène, chacune avec sa propre jauge, la première conquise l'emporte ; en ligne, chacun joue en même temps et l'histoire peut vous séparer dans des scènes différentes), puis une <b>situation de départ</b>.</li>
     <li>Réponds à ses questions et à la scène en cours. Chaque réponse fait varier l'affection : <b>+</b> si ça lui plaît, <b>−</b> si ça la blesse ou la rend méfiante. Le verdict s'affiche sous sa réplique.</li>
     <li>À 0 d'affection, tu es <b>éliminé(e)</b>.</li>
   </ul>
@@ -452,15 +452,22 @@ $("m1").onclick=()=>setMode(1);$("m2").onclick=()=>setMode(2);$("m3").onclick=()
 function broadcast(b){
   const st=state[current];
   if(!st||!net.conn||!net.conn.open)return;
-  let lines=st.lines.slice(), m;
+  if(st.split){net.guests.forEach((g,gi)=>sendState(st,b,gi+1,g.id));return;}   // scènes séparées : chacun ne reçoit que ce qu'il peut voir
+  sendState(st,b,null,null);
+}
+const mySlot=()=>net.role==="guest"?net.slot:0;
+function sendState(st,b,slot,to){
+  const P=slot!=null;
+  let lines=P?st.lines.filter(l=>!l.vis||l.vis.includes(slot)):st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m})),cinq:st.cinq,spk:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m})),cinq:st.cinq,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<16000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
   net.conn.send(m);
 }
 function renderLine(l){
+  if(l.vis&&!l.vis.includes(mySlot()))return null;   // scène où je ne suis pas
   const m=addMsg(l.cls,l.text);
   if(l.c)m.style.borderLeft="4px solid "+l.c;
   if(l.to){const t=document.createElement("small");t.className="hint";t.style.cssText="display:block;opacity:.75";t.textContent="→ "+l.to;m.prepend(t);}
@@ -579,7 +586,7 @@ $("btnJoin").onclick=async()=>{
       if(!net.conn){net.conn={open:true,send:publish};$("btnReset").classList.add("hidden");isGuest=true;$("aiSel").classList.add("hidden");}
       $("netInfo").textContent="✅ Connecté (joueur "+(m.slot+1)+") ! L'hôte choisit la sœur…";
     }
-    if(m.t==="state"&&net.slot!=null){if(m.seq<=net.last)return;net.last=m.seq;guestRender(m);}
+    if(m.t==="state"&&net.slot!=null){if(m.to&&m.to!==myId)return;if(m.seq<=net.last)return;net.last=m.seq;guestRender(m);}
   };
   $("netInfo").textContent="Étape 2/2 : contact de l'hôte…";
   try{
@@ -896,11 +903,29 @@ FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour, sans bali
 (choices : tableau de 2 à 4 options courtes quand tu proposes un choix, sinon []. milestone : "pass" ou "fail" UNIQUEMENT pendant une ÉPREUVE DÉCISIVE, sinon null. stalled : true seulement en cas d'impasse de la discussion. cut : voir COUPER LA PAROLE, presque toujours false.${players.length>1?' to : le garçon à qui tu parles. effects : voir ÉVALUATION CROISÉE.':''})`;
 }
 
+/* Mode cinq en ligne : scènes séparées */
+function groupsTxt(st){
+  return st.groups.map((g,n)=>`- Scène ${n+1}${g.place?" « "+g.place+" »":""} : ${g.players.map(i=>st.players[i].name).join(", ")} avec ${g.sisters.length?g.sisters.map(k=>SISTERS[k].name).join(", "):"aucune sœur"}`).join("\n");
+}
+function splitTxt(st,players){
+  const L=st.launch&&players[st.launch.i]?(()=>{const P=players[st.launch.i],S=SISTERS[st.launch.k],M=MS[P.m[st.launch.k].ms];
+    return`- SCÈNE DE JALON À LANCER MAINTENANT (impératif) : ${P.name} atteint avec ${S.name} l'étape « ${M.name} ». ${M.brief} (« elle » = ${S.name}.) Dans ta réponse, amène ${S.name} et ${P.name} dans une scène où ils sont ensemble, de préférence seuls, par une transition naturelle ; ${S.name} y met en scène l'étape de façon originale, dans un lieu précis, et termine par une question ou une situation décisive à laquelle ${P.name} doit répondre. Personne ne se déclare.
+`;})():"";
+  return `MODE SCÈNES SÉPARÉES (très important) : les garçons jouent EN MÊME TEMPS, chacun sur son appareil, et ne sont pas forcément au même endroit. À chaque tour tu reçois leurs réponses simultanées, scène par scène (« [Réponses simultanées] Scène 1 — Nom : … | Nom : … »), et tu fais avancer TOUTES les scènes d'un coup.
+Scènes en cours :
+${groupsTxt(st)}
+- C'est TOI qui décides des déplacements, selon l'histoire, les événements et les envies des sœurs : une sœur entraîne un garçon ailleurs (l'aider en cuisine, lui montrer quelque chose, une course à faire, une sœur qui boude dans sa chambre, une dispute qui éclate…), un groupe se sépare ou se retrouve (repas, sortie, retour au salon). Au début, tout le monde reste ensemble quelques tours ; ensuite, sépare et réunis de temps en temps, de façon naturelle et justifiée dans la narration, sans faire la navette à chaque tour (une séparation dure en général 2 à 5 tours). Si un garçon dit vouloir aller quelque part ou suivre quelqu'un, tiens-en compte si c'est plausible.
+- Chaque garçon est dans UNE seule scène ; chaque sœur dans une scène au plus (une sœur peut être ailleurs, hors scène). Une scène peut réunir des garçons sans aucune sœur.
+- SECRET : un garçon ne voit et n'entend QUE sa scène. Il ignore ce qui se passe ailleurs ; plus tard, les sœurs peuvent en parler, déformer, jalouser (« Nino m'a dit que tu étais dans sa cuisine… »). Une sœur ne parle jamais de ce qu'elle n'a pas pu voir ou entendre.
+- Quand des groupes se retrouvent, raconte-le dans la narration de la scène commune. Un ÉVÉNEMENT imprévu se produit dans une scène précise (dans sa narration) ou concerne tout le monde ; il peut provoquer une séparation ou des retrouvailles.
+${L}
+`;
+}
 /* Prompt du mode « Les cinq à la fois » */
 function promptCinq(sc,players,st,evTxt,mem){
   const K=Object.keys(SISTERS), multi=players.length>1, lv=new Set();
   const aff=players.map(p=>"- "+p.name+(p.out?" (éliminé)":"")+" : "+K.map(k=>{const v=(p.h||{})[k]||0,g=stageOf({aff:v});lv.add(g);return SISTERS[k].name+" "+v+" % ("+STAGES[g].name+(p.m?", jalons "+p.m[k].ms+"/4":"")+")";}).join(", ")).join("\n");
-  return `Tu fais vivre les CINQ sœurs Nakano (Ichika, Nino, Miku, Yotsuba, Itsuki), réunies dans la même scène, dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets ». ${multi?`${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) sont avec elles`:"Un garçon (le joueur) est avec elles"} : le but est de gagner le cœur de l'UNE d'elles (n'importe laquelle). Le jeu donne la parole aux garçons l'un après l'autre${multi?" ; chaque message est préfixé [Nom parle]":""}.
+  return `Tu fais vivre les CINQ sœurs Nakano (Ichika, Nino, Miku, Yotsuba, Itsuki), réunies dans la même scène, dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets ». ${multi?`${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) sont avec elles`:"Un garçon (le joueur) est avec elles"} : le but est de gagner le cœur de l'UNE d'elles (n'importe laquelle). ${st.split?"Les garçons jouent EN MÊME TEMPS (voir MODE SCÈNES SÉPARÉES).":`Le jeu donne la parole aux garçons l'un après l'autre${multi?" ; chaque message est préfixé [Nom parle]":""}.`}
 
 LES CINQ SŒURS (chacune garde sa voix, son caractère et ses propres réactions ; ne les mélange jamais) :
 ${K.map(k=>{const S=SISTERS[k];return`- ${S.name} ("${k}") : ${S.tag}. ${S.bio.split(". ").slice(1,3).join(". ")}. Aime : ${S.likes}. N'aime pas : ${S.dislikes}.`;}).join("\n")}
@@ -935,15 +960,16 @@ RÉALISME : ce sont des lycéennes japonaises : elles ne connaissent que ce qu'u
 ${mem}${evTxt}
 FIL DE DISCUSSION : développe un sujet sur plusieurs échanges tant qu'il est vivant ; le lore inventé par les garçons devient vrai s'il est plausible et cohérent. Si la discussion tourne en rond, "stalled":true.
 
-RÈGLES DE FORME :
+${st.split?splitTxt(st,players):""}RÈGLES DE FORME :
 - Réponds en français. "narration" = voix du narrateur, 3e personne, présent, 0 à 3 phrases (décor, gestes, réactions muettes des sœurs, événements). Dans "lines", "text" = UNIQUEMENT les paroles de la sœur, 1 à 3 phrases, sans astérisques ni description de gestes. N'invente pas de paroles pour les garçons.
-- Ce n'est pas un interrogatoire : réactions, anecdotes, taquineries entre sœurs. AU PLUS UNE question au garçon dans tout le message (posée de préférence par la dernière sœur qui parle).
+- Ce n'est pas un interrogatoire : réactions, anecdotes, taquineries entre sœurs. ${st.split?"Dans chaque scène, au plus UNE question par garçon, et chaque garçon de la scène doit pouvoir répondre quelque chose.":"AU PLUS UNE question au garçon dans tout le message (posée de préférence par la dernière sœur qui parle)."}
 - Les questions simples (goûts, A ou B) se posent avec 2 à 4 options courtes dans choices (« Je … »), aucune évidemment « la bonne » ; sinon choices = [].
 - Ne sors jamais du personnage, ne mentionne ni IA ni règles ni scores. Contenu tout public.
 
 FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour :
-{"narration":"voix du narrateur ou \"\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"effects":[],"choices":[],"stalled":false,"timed":false}
-(lines : 1 à 3 sœurs, dans l'ordre où elles parlent ; "sister" parmi ichika, nino, miku, yotsuba, itsuki.)`;
+${st.split&&!st.over?`{"scenes":[{"players":["Prénom"],"place":"lieu court","sisters":["nino"],"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"choices":[]}],"effects":[],"stalled":false}
+(scenes : la situation APRÈS ce tour, une entrée par endroit : où est chaque garçon, avec quelles sœurs, et ce qui s'y passe. TOUS les garçons encore en jeu y figurent, chacun dans une seule scène. lines : 0 à 3 sœurs par scène. choices : options pour les garçons de cette scène, ou [].)`:`{"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"effects":[],"choices":[],"stalled":false,"timed":false}
+(lines : 1 à 3 sœurs, dans l'ordre où elles parlent ; "sister" parmi ichika, nino, miku, yotsuba, itsuki.)`}`;
 }
 
 /* Mode mystère : filet de sécurité si l'IA écrit quand même un prénom */
@@ -972,19 +998,23 @@ function histOf(st,o,raw){
 function extractJSON(text){
   const t=String(text||"").replace(/```(?:json)?/gi,"").trim();
   const a=t.indexOf("{"), b=t.lastIndexOf("}");
-  if(a>=0&&b>a){try{const o=JSON.parse(t.slice(a,b+1));if(o&&typeof o==="object"&&((typeof o.reply==="string"&&o.reply.trim())||(Array.isArray(o.lines)&&o.lines.some(l=>l&&String(l.text||"").trim()))))return o;}catch(e){}}
+  if(a>=0&&b>a){try{const o=JSON.parse(t.slice(a,b+1));if(o&&typeof o==="object"&&((typeof o.reply==="string"&&o.reply.trim())||(Array.isArray(o.lines)&&o.lines.some(l=>l&&String(l.text||"").trim()))||(Array.isArray(o.scenes)&&o.scenes.length)))return o;}catch(e){}}
   const str=k=>{const m=t.match(new RegExp('"'+k+'"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));if(!m)return null;try{return JSON.parse('"'+m[1]+'"');}catch(e){return m[1];}};
   const num=k=>{const m=t.match(new RegExp('"'+k+'"\\s*:\\s*(-?\\d+)'));return m?+m[1]:0;};
   const reply=str("reply");
   if(!reply||!reply.trim()||b<0)return null;   // pas de réplique complète, ou réponse coupée avant la fin
   return {narration:str("narration")||"",reply,affection_delta:num("affection_delta"),mood:str("mood")||"",why:str("why")||"",choices:[]};
 }
+function parseLines(a){
+  return Array.isArray(a)?a.map(l=>({s:sisKey(l&&l.sister),to:String((l&&l.to)||"").trim().slice(0,40),mood:String((l&&l.mood)||"").slice(0,30),
+    text:String((l&&l.text)||"").replace(/\*[^*]{0,200}\*/g," ").replace(/\s+/g," ").trim().slice(0,500)})).filter(l=>l.s&&l.text).slice(0,4):null;
+}
+const parseChoices=a=>(x=>x.length>=2?x:[])(Array.isArray(a)?a.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]);
 function parseAI(text){
   try{
     const o = extractJSON(text);
     if(!o)throw new Error("JSON illisible");
-    const lines5=Array.isArray(o.lines)?o.lines.map(l=>({s:sisKey(l&&l.sister),to:String((l&&l.to)||"").trim().slice(0,40),mood:String((l&&l.mood)||"").slice(0,30),
-      text:String((l&&l.text)||"").replace(/\*[^*]{0,200}\*/g," ").replace(/\s+/g," ").trim().slice(0,500)})).filter(l=>l.s&&l.text).slice(0,4):null;
+    const lines5=parseLines(o.lines);
     if(lines5&&lines5.length&&!o.reply){o.reply=lines5.map(l=>l.text).join(" ");o.mood=o.mood||lines5[lines5.length-1].mood;}
     let reply=String(o.reply||"…"), narr=String(o.narration||"").trim().slice(0,600);
     const acts=[];
@@ -998,7 +1028,7 @@ function parseAI(text){
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
       cut:o.cut===true,to:String(o.to||"").trim().slice(0,40),
       guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),gto:String(o.guest_to||"").trim().slice(0,40),
-      lines5,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
+      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
     return {reply:"…",narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
@@ -1062,6 +1092,7 @@ function transcript(msgs,sis){
     if(m.role==="user")return"[Joueur] "+String(m.content).replace(/\s+/g," ").slice(0,500);
     let o=null;try{const mm=String(m.content).match(/\{[\s\S]*\}/);o=JSON.parse(mm?mm[0]:m.content);}catch(e){}
     if(!o)return"["+sis+"] "+String(m.content).replace(/\s+/g," ").slice(0,400);
+    if(Array.isArray(o.scenes))return o.scenes.map(c=>"[Scène"+(c&&c.place?" « "+c.place+" »":"")+" : "+((c&&c.players)||[]).join(", ")+"]\n"+(c&&c.narration?"[Narrateur] "+c.narration+"\n":"")+((c&&c.lines)||[]).map(l=>"["+((SISTERS[sisKey(l&&l.sister)]||{}).name||"Une sœur")+(l&&l.to?" → "+l.to:"")+"] "+((l&&l.text)||"")).join("\n")).join("\n");
     if(Array.isArray(o.lines))return(o.narration?"[Narrateur] "+o.narration+"\n":"")+o.lines.map(l=>"["+((SISTERS[sisKey(l&&l.sister)]||{}).name||"Une sœur")+(l&&l.to?" → "+l.to:"")+"] "+((l&&l.text)||"")).join("\n");
     return(o.narration?"[Narrateur] "+o.narration+"\n":"")+"["+sis+(o.mood?" — "+o.mood:"")+"] "+(o.reply||"")+(o.guest_line?"\n["+(SISTERS[o.guest]?SISTERS[o.guest].name:"Une autre sœur")+"] "+o.guest_line:"");
   }).join("\n");
@@ -1280,6 +1311,104 @@ function applyEffects5(st,o,s,pass){
   st.players.forEach(p=>{p.aff=Math.max(...Object.values(p.h));});
   return{tags,spk:vd.d,best,sum,ms:vd.ms};
 }
+function sysLineV(st,t,vis){const L={cls:"sys",text:t};if(vis)L.vis=vis;st.lines.push(L);renderLine(L);}
+function scenesOf(st,o){
+  const used=new Set(),usedS=new Set(),out=[];
+  (o.scenes||[]).forEach(c=>{
+    if(!c||typeof c!=="object")return;
+    const pl=(Array.isArray(c.players)?c.players:[c.players]).map(n=>matchPlayer(st,n)).filter(i=>i>=0&&!used.has(i)&&!st.players[i].out);
+    if(!pl.length)return;pl.forEach(i=>used.add(i));
+    const lines=parseLines(c.lines)||[];
+    const sis=[...new Set([...(Array.isArray(c.sisters)?c.sisters.map(sisKey):[]),...lines.map(l=>l.s)])].filter(k=>k&&!usedS.has(k));sis.forEach(k=>usedS.add(k));
+    out.push({players:pl,place:String(c.place||"").replace(/\s+/g," ").trim().slice(0,50),sisters:sis,narr:String(c.narration||"").replace(/\*/g,"").trim().slice(0,600),lines,choices:parseChoices(c.choices)});
+  });
+  if(!out.length&&o.lines5&&o.lines5.length){   // l'IA a répondu en une seule scène
+    const al=st.players.map((p,i)=>i).filter(i=>!st.players[i].out);al.forEach(i=>used.add(i));
+    out.push({players:al,place:(st.groups[0]||{}).place||"",sisters:[...new Set(o.lines5.map(l=>l.s))],narr:o.narr,lines:o.lines5,choices:o.choices||[]});
+  }
+  st.players.forEach((p,i)=>{   // garçon oublié : il reste là où il était
+    if(p.out||used.has(i))return;
+    const prev=(st.groups||[]).find(g=>g.players.includes(i));
+    let tg=out.find(c=>prev&&c.players.some(j=>prev.players.includes(j)));
+    if(!tg){tg={players:[],place:prev?prev.place:"",sisters:[],narr:"",lines:[],choices:[]};out.push(tg);}
+    tg.players.push(i);used.add(i);
+  });
+  return out;
+}
+async function runRound5(st,intro){
+  busy=true;$("btnSend").disabled=true;const id=current,multi=st.players.length>1;
+  let msg;
+  if(intro)msg=intro;
+  else{
+    const parts=[];
+    st.groups.forEach((g,n)=>{
+      const al=g.players.filter(i=>!st.players[i].out);if(!al.length)return;
+      al.forEach(i=>{const L={cls:pcls(i),text:st.players[i].name+" : "+st.pending[i],vis:al.slice()};st.lines.push(L);renderLine(L);});
+      parts.push(`Scène ${n+1}${g.place?" « "+g.place+" »":""} — `+al.map(i=>st.players[i].name+" : "+st.pending[i]+context(st,st.pending[i],i).replace(/\n/g," ")).join(" | "));
+    });
+    msg="[Réponses simultanées]\n"+parts.join("\n");
+    rollEvent(st);
+  }
+  st.history.push({role:"user",content:msg});
+  broadcast(true);
+  const wait=addMsg("sys","…");
+  try{
+    const raw=await callAI(id,st.history);
+    const o=parseAI(raw),sc=scenesOf(st,o);
+    if(!sc.some(c=>c.lines.length||c.narr))throw new Error("Réponse illisible de l'IA");
+    st.history.push({role:"assistant",content:raw});wait.remove();
+    // notation : tout le monde a parlé en même temps
+    const tagsBy={},T=st.trial5;let vd=null,best=0;
+    if(!intro){
+      const acc=new Map();
+      (o.fx||[]).forEach(e=>{if(!e.sister)return;const i=matchPlayer(st,e.player);if(i<0||st.players[i].out)return;
+        const key=i+"|"+e.sister,c=acc.get(key)||{i,k:e.sister,delta:0,tooFast:false,why:"",ms:""};
+        c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;c.ms=c.ms||e.ms;acc.set(key,c);});
+      acc.forEach(c=>{const p=st.players[c.i],r={aff:p.h[c.k],turns:p.turns,ms:p.m[c.k].ms},x=score(st,r,c.delta,c.tooFast,false);
+        p.h[c.k]=r.aff;if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,spk:x.d};if(Math.abs(x.d)>Math.abs(best))best=x.d;
+        if(x.d!==0||x.note)(tagsBy[c.i]=tagsBy[c.i]||[]).push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));});
+      st.players.forEach(p=>{if(!p.out)p.turns++;p.aff=Math.max(...Object.values(p.h));});
+    }
+    if(o.stalled)st.unblock=true;
+    // événement : la scène à la plus longue narration le porte
+    let evIdx=-1;const evForced=st.evForced;
+    if(st.event){const ln=sc.map(c=>c.narr.length),mx=Math.max(...ln);if(mx>25)evIdx=ln.indexOf(mx);}
+    const evKeep=evIdx<0?st.event:null;consumeTurn(st);if(evKeep)st.event=evKeep;
+    // jalon lancé ce tour-ci
+    const launched=st.launch;st.launch=null;
+    if(launched){const p=st.players[launched.i],r=p.m[launched.k];p.trial=2;r.trial=2;st.trial5=launched;}
+    // affichage, scène par scène (chacun ne voit que la sienne)
+    const prevSig=st.sigBy||[];st.sigBy=[];st.choicesBy=[];st.spkBy=[];st.moodBy=[];st.placeBy=[];
+    sc.forEach((c,n)=>{
+      const vis=c.players,sig=c.place+"|"+c.sisters.join(",")+"|"+vis.join(",");
+      if(vis.some(i=>prevSig[i]!==sig))sysLineV(st,"📍 "+(c.place||"Même endroit")+" · "+(c.sisters.length?"avec "+c.sisters.map(k=>SISTERS[k].name).join(", "):"sans les sœurs")+(vis.length>1?" · "+vis.map(i=>st.players[i].name).join(", "):""),vis);
+      if(launched&&vis.includes(launched.i)){const M=MS[st.players[launched.i].m[launched.k].ms];sysLineV(st,`📍 Moment décisif pour ${st.players[launched.i].name} avec ${SISTERS[launched.k].name} : « ${M.ico} ${M.name} »`,[launched.i]);}
+      if(c.narr){const N={cls:n===evIdx?"evt":"nar",text:(n===evIdx?"🎲 "+(evForced?"La discussion s'essoufflait… ":""):"")+c.narr,vis};st.lines.push(N);renderLine(N);}
+      const tags=vis.flatMap(i=>tagsBy[i]||[]);
+      const Ls=c.lines.map(l=>{const S=SISTERS[l.s],sk=sisKey(l.to),to=sk?SISTERS[sk].name:toName(st,{to:l.to});
+        return{cls:"her",c:S.c,vis,text:"💬 "+S.name+(to&&to!=="tous"?" (à "+to+")":to==="tous"&&vis.length>1?" (à tous)":"")+" : "+l.text};});
+      if(tags.length){if(Ls.length)Object.assign(Ls[Ls.length-1],{tag:tags.join("\n"),up:!tags.some(t=>/: -/.test(t))});else Ls.push({cls:"sys",vis,text:tags.join("\n")});}
+      Ls.forEach(L=>{st.lines.push(L);renderLine(L);});
+      const last=c.lines[c.lines.length-1];
+      vis.forEach(i=>{st.sigBy[i]=sig;st.choicesBy[i]=c.choices;st.placeBy[i]=c.place;if(last){st.spkBy[i]=last.s;st.moodBy[i]=last.mood;}else{st.spkBy[i]=(st.spkBy[i]||null);}});
+    });
+    st.groups=sc.map(c=>({place:c.place,players:c.players,sisters:c.sisters}));
+    st.choices=st.choicesBy[0]||[];st.spk=st.spkBy[0]||st.spk;st.mood=st.moodBy[0]||st.mood;st.timed=0;st.qid=(st.qid||0)+1;
+    fx(best);
+    if(T&&!intro)resolveTrial5(st,st.players[T.i],vd||{ms:"",spk:0});
+    st.players.forEach((q,i)=>{if(!q.out&&q.aff<=0){q.out=true;sysLineV(st,`💔 ${q.name} a perdu l'intérêt des cinq sœurs et quitte la partie.`,null);}});
+    if(!st.trial5&&!st.launch){const d=dueTrial5(st);if(d)st.launch=d;}
+    st.pending=st.players.map(()=>null);st.answered=st.players.map(p=>!!p.out);
+    const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
+    if(win){updateBar();await finish(st,id,"win",win);}
+    else if(st.players.every(p=>p.out)){updateBar();await finish(st,id,"lose",st.players[0]);}
+  }catch(e){
+    wait.textContent="Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();
+    st.pending=st.players.map(()=>null);st.answered=st.players.map(p=>!!p.out);
+  }
+  busy=false;$("btnSend").disabled=st.over;updateBar();
+  if(net.role==="host")broadcast(false);
+}
 function dueTrial5(st){
   if(st.players.some(p=>p.trial)||st.trial5)return null;
   for(let i=0;i<st.players.length;i++){const p=st.players[i];if(p.out||!p.m)continue;
@@ -1320,12 +1449,12 @@ function resolveTrial5(st,pl,eff){
   r.trial=0;pl.trial=0;st.trial5=null;
   if(pass){
     r.ms++;pl.h[t.k]=Math.min(CAPS[r.ms],pl.h[t.k]+4);
-    sysLine(st,`🏅 ${pl.name} valide l'étape « ${m.ico} ${m.name} » avec ${S.name} ! (${r.ms}/4)`);
+    sysLineV(st,`🏅 ${pl.name} valide l'étape « ${m.ico} ${m.name} » avec ${S.name} ! (${r.ms}/4)`,st.split?[t.i]:null);
     st.inject.push(`TRANSITION : la relation entre ${S.name} et ${pl.name} vient de franchir un cap (« ${m.name} »). Reprends la scène de groupe avec une courte transition ; les autres sœurs peuvent le remarquer (taquineries, jalousie, curiosité).`);
     burst("🏅",6);
   }else{
     r.tries[r.ms]=(r.tries[r.ms]||0)+1;pl.h[t.k]=Math.max(1,pl.h[t.k]-12);
-    sysLine(st,`💔 ${pl.name} rate l'étape « ${m.ico} ${m.name} » avec ${S.name} (−12). Il faudra regagner sa confiance avant une nouvelle chance.`);
+    sysLineV(st,`💔 ${pl.name} rate l'étape « ${m.ico} ${m.name} » avec ${S.name} (−12). Il faudra regagner sa confiance avant une nouvelle chance.`,st.split?[t.i]:null);
     st.inject.push(`TRANSITION : après l'échec de « ${m.name} », ${S.name} est plus distante avec ${pl.name} ; reprends la scène de groupe, sans rompre.`);
     burst("💔",5);
   }
@@ -1336,6 +1465,7 @@ function submitSim(i,text){
   if(st.players.every((p,k)=>p.out||st.answered[k]))runRound(st);
 }
 async function runRound(st){
+  if(st.split)return runRound5(st);
   busy=true;$("btnSend").disabled=true;const id=current;
   st.players.forEach((p,i)=>{if(!p.out){const c=pcls(i),t=p.name+" : "+st.pending[i];addMsg(c,t);st.lines.push({cls:c,text:t});}});
   st.history.push({role:"user",content:"[Réponses simultanées] "+st.players.map((p,i)=>p.out?"":p.name+" : "+st.pending[i]).filter(Boolean).join(" | ")});
@@ -1467,12 +1597,14 @@ function updateBar(){
 function updateBar5(st,el){
   const multi=st.players.length>1,K=Object.keys(SISTERS);
   const head=document.createElement("div"),b=document.createElement("b");b.textContent="👭 Les cinq sœurs";
-  const sm=document.createElement("small");sm.textContent=st.spk&&SISTERS[st.spk]?" · "+SISTERS[st.spk].name+(st.mood?" "+st.mood:""):"";
+  const me=mySlot(),place=st.split?(net.role==="guest"?st.place:(st.placeBy||[])[0]):"";
+  const sm=document.createElement("small");sm.textContent=(place?" · 📍 "+place:"")+(st.spk&&SISTERS[st.spk]?" · "+SISTERS[st.spk].name+(st.mood?" "+st.mood:""):"");
   head.append(b,sm);el.appendChild(head);
   st.players.forEach((pl,i)=>{
     const row=document.createElement("div");row.className="prow";
     const lab=document.createElement("div");
-    lab.textContent=(multi?pl.name:"Affection")+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out&&i===st.cur?"  ◀ à toi de jouer":"");
+    lab.textContent=(multi?pl.name:"Affection")+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
+    if(st.split&&i!==me){row.append(lab);el.appendChild(row);return;}   // scènes séparées : on ne voit que ses propres jauges
     const g=document.createElement("div");g.style.cssText="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:3px";
     K.forEach(k=>{const v=(pl.h||{})[k]||0,r=(pl.m||{})[k]||{ms:4,trial:0},c=document.createElement("div");
       c.title=SISTERS[k].name+" : "+v+" % · "+STAGES[stageOf({aff:v})].name+" · jalons "+r.ms+"/4"+(r.ms<4?" · prochain : "+MS[r.ms].ico+" "+MS[r.ms].name+" ("+CAPS[r.ms]+" %)":" · déclaration possible");
@@ -1484,7 +1616,8 @@ function updateBar5(st,el){
     row.append(lab,g);el.appendChild(row);
   });
   $("input").placeholder=(multi&&!st.over?st.players[st.cur].name+", ":"")+"ta réponse…";
-  if(net.role==="guest"){const ok=st.cur===net.slot&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
+  if(st.sim)$("input").placeholder="ta réponse… (tout le monde répond en même temps)";
+  if(net.role==="guest"){const ok=(st.sim?!st.answered[net.slot]:st.cur===net.slot)&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
   document.documentElement.style.setProperty("--c",st.spk&&SISTERS[st.spk]?SISTERS[st.spk].c:SISTERS.cinq.c);
   $("gAv").innerHTML=avatarSVG(st.spk&&SISTERS[st.spk]?st.spk:"yotsuba",st.mood,false);
   $("guess").innerHTML="";
@@ -1516,8 +1649,8 @@ function showScenarios(id){
       else if(mode===3){names=[$("p1").value.trim()||"Hôte"].concat(net.guests.map(g=>g.name));}
       const used=new Set();
       names=names.map(n=>{let x=n,k=2;while(used.has(x.toLowerCase()))x=n+" ("+(k++)+")";used.add(x.toLowerCase());return x;});
-      const c5=id==="cinq";
-      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),m:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,{ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]}]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:!c5&&mode===3&&$("simChk").checked,answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
+      const c5=id==="cinq",sp=c5&&mode===3&&net.guests.length>0;
+      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),m:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,{ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]}]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:sp||(!c5&&mode===3&&$("simChk").checked),split:sp,groups:[{place:"",players:names.map((n,i)=>i),sisters:Object.keys(SISTERS)}],answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -1533,6 +1666,9 @@ function enterGame(id){
   st.lines.forEach(renderLine);
   updateBar();
   if(st.over) showEnd(st);
+  else if(st.history.length===0&&st.split){
+    runRound5(st,`[DÉBUT] ${st.players.map(p=>p.name).join(", ")} arrivent ensemble auprès des cinq sœurs, réunies, dans la situation décrite. Tout le monde est dans UNE seule scène pour commencer. Fais réagir 2 ou 3 sœurs selon leur caractère et la situation (accueil, méfiance, taquineries entre elles), puis lance la discussion de façon que chaque garçon puisse répondre. effects = [].`);
+  }
   else if(st.history.length===0&&st.cinq){
     turn(`[DÉBUT] ${multi?st.players.map(p=>p.name).join(", ")+" arrivent ensemble":"Le garçon arrive"} auprès des cinq sœurs, réunies, dans la situation décrite. Fais réagir 2 ou 3 sœurs selon leur caractère et la situation (accueil, méfiance, taquineries entre elles), puis lance la discussion${multi?" en t'adressant d'abord à "+st.players[0].name:""}. effects = [].`,true);
   }
@@ -1703,6 +1839,7 @@ async function finish(st,id,kind,pl){
       st.winner=pl.name;const k=Object.keys(pl.h).sort((a,b)=>pl.h[b]-pl.h[a])[0],S=SISTERS[k];st.winSis=k;
       msg=`[FIN] ${S.name} est conquise par ${multi?pl.name:"le garçon"} (100 %). Dans ce dernier message, ${S.name} parle EN PREMIER et lui avoue ses sentiments de façon touchante et fidèle à son caractère${multi?", en le choisissant lui plutôt que les autres":""} ; puis 1 ou 2 autres sœurs réagissent brièvement (émotion, jalousie, joie pour leur sœur). Plus de question. effects = [].`;
     }else msg="[FIN] Aucune sœur n'a été conquise : toutes ont perdu patience. 2 ou 3 sœurs mettent fin à la rencontre et partent, chacune selon son caractère. Plus de question. effects = [].";
+    if(st.split)msg+=' Tout le monde se retrouve pour cette fin : réponds au format simple {"narration":"…","lines":[…],"effects":[]}, sans "scenes".';
   }else if(kind==="win"){
     st.winner=pl.name;
     msg = multi
