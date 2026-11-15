@@ -258,7 +258,7 @@ const PROVIDERS = {
   anthropic:{short:"Claude",label:"Anthropic Claude (payant)",model:"claude-haiku-5-5",url:"https://api.anthropic.com/v1/messages",help:"Clé : platform.claude.com → API keys. Crédits payants, séparés de l'abonnement Claude. Haiku 5.5 est le modèle le moins cher."},
   groq:{short:"Groq",label:"Groq (gratuit, très rapide)",model:"openai/gpt-oss-120b",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
   mistral:{short:"Mistral",label:"Mistral (palier gratuit)",model:"mistral-small-latest",url:"https://api.mistral.ai/v1/chat/completions",help:"Clé : console.mistral.ai (palier gratuit « Experiment »)."},
-  openrouter:{short:"OpenRouter",label:"OpenRouter (modèles :free)",model:"openrouter/free",url:"https://openrouter.ai/api/v1/chat/completions",help:"Clé : openrouter.ai/keys. Utilise un modèle se terminant par :free."}
+  openrouter:{short:"OpenRouter",label:"OpenRouter (modèles :free)",model:"google/gemma-4-26b-a4b-it:free",url:"https://openrouter.ai/api/v1/chat/completions",help:"Clé : openrouter.ai/keys. Utilise un modèle se terminant par :free."}
 };
 
 const $ = id => document.getElementById(id);
@@ -951,6 +951,7 @@ async function rawCall(prov,{system,messages,json=true,max=1400,ms=45000}){
   }
   const body={model,temperature:json?1:0.3,messages:[{role:"system",content:system},...msgs]};
   if(json&&prov!=="openrouter")body.response_format={type:"json_object"};
+  if(prov==="openrouter"){body.reasoning={effort:"low",exclude:true};if(model===PROVIDERS.openrouter.model)body.models=[model,"google/gemma-4-31b-it:free","openrouter/free"];}   // modèle rapide, puis secours chez OpenRouter
   const send=()=>fetchT(PROVIDERS[prov].url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify(body)},ms);
   let r=await send(), j=await r.json().catch(()=>({}));
   if(!r.ok&&body.response_format&&r.status===400&&/json/i.test(JSON.stringify(j))){   // JSON refusé par le mode strict : on réessaie sans

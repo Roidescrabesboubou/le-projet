@@ -19,7 +19,7 @@
     anthropic:{short:"Claude",label:"Anthropic Claude (payant)",model:"claude-haiku-5-5",url:"https://api.anthropic.com/v1/messages",help:"Clé : platform.claude.com → API keys. Crédits payants, séparés de l'abonnement Claude. Haiku 5.5 est le modèle le moins cher."},
     groq:{short:"Groq",label:"Groq (gratuit, très rapide)",model:"openai/gpt-oss-120b",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
     mistral:{short:"Mistral",label:"Mistral (palier gratuit)",model:"mistral-small-latest",url:"https://api.mistral.ai/v1/chat/completions",help:"Clé : console.mistral.ai (palier gratuit « Experiment »)."},
-    openrouter:{short:"OpenRouter",label:"OpenRouter (modèles :free)",model:"openrouter/free",url:"https://openrouter.ai/api/v1/chat/completions",help:"Clé : openrouter.ai/keys. Utilise un modèle se terminant par :free."}
+    openrouter:{short:"OpenRouter",label:"OpenRouter (modèles :free)",model:"google/gemma-4-26b-a4b-it:free",url:"https://openrouter.ai/api/v1/chat/completions",help:"Clé : openrouter.ai/keys. Utilise un modèle se terminant par :free."}
   };
   const CLE = "cfg2";   // même emplacement que Les Quintuplées
 
@@ -90,6 +90,7 @@
     }
     const body = {model, temperature: o.temperature != null ? o.temperature : (json ? 1 : 0.3), messages: [{role: "system", content: system}, ...msgs]};
     if(json && p !== "openrouter") body.response_format = {type: "json_object"};
+    if(p === "openrouter"){ body.reasoning = {effort: "low", exclude: true}; if(model === FOURNISSEURS.openrouter.model) body.models = [model, "google/gemma-4-31b-it:free", "openrouter/free"]; }   // modèle rapide, puis secours chez OpenRouter
     const envoyer = () => fetchT(FOURNISSEURS[p].url, {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + key}, body: JSON.stringify(body)}, o.ms);
     let r = await envoyer(), j = await r.json().catch(() => ({}));
     if(!r.ok && body.response_format && r.status === 400 && /json/i.test(JSON.stringify(j))){   // JSON refusé par le mode strict : on réessaie sans
