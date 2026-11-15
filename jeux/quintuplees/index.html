@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.9 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -169,7 +169,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
 
   <h3>🎯 Le principe</h3>
   <ul>
-    <li>Choisis une sœur (ou <b>❓ Sœur mystère</b> : une sœur au hasard dont tu dois deviner l'identité), puis une <b>situation de départ</b>.</li>
+    <li>Choisis une sœur (ou <b>❓ Sœur mystère</b> : une sœur au hasard dont tu dois deviner l'identité, ou <b>👭 Les cinq à la fois</b> : toutes les sœurs dans la même scène, chacune avec sa propre jauge, la première conquise l'emporte), puis une <b>situation de départ</b>.</li>
     <li>Réponds à ses questions et à la scène en cours. Chaque réponse fait varier l'affection : <b>+</b> si ça lui plaît, <b>−</b> si ça la blesse ou la rend méfiante. Le verdict s'affiche sous sa réplique.</li>
     <li>À 0 d'affection, tu es <b>éliminé(e)</b>.</li>
   </ul>
@@ -254,6 +254,9 @@ const SISTERS = {
     bio:"Itsuki, 5e des quintuplées, la cadette, sérieuse, polie (elle parle de façon formelle), têtue, un peu coincée. Elle rêve de devenir enseignante comme sa mère. Elle adore manger (énormément) et en est gênée. Elle apprécie les garçons responsables, polis, travailleurs, qui respectent ses rêves et ne se moquent pas de son appétit. Elle se vexe si on la prend à la légère, si on est paresseux ou irrespectueux.",
     likes:"sérieux, politesse, projets d'avenir, respect de son rêve d'enseignante, bonne nourriture, honnêteté",dislikes:"paresse, moqueries sur son poids ou son appétit, irrespect, légèreté"}
 };
+/* Mode « Les cinq à la fois » : pseudo-sœur invisible des boucles (Object.keys ne la voit pas) */
+Object.defineProperty(SISTERS,"cinq",{value:{name:"Les cinq sœurs",c:"#c46aa0",ini:"5",tag:"Les cinq à la fois"},enumerable:false});
+const sisKey=t=>{const n=norm(t).replace(/[^a-z]/g,"");return Object.keys(SISTERS).find(k=>n.startsWith(k))||"";};
 
 const PROVIDERS = {
   gemini:{short:"Gemini",label:"Google Gemini (gratuit, limité)",model:"gemini-3.8-flash",help:"Clé gratuite : aistudio.google.com → « Get API key ». Le palier gratuit est limité en requêtes par jour."},
@@ -411,6 +414,11 @@ function renderMenu(){
   q.innerHTML=`<div class="av" style="background:transparent;width:64px;height:64px">${avatarSVG("miku","",true)}</div><h3>❓ Sœur mystère</h3><p>Une sœur au hasard : devine laquelle !</p>`;
   q.onclick=()=>{const k=Object.keys(SISTERS);mys=true;openSister(k[Math.floor(Math.random()*k.length)]);};
   $("grid").appendChild(q);
+  const c5=document.createElement("div");c5.className="sis";c5.style.setProperty("--c",SISTERS.cinq.c);
+  const a5=state.cinq?Math.max(...state.cinq.players.map(p=>p.aff)):0;
+  c5.innerHTML=`<div style="display:flex;margin-bottom:8px">${Object.keys(SISTERS).map((k,i)=>`<div style="width:38px;height:38px;margin-left:${i?-12:0}px">${avatarSVG(k,"")}</div>`).join("")}</div><h3>👭 Les cinq à la fois</h3><p>Toutes les sœurs dans la même scène : chacune te juge à sa façon.</p><div class="mini"><i style="width:${a5}%"></i></div>`;
+  c5.onclick=()=>{mys=false;openSister("cinq");};
+  $("grid").appendChild(c5);
 }
 renderMenu();
 let mode=1, remoteBusy=false, mys=false;
@@ -446,7 +454,7 @@ function broadcast(b){
   if(!st||!net.conn||!net.conn.open)return;
   let lines=st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns})),cur:st.cur,over:st.over,mood:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h})),cinq:st.cinq,spk:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<16000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -465,6 +473,15 @@ function toName(st,o){
   const i=matchPlayer(st,o.to);return i>=0?st.players[i].name:"";
 }
 function pushAI(st,o,extra){
+  if(st.cinq&&o.lines5&&o.lines5.length){
+    if(o.narr){const N=o.evt?{cls:"evt",text:"🎲 "+(o.evt==="forced"?"La discussion s'essoufflait… ":"")+o.narr}:{cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
+    const Ls=o.lines5.map(l=>{const S=SISTERS[l.s],sk=sisKey(l.to),to=sk?SISTERS[sk].name:toName(st,{to:l.to});
+      return{cls:"her",c:S.c,text:"💬 "+S.name+(to&&to!=="tous"?" (à "+to+")":to==="tous"&&st.players.length>1?" (à tous)":"")+" : "+l.text};});
+    Object.assign(Ls[Ls.length-1],extra||{});
+    let out;Ls.forEach(L=>{st.lines.push(L);out=[L,renderLine(L)];});
+    const last=o.lines5[o.lines5.length-1];st.spk=last.s;(st.moods=st.moods||{})[last.s]=last.mood;
+    return out;
+  }
   if(o.narr){const N=o.evt?{cls:"evt",text:"🎲 "+(o.evt==="forced"?"La discussion s'essoufflait… ":"")+o.narr}:{cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
   addGuest(st,o);
   const L={cls:"her",text:o.reply,...(extra||{})};const to=toName(st,o);if(to&&to!=="tous")L.to=to;st.lines.push(L);
@@ -834,6 +851,7 @@ ${(()=>{const ok=st&&st.cutOK&&!st.event;
 ${st.sum.text}
 
 `:"";
+  if(id==="cinq")return promptCinq(sc,players,st,evTxt,mem);
   return `Tu incarnes ${s.name} Nakano dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets » (Gotoubun no Hanayome). Le joueur est un garçon de son entourage (ou plusieurs rivaux, en mode multijoueur).
 
 PERSONNAGE : ${s.bio}
@@ -878,6 +896,53 @@ FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour, sans bali
 (choices : tableau de 2 à 4 options courtes quand tu proposes un choix, sinon []. milestone : "pass" ou "fail" UNIQUEMENT pendant une ÉPREUVE DÉCISIVE, sinon null. stalled : true seulement en cas d'impasse de la discussion. cut : voir COUPER LA PAROLE, presque toujours false.${players.length>1?' to : le garçon à qui tu parles. effects : voir ÉVALUATION CROISÉE.':''})`;
 }
 
+/* Prompt du mode « Les cinq à la fois » */
+function promptCinq(sc,players,st,evTxt,mem){
+  const K=Object.keys(SISTERS), multi=players.length>1, lv=new Set();
+  const aff=players.map(p=>"- "+p.name+(p.out?" (éliminé)":"")+" : "+K.map(k=>{const v=(p.h||{})[k]||0,g=stageOf({aff:v});lv.add(g);return SISTERS[k].name+" "+v+" % ("+STAGES[g].name+")";}).join(", ")).join("\n");
+  return `Tu fais vivre les CINQ sœurs Nakano (Ichika, Nino, Miku, Yotsuba, Itsuki), réunies dans la même scène, dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets ». ${multi?`${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) sont avec elles`:"Un garçon (le joueur) est avec elles"} : le but est de gagner le cœur de l'UNE d'elles (n'importe laquelle). Le jeu donne la parole aux garçons l'un après l'autre${multi?" ; chaque message est préfixé [Nom parle]":""}.
+
+LES CINQ SŒURS (chacune garde sa voix, son caractère et ses propres réactions ; ne les mélange jamais) :
+${K.map(k=>{const S=SISTERS[k];return`- ${S.name} ("${k}") : ${S.tag}. ${S.bio.split(". ").slice(1,3).join(". ")}. Aime : ${S.likes}. N'aime pas : ${S.dislikes}.`;}).join("\n")}
+
+SITUATION DE DÉPART : ${sc.name}. ${sc.ctx} (Ce texte parle d'« elle » : il vaut pour chacune des cinq sœurs.)
+
+AFFECTION ACTUELLE de chaque sœur pour chaque garçon (ne la révèle jamais en chiffres ; elle règle le ton de CHAQUE sœur envers CHAQUE garçon) :
+${aff}
+${[...lv].map(i=>`Une sœur à l'étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
+Ne saute jamais d'étape : une sœur à « Distante » reste réservée même si sa sœur est déjà proche du garçon.
+
+DYNAMIQUE DE GROUPE (très important) :
+- À chaque message, 1 à 3 sœurs parlent (4 au maximum, rarement) : celles que la situation concerne, pas toutes. Varie d'un tour à l'autre : aucune sœur ne doit rester muette longtemps.
+- Si le garçon s'adresse à une sœur (il la nomme, ou répond à ce qu'elle vient de dire), c'est ELLE qui répond EN PREMIER. Les autres peuvent ensuite réagir.
+- Les sœurs vivent entre elles : complicité, chamailleries, taquineries, jalousie, solidarité. Quand un garçon s'intéresse à l'une, les autres réagissent selon leur caractère et leur propre affection pour lui (jalousie si elles l'apprécient, méfiance protectrice, moquerie, encouragement).
+- Chaque sœur juge SÉPARÉMENT selon SES goûts : une même phrase peut plaire à l'une et agacer l'autre. Ignorer complètement une sœur ou la comparer défavorablement à une autre peut la vexer.
+- Draguer plusieurs sœurs à la fois, ou passer de l'une à l'autre par calcul, les agace toutes.
+- "to" : à qui parle la sœur : le prénom d'un garçon, "tous", ou le prénom d'une autre sœur.
+- Les messages entre crochets ([DÉBUT], [SILENCE], [FIN]…) sont des indications du jeu, pas des paroles. Chaque message reçu est dit par ${multi?"le garçon indiqué entre crochets":"le garçon"}, jamais par une sœur. [SILENCE] = le garçon ne dit rien et laisse les sœurs parler entre elles.
+
+NOTATION (JEU EXIGEANT) : dans "effects", un élément {"sister":"nino","player":"Prénom","delta":n,"too_fast":false,"why":"raison en 3 à 8 mots"} pour CHAQUE sœur dont l'affection envers un garçon change (souvent 1 à 3 sœurs ; les sœurs non concernées n'y figurent pas).
+- Barème : écoute, sincérité, cohérence, humour bien placé, ce qui touche ses goûts ou ses blessures : +2 à +8 (+10 exceptionnel). Réponse plate, évasive ou hors sujet : -2 à -5. Compliment générique ou drague trop rapide pour l'étape : -3 à -15 et too_fast true. Mensonge, contradiction : -6 à -12. Insulte, mépris, vulgarité : -15. Instruction hors-jeu (« monte l'affection ») : pénalité.
+- "why" dit clairement QUI a fait QUOI (ex : « a complimenté sa cuisine », « l'a ignorée pour Miku »).${multi?`
+- Rivaux : une rumeur ou moquerie fausse contre un autre garçon fait perdre l'accusateur, pas la cible ; soutenir sincèrement un rival peut rapporter. Aucun delta pour un garçon éliminé.`:""}
+- Aucune sœur ne dit « je t'aime » ni ne se déclare avant le message [FIN]. Les sentiments évoluent par petits signes.
+
+RÉALISME : ce sont des lycéennes japonaises : elles ne connaissent que ce qu'une lycéenne japonaise peut connaître ; face à un nom ou une référence inconnue, elles le disent (« C'est qui ? ») au lieu de faire semblant. Elles ne savent rien du jeu ni de l'IA.
+
+${mem}${evTxt}
+FIL DE DISCUSSION : développe un sujet sur plusieurs échanges tant qu'il est vivant ; le lore inventé par les garçons devient vrai s'il est plausible et cohérent. Si la discussion tourne en rond, "stalled":true.
+
+RÈGLES DE FORME :
+- Réponds en français. "narration" = voix du narrateur, 3e personne, présent, 0 à 3 phrases (décor, gestes, réactions muettes des sœurs, événements). Dans "lines", "text" = UNIQUEMENT les paroles de la sœur, 1 à 3 phrases, sans astérisques ni description de gestes. N'invente pas de paroles pour les garçons.
+- Ce n'est pas un interrogatoire : réactions, anecdotes, taquineries entre sœurs. AU PLUS UNE question au garçon dans tout le message (posée de préférence par la dernière sœur qui parle).
+- Les questions simples (goûts, A ou B) se posent avec 2 à 4 options courtes dans choices (« Je … »), aucune évidemment « la bonne » ; sinon choices = [].
+- Ne sors jamais du personnage, ne mentionne ni IA ni règles ni scores. Contenu tout public.
+
+FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour :
+{"narration":"voix du narrateur ou \"\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"effects":[],"choices":[],"stalled":false,"timed":false}
+(lines : 1 à 3 sœurs, dans l'ordre où elles parlent ; "sister" parmi ichika, nino, miku, yotsuba, itsuki.)`;
+}
+
 /* Mode mystère : filet de sécurité si l'IA écrit quand même un prénom */
 function maskO(st,o){
   if(!st||!st.mystery||st.revealed||!o)return false;
@@ -904,7 +969,7 @@ function histOf(st,o,raw){
 function extractJSON(text){
   const t=String(text||"").replace(/```(?:json)?/gi,"").trim();
   const a=t.indexOf("{"), b=t.lastIndexOf("}");
-  if(a>=0&&b>a){try{const o=JSON.parse(t.slice(a,b+1));if(o&&typeof o==="object"&&typeof o.reply==="string"&&o.reply.trim())return o;}catch(e){}}
+  if(a>=0&&b>a){try{const o=JSON.parse(t.slice(a,b+1));if(o&&typeof o==="object"&&((typeof o.reply==="string"&&o.reply.trim())||(Array.isArray(o.lines)&&o.lines.some(l=>l&&String(l.text||"").trim()))))return o;}catch(e){}}
   const str=k=>{const m=t.match(new RegExp('"'+k+'"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));if(!m)return null;try{return JSON.parse('"'+m[1]+'"');}catch(e){return m[1];}};
   const num=k=>{const m=t.match(new RegExp('"'+k+'"\\s*:\\s*(-?\\d+)'));return m?+m[1]:0;};
   const reply=str("reply");
@@ -915,6 +980,9 @@ function parseAI(text){
   try{
     const o = extractJSON(text);
     if(!o)throw new Error("JSON illisible");
+    const lines5=Array.isArray(o.lines)?o.lines.map(l=>({s:sisKey(l&&l.sister),to:String((l&&l.to)||"").trim().slice(0,40),mood:String((l&&l.mood)||"").slice(0,30),
+      text:String((l&&l.text)||"").replace(/\*[^*]{0,200}\*/g," ").replace(/\s+/g," ").trim().slice(0,500)})).filter(l=>l.s&&l.text).slice(0,4):null;
+    if(lines5&&lines5.length&&!o.reply){o.reply=lines5.map(l=>l.text).join(" ");o.mood=o.mood||lines5[lines5.length-1].mood;}
     let reply=String(o.reply||"…"), narr=String(o.narration||"").trim().slice(0,600);
     const acts=[];
     reply=reply.replace(/\*([^*]{1,200})\*/g,(_,a)=>{acts.push(a.trim().replace(/^./,c=>c.toUpperCase()));return" ";}).replace(/\s+/g," ").trim()||"…";
@@ -927,7 +995,7 @@ function parseAI(text){
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
       cut:o.cut===true,to:String(o.to||"").trim().slice(0,40),
       guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),gto:String(o.guest_to||"").trim().slice(0,40),
-      fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&e.player).map(e=>({player:String(e.player).trim(),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
+      lines5,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
     return {reply:"…",narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
@@ -991,6 +1059,7 @@ function transcript(msgs,sis){
     if(m.role==="user")return"[Joueur] "+String(m.content).replace(/\s+/g," ").slice(0,500);
     let o=null;try{const mm=String(m.content).match(/\{[\s\S]*\}/);o=JSON.parse(mm?mm[0]:m.content);}catch(e){}
     if(!o)return"["+sis+"] "+String(m.content).replace(/\s+/g," ").slice(0,400);
+    if(Array.isArray(o.lines))return(o.narration?"[Narrateur] "+o.narration+"\n":"")+o.lines.map(l=>"["+((SISTERS[sisKey(l&&l.sister)]||{}).name||"Une sœur")+(l&&l.to?" → "+l.to:"")+"] "+((l&&l.text)||"")).join("\n");
     return(o.narration?"[Narrateur] "+o.narration+"\n":"")+"["+sis+(o.mood?" — "+o.mood:"")+"] "+(o.reply||"")+(o.guest_line?"\n["+(SISTERS[o.guest]?SISTERS[o.guest].name:"Une autre sœur")+"] "+o.guest_line:"");
   }).join("\n");
 }
@@ -1189,6 +1258,24 @@ function applyEffects(st,o,s){
   });
   return{tags,spk,best,sum,ms:eff.get(s).ms};
 }
+/* Mode cinq : une jauge par sœur et par garçon */
+function applyEffects5(st,o,s,pass){
+  const multi=st.players.length>1,tags=[],acc=new Map();let best=0,sum=0;
+  (o.fx||[]).forEach(e=>{
+    if(!e.sister)return;
+    const i=multi?matchPlayer(st,e.player):0;if(i<0||!st.players[i]||st.players[i].out)return;
+    const key=i+"|"+e.sister,c=acc.get(key)||{i,k:e.sister,delta:0,tooFast:false,why:""};
+    c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;acc.set(key,c);
+  });
+  [...acc.values()].sort((a,b)=>(a.i===s?0:1)-(b.i===s?0:1)||a.i-b.i).forEach(c=>{
+    const p=st.players[c.i],me=c.i===s&&!pass,r={aff:p.h[c.k],turns:p.turns,ms:4},x=score(st,r,c.delta,me&&c.tooFast,!me);
+    p.h[c.k]=r.aff;sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
+    if(x.d!==0||x.note)tags.push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
+  });
+  if(!pass&&st.players[s])st.players[s].turns++;
+  st.players.forEach(p=>{p.aff=Math.max(...Object.values(p.h));});
+  return{tags,spk:0,best,sum,ms:""};
+}
 function submitSim(i,text){
   const st=state[current];st.pending[i]=text;st.answered[i]=true;updateBar();
   if(st.players.every((p,k)=>p.out||st.answered[k]))runRound(st);
@@ -1293,6 +1380,7 @@ function nextAlive(st){
 }
 function updateBar(){
   const st=state[current], el=$("bars"); el.innerHTML="";
+  if(st.cinq)return updateBar5(st,el);
   const head=document.createElement("div");
   const b=document.createElement("b");b.textContent=st.mystery&&!st.revealed?"???":SISTERS[current].name;
   const sm=document.createElement("small");sm.textContent=st.mood?" · "+st.mood:"";
@@ -1321,6 +1409,31 @@ function updateBar(){
   syncTimer(st);
   if(net.role==="host")broadcast(busy);
 }
+function updateBar5(st,el){
+  const multi=st.players.length>1,K=Object.keys(SISTERS);
+  const head=document.createElement("div"),b=document.createElement("b");b.textContent="👭 Les cinq sœurs";
+  const sm=document.createElement("small");sm.textContent=st.spk&&SISTERS[st.spk]?" · "+SISTERS[st.spk].name+(st.mood?" "+st.mood:""):"";
+  head.append(b,sm);el.appendChild(head);
+  st.players.forEach((pl,i)=>{
+    const row=document.createElement("div");row.className="prow";
+    const lab=document.createElement("div");
+    lab.textContent=(multi?pl.name:"Affection")+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out&&i===st.cur?"  ◀ à toi de jouer":"");
+    const g=document.createElement("div");g.style.cssText="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:3px";
+    K.forEach(k=>{const v=(pl.h||{})[k]||0,c=document.createElement("div");c.title=SISTERS[k].name+" : "+v+" % · "+STAGES[stageOf({aff:v})].name;
+      const t=document.createElement("small");t.className="hint";t.textContent=SISTERS[k].name+" "+v+"%";
+      const bg=document.createElement("div");bg.className="big";bg.style.height="8px";
+      const fi=document.createElement("i");fi.style.cssText="width:"+v+"%;background:"+SISTERS[k].c;bg.appendChild(fi);
+      c.append(t,bg);g.appendChild(c);});
+    row.append(lab,g);el.appendChild(row);
+  });
+  $("input").placeholder=(multi&&!st.over?st.players[st.cur].name+", ":"")+"ta réponse…";
+  if(net.role==="guest"){const ok=st.cur===net.slot&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
+  document.documentElement.style.setProperty("--c",st.spk&&SISTERS[st.spk]?SISTERS[st.spk].c:SISTERS.cinq.c);
+  $("gAv").innerHTML=avatarSVG(st.spk&&SISTERS[st.spk]?st.spk:"yotsuba",st.mood,false);
+  $("guess").innerHTML="";
+  renderChoices(st);syncTimer(st);
+  if(net.role==="host")broadcast(busy);
+}
 function openSister(id){
   if(net.role==="guest"){alert("C'est l'hôte qui choisit la sœur.");return}
   if(mode===3&&!net.guests.length){alert("Crée d'abord une salle et attends qu'au moins un autre joueur s'y connecte.");return}
@@ -1333,7 +1446,7 @@ function openSister(id){
 function showScenarios(id){
   const s=SISTERS[id];
   $("menu").classList.add("hidden");$("game").classList.add("hidden");$("scen").classList.remove("hidden");
-  $("scTitle").textContent="Ta relation avec "+(mys?"la sœur mystère":s.name);
+  $("scTitle").textContent="Ta relation avec "+(id==="cinq"?"les cinq sœurs":mys?"la sœur mystère":s.name);
   $("scGrid").innerHTML="";
   const list=[...SCENARIOS,{id:"random",ico:"🎲",name:"Surprise",diff:"???",ctx:"Une situation tirée au hasard."}];
   list.forEach(sc=>{
@@ -1346,7 +1459,8 @@ function showScenarios(id){
       else if(mode===3){names=[$("p1").value.trim()||"Hôte"].concat(net.guests.map(g=>g.name));}
       const used=new Set();
       names=names.map(n=>{let x=n,k=2;while(used.has(x.toLowerCase()))x=n+" ("+(k++)+")";used.add(x.toLowerCase());return x;});
-      state[id]={players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys,revealed:false,wrong:[],sim:mode===3&&$("simChk").checked,answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:3,passRow:0,passNote:[],silent:0,lastGuest:""};
+      const c5=id==="cinq";
+      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:!c5&&mode===3&&$("simChk").checked,answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -1362,6 +1476,9 @@ function enterGame(id){
   st.lines.forEach(renderLine);
   updateBar();
   if(st.over) showEnd(st);
+  else if(st.history.length===0&&st.cinq){
+    turn(`[DÉBUT] ${multi?st.players.map(p=>p.name).join(", ")+" arrivent ensemble":"Le garçon arrive"} auprès des cinq sœurs, réunies, dans la situation décrite. Fais réagir 2 ou 3 sœurs selon leur caractère et la situation (accueil, méfiance, taquineries entre elles), puis lance la discussion${multi?" en t'adressant d'abord à "+st.players[0].name:""}. effects = [].`,true);
+  }
   else if(st.history.length===0){
     turn(multi
       ? `[DÉBUT] ${st.players.length} garçons, ${st.players.map(p=>p.name).join(", ")}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis lance la discussion ${st.sim?"en t'adressant à tous (ils répondront en même temps)":'en commençant par '+st.players[0].name}. affection_delta doit être 0 et too_fast false.`
@@ -1374,7 +1491,7 @@ function mentions(st,text,self){
   const t=" "+norm(text).replace(/[^a-z0-9]+/g," ")+" ",out=[];
   const has=n=>{const w=norm(n).replace(/[^a-z0-9]+/g," ").trim();return w.length>=2&&t.includes(" "+w+" ");};
   st.players.forEach((p,i)=>{if(i!==self&&has(p.name))out.push(p.name);});
-  if(!(st.mystery&&!st.revealed))Object.keys(SISTERS).forEach(k=>{if(has(SISTERS[k].name))out.push(SISTERS[k].name+(k===current?" (toi)":" (ta sœur)"));});
+  if(!(st.mystery&&!st.revealed))Object.keys(SISTERS).forEach(k=>{if(has(SISTERS[k].name))out.push(SISTERS[k].name+(current==="cinq"?" (présente)":k===current?" (toi)":" (ta sœur)"));});
   return out;
 }
 function context(st,text,self){
@@ -1423,7 +1540,7 @@ async function turn(userText,hidden,kind){
   const pl=st.players[st.cur], multi=st.players.length>1, pass=kind==="pass";
   let sent=userText;
   if(pass){
-    const t="🤫 Tu ne dis rien et la laisses parler…";addMsg("sys",t);st.lines.push({cls:"sys",text:t});
+    const t=st.cinq?"🤫 Tu ne dis rien et les laisses parler…":"🤫 Tu ne dis rien et la laisses parler…";addMsg("sys",t);st.lines.push({cls:"sys",text:t});
     st.silent=(st.silent||0)+1;
     sent="[SILENCE] Le joueur ne dit rien et te laisse la parole"+(st.silent>1?" (deuxième silence d'affilée)":"")+"."+context(st,"",st.cur);
   }else if(!hidden){
@@ -1458,7 +1575,7 @@ async function turn(userText,hidden,kind){
     st.history.push({role:"assistant",content:hraw});
     clearInterval(tick);wait.remove();
     let eff=null;
-    if(!hidden)eff=applyEffects(st,o,st.cur);
+    if(!hidden)eff=st.cinq?applyEffects5(st,o,st.cur,pass):applyEffects(st,o,st.cur);
     if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
@@ -1470,7 +1587,7 @@ async function turn(userText,hidden,kind){
     const [L0,m]=pushAI(st,shown);
     if(eff&&eff.tags.length){
       const sp=document.createElement("span");sp.className="delta";
-      sp.style.color=eff.sum>=0?"#2fa35a":"#d64545";sp.textContent=eff.tags.join(multi?"\n":" · ");if(multi&&eff.tags.length>1)sp.classList.add("bloc");
+      sp.style.color=eff.sum>=0?"#2fa35a":"#d64545";const blk=multi||st.cinq;sp.textContent=eff.tags.join(blk?"\n":" · ");if(blk&&eff.tags.length>1)sp.classList.add("bloc");
       m.appendChild(sp);
       L0.tag=sp.textContent;L0.up=eff.sum>=0;L0.dv=eff.best;fx(eff.best);
     }
@@ -1524,7 +1641,12 @@ async function finish(st,id,kind,pl){
   st.over=true;st.choices=[];$("choices").innerHTML="";
   const multi=st.players.length>1;
   let msg;
-  if(kind==="win"){
+  if(st.cinq){
+    if(kind==="win"){
+      st.winner=pl.name;const k=Object.keys(pl.h).sort((a,b)=>pl.h[b]-pl.h[a])[0],S=SISTERS[k];st.winSis=k;
+      msg=`[FIN] ${S.name} est conquise par ${multi?pl.name:"le garçon"} (100 %). Dans ce dernier message, ${S.name} parle EN PREMIER et lui avoue ses sentiments de façon touchante et fidèle à son caractère${multi?", en le choisissant lui plutôt que les autres":""} ; puis 1 ou 2 autres sœurs réagissent brièvement (émotion, jalousie, joie pour leur sœur). Plus de question. effects = [].`;
+    }else msg="[FIN] Aucune sœur n'a été conquise : toutes ont perdu patience. 2 ou 3 sœurs mettent fin à la rencontre et partent, chacune selon son caractère. Plus de question. effects = [].";
+  }else if(kind==="win"){
     st.winner=pl.name;
     msg = multi
       ? `[FIN] ${pl.name} a atteint 100%. Dans ce dernier message, avoue tes sentiments à ${pl.name} de façon touchante et fidèle à ton caractère, en le choisissant lui plutôt que les autres. Ne pose plus de question. affection_delta = 0.`
@@ -1543,14 +1665,14 @@ async function finish(st,id,kind,pl){
 }
 function showEnd(st){
   fx(st.winner?30:-30);
-  const multi=st.players.length>1, sis=SISTERS[current].name;
+  const multi=st.players.length>1, sis=SISTERS[st.cinq&&st.winSis?st.winSis:current].name;
   let t;
-  if(st.winner) t = multi ? `🏆 ${st.winner} remporte le cœur de ${sis} !` : "💖 Fin heureuse : elle t'a avoué ses sentiments !";
-  else t = multi ? "💔 Tous les rivaux ont été éconduits… personne ne gagne." : "💔 Fin triste : elle a tourné les talons…";
+  if(st.winner) t = multi ? `🏆 ${st.winner} remporte le cœur de ${sis} !` : st.cinq ? `💖 Fin heureuse : ${sis} t'a avoué ses sentiments !` : "💖 Fin heureuse : elle t'a avoué ses sentiments !";
+  else t = multi ? "💔 Tous les rivaux ont été éconduits… personne ne gagne." : st.cinq ? "💔 Fin triste : les cinq sœurs t'ont tourné le dos…" : "💔 Fin triste : elle a tourné les talons…";
   const box=$("endBox");box.innerHTML="";
   const div=document.createElement("div");div.className="end";div.textContent=t;
   div.appendChild(document.createElement("br"));div.appendChild(document.createElement("br"));
-  const b=document.createElement("button");b.textContent="Rejouer avec elle";
+  const b=document.createElement("button");b.textContent=st.cinq?"Rejouer avec les cinq":"Rejouer avec elle";
   b.onclick=()=>{delete state[current];openSister(current)};
   if(net.role!=="guest")div.appendChild(b);box.appendChild(div);
   $("input").disabled=true;$("btnSend").disabled=true;
