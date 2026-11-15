@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.8 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.9 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -948,16 +948,21 @@ function normMsgs(msgs){
   while(out.length&&out[0].role!=="user")out.shift();
   return out;
 }
-async function rawCall(prov,{system,messages,json=true,max=1400,ms=45000}){
-  const model=provModel(prov), key=cfg.keys[prov], msgs=normMsgs(messages);
+/* Gemini : si le modèle choisi est surchargé, on essaie d'autres modèles Gemini (même clé, capacité séparée) */
+const GEM_ALT=["gemini-3.6-flash","gemini-3.5-flash-lite"];
+const provModels=p=>p==="gemini"?[provModel(p),...GEM_ALT.filter(m=>m!==provModel(p))]:[provModel(p)];
+async function rawCall(prov,{system,messages,json=true,max=1400,ms=45000,model}){
+  model=model||provModel(prov);const key=cfg.keys[prov], msgs=normMsgs(messages);
   if(prov==="gemini"){
     const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
     const gc={temperature:json?1:0.3};if(json)gc.responseMimeType="application/json";
-    const r=await fetchT(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    if(/^gemini-3/.test(model))gc.thinkingConfig={thinkingLevel:"low"};   // réflexion courte : réponse bien plus rapide
+    const send=()=>fetchT(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
       systemInstruction:{parts:[{text:system}]},
       contents:msgs.map(h=>({role:h.role==="user"?"user":"model",parts:[{text:h.content}]})),
       generationConfig:gc})},ms);
-    const j=await r.json().catch(()=>({}));
+    let r=await send(),j=await r.json().catch(()=>({}));
+    if(!r.ok&&r.status===400&&gc.thinkingConfig&&/think/i.test(JSON.stringify(j))){delete gc.thinkingConfig;r=await send();j=await r.json().catch(()=>({}));}
     if(!r.ok)throw apiErr(r,j);
     return j.candidates?.[0]?.content?.parts?.filter(p=>!p.thought).map(p=>p.text).join("")||"";
   }
@@ -1039,19 +1044,32 @@ async function callAI(id, history){
   const system=systemPrompt(id,st.sc,st.players,st), msgs=histOfSt(st);
   const size=(system.length+JSON.stringify(msgs).length)/3.2+1400;
   const errs=[];
+  // indicateur d'attente : qui répond et depuis combien de temps (affiché après 3 s)
+  const t0=Date.now();let label="";const tick=addMsg("sys","");tick.style.display="none";
+  const iv=setInterval(()=>{const s=Math.round((Date.now()-t0)/1000);if(s>=3){tick.style.display="";if($("log").lastChild!==tick){$("log").appendChild(tick);$("log").scrollTop=$("log").scrollHeight;}tick.textContent="⏳ "+label+" écrit… "+s+" s";}},1000);
+  try{
   for(let k=0;k<order.length;k++){
-    const prov=order[k], tries=k===0?3:1, name=PROVIDERS[prov].short;
+    const prov=order[k], name=PROVIDERS[prov].short, models=provModels(prov);
+    const tries=models.length>1?models.length:k===0?3:1;
     if(prov==="groq"&&size>7500){errs.push(name+" : partie trop longue pour le palier gratuit (8 000 tokens/min)");continue;}
     let last=null;
     for(let a=1;a<=tries;a++){
+      const model=models[Math.min(a,models.length)-1];
+      label=name+" ("+model+")";
       try{
-        const raw=await rawCall(prov,{system,messages:msgs,json:true,max:1400,ms:k===0?45000:30000});
+        const raw=await rawCall(prov,{system,messages:msgs,json:true,max:1400,ms:models.length>1?30000:k===0?40000:30000,model});
         if(!extractJSON(raw)){const e=new Error("réponse coupée ou mal formée");e.incomplete=true;throw e;}
-        if(k>0)addMsg("sys","✅ "+provName(prov)+" a répondu à la place. Le prochain message repartira de "+PROVIDERS[order[0]].short+".");
+        if(k>0)addMsg("sys","✅ "+name+" ("+model+") a répondu à la place. Le prochain message repartira de "+PROVIDERS[order[0]].short+".");
+        else if(model!==models[0])addMsg("sys","✅ "+models[0]+" surchargé : "+name+" a répondu avec "+model+".");
         st.prov=prov;
         return raw;
       }catch(e){
-        last=e;const w=a<tries?retryDelay(e,a):null;
+        last=e;if(a>=tries)break;
+        if(models.length>1){   // autre modèle Gemini : pas d'attente, sauf clé refusée
+          if(e.status===401||e.status===403||/API key not valid|invalid api key/i.test(String(e.message)))break;
+          continue;
+        }
+        const w=retryDelay(e,a);
         if(w==null)break;
         const n=addMsg("sys","⏳ "+name+" est surchargé ("+shortErr(e)+") : nouvel essai dans "+w+" s…");
         await pauseS(w);n.remove();
@@ -1060,6 +1078,7 @@ async function callAI(id, history){
     errs.push(name+" : "+shortErr(last));
     if(k<order.length-1)addMsg("sys","⚠️ "+name+" indisponible ("+shortErr(last)+") → relais vers "+PROVIDERS[order[k+1]].short+"…");
   }
+  }finally{clearInterval(iv);tick.remove();}
   throw new Error(errs.join(" · "));
 }
 

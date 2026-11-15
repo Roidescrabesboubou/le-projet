@@ -67,17 +67,22 @@
     return out;
   }
 
+  const GEM_ALT = ["gemini-3.6-flash", "gemini-3.5-flash-lite"];   // modèles Gemini essayés si le modèle choisi est surchargé
+  const modeles = (c, p) => p === "gemini" ? [modele(c, p), ...GEM_ALT.filter(m => m !== modele(c, p))] : [modele(c, p)];
+
   async function brut(c, p, o){
-    const model = modele(c, p), key = c.keys[p], msgs = normaliser(o.messages), json = o.json !== false, max = o.max || 1400;
+    const model = o.model || modele(c, p), key = c.keys[p], msgs = normaliser(o.messages), json = o.json !== false, max = o.max || 1400;
     const system = o.system || "";
     if(p === "gemini"){
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
       const gc = {temperature: o.temperature != null ? o.temperature : (json ? 1 : 0.3)}; if(json) gc.responseMimeType = "application/json";
-      const r = await fetchT(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
+      if(/^gemini-3/.test(model)) gc.thinkingConfig = {thinkingLevel: "low"};   // réflexion courte : réponse plus rapide
+      const envoyerG = () => fetchT(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
         systemInstruction: {parts: [{text: system}]},
         contents: msgs.map(h => ({role: h.role === "user" ? "user" : "model", parts: [{text: h.content}]})),
         generationConfig: gc})}, o.ms);
-      const j = await r.json().catch(() => ({}));
+      let r = await envoyerG(), j = await r.json().catch(() => ({}));
+      if(!r.ok && r.status === 400 && gc.thinkingConfig && /think/i.test(JSON.stringify(j))){ delete gc.thinkingConfig; r = await envoyerG(); j = await r.json().catch(() => ({})); }
       if(!r.ok) throw erreur(r, j);
       return ((((j.candidates || [])[0] || {}).content || {}).parts || []).filter(x => !x.thought).map(x => x.text).join("");
     }
@@ -106,16 +111,17 @@
     if(!liste.length) throw new Error("Aucune clé IA enregistrée : ajoute-en une dans ⚙️ Réglages.");
     const errs = [];
     for(let k = 0; k < liste.length; k++){
-      const p = liste[k], essais = k === 0 ? 3 : 1;   // l'IA principale est réessayée en cas de surcharge passagère
+      const p = liste[k], mods = modeles(c, p), essais = mods.length > 1 ? mods.length : k === 0 ? 3 : 1;   // l'IA principale est réessayée en cas de surcharge passagère
       let der = "";
       for(let a = 1; a <= essais; a++){
         try{
-          const t = await brut(c, p, {...o, ms: k === 0 ? 45000 : 30000});
+          const t = await brut(c, p, {...o, ms: mods.length > 1 || k > 0 ? 30000 : 40000, model: mods[Math.min(a, mods.length) - 1]});
           if(t && t.trim() && (o.json === false || json(t))) return t;
           der = "réponse vide ou coupée";
           if(a < essais){ await pause(1); continue; }
         }catch(e){
           der = e.name === "AbortError" ? "délai dépassé" : String(e.message || e).slice(0, 90);
+          if(mods.length > 1 && a < essais){ if(e.status === 401 || e.status === 403 || /API key not valid/i.test(der)) break; continue; }   // autre modèle Gemini tout de suite
           const w = a < essais ? attente(e, a) : null;
           if(w == null) break;
           o.surAttente && o.surAttente(FOURNISSEURS[p].short, w);
