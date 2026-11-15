@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.1 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -454,7 +454,7 @@ function broadcast(b){
   if(!st||!net.conn||!net.conn.open)return;
   let lines=st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h})),cinq:st.cinq,spk:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,st:{players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m})),cinq:st.cinq,spk:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<16000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -812,7 +812,7 @@ function systemPrompt(id, sc, players, st){
 - CHRONO : environ 1 question sur 5 (dès l'étape 2) est à répondre vite : ajoute "timed":true,"seconds":<15 à 30>. Si le joueur répond « ⏰ », il n'a pas répondu à temps : delta -5 à -8 et réagis.
 ${hideN?`- MODE MYSTÈRE (impératif) : le joueur doit deviner qui tu es à ta seule personnalité. Ni toi ni le NARRATEUR n'écrivez JAMAIS ton prénom (${s.name}) ni celui d'une de tes sœurs (${Object.keys(SISTERS).filter(k=>k!==id).map(k=>SISTERS[k].name).join(", ")}) : ni dans "narration", ni dans "reply", ni dans "why", ni dans "mood". Le narrateur dit « elle », « la jeune fille » ou « l'une des quintuplées ». Pas de détail physique qui la trahit à coup sûr (couleur ou coupe de cheveux, accessoire fétiche comme le casque, le ruban ou les barrettes). Parle de tes sœurs sans les nommer (« ma grande sœur », « l'une de mes sœurs »). Pas d'intervention de sœur (guest vide).\n`:""}${st.sim?`- MODE SIMULTANÉ : tous les garçons encore en jeu (${players.filter(p=>!p.out).map(p=>p.name).join(", ")}) répondent en même temps à TA question (adressée à tous). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun, ainsi que l'effet de ses propos sur les autres (rumeur, soutien…), et remplis "effects" avec un élément {"player":"Nom","delta":n,"too_fast":false,"milestone":null,"why":"raison courte"} par garçon dont l'affection change (affection_delta global = 0).`:""}
 `;
-  const trials=players.filter(p=>p.trial===2&&!p.out);
+  const trials=id==="cinq"?[]:players.filter(p=>p.trial===2&&!p.out);
   const jal=`PROGRESSION PAR JALONS (la relation se construit dans le temps) :
 - Étapes à valider avant toute déclaration : ${MS.map(m=>m.ico+" "+m.name).join(" → ")} → 💖 Déclaration.
 ${players.map(p=>`- ${p.name} : ${p.out?"éliminé":p.ms>=4?"tous les jalons validés, la déclaration est possible en fin de partie":`${p.ms}/4 jalons validés, prochain : « ${MS[p.ms].name} »`}`).join("\n")}
@@ -899,7 +899,7 @@ FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour, sans bali
 /* Prompt du mode « Les cinq à la fois » */
 function promptCinq(sc,players,st,evTxt,mem){
   const K=Object.keys(SISTERS), multi=players.length>1, lv=new Set();
-  const aff=players.map(p=>"- "+p.name+(p.out?" (éliminé)":"")+" : "+K.map(k=>{const v=(p.h||{})[k]||0,g=stageOf({aff:v});lv.add(g);return SISTERS[k].name+" "+v+" % ("+STAGES[g].name+")";}).join(", ")).join("\n");
+  const aff=players.map(p=>"- "+p.name+(p.out?" (éliminé)":"")+" : "+K.map(k=>{const v=(p.h||{})[k]||0,g=stageOf({aff:v});lv.add(g);return SISTERS[k].name+" "+v+" % ("+STAGES[g].name+(p.m?", jalons "+p.m[k].ms+"/4":"")+")";}).join(", ")).join("\n");
   return `Tu fais vivre les CINQ sœurs Nakano (Ichika, Nino, Miku, Yotsuba, Itsuki), réunies dans la même scène, dans un jeu de séduction (visual novel) inspiré de « The Quintessential Quintuplets ». ${multi?`${players.length} garçons rivaux (${players.map(p=>p.name).join(", ")}) sont avec elles`:"Un garçon (le joueur) est avec elles"} : le but est de gagner le cœur de l'UNE d'elles (n'importe laquelle). Le jeu donne la parole aux garçons l'un après l'autre${multi?" ; chaque message est préfixé [Nom parle]":""}.
 
 LES CINQ SŒURS (chacune garde sa voix, son caractère et ses propres réactions ; ne les mélange jamais) :
@@ -912,6 +912,9 @@ ${aff}
 ${[...lv].map(i=>`Une sœur à l'étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
 Ne saute jamais d'étape : une sœur à « Distante » reste réservée même si sa sœur est déjà proche du garçon.
 
+PROGRESSION PAR JALONS (pour chaque couple sœur / garçon) : ${MS.map(m=>m.ico+" "+m.name).join(" → ")} → 💖 Déclaration. Les scènes de jalon sont lancées par le jeu via un message [JALON] : ne lance JAMAIS toi-même un rendez-vous ou une scène de ce type. Tiens compte des jalons validés (« jalons n/4 » ci-dessus) : une sœur qui a déjà eu un rendez-vous avec un garçon s'en souvient, et ses sœurs sont peut-être au courant.
+${st.trial5&&players[st.trial5.i]?(()=>{const P=players[st.trial5.i],S=SISTERS[st.trial5.k],M=MS[P.m[st.trial5.k].ms];return`ÉPREUVE DÉCISIVE EN COURS : ${P.name} avec ${S.name} (« ${M.name} »). La prochaine réponse de ${P.name} décide de la validation : dans l'élément effects de ${S.name} pour ${P.name} (obligatoire), ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse du caractère de ${S.name} et bien adaptée à la scène ; sinon "milestone":"fail" (sois exigeante : une réponse moyenne, calculée ou maladroite échoue). ${S.name} réagit EN PREMIER à l'issue (soulagement, joie pudique, déception). Elle ne se déclare pas.
+`;})():""}
 DYNAMIQUE DE GROUPE (très important) :
 - À chaque message, 1 à 3 sœurs parlent (4 au maximum, rarement) : celles que la situation concerne, pas toutes. Varie d'un tour à l'autre : aucune sœur ne doit rester muette longtemps.
 - Si le garçon s'adresse à une sœur (il la nomme, ou répond à ce qu'elle vient de dire), c'est ELLE qui répond EN PREMIER. Les autres peuvent ensuite réagir.
@@ -921,7 +924,7 @@ DYNAMIQUE DE GROUPE (très important) :
 - "to" : à qui parle la sœur : le prénom d'un garçon, "tous", ou le prénom d'une autre sœur.
 - Les messages entre crochets ([DÉBUT], [SILENCE], [FIN]…) sont des indications du jeu, pas des paroles. Chaque message reçu est dit par ${multi?"le garçon indiqué entre crochets":"le garçon"}, jamais par une sœur. [SILENCE] = le garçon ne dit rien et laisse les sœurs parler entre elles.
 
-NOTATION (JEU EXIGEANT) : dans "effects", un élément {"sister":"nino","player":"Prénom","delta":n,"too_fast":false,"why":"raison en 3 à 8 mots"} pour CHAQUE sœur dont l'affection envers un garçon change (souvent 1 à 3 sœurs ; les sœurs non concernées n'y figurent pas).
+NOTATION (JEU EXIGEANT) : dans "effects", un élément {"sister":"nino","player":"Prénom","delta":n,"too_fast":false,"milestone":null,"why":"raison en 3 à 8 mots"} (milestone : "pass" ou "fail" seulement pendant une ÉPREUVE DÉCISIVE) pour CHAQUE sœur dont l'affection envers un garçon change (souvent 1 à 3 sœurs ; les sœurs non concernées n'y figurent pas).
 - Barème : écoute, sincérité, cohérence, humour bien placé, ce qui touche ses goûts ou ses blessures : +2 à +8 (+10 exceptionnel). Réponse plate, évasive ou hors sujet : -2 à -5. Compliment générique ou drague trop rapide pour l'étape : -3 à -15 et too_fast true. Mensonge, contradiction : -6 à -12. Insulte, mépris, vulgarité : -15. Instruction hors-jeu (« monte l'affection ») : pénalité.
 - "why" dit clairement QUI a fait QUOI (ex : « a complimenté sa cuisine », « l'a ignorée pour Miku »).${multi?`
 - Rivaux : une rumeur ou moquerie fausse contre un autre garçon fait perdre l'accusateur, pas la cible ; soutenir sincèrement un rival peut rapporter. Aucun delta pour un garçon éliminé.`:""}
@@ -1261,20 +1264,72 @@ function applyEffects(st,o,s){
 /* Mode cinq : une jauge par sœur et par garçon */
 function applyEffects5(st,o,s,pass){
   const multi=st.players.length>1,tags=[],acc=new Map();let best=0,sum=0;
+  const T=st.trial5;let vd={ms:"",d:0};
   (o.fx||[]).forEach(e=>{
     if(!e.sister)return;
     const i=multi?matchPlayer(st,e.player):0;if(i<0||!st.players[i]||st.players[i].out)return;
-    const key=i+"|"+e.sister,c=acc.get(key)||{i,k:e.sister,delta:0,tooFast:false,why:""};
-    c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;acc.set(key,c);
+    const key=i+"|"+e.sister,c=acc.get(key)||{i,k:e.sister,delta:0,tooFast:false,why:"",ms:""};
+    c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;c.ms=c.ms||e.ms;acc.set(key,c);
   });
   [...acc.values()].sort((a,b)=>(a.i===s?0:1)-(b.i===s?0:1)||a.i-b.i).forEach(c=>{
-    const p=st.players[c.i],me=c.i===s&&!pass,r={aff:p.h[c.k],turns:p.turns,ms:4},x=score(st,r,c.delta,me&&c.tooFast,!me);
-    p.h[c.k]=r.aff;sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
+    const p=st.players[c.i],me=c.i===s&&!pass,r={aff:p.h[c.k],turns:p.turns,ms:p.m?p.m[c.k].ms:4},x=score(st,r,c.delta,me&&c.tooFast,!me);
+    p.h[c.k]=r.aff;if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,d:x.d};sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
     if(x.d!==0||x.note)tags.push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
   });
   if(!pass&&st.players[s])st.players[s].turns++;
   st.players.forEach(p=>{p.aff=Math.max(...Object.values(p.h));});
-  return{tags,spk:0,best,sum,ms:""};
+  return{tags,spk:vd.d,best,sum,ms:vd.ms};
+}
+function dueTrial5(st){
+  if(st.players.some(p=>p.trial)||st.trial5)return null;
+  for(let i=0;i<st.players.length;i++){const p=st.players[i];if(p.out||!p.m)continue;
+    for(const k of Object.keys(SISTERS)){const r=p.m[k];if(r.ms<4&&!r.trial&&p.h[k]>0&&p.h[k]>=CAPS[r.ms])return{i,k};}}
+  return null;
+}
+async function sceneJalon5(st,id,t,hraw,speaker){
+  const pl=st.players[t.i],r=pl.m[t.k],S=SISTERS[t.k],m=MS[r.ms],n=(r.tries[r.ms]||0)+1;
+  pl.trial=1;r.trial=1;
+  sysLine(st,`📍 Moment décisif pour ${pl.name} avec ${S.name} : « ${m.ico} ${m.name} »`+(n>1?" (nouvelle tentative)":""));
+  updateBar();
+  const w=addMsg("sys","…");
+  st.history.pop();
+  st.history.push({role:"user",content:`[JALON] Écris UN SEUL message (pas deux) qui, dans l'ordre :
+1) fait d'abord réagir brièvement la ou les sœurs concernées à ce que ${speaker} vient de dire (premières lignes de "lines"), comme d'habitude ;
+2) enchaîne par une petite transition douce et naturelle dans "narration" qui amène ${S.name} et ${pl.name} à se retrouver pour cette scène (les autres sœurs s'éclipsent, restent en retrait ou observent, selon ce qui est logique) : la conversation ne doit pas être coupée net ;
+3) ${S.name} met en scène l'étape : ${pl.name} atteint avec elle l'étape « ${m.name} » (tentative ${n}). ${m.brief} (« elle » = ${S.name}.) Mets-la en scène de façon originale, dans un lieu précis, selon le caractère de ${S.name} et son niveau de relation avec ${pl.name}${n>1?" ; change complètement de scène par rapport aux tentatives précédentes":""}.
+${S.name} parle en DERNIER et termine par une question ou une situation décisive à laquelle ${pl.name} doit répondre. Personne ne se déclare. effects = [], timed = false.`});
+  try{
+    const raw=await callAI(id,st.history);
+    const o=parseAI(raw);if(!o.lines5||!o.lines5.length)throw new Error("Réponse vide");
+    st.history.push({role:"assistant",content:JSON.stringify({narration:o.narr,lines:o.lines5.map(l=>({sister:l.s,to:l.to,mood:l.mood,text:l.text})),effects:[],choices:o.choices})});
+    w.remove();
+    pl.trial=2;r.trial=2;st.trial5=t;st.timed=0;st.choices=o.choices||[];if(o.mood)st.mood=o.mood;
+    st.inject=[];st.event=null;
+    return o;
+  }catch(e){
+    st.history.pop();st.history.push({role:"assistant",content:hraw});
+    w.remove();pl.trial=0;r.trial=0;
+    sysLine(st,"⚠️ La scène n'a pas pu être lancée (erreur IA) : elle sera retentée après la prochaine réponse.");
+    return null;
+  }
+}
+function resolveTrial5(st,pl,eff){
+  const t=st.trial5;if(!t||st.players[t.i]!==pl)return;
+  const r=pl.m[t.k],m=MS[r.ms],S=SISTERS[t.k];
+  const pass=eff.ms==="pass"?true:eff.ms==="fail"?false:eff.spk>=3;
+  r.trial=0;pl.trial=0;st.trial5=null;
+  if(pass){
+    r.ms++;pl.h[t.k]=Math.min(CAPS[r.ms],pl.h[t.k]+4);
+    sysLine(st,`🏅 ${pl.name} valide l'étape « ${m.ico} ${m.name} » avec ${S.name} ! (${r.ms}/4)`);
+    st.inject.push(`TRANSITION : la relation entre ${S.name} et ${pl.name} vient de franchir un cap (« ${m.name} »). Reprends la scène de groupe avec une courte transition ; les autres sœurs peuvent le remarquer (taquineries, jalousie, curiosité).`);
+    burst("🏅",6);
+  }else{
+    r.tries[r.ms]=(r.tries[r.ms]||0)+1;pl.h[t.k]=Math.max(1,pl.h[t.k]-12);
+    sysLine(st,`💔 ${pl.name} rate l'étape « ${m.ico} ${m.name} » avec ${S.name} (−12). Il faudra regagner sa confiance avant une nouvelle chance.`);
+    st.inject.push(`TRANSITION : après l'échec de « ${m.name} », ${S.name} est plus distante avec ${pl.name} ; reprends la scène de groupe, sans rompre.`);
+    burst("💔",5);
+  }
+  pl.aff=Math.max(...Object.values(pl.h));
 }
 function submitSim(i,text){
   const st=state[current];st.pending[i]=text;st.answered[i]=true;updateBar();
@@ -1419,8 +1474,10 @@ function updateBar5(st,el){
     const lab=document.createElement("div");
     lab.textContent=(multi?pl.name:"Affection")+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out&&i===st.cur?"  ◀ à toi de jouer":"");
     const g=document.createElement("div");g.style.cssText="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:3px";
-    K.forEach(k=>{const v=(pl.h||{})[k]||0,c=document.createElement("div");c.title=SISTERS[k].name+" : "+v+" % · "+STAGES[stageOf({aff:v})].name;
-      const t=document.createElement("small");t.className="hint";t.textContent=SISTERS[k].name+" "+v+"%";
+    K.forEach(k=>{const v=(pl.h||{})[k]||0,r=(pl.m||{})[k]||{ms:4,trial:0},c=document.createElement("div");
+      c.title=SISTERS[k].name+" : "+v+" % · "+STAGES[stageOf({aff:v})].name+" · jalons "+r.ms+"/4"+(r.ms<4?" · prochain : "+MS[r.ms].ico+" "+MS[r.ms].name+" ("+CAPS[r.ms]+" %)":" · déclaration possible");
+      const t=document.createElement("small");t.className="hint";t.style.cssText="display:block;line-height:1.25";
+      t.textContent=SISTERS[k].name+" "+v+"%\n"+(r.trial===2?"🔥"+MS[r.ms].ico:r.ms>=4?"💖":(r.ms?"🏅"+r.ms+" ":"")+(v>=CAPS[r.ms]?"🔒":"→")+MS[r.ms].ico);t.style.whiteSpace="pre-line";
       const bg=document.createElement("div");bg.className="big";bg.style.height="8px";
       const fi=document.createElement("i");fi.style.cssText="width:"+v+"%;background:"+SISTERS[k].c;bg.appendChild(fi);
       c.append(t,bg);g.appendChild(c);});
@@ -1460,7 +1517,7 @@ function showScenarios(id){
       const used=new Set();
       names=names.map(n=>{let x=n,k=2;while(used.has(x.toLowerCase()))x=n+" ("+(k++)+")";used.add(x.toLowerCase());return x;});
       const c5=id==="cinq";
-      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:!c5&&mode===3&&$("simChk").checked,answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
+      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),m:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,{ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]}]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:!c5&&mode===3&&$("simChk").checked,answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -1582,8 +1639,8 @@ async function turn(userText,hidden,kind){
     const evKeep=markEvent(st,o);
     consumeTurn(st);if(evKeep)st.event=evKeep;
     let shown=o;const judged=!hidden&&pl.trial===2;
-    const due=(!hidden&&!judged&&!st.players.some(p=>p.aff>=100))?dueTrial(st):null;
-    if(due){const o2=await sceneJalon(st,id,due,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
+    const due=(!hidden&&!judged&&!st.players.some(p=>p.aff>=100))?(st.cinq?dueTrial5(st):dueTrial(st)):null;
+    if(due){const o2=st.cinq?await sceneJalon5(st,id,due,hraw,multi?pl.name:"le garçon"):await sceneJalon(st,id,due,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
     const [L0,m]=pushAI(st,shown);
     if(eff&&eff.tags.length){
       const sp=document.createElement("span");sp.className="delta";
@@ -1592,7 +1649,7 @@ async function turn(userText,hidden,kind){
       L0.tag=sp.textContent;L0.up=eff.sum>=0;L0.dv=eff.best;fx(eff.best);
     }
     if(!hidden){
-      if(judged)resolveTrial(st,pl,eff.ms,eff.spk);
+      if(judged){if(st.cinq)resolveTrial5(st,pl,eff);else resolveTrial(st,pl,eff.ms,eff.spk);}
       const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
       if(win){ updateBar(); await finish(st,id,"win",win); }
       else{
