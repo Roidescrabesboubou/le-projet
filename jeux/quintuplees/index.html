@@ -121,7 +121,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.6 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.7 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -256,7 +256,7 @@ const SISTERS = {
 const PROVIDERS = {
   gemini:{short:"Gemini",label:"Google Gemini (gratuit, limité)",model:"gemini-3.8-flash",help:"Clé gratuite : aistudio.google.com → « Get API key ». Le palier gratuit est limité en requêtes par jour."},
   anthropic:{short:"Claude",label:"Anthropic Claude (payant)",model:"claude-haiku-5-5",url:"https://api.anthropic.com/v1/messages",help:"Clé : platform.claude.com → API keys. Crédits payants, séparés de l'abonnement Claude. Haiku 5.5 est le modèle le moins cher."},
-  groq:{short:"Groq",label:"Groq (gratuit, très rapide)",model:"llama-3.3-70b-versatile",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
+  groq:{short:"Groq",label:"Groq (gratuit, très rapide)",model:"openai/gpt-oss-120b",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
   mistral:{short:"Mistral",label:"Mistral (palier gratuit)",model:"mistral-small-latest",url:"https://api.mistral.ai/v1/chat/completions",help:"Clé : console.mistral.ai (palier gratuit « Experiment »)."},
   openrouter:{short:"OpenRouter",label:"OpenRouter (modèles :free)",model:"openrouter/free",url:"https://openrouter.ai/api/v1/chat/completions",help:"Clé : openrouter.ai/keys. Utilise un modèle se terminant par :free."}
 };
@@ -278,6 +278,9 @@ function loadCfg(){
     if(PROVIDERS[op]&&ok){c.keys[op]=ok;if(om&&om!=="gemini-2.5-flash")c.models[op]=om;c.primary=c.active=op;c.fallback=op==="gemini"?"groq":"gemini";}
   }
   if(c.models.gemini==="gemini-2.5-flash")delete c.models.gemini;
+  if(/^(llama-3\.3-70b-versatile|llama-3\.1-8b-instant|qwen\/qwen3-32b|qwen\/qwen3\.6-27b)$/.test(c.models.groq||""))delete c.models.groq;   // modèles arrêtés chez Groq
+  if(/llama-3\.3-70b-instruct:free$/.test(c.models.openrouter||""))delete c.models.openrouter;
+  if(store.get("relaisV2","")!=="1"){store.set("relaisV2","1");c.active=c.primary;}   // l'ancien relais laissait l'IA de secours comme IA active
   return c;
 }
 let cfg=loadCfg(), isGuest=false;
@@ -326,7 +329,7 @@ $("model").onchange=autoSave;
 $("aiMain").onchange=$("aiBackup").onchange=autoSave;
 $("aiSel").onchange=()=>{
   const was=cfg.active;cfg.active=$("aiSel").value;saveCfg();
-  if(was!==cfg.active&&!$("game").classList.contains("hidden"))addMsg("sys","🔁 IA changée : "+provName(cfg.active)+". Un résumé de la partie lui sera transmis à son prochain message.");
+  if(was!==cfg.active&&!$("game").classList.contains("hidden"))addMsg("sys","🔁 IA changée : "+provName(cfg.active)+". Elle répondra au prochain message.");
 };
 $("btnSettings").onclick = () => $("settings").classList.toggle("hidden");
 $("btnSave").onclick = () => {
@@ -877,10 +880,22 @@ function histOf(st,o,raw){
   return maskO(st,o)?JSON.stringify({narration:o.narr,reply:o.reply,affection_delta:o.delta,too_fast:o.tooFast,why:o.why,mood:o.mood,choices:o.choices}):raw;
 }
 /* ---------- Appels API ---------- */
+/* Extrait l'objet JSON d'une réponse ; tolère du texte autour, des balises ```json,
+   et récupère les champs complets d'un JSON abîmé. null si la réponse est inutilisable (coupée…). */
+function extractJSON(text){
+  const t=String(text||"").replace(/```(?:json)?/gi,"").trim();
+  const a=t.indexOf("{"), b=t.lastIndexOf("}");
+  if(a>=0&&b>a){try{const o=JSON.parse(t.slice(a,b+1));if(o&&typeof o==="object"&&typeof o.reply==="string"&&o.reply.trim())return o;}catch(e){}}
+  const str=k=>{const m=t.match(new RegExp('"'+k+'"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));if(!m)return null;try{return JSON.parse('"'+m[1]+'"');}catch(e){return m[1];}};
+  const num=k=>{const m=t.match(new RegExp('"'+k+'"\\s*:\\s*(-?\\d+)'));return m?+m[1]:0;};
+  const reply=str("reply");
+  if(!reply||!reply.trim()||b<0)return null;   // pas de réplique complète, ou réponse coupée avant la fin
+  return {narration:str("narration")||"",reply,affection_delta:num("affection_delta"),mood:str("mood")||"",why:str("why")||"",choices:[]};
+}
 function parseAI(text){
   try{
-    const m = text.match(/\{[\s\S]*\}/);
-    const o = JSON.parse(m ? m[0] : text);
+    const o = extractJSON(text);
+    if(!o)throw new Error("JSON illisible");
     let reply=String(o.reply||"…"), narr=String(o.narration||"").trim().slice(0,600);
     const acts=[];
     reply=reply.replace(/\*([^*]{1,200})\*/g,(_,a)=>{acts.push(a.trim().replace(/^./,c=>c.toUpperCase()));return" ";}).replace(/\s+/g," ").trim()||"…";
@@ -896,11 +911,11 @@ function parseAI(text){
       fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&e.player).map(e=>({player:String(e.player).trim(),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
-    return {reply:text.replace(/[{}"]/g,"").slice(0,400),narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
+    return {reply:"…",narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
   }
 }
-function fetchT(url,opts){
-  const c=new AbortController();const t=setTimeout(()=>c.abort(),45000);
+function fetchT(url,opts,ms){
+  const c=new AbortController();const t=setTimeout(()=>c.abort(),ms||45000);
   return fetch(url,{...opts,signal:c.signal}).finally(()=>clearTimeout(t));
 }
 function apiErr(r,j){const e=new Error((j&&j.error&&(j.error.message||j.error.type))||("HTTP "+r.status));e.status=r.status;return e;}
@@ -914,7 +929,7 @@ function normMsgs(msgs){
   while(out.length&&out[0].role!=="user")out.shift();
   return out;
 }
-async function rawCall(prov,{system,messages,json=true,max=1400}){
+async function rawCall(prov,{system,messages,json=true,max=1400,ms=45000}){
   const model=provModel(prov), key=cfg.keys[prov], msgs=normMsgs(messages);
   if(prov==="gemini"){
     const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
@@ -922,22 +937,26 @@ async function rawCall(prov,{system,messages,json=true,max=1400}){
     const r=await fetchT(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
       systemInstruction:{parts:[{text:system}]},
       contents:msgs.map(h=>({role:h.role==="user"?"user":"model",parts:[{text:h.content}]})),
-      generationConfig:gc})});
+      generationConfig:gc})},ms);
     const j=await r.json().catch(()=>({}));
     if(!r.ok)throw apiErr(r,j);
-    return j.candidates?.[0]?.content?.parts?.map(p=>p.text).join("")||"";
+    return j.candidates?.[0]?.content?.parts?.filter(p=>!p.thought).map(p=>p.text).join("")||"";
   }
   if(prov==="anthropic"){
     const r=await fetchT(PROVIDERS.anthropic.url,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body:JSON.stringify({model,max_tokens:max,system,messages:msgs})});
+      body:JSON.stringify({model,max_tokens:max,system,messages:msgs})},ms);
     const j=await r.json().catch(()=>({}));
     if(!r.ok)throw apiErr(r,j);
     return(j.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
   }
   const body={model,temperature:json?1:0.3,messages:[{role:"system",content:system},...msgs]};
   if(json&&prov!=="openrouter")body.response_format={type:"json_object"};
-  const r=await fetchT(PROVIDERS[prov].url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify(body)});
-  const j=await r.json().catch(()=>({}));
+  const send=()=>fetchT(PROVIDERS[prov].url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify(body)},ms);
+  let r=await send(), j=await r.json().catch(()=>({}));
+  if(!r.ok&&body.response_format&&r.status===400&&/json/i.test(JSON.stringify(j))){   // JSON refusé par le mode strict : on réessaie sans
+    if(j.error&&j.error.failed_generation)return String(j.error.failed_generation);
+    delete body.response_format;r=await send();j=await r.json().catch(()=>({}));
+  }
   if(!r.ok)throw apiErr(r,j);
   return j.choices?.[0]?.message?.content||"";
 }
@@ -962,7 +981,7 @@ async function summarizeWith(provs,id,prev,part){
 Intègre le résumé précédent s'il existe. Ne recopie pas les messages, ne mentionne ni scores ni règles du jeu. Réponds uniquement par le résumé, en texte brut.`;
   const content=(prev?"RÉSUMÉ PRÉCÉDENT :\n"+prev+"\n\n":"")+"NOUVEAUX ÉCHANGES À INTÉGRER :\n"+transcript(part,sis)+"\n\nRédige maintenant le résumé mis à jour.";
   for(const p of provs){
-    try{const t=(await rawCall(p,{system,messages:[{role:"user",content}],json:false,max:1000})).trim();if(t.length>60)return t.slice(0,3500);}catch(e){}
+    try{const t=(await rawCall(p,{system,messages:[{role:"user",content}],json:false,max:1000,ms:30000})).trim();if(t.length>60)return t.slice(0,3500);}catch(e){}
   }
   return localSummary(prev,part,sis);
 }
@@ -976,38 +995,52 @@ async function compact(st,id,provs,keep){
   st.sum={text,upto:cut};
   return true;
 }
-const needsCompaction=st=>st.history.length-(st.sum?st.sum.upto:0)>60;
+const histOfSt=st=>st.history.slice(st.sum?st.sum.upto:0);
+const needsCompaction=st=>{const h=histOfSt(st);return h.length>60||JSON.stringify(h).length>45000;};
 const shortErr=e=>e&&e.name==="AbortError"?"délai dépassé":String((e&&e.message)||e).replace(/\s+/g," ").slice(0,90);
-async function callProvider(prov,id,st){
-  return rawCall(prov,{system:systemPrompt(id,st.sc,st.players,st),messages:st.history.slice(st.sum?st.sum.upto:0),json:true,max:1400});
+/* Erreur passagère (surcharge, pic d'utilisation, réponse coupée) → on peut réessayer la même IA.
+   Renvoie le délai d'attente en secondes, ou null si ça ne sert à rien de réessayer (clé, modèle, quota du jour…). */
+function retryDelay(e,attempt){
+  const s=e&&e.status, m=String((e&&e.message)||"");
+  if(e&&e.name==="AbortError")return attempt===1?1:null;
+  if(s===401||s===403||s===404||s===413)return null;
+  if(/per ?day|daily|PerDay|billing|credit|insufficient|decommission|not found|does not exist|invalid api key|API key not valid/i.test(m))return null;
+  const w=m.match(/(?:retry|try again)\s*(?:in|after)\s*([\d.]+)\s*(ms|s)/i);
+  if(w){const sec=w[2]==="ms"?(+w[1])/1000:+w[1];return sec<=20?Math.ceil(sec)+1:null;}
+  if(e&&e.incomplete)return 1;
+  if(s===429||s>=500||/overload|high demand|unavailable|try again|temporar|capacity|busy|exhausted/i.test(m))return attempt===1?3:6;
+  return null;
 }
+const pauseS=s=>new Promise(r=>setTimeout(r,s*1000));
 async function callAI(id, history){
   const st=state[id], order=aiOrder();
   if(!order.length)throw new Error("Aucune clé API configurée (⚙️ Clé API).");
+  if(needsCompaction(st))await compact(st,id,order);
+  const system=systemPrompt(id,st.sc,st.players,st), msgs=histOfSt(st);
+  const size=(system.length+JSON.stringify(msgs).length)/3.2+1400;
   const errs=[];
   for(let k=0;k<order.length;k++){
-    const prov=order[k];
-    try{
-      if(st.prov!==prov&&(st.prov||k>0)){
-        const did=await compact(st,id,(k===0&&st.prov?[st.prov,...order]:order.slice(k)).filter((p,i,a)=>usable(p)&&a.indexOf(p)===i));
-        if(did)addMsg("sys","🔁 Résumé de la partie transmis à "+PROVIDERS[prov].short+".");
-      }else if(needsCompaction(st)){
-        await compact(st,id,order.slice(k));
+    const prov=order[k], tries=k===0?3:1, name=PROVIDERS[prov].short;
+    if(prov==="groq"&&size>7500){errs.push(name+" : partie trop longue pour le palier gratuit (8 000 tokens/min)");continue;}
+    let last=null;
+    for(let a=1;a<=tries;a++){
+      try{
+        const raw=await rawCall(prov,{system,messages:msgs,json:true,max:1400,ms:k===0?45000:30000});
+        if(!extractJSON(raw)){const e=new Error("réponse coupée ou mal formée");e.incomplete=true;throw e;}
+        if(k>0)addMsg("sys","✅ "+provName(prov)+" a répondu à la place. Le prochain message repartira de "+PROVIDERS[order[0]].short+".");
+        st.prov=prov;
+        return raw;
+      }catch(e){
+        last=e;const w=a<tries?retryDelay(e,a):null;
+        if(w==null)break;
+        const n=addMsg("sys","⏳ "+name+" est surchargé ("+shortErr(e)+") : nouvel essai dans "+w+" s…");
+        await pauseS(w);n.remove();
       }
-      const raw=await callProvider(prov,id,st);
-      if(prov!==cfg.active){
-        cfg.active=prov;saveCfg();refreshAiSel();
-        addMsg("sys","✅ Relais effectué : la partie continue avec "+provName(prov)+".");
-      }
-      st.prov=prov;
-      return raw;
-    }catch(e){
-      errs.push(PROVIDERS[prov].short+" : "+shortErr(e));
-      if(k<order.length-1){addMsg("sys","⚠️ "+PROVIDERS[prov].short+" indisponible ("+shortErr(e)+") → relais vers "+PROVIDERS[order[k+1]].short+"…");continue;}
-      if(errs.length>1)e.message=errs.join(" · ");
-      throw e;
     }
+    errs.push(name+" : "+shortErr(last));
+    if(k<order.length-1)addMsg("sys","⚠️ "+name+" indisponible ("+shortErr(last)+") → relais vers "+PROVIDERS[order[k+1]].short+"…");
   }
+  throw new Error(errs.join(" · "));
 }
 
 /* ---------- Jeu ---------- */

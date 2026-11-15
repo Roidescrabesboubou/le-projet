@@ -17,7 +17,7 @@
   const FOURNISSEURS = {
     gemini:{short:"Gemini",label:"Google Gemini (gratuit, limité)",model:"gemini-3.8-flash",help:"Clé gratuite : aistudio.google.com → « Get API key ». Le palier gratuit est limité en requêtes par jour."},
     anthropic:{short:"Claude",label:"Anthropic Claude (payant)",model:"claude-haiku-5-5",url:"https://api.anthropic.com/v1/messages",help:"Clé : platform.claude.com → API keys. Crédits payants, séparés de l'abonnement Claude. Haiku 5.5 est le modèle le moins cher."},
-    groq:{short:"Groq",label:"Groq (gratuit, très rapide)",model:"llama-3.3-70b-versatile",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
+    groq:{short:"Groq",label:"Groq (gratuit, très rapide)",model:"openai/gpt-oss-120b",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
     mistral:{short:"Mistral",label:"Mistral (palier gratuit)",model:"mistral-small-latest",url:"https://api.mistral.ai/v1/chat/completions",help:"Clé : console.mistral.ai (palier gratuit « Experiment »)."},
     openrouter:{short:"OpenRouter",label:"OpenRouter (modèles :free)",model:"openrouter/free",url:"https://openrouter.ai/api/v1/chat/completions",help:"Clé : openrouter.ai/keys. Utilise un modèle se terminant par :free."}
   };
@@ -33,6 +33,8 @@
         if(sv.fallback === "" || FOURNISSEURS[sv.fallback]) c.fallback = sv.fallback;
       }
     }catch(e){}
+    if(/^(llama-3\.3-70b-versatile|llama-3\.1-8b-instant|qwen\/qwen3-32b|qwen\/qwen3\.6-27b)$/.test(c.models.groq || "")) delete c.models.groq;   // modèles arrêtés chez Groq
+    if(/llama-3\.3-70b-instruct:free$/.test(c.models.openrouter || "")) delete c.models.openrouter;
     return c;
   }
   function enregistrer(c){
@@ -74,22 +76,26 @@
       const r = await fetchT(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
         systemInstruction: {parts: [{text: system}]},
         contents: msgs.map(h => ({role: h.role === "user" ? "user" : "model", parts: [{text: h.content}]})),
-        generationConfig: gc})});
+        generationConfig: gc})}, o.ms);
       const j = await r.json().catch(() => ({}));
       if(!r.ok) throw erreur(r, j);
-      return ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(x => x.text).join("");
+      return ((((j.candidates || [])[0] || {}).content || {}).parts || []).filter(x => !x.thought).map(x => x.text).join("");
     }
     if(p === "anthropic"){
       const r = await fetchT(FOURNISSEURS.anthropic.url, {method: "POST", headers: {"Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true"},
-        body: JSON.stringify({model, max_tokens: max, system, messages: msgs})});
+        body: JSON.stringify({model, max_tokens: max, system, messages: msgs})}, o.ms);
       const j = await r.json().catch(() => ({}));
       if(!r.ok) throw erreur(r, j);
       return (j.content || []).filter(b => b.type === "text").map(b => b.text).join("");
     }
     const body = {model, temperature: o.temperature != null ? o.temperature : (json ? 1 : 0.3), messages: [{role: "system", content: system}, ...msgs]};
     if(json && p !== "openrouter") body.response_format = {type: "json_object"};
-    const r = await fetchT(FOURNISSEURS[p].url, {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + key}, body: JSON.stringify(body)});
-    const j = await r.json().catch(() => ({}));
+    const envoyer = () => fetchT(FOURNISSEURS[p].url, {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + key}, body: JSON.stringify(body)}, o.ms);
+    let r = await envoyer(), j = await r.json().catch(() => ({}));
+    if(!r.ok && body.response_format && r.status === 400 && /json/i.test(JSON.stringify(j))){   // JSON refusé par le mode strict : on réessaie sans
+      if(j.error && j.error.failed_generation) return String(j.error.failed_generation);
+      delete body.response_format; r = await envoyer(); j = await r.json().catch(() => ({}));
+    }
     if(!r.ok) throw erreur(r, j);
     return (((j.choices || [])[0] || {}).message || {}).content || "";
   }
@@ -98,11 +104,38 @@
     const c = config(), liste = o.fournisseur ? [o.fournisseur] : ordre(c);
     if(!liste.length) throw new Error("Aucune clé IA enregistrée : ajoute-en une dans ⚙️ Réglages.");
     const errs = [];
-    for(const p of liste){
-      try{ const t = await brut(c, p, o); if(t && t.trim()) return t; errs.push(FOURNISSEURS[p].short + " : réponse vide"); }
-      catch(e){ errs.push(FOURNISSEURS[p].short + " : " + (e.name === "AbortError" ? "délai dépassé" : String(e.message || e).slice(0, 90))); }
+    for(let k = 0; k < liste.length; k++){
+      const p = liste[k], essais = k === 0 ? 3 : 1;   // l'IA principale est réessayée en cas de surcharge passagère
+      let der = "";
+      for(let a = 1; a <= essais; a++){
+        try{
+          const t = await brut(c, p, {...o, ms: k === 0 ? 45000 : 30000});
+          if(t && t.trim() && (o.json === false || json(t))) return t;
+          der = "réponse vide ou coupée";
+          if(a < essais){ await pause(1); continue; }
+        }catch(e){
+          der = e.name === "AbortError" ? "délai dépassé" : String(e.message || e).slice(0, 90);
+          const w = a < essais ? attente(e, a) : null;
+          if(w == null) break;
+          o.surAttente && o.surAttente(FOURNISSEURS[p].short, w);
+          await pause(w);
+        }
+      }
+      errs.push(FOURNISSEURS[p].short + " : " + der);
     }
     throw new Error("Aucune IA n'a répondu (" + errs.join(" · ") + ")");
+  }
+  const pause = s => new Promise(r => setTimeout(r, s * 1000));
+  /* Délai avant de réessayer la même IA (secondes), ou null si ça ne sert à rien (clé, modèle, quota du jour…) */
+  function attente(e, a){
+    const s = e && e.status, m = String((e && e.message) || "");
+    if(e && e.name === "AbortError") return a === 1 ? 1 : null;
+    if(s === 401 || s === 403 || s === 404 || s === 413) return null;
+    if(/per ?day|daily|PerDay|billing|credit|insufficient|decommission|not found|does not exist|invalid api key|API key not valid/i.test(m)) return null;
+    const w = m.match(/(?:retry|try again)\s*(?:in|after)\s*([\d.]+)\s*(ms|s)/i);
+    if(w){ const sec = w[2] === "ms" ? (+w[1]) / 1000 : +w[1]; return sec <= 20 ? Math.ceil(sec) + 1 : null; }
+    if(s === 429 || s >= 500 || /overload|high demand|unavailable|try again|temporar|capacity|busy|exhausted/i.test(m)) return a === 1 ? 3 : 6;
+    return null;
   }
 
   function json(t){
