@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.6 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -169,7 +169,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
 
   <h3>🎯 Le principe</h3>
   <ul>
-    <li>Choisis une sœur (ou <b>❓ Sœur mystère</b> : une sœur au hasard dont tu dois deviner l'identité, ou <b>👭 Les cinq à la fois</b> : toutes les sœurs dans la même scène, chacune avec sa propre jauge, la première conquise l'emporte ; en ligne, chacun joue en même temps et l'histoire peut vous séparer dans des scènes différentes), puis une <b>situation de départ</b>.</li>
+    <li>Choisis une sœur (ou <b>❓ Sœur mystère</b> : une sœur au hasard dont tu dois deviner l'identité, ou <b>👭 Les cinq à la fois</b> : toutes les sœurs dans la même scène, chacune avec sa propre jauge, la première conquise l'emporte ; en ligne, chacun joue en même temps, l'histoire peut vous séparer, chacun a une mission secrète, et un récap dévoile tout à la fin), puis une <b>situation de départ</b>.</li>
     <li>Réponds à ses questions et à la scène en cours. Chaque réponse fait varier l'affection : <b>+</b> si ça lui plaît, <b>−</b> si ça la blesse ou la rend méfiante. Le verdict s'affiche sous sa réplique.</li>
     <li>À 0 d'affection, tu es <b>éliminé(e)</b>.</li>
   </ul>
@@ -458,16 +458,16 @@ function broadcast(b){
 const mySlot=()=>net.role==="guest"?net.slot:0;
 function sendState(st,b,slot,to){
   const P=slot!=null;
-  let lines=P?st.lines.filter(l=>!l.vis||l.vis.includes(slot)):st.lines.slice(), m;
+  let lines=P&&!isGhost(st,slot)?st.lines.filter(l=>!l.vis||l.vis.includes(slot)):st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map(p=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m})),cinq:st.cinq,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,cinq:st.cinq,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<16000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
   net.conn.send(m);
 }
 function renderLine(l){
-  if(l.vis&&!l.vis.includes(mySlot()))return null;   // scène où je ne suis pas
+  if(l.vis&&!l.vis.includes(mySlot())&&!isGhost(state[current],mySlot()))return null;   // scène où je ne suis pas (sauf éliminé : il voit tout)
   const m=addMsg(l.cls,l.text);
   if(l.c)m.style.borderLeft="4px solid "+l.c;
   if(l.to){const t=document.createElement("small");t.className="hint";t.style.cssText="display:block;opacity:.75";t.textContent="→ "+l.to;m.prepend(t);}
@@ -483,7 +483,7 @@ function pushAI(st,o,extra){
   if(st.cinq&&o.lines5&&o.lines5.length){
     if(o.narr){const N=o.evt?{cls:"evt",text:"🎲 "+(o.evt==="forced"?"La discussion s'essoufflait… ":"")+o.narr}:{cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
     const Ls=o.lines5.map(l=>{const S=SISTERS[l.s],sk=sisKey(l.to),to=sk?SISTERS[sk].name:toName(st,{to:l.to});
-      return{cls:"her",c:S.c,text:"💬 "+S.name+(to&&to!=="tous"?" (à "+to+")":to==="tous"&&st.players.length>1?" (à tous)":"")+" : "+l.text};});
+      return{cls:"her",c:S.c,text:(l.sms?"📱 "+S.name+" (texto)":"💬 "+S.name+(to&&to!=="tous"?" (à "+to+")":to==="tous"&&st.players.length>1?" (à tous)":""))+" : "+l.text};});
     Object.assign(Ls[Ls.length-1],extra||{});
     let out;Ls.forEach(L=>{st.lines.push(L);out=[L,renderLine(L)];});
     updatePresence(st,o);
@@ -549,7 +549,8 @@ $("btnHost").onclick=async()=>{
     if(m.t==="guess")applyGuess(gi+1,m.sid);
     if(m.t==="pass"){if(!st.sim&&st.cur===gi+1&&!busy&&!st.over&&canPass(st))passTurn(st);}
     if(m.t==="answer"){const tx=String(m.text).slice(0,500);
-      if(st.sim){if(!st.answered[gi+1]&&!busy&&!st.over)submitSim(gi+1,tx);}
+      if(st.split&&isGhost(st,gi+1)){ghostSubmit(st,gi+1,tx);broadcast(busy);}
+      else if(st.sim){if(!st.answered[gi+1]&&!busy&&!st.over)submitSim(gi+1,tx);}
       else if(st.cur===gi+1&&!busy&&!st.over)turn(tx,false);}
   };
   try{
@@ -769,8 +770,16 @@ function consumeTurn(st){
   if(st.form){st.lastForm=[st.form].concat(st.lastForm||[]).slice(0,2);}
   st.form=null;
 }
+function ghostReady(st,i){const g=net.role==="guest"&&i===net.slot?st.ghost:null;return isGhost(st,i)&&(g?!g.cd&&!g.sent:!(st.ghostCd||[])[i]&&!(st.ghostMsg||[])[i]);}
+function ghostSubmit(st,i,text){
+  if(!ghostReady(st,i))return;
+  st.ghostMsg[i]=text.slice(0,300);st.ghostCd[i]=3;const p=st.players[i];stat(p,"",0);p.stats.rum++;
+  sysLineV(st,"👻 Ta rumeur est glissée : « "+st.ghostMsg[i]+" ». Elle arrivera aux oreilles d'une sœur au prochain tour.",[i]);
+  updateBar();
+}
 function canAct(st){
   if(st.over)return false;
+  if(st.split&&isGhost(st,mySlot()))return false;
   if(net.role==="guest")return(st.sim?!st.answered[net.slot]:st.cur===net.slot)&&!remoteBusy;
   if(busy)return false;
   if(net.role==="host")return st.sim?!st.answered[0]:st.cur===0;
@@ -905,6 +914,84 @@ FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour, sans bali
 }
 
 /* Mode cinq en ligne : scènes séparées */
+/* ===== Mode cinq en multi : journées, jalousie, objectifs secrets, rumeurs, médailles ===== */
+const PARTS=[
+  {ico:"🏫",name:"Matin au lycée",hint:"cours, pauses, couloirs, toit, cantine du lycée"},
+  {ico:"☀️",name:"Après-midi libre",hint:"clubs, sorties en ville, courses, devoirs à la maison"},
+  {ico:"🌙",name:"Soirée chez les Nakano",hint:"dîner, salon, cuisine, chambres, balcon"}];
+const MISSIONS=["Fais rire {A} aux éclats","Obtiens une vraie confidence de {A}","Aide {A} à régler un de ses problèmes (devoirs, club, souci du quotidien)",
+  "Réconcilie {A} et {B} après une dispute entre elles","Fais en sorte que {A} prenne ta défense devant ses sœurs","Obtiens que {A} t'invite quelque part",
+  "Fais en sorte que {A} te prépare ou t'offre quelque chose","Convaincs {A} de te présenter à son club ou à sa passion"];
+function newMissions(n){
+  const K=Object.keys(SISTERS),pool=MISSIONS.slice().sort(()=>Math.random()-.5);
+  return Array.from({length:n},(_,i)=>{const a=K[Math.floor(Math.random()*5)];let b;do{b=K[Math.floor(Math.random()*5)];}while(b===a);
+    return{t:pool[i%pool.length].replace("{A}",SISTERS[a].name).replace("{B}",SISTERS[b].name).replace(/\bque ([AEIOU])/g,"qu'$1").replace(/\bde ([AEIOU])/g,"d'$1"),done:false};});
+}
+const isGhost=(st,i)=>!!(st&&st.split&&st.players[i]&&st.players[i].out&&!st.over);
+function stat(p,k,x,why){   // statistiques pour les médailles
+  p.stats=p.stats||{worst:null,sms:0,rum:0};
+  if(x<0&&(!p.stats.worst||x<p.stats.worst.d))p.stats.worst={d:x,why:why||"",k};
+}
+function momentTxt(st){
+  if(!st.day)return"";
+  const P=PARTS[st.day.p];
+  return`MOMENT DE LA JOURNÉE : jour ${st.day.n}, « ${P.name} » (${P.hint}). Les lieux et activités doivent correspondre à ce moment.
+`;
+}
+function bilanJour(st){
+  st.players.forEach((p,i)=>{
+    if(!p.dayStart)return;
+    const ch=Object.keys(SISTERS).map(k=>[k,p.h[k]-(p.dayStart[k]||0)]).filter(([,d])=>d!==0);
+    const t="📊 Bilan du jour "+st.day.n+(st.players.length>1&&!st.split?" pour "+p.name:"")+" : "+(ch.length?ch.map(([k,d])=>SISTERS[k].name+" "+(d>0?"+":"")+d).join(" · "):"rien n'a bougé");
+    sysLineV(st,t,st.split?[i]:null);
+    p.dayStart={...p.h};
+  });
+}
+/* Appelé après chaque tour joué (mode cinq à plusieurs) : le temps passe, tensions entre sœurs */
+function advanceTime(st){
+  if(!st.day||st.over)return;
+  const alive=st.players.filter(p=>!p.out).length||1, len=st.split?4:3*alive;
+  if(++st.day.k>=len){
+    st.day.k=0;
+    if(st.day.p===2){bilanJour(st);st.day.n++;st.day.p=0;}else st.day.p++;
+    const P=PARTS[st.day.p];
+    sysLineV(st,`🕒 Jour ${st.day.n} · ${P.ico} ${P.name}`,null);
+    st.inject.push(`CHANGEMENT DE MOMENT (impératif) : on passe à « ${P.name} » du jour ${st.day.n} (${P.hint}). Commence par une courte transition dans la narration (le temps passe, on change de lieu)${st.split?" ; les groupes peuvent se recomposer naturellement":""}.`);
+  }
+  // jalousie entre sœurs : de temps en temps, quand la situation s'y prête
+  st.jalCool=(st.jalCool==null?4:st.jalCool)-1;
+  if(st.jalCool>0)return;
+  const K=Object.keys(SISTERS),al=st.players.filter(p=>!p.out&&p.h);let t="";
+  for(const k of K){const fans=al.filter(p=>p.h[k]>=40);if(fans.length>=2){t=`${fans.map(p=>p.name).join(" et ")} s'intéressent tous à ${SISTERS[k].name} : fais monter la rivalité (elle s'en amuse ou s'en agace, ses sœurs la taquinent ou s'en mêlent).`;break;}}
+  if(!t)for(const p of al){const top=K.filter(k=>p.h[k]>=35).sort((a,b)=>p.h[b]-p.h[a]);
+    if(top.length>=2){t=`${p.name} se rapproche à la fois de ${SISTERS[top[0]].name} et de ${SISTERS[top[1]].name} : l'une des deux devient jalouse de l'autre (pique, bouderie, dispute entre sœurs, petit sabotage), ce qui met ${p.name} dans une position délicate.`;break;}}
+  if(!t&&Math.random()<.35){const a=K[Math.floor(Math.random()*5)];let b;do{b=K[Math.floor(Math.random()*5)];}while(b===a);
+    t=`Une tension éclate entre ${SISTERS[a].name} et ${SISTERS[b].name} (vieille rivalité, vêtement emprunté, dernier dessert, jalousie…) : les garçons présents peuvent s'en mêler, apaiser ou envenimer.`;}
+  if(t){st.inject.push("CONFLIT ENTRE SŒURS à mettre en scène ce tour-ci, de façon naturelle et selon leurs caractères : "+t);st.jalCool=5;}
+}
+/* Fin de partie à plusieurs : récap secret, missions dévoilées, classement et médailles */
+async function finishExtras(st,id){
+  if(st.split){
+    const sis=transcript(histOfSt(st),"Les sœurs"),txt=((st.sum&&st.sum.text?"RÉSUMÉ DU DÉBUT :\n"+st.sum.text+"\n\n":"")+"DÉROULÉ (scène par scène) :\n"+sis).slice(-14000);
+    const system="Tu es le narrateur malicieux d'un jeu de séduction avec les cinq sœurs Nakano. Pendant la partie, les garçons étaient parfois dans des scènes séparées et ne voyaient que la leur. Écris maintenant le RÉCAP SECRET, lu par tous les joueurs à la fin : 6 à 10 phrases vivantes et drôles, en français, qui dévoilent ce qui s'est passé dans les scènes où chacun n'était pas (qui était avec qui, moments forts, gaffes, rumeurs, textos, étapes réussies ou ratées). Commence par « Pendant ce temps… ». Ne parle ni de scores ni de règles. Réponds uniquement par le texte.";
+    for(const p of aiOrder()){
+      try{const t=(await rawCall(p,{system,messages:[{role:"user",content:txt}],json:false,max:900,ms:30000})).trim();
+        if(t.length>60){const L={cls:"evt",text:"🕵️ Le récap secret\n"+t.slice(0,2000)};st.lines.push(L);renderLine(L);break;}}catch(e){}
+    }
+    if(st.players.some(p=>p.mission))sysLineV(st,"🎯 Missions secrètes — "+st.players.map(p=>p.name+" : « "+(p.mission?p.mission.t:"?")+" » "+(p.mission&&p.mission.done?"✅":"❌")).join(" · "),null);
+  }
+  const K=Object.keys(SISTERS),P=st.players;
+  const rank=P.map(p=>{const best=K.slice().sort((a,b)=>p.h[b]-p.h[a])[0],ms=K.reduce((a,k)=>a+(p.m?p.m[k].ms:0),0);
+    return{name:p.name,best,v:p.h[best],ms,mis:p.mission?p.mission.done:null,score:p.h[best]+10*ms+(p.mission&&p.mission.done?15:0)+(st.winner===p.name?20:0)};}).sort((a,b)=>b.score-a.score);
+  const med=[],top=(f,cond)=>{const b=P.slice().sort((x,y)=>f(y)-f(x))[0];return b&&cond(f(b))?b:null;};
+  let b=top(p=>K.reduce((a,k)=>a+p.h[k],0),v=>v>0);if(b)med.push({ico:"💘",t:"Le plus aimé des cinq",n:b.name,d:"le plus d'affection en tout"});
+  b=top(p=>K.reduce((a,k)=>a+(p.m?p.m[k].ms:0),0),v=>v>0);if(b)med.push({ico:"🌸",t:"Le cœur qui avance",n:b.name,d:"le plus d'étapes validées"});
+  b=top(p=>-((p.stats&&p.stats.worst)?p.stats.worst.d:0),v=>v>0);if(b)med.push({ico:"🤡",t:"La pire gaffe",n:b.name,d:b.stats.worst.d+" ❤ avec "+SISTERS[b.stats.worst.k].name+(b.stats.worst.why?" ("+b.stats.worst.why+")":"")});
+  b=top(p=>(p.stats&&p.stats.sms)||0,v=>v>0);if(b)med.push({ico:"📱",t:"Accro au téléphone",n:b.name,d:b.stats.sms+" texto"+(b.stats.sms>1?"s":"")});
+  b=top(p=>(p.stats&&p.stats.rum)||0,v=>v>0);if(b)med.push({ico:"👻",t:"Le roi des rumeurs",n:b.name,d:b.stats.rum+" rumeur"+(b.stats.rum>1?"s":"")});
+  const ag=P.filter(p=>p.mission&&p.mission.done);if(ag.length)med.push({ico:"🎯",t:"Agent secret",n:ag.map(p=>p.name).join(", "),d:"mission secrète réussie"});
+  st.final={rank,med};
+}
 /* Présence des sœurs : ici (dans ma scène), other (avec un autre garçon), near (absente mais à portée), far (partie loin) */
 function presenceFor(st,slot){
   const K=Object.keys(SISTERS),out={},aw=st.away||{};
@@ -921,7 +1008,7 @@ function updatePresence(st,o){
   const K=Object.keys(SISTERS);st.away=st.away||{};
   if(!st.split){
     const h=o.here&&o.here.length?o.here:(st.here||K);
-    st.here=[...new Set([...h,...(o.lines5||[]).map(l=>l.s)])].filter(k=>K.includes(k));
+    st.here=[...new Set([...h,...(o.lines5||[]).filter(l=>!l.sms).map(l=>l.s)])].filter(k=>K.includes(k));
   }
   const inScene=k=>st.split?(st.groups||[]).some(g=>g.sisters.includes(k)):st.here.includes(k);
   const aw=o.away||{};
@@ -933,6 +1020,16 @@ function updatePresence(st,o){
     else if(!st.away[k])st.away[k]={place:"",far:false};
   });
 }
+function extraTxt(st,players){
+  let t="";
+  if(st.split&&players.some(p=>p.mission&&!p.out))t+=`OBJECTIFS SECRETS DES GARÇONS (ne les révèle jamais, n'y fais jamais allusion ; offre de temps en temps des occasions naturelles, sans les servir sur un plateau) :
+${players.filter(p=>p.mission&&!p.out).map(p=>"- "+p.name+" : « "+p.mission.t+" »"+(p.mission.done?" (déjà réussi)":"")).join("\n")}
+Quand un garçon accomplit VRAIMENT le sien (de façon claire et méritée, pas à moitié), ajoute son prénom dans "missions_done".
+`;
+  if(players.length>1)t+=`JALOUSIE ENTRE SŒURS : les sœurs réagissent aussi entre elles à ce que vivent les garçons avec leurs sœurs (taquineries, jalousie si elles apprécient le même garçon, solidarité, petits sabotages). Les relations ne sont pas étanches.
+`;
+  return t;
+}
 function presTxt(st){
   const K=Object.keys(SISTERS),aw=st.away||{};
   const where=k=>st.split?((st.groups||[]).findIndex(g=>g.sisters.includes(k))):-2;
@@ -942,6 +1039,7 @@ function presTxt(st){
   return `PRÉSENCE DES SŒURS (très important, le jeu l'affiche aux joueurs) : ${lst}.
 - Une sœur peut partir (sa chambre, la cuisine, une course, son club, un rendez-vous…) et revenir, quand c'est logique dans l'histoire. Une sœur absente ne parle pas et ne voit rien de la scène. Quand une sœur part ou arrive, dis-le clairement dans la narration.
 - Indique TOUJOURS dans "away" chaque sœur absente (${st.split?"dans aucune scène":"pas dans la scène"}) avec son lieu et "far":true si elle est HORS DE PORTÉE (sortie loin : hors de la maison ou du lycée, en ville, chez quelqu'un…), sinon "far":false (à portée : une autre pièce, le couloir, le jardin…).
+- TEXTOS : un garçon qui écrit « 📱 SMS à Nino : … » envoie un texto (il ne parle pas à voix haute). Nino le reçoit où qu'elle soit, même loin ; elle peut répondre par texto (une ligne de "lines" avec "sms":true, placée dans la scène du garçon), répondre plus tard, ou l'ignorer. Les personnes à côté d'elle peuvent remarquer qu'elle sourit à son téléphone, voire lire par-dessus son épaule (une sœur curieuse !). Une réponse par texto ne fait pas venir la sœur.
 - APPEL : un garçon peut appeler ou aller chercher une sœur absente (« 📣 J'appelle Nino »). À portée : en général elle vient (elle rejoint sa scène${st.split?" ; si elle était avec un autre garçon, elle peut le quitter ou refuser, selon ses envies et son affection pour chacun":""}), sauf vraie raison de refuser (vexée, occupée) : alors elle répond de loin et la narration le dit. HORS DE PORTÉE : elle ne peut PAS venir ni répondre ; la narration le dit (elle ne répond pas, elle est trop loin) et elle reste absente.
 `;
 }
@@ -949,7 +1047,7 @@ function groupsTxt(st){
   return st.groups.map((g,n)=>`- Scène ${n+1}${g.place?" « "+g.place+" »":""} : ${g.players.map(i=>st.players[i].name).join(", ")} avec ${g.sisters.length?g.sisters.map(k=>SISTERS[k].name).join(", "):"aucune sœur"}`).join("\n");
 }
 function splitTxt(st,players){
-  const L=st.launch&&players[st.launch.i]?(()=>{const P=players[st.launch.i],S=SISTERS[st.launch.k],M=MS[P.m[st.launch.k].ms];
+  const L=st.launch&&players[st.launch.i]?(()=>{const P=players[st.launch.i],S=SISTERS[st.launch.k],M=MS[P.m[st.launch.k].ms];if(!M)return"";
     return`- SCÈNE DE JALON À LANCER MAINTENANT (impératif) : ${P.name} atteint avec ${S.name} l'étape « ${M.name} ». ${M.brief} (« elle » = ${S.name}.) Dans ta réponse, amène ${S.name} et ${P.name} dans une scène où ils sont ensemble, de préférence seuls, par une transition naturelle ; ${S.name} y met en scène l'étape de façon originale, dans un lieu précis, et termine par une question ou une situation décisive à laquelle ${P.name} doit répondre. Personne ne se déclare.
 `;})():"";
   return `MODE SCÈNES SÉPARÉES (très important) : les garçons jouent EN MÊME TEMPS, chacun sur son appareil, et ne sont pas forcément au même endroit. À chaque tour tu reçois leurs réponses simultanées, scène par scène (« [Réponses simultanées] Scène 1 — Nom : … | Nom : … »), et tu fais avancer TOUTES les scènes d'un coup.
@@ -1001,14 +1099,14 @@ RÉALISME : ce sont des lycéennes japonaises : elles ne connaissent que ce qu'u
 ${mem}${evTxt}
 FIL DE DISCUSSION : développe un sujet sur plusieurs échanges tant qu'il est vivant ; le lore inventé par les garçons devient vrai s'il est plausible et cohérent. Si la discussion tourne en rond, "stalled":true.
 
-${st.split?splitTxt(st,players):""}${presTxt(st)}RÈGLES DE FORME :
+${momentTxt(st)}${st.split?splitTxt(st,players):""}${presTxt(st)}${extraTxt(st,players)}RÈGLES DE FORME :
 - Réponds en français. "narration" = voix du narrateur, 3e personne, présent, 0 à 3 phrases (décor, gestes, réactions muettes des sœurs, événements). Dans "lines", "text" = UNIQUEMENT les paroles de la sœur, 1 à 3 phrases, sans astérisques ni description de gestes. N'invente pas de paroles pour les garçons.
 - Ce n'est pas un interrogatoire : réactions, anecdotes, taquineries entre sœurs. ${st.split?"Dans chaque scène, au plus UNE question par garçon, et chaque garçon de la scène doit pouvoir répondre quelque chose.":"AU PLUS UNE question au garçon dans tout le message (posée de préférence par la dernière sœur qui parle)."}
 - Les questions simples (goûts, A ou B) se posent avec 2 à 4 options courtes dans choices (« Je … »), aucune évidemment « la bonne » ; sinon choices = [].
 - Ne sors jamais du personnage, ne mentionne ni IA ni règles ni scores. Contenu tout public.
 
 FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour :
-${st.split&&!st.over?`{"scenes":[{"players":["Prénom"],"place":"lieu court","sisters":["nino"],"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"choices":[]}],"away":{"miku":{"place":"sa chambre","far":false}},"effects":[],"stalled":false}
+${st.split&&!st.over?`{"scenes":[{"players":["Prénom"],"place":"lieu court","sisters":["nino"],"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"choices":[]}],"away":{"miku":{"place":"sa chambre","far":false}},"effects":[],"missions_done":[],"stalled":false}
 (scenes : la situation APRÈS ce tour, une entrée par endroit : où est chaque garçon, avec quelles sœurs, et ce qui s'y passe. TOUS les garçons encore en jeu y figurent, chacun dans une seule scène. lines : 0 à 3 sœurs par scène. choices : options pour les garçons de cette scène, ou [].)`:`{"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"here":["ichika","nino","miku","yotsuba","itsuki"],"away":{},"effects":[],"choices":[],"stalled":false,"timed":false}
 (lines : 1 à 3 sœurs PRÉSENTES, dans l'ordre où elles parlent ; "sister" parmi ichika, nino, miku, yotsuba, itsuki. here : les sœurs présentes dans la scène après ce message ; away : les absentes, avec lieu et far.)`}`;
 }
@@ -1047,7 +1145,7 @@ function extractJSON(text){
   return {narration:str("narration")||"",reply,affection_delta:num("affection_delta"),mood:str("mood")||"",why:str("why")||"",choices:[]};
 }
 function parseLines(a){
-  return Array.isArray(a)?a.map(l=>({s:sisKey(l&&l.sister),to:String((l&&l.to)||"").trim().slice(0,40),mood:String((l&&l.mood)||"").slice(0,30),
+  return Array.isArray(a)?a.map(l=>({sms:!!(l&&l.sms===true),s:sisKey(l&&l.sister),to:String((l&&l.to)||"").trim().slice(0,40),mood:String((l&&l.mood)||"").slice(0,30),
     text:String((l&&l.text)||"").replace(/\*[^*]{0,200}\*/g," ").replace(/\s+/g," ").trim().slice(0,500)})).filter(l=>l.s&&l.text).slice(0,4):null;
 }
 const parseChoices=a=>(x=>x.length>=2?x:[])(Array.isArray(a)?a.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]);
@@ -1069,7 +1167,7 @@ function parseAI(text){
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
       cut:o.cut===true,to:String(o.to||"").trim().slice(0,40),
       guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),gto:String(o.guest_to||"").trim().slice(0,40),
-      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,here:Array.isArray(o.here)?o.here.map(sisKey).filter(Boolean):null,away:o.away&&typeof o.away==="object"&&!Array.isArray(o.away)?Object.fromEntries(Object.entries(o.away).map(([k,v])=>[sisKey(k),v]).filter(([k])=>k)):null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
+      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,missionsDone:Array.isArray(o.missions_done)?o.missions_done.map(String):[],here:Array.isArray(o.here)?o.here.map(sisKey).filter(Boolean):null,away:o.away&&typeof o.away==="object"&&!Array.isArray(o.away)?Object.fromEntries(Object.entries(o.away).map(([k,v])=>[sisKey(k),v]).filter(([k])=>k)):null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
     return {reply:"…",narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
@@ -1356,7 +1454,7 @@ function applyEffects5(st,o,s,pass){
   });
   [...acc.values()].sort((a,b)=>(a.i===s?0:1)-(b.i===s?0:1)||a.i-b.i).forEach(c=>{
     const p=st.players[c.i],me=c.i===s&&!pass,r={aff:p.h[c.k],turns:p.turns,ms:p.m?p.m[c.k].ms:4},x=score(st,r,c.delta,me&&c.tooFast,!me);
-    p.h[c.k]=r.aff;if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,d:x.d};sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
+    p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,d:x.d};sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
     if(x.d!==0||x.note)tags.push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
   });
   if(!pass&&st.players[s])st.players[s].turns++;
@@ -1371,7 +1469,7 @@ function scenesOf(st,o){
     const pl=(Array.isArray(c.players)?c.players:[c.players]).map(n=>matchPlayer(st,n)).filter(i=>i>=0&&!used.has(i)&&!st.players[i].out);
     if(!pl.length)return;pl.forEach(i=>used.add(i));
     const lines=parseLines(c.lines)||[];
-    const sis=[...new Set([...(Array.isArray(c.sisters)?c.sisters.map(sisKey):[]),...lines.map(l=>l.s)])].filter(k=>k&&!usedS.has(k));sis.forEach(k=>usedS.add(k));
+    const sis=[...new Set([...(Array.isArray(c.sisters)?c.sisters.map(sisKey):[]),...lines.filter(l=>!l.sms).map(l=>l.s)])].filter(k=>k&&!usedS.has(k));sis.forEach(k=>usedS.add(k));
     out.push({players:pl,place:String(c.place||"").replace(/\s+/g," ").trim().slice(0,50),sisters:sis,narr:String(c.narration||"").replace(/\*/g,"").trim().slice(0,600),lines,choices:parseChoices(c.choices)});
   });
   if(!out.length&&o.lines5&&o.lines5.length){   // l'IA a répondu en une seule scène
@@ -1399,6 +1497,10 @@ async function runRound5(st,intro){
       parts.push(`Scène ${n+1}${g.place?" « "+g.place+" »":""} — `+al.map(i=>st.players[i].name+" : "+st.pending[i]+context(st,st.pending[i],i).replace(/\n/g," ")).join(" | "));
     });
     msg="[Réponses simultanées]\n"+parts.join("\n");
+    st.players.forEach((p,i)=>{if(/^📱/.test(st.pending[i]||"")){stat(p,"",0);p.stats.sms++;}});
+    const rum=st.players.map((p,i)=>st.ghostMsg[i]?p.name+" : « "+st.ghostMsg[i]+" »":"").filter(Boolean);
+    if(rum.length)msg+="\n[Rumeurs glissées par des garçons éliminés, devenus de simples amis de la famille, absents des scènes : "+rum.join(" | ")+"] Fais arriver chaque rumeur aux oreilles d'une sœur concernée (par un texto, un mot, une conversation surprise…), sans forcément dire d'où elle vient, et fais-la réagir.";
+    st.ghostMsg=st.players.map(()=>"");st.ghostCd=(st.ghostCd||[]).map(c=>Math.max(0,c-1));
     rollEvent(st);
   }
   st.history.push({role:"user",content:msg});
@@ -1417,7 +1519,7 @@ async function runRound5(st,intro){
         const key=i+"|"+e.sister,c=acc.get(key)||{i,k:e.sister,delta:0,tooFast:false,why:"",ms:""};
         c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;c.ms=c.ms||e.ms;acc.set(key,c);});
       acc.forEach(c=>{const p=st.players[c.i],r={aff:p.h[c.k],turns:p.turns,ms:p.m[c.k].ms},x=score(st,r,c.delta,c.tooFast,false);
-        p.h[c.k]=r.aff;if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,spk:x.d};if(Math.abs(x.d)>Math.abs(best))best=x.d;
+        p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,spk:x.d};if(Math.abs(x.d)>Math.abs(best))best=x.d;
         if(x.d!==0||x.note)(tagsBy[c.i]=tagsBy[c.i]||[]).push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));});
       st.players.forEach(p=>{if(!p.out)p.turns++;p.aff=Math.max(...Object.values(p.h));});
     }
@@ -1428,17 +1530,17 @@ async function runRound5(st,intro){
     const evKeep=evIdx<0?st.event:null;consumeTurn(st);if(evKeep)st.event=evKeep;
     // jalon lancé ce tour-ci
     const launched=st.launch;st.launch=null;
-    if(launched){const p=st.players[launched.i],r=p.m[launched.k];p.trial=2;r.trial=2;st.trial5=launched;}
+    if(launched&&st.players[launched.i].m[launched.k].ms<4){const p=st.players[launched.i],r=p.m[launched.k];p.trial=2;r.trial=2;st.trial5=launched;}
     // affichage, scène par scène (chacun ne voit que la sienne)
     const prevSig=st.sigBy||[];st.sigBy=[];st.choicesBy=[];st.spkBy=[];st.moodBy=[];st.placeBy=[];
     sc.forEach((c,n)=>{
       const vis=c.players,sig=c.place+"|"+c.sisters.join(",")+"|"+vis.join(",");
       if(vis.some(i=>prevSig[i]!==sig))sysLineV(st,"📍 "+(c.place||"Même endroit")+" · "+(c.sisters.length?"avec "+c.sisters.map(k=>SISTERS[k].name).join(", "):"sans les sœurs")+(vis.length>1?" · "+vis.map(i=>st.players[i].name).join(", "):""),vis);
-      if(launched&&vis.includes(launched.i)){const M=MS[st.players[launched.i].m[launched.k].ms];sysLineV(st,`📍 Moment décisif pour ${st.players[launched.i].name} avec ${SISTERS[launched.k].name} : « ${M.ico} ${M.name} »`,[launched.i]);}
+      if(launched&&st.trial5===launched&&vis.includes(launched.i)){const M=MS[st.players[launched.i].m[launched.k].ms];sysLineV(st,`📍 Moment décisif pour ${st.players[launched.i].name} avec ${SISTERS[launched.k].name} : « ${M.ico} ${M.name} »`,[launched.i]);}
       if(c.narr){const N={cls:n===evIdx?"evt":"nar",text:(n===evIdx?"🎲 "+(evForced?"La discussion s'essoufflait… ":""):"")+c.narr,vis};st.lines.push(N);renderLine(N);}
       const tags=vis.flatMap(i=>tagsBy[i]||[]);
       const Ls=c.lines.map(l=>{const S=SISTERS[l.s],sk=sisKey(l.to),to=sk?SISTERS[sk].name:toName(st,{to:l.to});
-        return{cls:"her",c:S.c,vis,text:"💬 "+S.name+(to&&to!=="tous"?" (à "+to+")":to==="tous"&&vis.length>1?" (à tous)":"")+" : "+l.text};});
+        return{cls:"her",c:S.c,vis,text:(l.sms?"📱 "+S.name+" (texto)":"💬 "+S.name+(to&&to!=="tous"?" (à "+to+")":to==="tous"&&vis.length>1?" (à tous)":""))+" : "+l.text};});
       if(tags.length){if(Ls.length)Object.assign(Ls[Ls.length-1],{tag:tags.join("\n"),up:!tags.some(t=>/: -/.test(t))});else Ls.push({cls:"sys",vis,text:tags.join("\n")});}
       Ls.forEach(L=>{st.lines.push(L);renderLine(L);});
       const last=c.lines[c.lines.length-1];
@@ -1449,7 +1551,10 @@ async function runRound5(st,intro){
     st.choices=st.choicesBy[0]||[];st.spk=st.spkBy[0]||st.spk;st.mood=st.moodBy[0]||st.mood;st.timed=0;st.qid=(st.qid||0)+1;
     fx(best);
     if(T&&!intro)resolveTrial5(st,st.players[T.i],vd||{ms:"",spk:0});
-    st.players.forEach((q,i)=>{if(!q.out&&q.aff<=0){q.out=true;sysLineV(st,`💔 ${q.name} a perdu l'intérêt des cinq sœurs et quitte la partie.`,null);}});
+    (o.missionsDone||[]).forEach(n=>{const i=matchPlayer(st,n),p=st.players[i];
+      if(p&&p.mission&&!p.mission.done){p.mission.done=true;sysLineV(st,"🎯 Mission secrète réussie : « "+p.mission.t+" » ! (+15 points au classement final)",[i]);burst("🎯",6);}});
+    st.players.forEach((q,i)=>{if(!q.out&&q.aff<=0){q.out=true;sysLineV(st,`💔 ${q.name} a perdu l'intérêt des cinq sœurs et quitte la course. 👻 Nouveau rôle : ami de la famille, avec vue sur toutes les scènes et une rumeur à glisser tous les 3 tours.`,null);}});
+    if(!intro)advanceTime(st);
     if(!st.trial5&&!st.launch){const d=dueTrial5(st);if(d)st.launch=d;}
     st.pending=st.players.map(()=>null);st.answered=st.players.map(p=>!!p.out);
     const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
@@ -1651,7 +1756,7 @@ function updateBar5(st,el){
   const multi=st.players.length>1,K=Object.keys(SISTERS);
   const head=document.createElement("div"),b=document.createElement("b");b.textContent="👭 Les cinq sœurs";
   const me=mySlot(),place=st.split?(net.role==="guest"?st.place:(st.placeBy||[])[0]):"";
-  const sm=document.createElement("small");sm.textContent=(place?" · 📍 "+place:"")+(st.spk&&SISTERS[st.spk]?" · "+SISTERS[st.spk].name+(st.mood?" "+st.mood:""):"");
+  const sm=document.createElement("small");sm.textContent=(st.day?" · "+PARTS[st.day.p].ico+" Jour "+st.day.n+", "+PARTS[st.day.p].name.toLowerCase():"")+(place?" · 📍 "+place:"")+(st.spk&&SISTERS[st.spk]?" · "+SISTERS[st.spk].name+(st.mood?" "+st.mood:""):"");
   head.append(b,sm);el.appendChild(head);
   const pres=net.role==="guest"?st.pres:presenceFor(st,0);
   if(pres){
@@ -1665,6 +1770,8 @@ function updateBar5(st,el){
       c.appendChild(t);
       c.title=p.s==="here"?S.name+" est avec toi.":p.s==="far"?S.name+" est partie trop loin : impossible de la faire venir pour l'instant.":S.name+" n'est pas là mais reste à portée : clique pour l'appeler.";
       if(call&&!st.over){c.style.cursor="pointer";c.onclick=()=>{if(!canAct(st))return;$("input").value="📣 J'appelle "+S.name+" : ";$("input").focus();};}
+      if(p.s!=="here"&&!st.over){const sm2=document.createElement("span");sm2.textContent=" 📱";sm2.title="Envoyer un texto à "+S.name+" (ça compte comme ta réponse du tour)";sm2.style.cursor="pointer";
+        sm2.onclick=e=>{e.stopPropagation();if(!canAct(st))return;$("input").value="📱 SMS à "+S.name+" : ";$("input").focus();};c.appendChild(sm2);}
       box.appendChild(c);
     });
     el.appendChild(box);
@@ -1674,6 +1781,7 @@ function updateBar5(st,el){
     const lab=document.createElement("div");
     lab.textContent=(multi?pl.name:"Affection")+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
     if(st.split&&i!==me){row.append(lab);el.appendChild(row);return;}   // scènes séparées : on ne voit que ses propres jauges
+    if(st.split&&pl.mission){const ms=document.createElement("small");ms.className="hint";ms.style.display="block";ms.textContent="🎯 Mission secrète : « "+pl.mission.t+" »"+(pl.mission.done?" ✅":"");lab.appendChild(ms);}
     const g=document.createElement("div");g.style.cssText="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:3px";
     K.forEach(k=>{const v=(pl.h||{})[k]||0,r=(pl.m||{})[k]||{ms:4,trial:0},c=document.createElement("div");
       c.title=SISTERS[k].name+" : "+v+" % · "+STAGES[stageOf({aff:v})].name+" · jalons "+r.ms+"/4"+(r.ms<4?" · prochain : "+MS[r.ms].ico+" "+MS[r.ms].name+" ("+CAPS[r.ms]+" %)":" · déclaration possible");
@@ -1686,7 +1794,9 @@ function updateBar5(st,el){
   });
   $("input").placeholder=(multi&&!st.over?st.players[st.cur].name+", ":"")+"ta réponse…";
   if(st.sim)$("input").placeholder="ta réponse… (tout le monde répond en même temps)";
-  if(net.role==="guest"){const ok=(st.sim?!st.answered[net.slot]:st.cur===net.slot)&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
+  const gh=st.split&&isGhost(st,me);
+  if(gh){const ok=ghostReady(st,me);$("input").placeholder=ok?"👻 Glisse une rumeur à une sœur (une tous les 3 tours)…":"👻 Prochaine rumeur possible dans "+((net.role==="guest"?(st.ghost||{}).cd:(st.ghostCd||[])[me])||1)+" tour(s)…";$("input").disabled=!ok;$("btnSend").disabled=!ok;}
+  if(net.role==="guest"&&!gh){const ok=(st.sim?!st.answered[net.slot]:st.cur===net.slot)&&!st.over&&!remoteBusy;$("input").disabled=!ok;$("btnSend").disabled=!ok;}
   document.documentElement.style.setProperty("--c",st.spk&&SISTERS[st.spk]?SISTERS[st.spk].c:SISTERS.cinq.c);
   $("gAv").innerHTML=avatarSVG(st.spk&&SISTERS[st.spk]?st.spk:"yotsuba",st.mood,false);
   $("guess").innerHTML="";
@@ -1722,7 +1832,8 @@ function showScenarios(id){
       const used=new Set();
       names=names.map(n=>{let x=n,k=2;while(used.has(x.toLowerCase()))x=n+" ("+(k++)+")";used.add(x.toLowerCase());return x;});
       const c5=id==="cinq",sp=c5&&mode===3&&net.guests.length>0;
-      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),m:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,{ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]}]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:firstPlayer(names.length),history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:sp||(!c5&&mode===3&&$("simChk").checked),split:sp,groups:[{place:"",players:names.map((n,i)=>i),sisters:Object.keys(SISTERS)}],answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
+      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{stats:{worst:null,sms:0,rum:0},dayStart:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),m:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,{ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]}]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:firstPlayer(names.length),history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:sp||(!c5&&mode===3&&$("simChk").checked),split:sp,...(c5&&names.length>1?{day:{n:1,p:chosen.id==="tuteur"?1:0,k:0},jalCool:4}:{}),ghostCd:names.map(()=>0),ghostMsg:names.map(()=>""),groups:[{place:"",players:names.map((n,i)=>i),sisters:Object.keys(SISTERS)}],answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
+      if(sp)newMissions(names.length).forEach((m,i)=>{state[id].players[i].mission=m;});
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -1737,6 +1848,8 @@ function enterGame(id){
   addMsg("sys",`${st.sc.ico} ${st.sc.name} — ${st.sc.diff}`+(multi?` · ${namesOf(st.players)}`:""));
   st.lines.forEach(renderLine);
   if(!st.over&&st.history.length===0&&multi&&!st.sim)sysLine(st,"🎲 "+st.players[st.cur].name+" commence.");
+  if(!st.over&&st.history.length===0&&st.day){const P=PARTS[st.day.p];sysLine(st,`🕒 Jour 1 · ${P.ico} ${P.name}`);}
+  if(!st.over&&st.history.length===0&&st.split)st.players.forEach((p,i)=>{if(p.mission)sysLineV(st,"🎯 Ta mission secrète (personne d'autre ne la connaît) : « "+p.mission.t+" ». Réussie = +15 points au classement final.",[i]);});
   updateBar();
   if(st.over) showEnd(st);
   else if(st.history.length===0&&st.split){
@@ -1813,6 +1926,7 @@ async function turn(userText,hidden,kind){
     const label=multi?`${pl.name} : ${userText}`:userText;
     const cls=pcls(st.cur);
     addMsg(cls,label);st.lines.push({cls,text:label});
+    if(st.cinq&&/^📱/.test(userText))stat(pl,"",0),pl.stats.sms++;
     sent=(multi?`[${pl.name} parle] ${userText}`:userText)+context(st,userText,st.cur)+(multi?`\n(Garçon qui aura la parole ensuite : ${st.players[nextAlive(st)].name})`:"");
     st.silent=0;st.passRow=0;st.passNote=[];
   }
@@ -1883,6 +1997,7 @@ async function turn(userText,hidden,kind){
             (st.passNote=[]).push(sk+" n'a pas pu parler : tu ne l'as pas laissé répondre");
             sysLine(st,`✋ ${who} ne laisse pas ${sk} répondre`);
           }else st.cur=ti>=0?ti:nextAlive(st);
+          if(st.cinq&&multi)advanceTime(st);
           if(multi){const t=`👉 Au tour de ${st.players[st.cur].name}`;addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
           updateBar();
         }
@@ -1928,6 +2043,7 @@ async function finish(st,id,kind,pl){
     const o=parseAI(await callAI(id,st.history));maskO(st,o);
     pushAI(st,o);
   }catch(e){}
+  if(st.cinq&&multi){const w=addMsg("sys","… préparation du récap et des médailles");try{await finishExtras(st,id);}catch(e){}w.remove();if(net.role==="host")broadcast(false);}
   showEnd(st);
 }
 function showEnd(st){
@@ -1939,6 +2055,17 @@ function showEnd(st){
   const box=$("endBox");box.innerHTML="";
   const div=document.createElement("div");div.className="end";div.textContent=t;
   div.appendChild(document.createElement("br"));div.appendChild(document.createElement("br"));
+  if(st.final){
+    const fz=document.createElement("div");fz.style.cssText="text-align:left;font-weight:400;margin:4px auto 12px;max-width:460px";
+    const h=document.createElement("b");h.textContent="🏆 Classement";fz.appendChild(h);
+    const ol=document.createElement("ol");ol.style.margin="4px 0 10px";
+    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+SISTERS[r.best].name+" "+r.v+" %, "+r.ms+" étape"+(r.ms>1?"s":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
+    fz.appendChild(ol);
+    if(st.final.med.length){const h2=document.createElement("b");h2.textContent="🏅 Médailles";fz.appendChild(h2);
+      const ul=document.createElement("ul");ul.style.margin="4px 0";
+      st.final.med.forEach(m=>{const li=document.createElement("li");li.textContent=m.ico+" "+m.t+" : "+m.n+" ("+m.d+")";ul.appendChild(li);});fz.appendChild(ul);}
+    div.appendChild(fz);
+  }
   const b=document.createElement("button");b.textContent=st.cinq?"Rejouer avec les cinq":"Rejouer avec elle";
   b.onclick=()=>{delete state[current];openSister(current)};
   if(net.role!=="guest")div.appendChild(b);box.appendChild(div);
@@ -1950,9 +2077,11 @@ function doSend(v){
   clearInterval(tm);tmKey=-1;$("timer").textContent="";
   if(net.role==="guest"){
     const g=state[current];
+    if(g.split&&isGhost(g,net.slot)){if(ghostReady(g,net.slot)&&net.conn&&net.conn.open){net.conn.send({t:"answer",text:v});$("input").value="";}return;}
     if((g.sim?g.answered[net.slot]:g.cur!==net.slot)||remoteBusy||!net.conn||!net.conn.open)return;
     net.conn.send({t:"answer",text:v});$("input").value="";return;
   }
+  if(state[current].split&&isGhost(state[current],0)){$("input").value="";ghostSubmit(state[current],0,v);return;}
   if(state[current].sim&&net.role==="host"){
     if(state[current].answered[0]||busy){addMsg("sys","⏳ Tu as déjà répondu, patiente…");return;}
     $("input").value="";submitSim(0,v);return;
