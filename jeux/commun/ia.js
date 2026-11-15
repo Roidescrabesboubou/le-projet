@@ -76,7 +76,7 @@
     if(p === "gemini"){
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
       const gc = {temperature: o.temperature != null ? o.temperature : (json ? 1 : 0.3)}; if(json) gc.responseMimeType = "application/json";
-      if(/^gemini-3/.test(model)) gc.thinkingConfig = {thinkingLevel: "low"};   // réflexion courte : réponse plus rapide
+      if(/^gemini-3/.test(model)) gc.thinkingConfig = {thinkingLevel: /^gemini-3\.(1|5|6)-/.test(model) ? "minimal" : "low"};   // réflexion courte : réponse plus rapide
       const envoyerG = () => fetchT(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
         systemInstruction: {parts: [{text: system}]},
         contents: msgs.map(h => ({role: h.role === "user" ? "user" : "model", parts: [{text: h.content}]})),

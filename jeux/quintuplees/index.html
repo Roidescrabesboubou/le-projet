@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.3 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.4 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -1098,7 +1098,7 @@ async function rawCall(prov,{system,messages,json=true,max=1400,ms=45000,model})
   if(prov==="gemini"){
     const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
     const gc={temperature:json?1:0.3};if(json)gc.responseMimeType="application/json";
-    if(/^gemini-3/.test(model))gc.thinkingConfig={thinkingLevel:"low"};   // réflexion courte : réponse bien plus rapide
+    if(/^gemini-3/.test(model))gc.thinkingConfig={thinkingLevel:/^gemini-3\.(1|5|6)-/.test(model)?"minimal":"low"};   // réflexion la plus courte acceptée : réponse bien plus rapide
     const send=()=>fetchT(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
       systemInstruction:{parts:[{text:system}]},
       contents:msgs.map(h=>({role:h.role==="user"?"user":"model",parts:[{text:h.content}]})),
@@ -1165,7 +1165,14 @@ async function compact(st,id,provs,keep){
   return true;
 }
 const histOfSt=st=>st.history.slice(st.sum?st.sum.upto:0);
-const needsCompaction=st=>{const h=histOfSt(st);return h.length>60||JSON.stringify(h).length>45000;};
+const needsCompaction=st=>{const h=histOfSt(st);return h.length>40||JSON.stringify(h).length>30000;};
+const tooLong=st=>{const h=histOfSt(st);return h.length>80||JSON.stringify(h).length>70000;};
+function compactLater(st,id){
+  if(st.compacting||!needsCompaction(st))return;
+  st.compacting=true;
+  const go=()=>{if(busy){setTimeout(go,500);return;}compact(st,id,aiOrder()).catch(()=>{}).finally(()=>{st.compacting=false;});};   // après la fin du tour (scène de jalon comprise)
+  setTimeout(go,500);
+}
 const shortErr=e=>e&&e.name==="AbortError"?"délai dépassé":String((e&&e.message)||e).replace(/\s+/g," ").slice(0,90);
 /* Erreur passagère (surcharge, pic d'utilisation, réponse coupée) → on peut réessayer la même IA.
    Renvoie le délai d'attente en secondes, ou null si ça ne sert à rien de réessayer (clé, modèle, quota du jour…). */
@@ -1184,7 +1191,7 @@ const pauseS=s=>new Promise(r=>setTimeout(r,s*1000));
 async function callAI(id, history){
   const st=state[id], order=aiOrder();
   if(!order.length)throw new Error("Aucune clé API configurée (⚙️ Clé API).");
-  if(needsCompaction(st))await compact(st,id,order);
+  if(tooLong(st))await compact(st,id,order);   // seulement si la partie devient vraiment trop longue ; sinon le résumé se fait en arrière-plan après la réponse
   const system=systemPrompt(id,st.sc,st.players,st), msgs=histOfSt(st);
   const size=(system.length+JSON.stringify(msgs).length)/3.2+1400;
   const errs=[];
@@ -1206,6 +1213,9 @@ async function callAI(id, history){
         if(k>0)addMsg("sys","✅ "+name+" ("+model+") a répondu à la place. Le prochain message repartira de "+PROVIDERS[order[0]].short+".");
         else if(model!==models[0])addMsg("sys","✅ "+models[0]+" surchargé : "+name+" a répondu avec "+model+".");
         st.prov=prov;
+        const dt=Math.round((Date.now()-t0)/1000);console.log("[IA] "+name+" ("+model+") : "+dt+" s");
+        if(dt>=25)addMsg("sys","🐢 Réponse lente ("+dt+" s, "+name+" "+model+").");
+        compactLater(st,id);
         return raw;
       }catch(e){
         last=e;if(a>=tries)break;
