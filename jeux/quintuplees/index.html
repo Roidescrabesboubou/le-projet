@@ -95,7 +95,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
     <select id="aiMain"></select>
     <label>IA de secours en premier (puis les autres IA avec clé, dans l'ordre)</label>
     <select id="aiBackup"></select>
-    <p class="hint">À chaque changement d'IA (à la main avec le menu 🤖 en haut, ou automatiquement), un <b>résumé de la partie</b> est rédigé et transmis à la nouvelle IA pour qu'elle continue la même histoire. Les clés sont stockées uniquement dans ton navigateur et envoyées uniquement à leur fournisseur. Elles servent aussi aux autres jeux IA du site, et se gèrent également depuis <a href="../../reglages/">⚙️ Réglages</a>.</p>
+    <p class="hint">Si l'IA choisie est surchargée, elle est <b>réessayée</b> quelques secondes plus tard ; si elle reste bloquée, une IA de secours répond <b>pour ce message seulement</b>, avec toute l'histoire. Le message suivant repart de ton IA choisie. Les clés sont stockées uniquement dans ton navigateur et envoyées uniquement à leur fournisseur. Elles servent aussi aux autres jeux IA du site, et se gèrent également depuis <a href="../../reglages/">⚙️ Réglages</a>.</p>
     <button id="btnSave">Enregistrer</button>
     <button class="ghost" id="btnTest">🔍 Tester la clé / lister les modèles</button>
     <div id="testOut" class="hint" style="margin-top:10px"></div>
@@ -221,7 +221,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
   <h3>🤖 L'IA et les clés API</h3>
   <ul>
     <li>Le jeu a besoin d'au moins une <b>clé API</b> (⚙️ Clé API). Gemini, Groq, Mistral et OpenRouter ont un palier gratuit ; Claude (Anthropic) est payant. Les clés restent dans ton navigateur.</li>
-    <li>Tu peux en enregistrer plusieurs : quand une IA atteint sa limite ou tombe en panne, la partie <b>passe automatiquement à la suivante</b>, avec un <b>résumé de la partie</b> transmis pour garder la même histoire.</li>
+    <li>Tu peux en enregistrer plusieurs : quand une IA atteint sa limite ou tombe en panne, une autre IA <b>prend le relais pour ce message</b>, avec toute l'histoire, puis la partie revient à ton IA choisie.</li>
     <li>Le menu <b>🤖</b> en haut permet de changer d'IA à tout moment.</li>
   </ul>
 
@@ -296,7 +296,16 @@ let current = null, busy = false;
 /* ---------- Réglages ---------- */
 for (const [k,p] of Object.entries(PROVIDERS)) $("provider").add(new Option(p.label,k));
 let formProv=cfg.primary;
-function loadForm(p){formProv=p;$("provider").value=p;$("model").value=cfg.models[p]||PROVIDERS[p].model;$("apikey").value=cfg.keys[p]||"";$("provHelp").textContent=PROVIDERS[p].help;}
+function loadForm(p){formProv=p;$("provider").value=p;$("model").value=cfg.models[p]||PROVIDERS[p].model;$("apikey").value=cfg.keys[p]||"";showReco(p);}
+/* Rappel du modèle conseillé + bouton pour y revenir */
+function showReco(p){
+  const h=$("provHelp"),def=PROVIDERS[p].model;h.textContent=PROVIDERS[p].help+" ";
+  const b=document.createElement("b");b.textContent="⭐ Modèle conseillé : "+def+".";h.appendChild(b);
+  if($("model").value.trim()!==def){
+    const a=document.createElement("button");a.className="ghost";a.style.cssText="margin-left:6px;padding:2px 9px;font-size:.8rem";
+    a.textContent="↺ Revenir au modèle conseillé";a.onclick=()=>{$("model").value=def;showReco(p);};h.appendChild(a);
+  }
+}
 function stashForm(){
   const p=formProv,k=$("apikey").value.trim(),m=$("model").value.trim();
   if(k)cfg.keys[p]=k;else delete cfg.keys[p];
@@ -341,6 +350,7 @@ $("btnSave").onclick = () => {
   saveCfg();refreshSelects();refreshAiSel();
   $("settings").classList.add("hidden");
 };
+$("model").addEventListener("input",()=>showReco(formProv));
 $("btnTest").onclick = async () => {
   const out=$("testOut"), prov=$("provider").value, key=$("apikey").value.trim();
   if(!key){out.textContent="Colle d'abord ta clé API.";return;}
@@ -360,12 +370,16 @@ $("btnTest").onclick = async () => {
       const j=await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
       ids=(j.data||[]).map(m=>m.id);
     }
-    ids.sort((a,b)=>(/flash|small|llama|free|haiku/.test(b)?1:0)-(/flash|small|llama|free|haiku/.test(a)?1:0));
-    out.textContent="✅ Clé valide. Clique sur un modèle pour l'utiliser :";
+    const def=PROVIDERS[prov].model;
+    if(prov==="openrouter")ids=ids.filter(id=>id.endsWith(":free"));   // ta clé gratuite ne sert qu'aux modèles :free
+    ids.sort((a,b)=>(/flash|small|llama|free|haiku|gemma/.test(b)?1:0)-(/flash|small|llama|free|haiku|gemma/.test(a)?1:0));
+    ids=[def,...ids.filter(id=>id!==def)];
+    out.textContent="✅ Clé valide. Clique sur un modèle pour l'utiliser (⭐ = conseillé, rapide et fiable pour le jeu) :";
     out.appendChild(document.createElement("br"));
     ids.slice(0,14).forEach(id=>{
       const b=document.createElement("button");b.className="ghost";b.style.cssText="margin:4px 4px 0 0;padding:4px 10px;font-size:.8rem";
-      b.textContent=id;b.onclick=()=>{$("model").value=id;};out.appendChild(b);
+      if(id===def)b.style.fontWeight="700";
+      b.textContent=(id===def?"⭐ ":"")+id;b.onclick=()=>{$("model").value=id;showReco(prov);};out.appendChild(b);
     });
   }catch(e){
     out.textContent="❌ "+(e.name==="AbortError"?"Pas de réponse du serveur (réseau bloqué ?)":e.message);
