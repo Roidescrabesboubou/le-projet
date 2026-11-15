@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.1 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -460,7 +460,7 @@ function sendState(st,b,slot,to){
   const P=slot!=null;
   let lines=P&&!isGhost(st,slot)?st.lines.filter(l=>!l.vis||l.vis.includes(slot)):st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,cinq:st.cinq,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,cinq:st.cinq,wins:st.wins,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<16000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -982,8 +982,9 @@ async function finishExtras(st,id){
   }
   const K=Object.keys(SISTERS),P=st.players;
   const rank=P.map(p=>{const best=K.slice().sort((a,b)=>p.h[b]-p.h[a])[0],ms=K.reduce((a,k)=>a+(p.m?p.m[k].ms:0),0);
-    return{name:p.name,best,v:p.h[best],ms,mis:p.mission?p.mission.done:null,score:p.h[best]+10*ms+(p.mission&&p.mission.done?15:0)+(st.winner===p.name?20:0)};}).sort((a,b)=>b.score-a.score);
+    return{name:p.name,best,v:p.h[best],ms,mis:p.mission?p.mission.done:null,won:K.filter(k=>p.h[k]>=100).length,score:p.h[best]+10*ms+(p.mission&&p.mission.done?15:0)+20*K.filter(k=>p.h[k]>=100).length};}).sort((a,b)=>b.score-a.score);
   const med=[],top=(f,cond)=>{const b=P.slice().sort((x,y)=>f(y)-f(x))[0];return b&&cond(f(b))?b:null;};
+  P.forEach(p=>{const n=K.filter(k=>p.h[k]>=100).length;if(n>=2)med.push({ico:"👑",t:n===5?"Le cœur des cinq":"Cœur multiple",n:p.name,d:n+" sœurs conquises en même temps"});});
   let b=top(p=>K.reduce((a,k)=>a+p.h[k],0),v=>v>0);if(b)med.push({ico:"💘",t:"Le plus aimé des cinq",n:b.name,d:"le plus d'affection en tout"});
   b=top(p=>K.reduce((a,k)=>a+(p.m?p.m[k].ms:0),0),v=>v>0);if(b)med.push({ico:"🌸",t:"Le cœur qui avance",n:b.name,d:"le plus d'étapes validées"});
   b=top(p=>-((p.stats&&p.stats.worst)?p.stats.worst.d:0),v=>v>0);if(b)med.push({ico:"🤡",t:"La pire gaffe",n:b.name,d:b.stats.worst.d+" ❤ avec "+SISTERS[b.stats.worst.k].name+(b.stats.worst.why?" ("+b.stats.worst.why+")":"")});
@@ -1146,7 +1147,7 @@ function extractJSON(text){
 }
 function parseLines(a){
   return Array.isArray(a)?a.map(l=>({sms:!!(l&&l.sms===true),s:sisKey(l&&l.sister),to:String((l&&l.to)||"").trim().slice(0,40),mood:String((l&&l.mood)||"").slice(0,30),
-    text:String((l&&l.text)||"").replace(/\*[^*]{0,200}\*/g," ").replace(/\s+/g," ").trim().slice(0,500)})).filter(l=>l.s&&l.text).slice(0,4):null;
+    text:String((l&&l.text)||"").replace(/\*[^*]{0,200}\*/g," ").replace(/\s+/g," ").trim().slice(0,500)})).filter(l=>l.s&&l.text).slice(0,6):null;
 }
 const parseChoices=a=>(x=>x.length>=2?x:[])(Array.isArray(a)?a.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]);
 function parseAI(text){
@@ -2024,8 +2025,15 @@ async function finish(st,id,kind,pl){
   let msg;
   if(st.cinq){
     if(kind==="win"){
-      st.winner=pl.name;const k=Object.keys(pl.h).sort((a,b)=>pl.h[b]-pl.h[a])[0],S=SISTERS[k];st.winSis=k;
-      msg=`[FIN] ${S.name} est conquise par ${multi?pl.name:"le garçon"} (100 %). Dans ce dernier message, ${S.name} parle EN PREMIER et lui avoue ses sentiments de façon touchante et fidèle à son caractère${multi?", en le choisissant lui plutôt que les autres":""} ; puis 1 ou 2 autres sœurs réagissent brièvement (émotion, jalousie, joie pour leur sœur). Plus de question. effects = [].`;
+      const W=st.players.filter(p=>!p.out&&p.h&&p.aff>=100);if(!W.length)W.push(pl);
+      st.wins=W.map(p=>({name:p.name,sis:Object.keys(SISTERS).filter(k=>p.h[k]>=100)}));
+      st.wins.forEach(w=>{if(!w.sis.length){const q=st.players.find(p=>p.name===w.name);w.sis=[Object.keys(q.h).sort((a,b)=>q.h[b]-q.h[a])[0]];}});
+      st.winner=W.map(p=>p.name).join(" et ");st.winSis=st.wins[0].sis[0];
+      const nm=w=>w.sis.map(k=>SISTERS[k].name),et=a=>a.length>1?a.slice(0,-1).join(", ")+" et "+a[a.length-1]:a[0];
+      const one=st.wins.length===1&&st.wins[0].sis.length===1;
+      if(one){const S=SISTERS[st.winSis];
+        msg=`[FIN] ${S.name} est conquise par ${multi?pl.name:"le garçon"} (100 %). Dans ce dernier message, ${S.name} parle EN PREMIER et lui avoue ses sentiments de façon touchante et fidèle à son caractère${multi?", en le choisissant lui plutôt que les autres":""} ; puis 1 ou 2 autres sœurs réagissent brièvement (émotion, jalousie, joie pour leur sœur). Plus de question. effects = [].`;
+      }else msg=`[FIN] Fin exceptionnelle, au même moment : ${st.wins.map(w=>et(nm(w))+(w.sis.length>1?" sont conquises":" est conquise")+" par "+(multi?w.name:"le garçon")).join(" ; ")} (100 %). Dans ce dernier message (jusqu'à 6 lignes), CHACUNE de ces sœurs, l'une après l'autre, avoue ses sentiments de façon touchante et fidèle à son caractère${st.wins.some(w=>w.sis.length>1)?" ; elles découvrent qu'elles aiment le même garçon et réagissent entre elles (surprise, gêne, rivalité puis complicité ou fou rire)":""}${st.wins.length>1?" ; chacune s'adresse à SON garçon":""}. Les sœurs non conquises réagissent brièvement si elles sont là. Plus de question. effects = [].`;
     }else msg="[FIN] Aucune sœur n'a été conquise : toutes ont perdu patience. 2 ou 3 sœurs mettent fin à la rencontre et partent, chacune selon son caractère. Plus de question. effects = [].";
     if(st.split)msg+=' Tout le monde se retrouve pour cette fin : réponds au format simple {"narration":"…","lines":[…],"effects":[]}, sans "scenes".';
   }else if(kind==="win"){
@@ -2050,16 +2058,18 @@ function showEnd(st){
   fx(st.winner?30:-30);
   const multi=st.players.length>1, sis=SISTERS[st.cinq&&st.winSis?st.winSis:current].name;
   let t;
-  if(st.winner) t = multi ? `🏆 ${st.winner} remporte le cœur de ${sis} !` : st.cinq ? `💖 Fin heureuse : ${sis} t'a avoué ses sentiments !` : "💖 Fin heureuse : elle t'a avoué ses sentiments !";
+  const et=a=>a.length>1?a.slice(0,-1).join(", ")+" et "+a[a.length-1]:a[0], wn=w=>w.sis.length===5?"des cinq sœurs":"de "+et(w.sis.map(k=>SISTERS[k].name));
+  if(st.winner&&st.cinq&&st.wins) t = multi ? st.wins.map(w=>(w.sis.length===5?"👑 ":"🏆 ")+w.name+" remporte le cœur "+wn(w)+" !").join("\n") : st.wins[0].sis.length===5 ? "👑 Fin parfaite : les cinq sœurs t'ont avoué leurs sentiments !" : st.wins[0].sis.length>1 ? `💖 Fin heureuse : ${et(st.wins[0].sis.map(k=>SISTERS[k].name))} t'ont avoué leurs sentiments !` : `💖 Fin heureuse : ${sis} t'a avoué ses sentiments !`;
+  else if(st.winner) t = multi ? `🏆 ${st.winner} remporte le cœur de ${sis} !` : st.cinq ? `💖 Fin heureuse : ${sis} t'a avoué ses sentiments !` : "💖 Fin heureuse : elle t'a avoué ses sentiments !";
   else t = multi ? "💔 Tous les rivaux ont été éconduits… personne ne gagne." : st.cinq ? "💔 Fin triste : les cinq sœurs t'ont tourné le dos…" : "💔 Fin triste : elle a tourné les talons…";
   const box=$("endBox");box.innerHTML="";
-  const div=document.createElement("div");div.className="end";div.textContent=t;
+  const div=document.createElement("div");div.className="end";div.style.whiteSpace="pre-line";div.textContent=t;
   div.appendChild(document.createElement("br"));div.appendChild(document.createElement("br"));
   if(st.final){
     const fz=document.createElement("div");fz.style.cssText="text-align:left;font-weight:400;margin:4px auto 12px;max-width:460px";
     const h=document.createElement("b");h.textContent="🏆 Classement";fz.appendChild(h);
     const ol=document.createElement("ol");ol.style.margin="4px 0 10px";
-    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+SISTERS[r.best].name+" "+r.v+" %, "+r.ms+" étape"+(r.ms>1?"s":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
+    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+(r.won>1?r.won+" sœurs conquises":SISTERS[r.best].name+" "+r.v+" %")+", "+r.ms+" étape"+(r.ms>1?"s":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
     fz.appendChild(ol);
     if(st.final.med.length){const h2=document.createElement("b");h2.textContent="🏅 Médailles";fz.appendChild(h2);
       const ul=document.createElement("ul");ul.style.margin="4px 0";
