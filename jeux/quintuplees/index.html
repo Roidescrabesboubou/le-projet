@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.5 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.6 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -1702,6 +1702,9 @@ function openSister(id){
   if(!state[id]){ showScenarios(id); return; }
   enterGame(id);
 }
+/* Premier joueur tiré au hasard, jamais le même que la partie précédente */
+let lastFirst=-1;
+function firstPlayer(n){if(n<2)return 0;let i;do{i=Math.floor(Math.random()*n);}while(i===lastFirst);lastFirst=i;return i;}
 function showScenarios(id){
   const s=SISTERS[id];
   $("menu").classList.add("hidden");$("game").classList.add("hidden");$("scen").classList.remove("hidden");
@@ -1719,7 +1722,7 @@ function showScenarios(id){
       const used=new Set();
       names=names.map(n=>{let x=n,k=2;while(used.has(x.toLowerCase()))x=n+" ("+(k++)+")";used.add(x.toLowerCase());return x;});
       const c5=id==="cinq",sp=c5&&mode===3&&net.guests.length>0;
-      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),m:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,{ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]}]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:0,history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:sp||(!c5&&mode===3&&$("simChk").checked),split:sp,groups:[{place:"",players:names.map((n,i)=>i),sisters:Object.keys(SISTERS)}],answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
+      state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),m:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,{ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]}]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:firstPlayer(names.length),history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:sp||(!c5&&mode===3&&$("simChk").checked),split:sp,groups:[{place:"",players:names.map((n,i)=>i),sisters:Object.keys(SISTERS)}],answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -1733,17 +1736,18 @@ function enterGame(id){
   const multi=st.players.length>1;
   addMsg("sys",`${st.sc.ico} ${st.sc.name} — ${st.sc.diff}`+(multi?` · ${namesOf(st.players)}`:""));
   st.lines.forEach(renderLine);
+  if(!st.over&&st.history.length===0&&multi&&!st.sim)sysLine(st,"🎲 "+st.players[st.cur].name+" commence.");
   updateBar();
   if(st.over) showEnd(st);
   else if(st.history.length===0&&st.split){
     runRound5(st,`[DÉBUT] ${st.players.map(p=>p.name).join(", ")} arrivent ensemble auprès des cinq sœurs, réunies, dans la situation décrite. Tout le monde est dans UNE seule scène pour commencer. Fais réagir 2 ou 3 sœurs selon leur caractère et la situation (accueil, méfiance, taquineries entre elles), puis lance la discussion de façon que chaque garçon puisse répondre. effects = [].`);
   }
   else if(st.history.length===0&&st.cinq){
-    turn(`[DÉBUT] ${multi?st.players.map(p=>p.name).join(", ")+" arrivent ensemble":"Le garçon arrive"} auprès des cinq sœurs, réunies, dans la situation décrite. Fais réagir 2 ou 3 sœurs selon leur caractère et la situation (accueil, méfiance, taquineries entre elles), puis lance la discussion${multi?" en t'adressant d'abord à "+st.players[0].name:""}. effects = [].`,true);
+    turn(`[DÉBUT] ${multi?st.players.map(p=>p.name).join(", ")+" arrivent ensemble":"Le garçon arrive"} auprès des cinq sœurs, réunies, dans la situation décrite. Fais réagir 2 ou 3 sœurs selon leur caractère et la situation (accueil, méfiance, taquineries entre elles), puis lance la discussion${multi?" en t'adressant d'abord à "+st.players[st.cur].name:""}. effects = [].`,true);
   }
   else if(st.history.length===0){
     turn(multi
-      ? `[DÉBUT] ${st.players.length} garçons, ${st.players.map(p=>p.name).join(", ")}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis lance la discussion ${st.sim?"en t'adressant à tous (ils répondront en même temps)":'en commençant par '+st.players[0].name}. affection_delta doit être 0 et too_fast false.`
+      ? `[DÉBUT] ${st.players.length} garçons, ${st.players.map(p=>p.name).join(", ")}, sont venus te voir ensemble et se disputent ton attention, dans la situation décrite. Réagis selon la situation et ton caractère, salue-les, puis lance la discussion ${st.sim?"en t'adressant à tous (ils répondront en même temps)":'en commençant par '+st.players[st.cur].name}. affection_delta doit être 0 et too_fast false.`
       : "[DÉBUT] Le joueur vient de te rejoindre dans la situation décrite. Réagis selon la situation et ton caractère, puis pose ta première question. affection_delta doit être 0 et too_fast false.",true);
   }
 }
