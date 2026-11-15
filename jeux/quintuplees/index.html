@@ -123,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.4 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v13.5 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -1117,9 +1117,10 @@ async function rawCall(prov,{system,messages,json=true,max=1400,ms=45000,model})
   }
   const body={model,temperature:json?1:0.3,messages:[{role:"system",content:system},...msgs]};
   if(json&&prov!=="openrouter")body.response_format={type:"json_object"};
-  if(prov==="openrouter"){body.reasoning={effort:"low",exclude:true};if(model===PROVIDERS.openrouter.model)body.models=[model,"google/gemma-4-31b-it:free","openrouter/free"];}   // modèle rapide, puis secours chez OpenRouter
+  if(prov==="openrouter"){body.reasoning={effort:"none",exclude:true};body.provider={sort:"throughput"};body.max_tokens=max;if(model===PROVIDERS.openrouter.model)body.models=[model,"google/gemma-4-31b-it:free"];}   // sans réflexion, serveur le plus rapide, secours Gemma 31B (plus de tirage au hasard openrouter/free, trop lent)
   const send=()=>fetchT(PROVIDERS[prov].url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify(body)},ms);
   let r=await send(), j=await r.json().catch(()=>({}));
+  if(!r.ok&&r.status===400&&body.reasoning&&/reason|provider|sort/i.test(JSON.stringify(j))){delete body.reasoning;delete body.provider;r=await send();j=await r.json().catch(()=>({}));}
   if(!r.ok&&body.response_format&&r.status===400&&/json/i.test(JSON.stringify(j))){   // JSON refusé par le mode strict : on réessaie sans
     if(j.error&&j.error.failed_generation)return String(j.error.failed_generation);
     delete body.response_format;r=await send();j=await r.json().catch(()=>({}));
@@ -1208,7 +1209,7 @@ async function callAI(id, history){
       const model=models[Math.min(a,models.length)-1];
       label=name+" ("+model+")";
       try{
-        const raw=await rawCall(prov,{system,messages:msgs,json:true,max:1400,ms:models.length>1?30000:k===0?40000:30000,model});
+        const raw=await rawCall(prov,{system,messages:msgs,json:true,max:st.split?2600:st.cinq?1800:1400,ms:models.length>1?30000:k===0?40000:30000,model});
         if(!extractJSON(raw)){const e=new Error("réponse coupée ou mal formée");e.incomplete=true;throw e;}
         if(k>0)addMsg("sys","✅ "+name+" ("+model+") a répondu à la place. Le prochain message repartira de "+PROVIDERS[order[0]].short+".");
         else if(model!==models[0])addMsg("sys","✅ "+models[0]+" surchargé : "+name+" a répondu avec "+model+".");

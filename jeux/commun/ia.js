@@ -95,9 +95,10 @@
     }
     const body = {model, temperature: o.temperature != null ? o.temperature : (json ? 1 : 0.3), messages: [{role: "system", content: system}, ...msgs]};
     if(json && p !== "openrouter") body.response_format = {type: "json_object"};
-    if(p === "openrouter"){ body.reasoning = {effort: "low", exclude: true}; if(model === FOURNISSEURS.openrouter.model) body.models = [model, "google/gemma-4-31b-it:free", "openrouter/free"]; }   // modèle rapide, puis secours chez OpenRouter
+    if(p === "openrouter"){ body.reasoning = {effort: "none", exclude: true}; body.provider = {sort: "throughput"}; body.max_tokens = max; if(model === FOURNISSEURS.openrouter.model) body.models = [model, "google/gemma-4-31b-it:free"]; }   // sans réflexion, serveur le plus rapide, secours Gemma 31B
     const envoyer = () => fetchT(FOURNISSEURS[p].url, {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + key}, body: JSON.stringify(body)}, o.ms);
     let r = await envoyer(), j = await r.json().catch(() => ({}));
+    if(!r.ok && r.status === 400 && body.reasoning && /reason|provider|sort/i.test(JSON.stringify(j))){ delete body.reasoning; delete body.provider; r = await envoyer(); j = await r.json().catch(() => ({})); }
     if(!r.ok && body.response_format && r.status === 400 && /json/i.test(JSON.stringify(j))){   // JSON refusé par le mode strict : on réessaie sans
       if(j.error && j.error.failed_generation) return String(j.error.failed_generation);
       delete body.response_format; r = await envoyer(); j = await r.json().catch(() => ({}));
