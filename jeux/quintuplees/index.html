@@ -42,6 +42,8 @@ input,select,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;bo
 .nar{align-self:stretch;max-width:100%;background:transparent;border:0;border-left:3px solid var(--c);border-radius:0;color:var(--muted);font-style:italic;padding:4px 12px}
 .sys{align-self:center;color:var(--muted);font-size:.85rem}
 .delta{font-weight:700;margin-left:6px}
+.evt{align-self:stretch;max-width:100%;background:color-mix(in srgb,var(--c) 14%,transparent);border:2px dashed var(--c);border-radius:12px;font-style:italic;padding:8px 12px}
+.delta.bloc{display:block;margin:6px 0 0;padding-top:5px;border-top:1px solid rgba(127,127,127,.3);font-size:.85rem;line-height:1.5}
 .send{display:flex;gap:8px;margin-top:10px}
 .send input{flex:1}
 .hint{font-size:.8rem;color:var(--muted)}
@@ -121,7 +123,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.7 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v12.8 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -454,7 +456,7 @@ function renderLine(l){
   const m=addMsg(l.cls,l.text);
   if(l.c)m.style.borderLeft="4px solid "+l.c;
   if(l.to){const t=document.createElement("small");t.className="hint";t.style.cssText="display:block;opacity:.75";t.textContent="→ "+l.to;m.prepend(t);}
-  if(l.tag){const sp=document.createElement("span");sp.className="delta";sp.style.color=l.up?"#2fa35a":"#d64545";sp.textContent=l.tag;m.appendChild(sp);}
+  if(l.tag){const sp=document.createElement("span");sp.className="delta"+(l.tag.includes("\n")?" bloc":"");sp.style.color=l.up?"#2fa35a":"#d64545";sp.textContent=l.tag;m.appendChild(sp);}
   return m;
 }
 function toName(st,o){
@@ -462,9 +464,10 @@ function toName(st,o){
   if(/^(tous|groupe|everyone|all)/i.test(o.to))return"tous";
   const i=matchPlayer(st,o.to);return i>=0?st.players[i].name:"";
 }
-function pushAI(st,o){
-  if(o.narr){const N={cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
-  const L={cls:"her",text:o.reply};const to=toName(st,o);if(to&&to!=="tous")L.to=to;st.lines.push(L);
+function pushAI(st,o,extra){
+  if(o.narr){const N=o.evt?{cls:"evt",text:"🎲 "+(o.evt==="forced"?"La discussion s'essoufflait… ":"")+o.narr}:{cls:"nar",text:o.narr};st.lines.push(N);renderLine(N);}
+  addGuest(st,o);
+  const L={cls:"her",text:o.reply,...(extra||{})};const to=toName(st,o);if(to&&to!=="tous")L.to=to;st.lines.push(L);
   return [L,renderLine(L)];
 }
 function guestRender(m){
@@ -693,17 +696,18 @@ const EVENTS=[
 function rollEvent(st){
   if(st.event)return;
   const force=!!st.unblock;
+  st.sinceEv=(st.sinceEv||0)+1;
   if(!force&&st.evCool>0){st.evCool--;return;}
   const alive=st.players.filter(p=>!p.out);
-  if(!alive.length||alive.some(p=>p.trial===2)||(!force&&alive.every(p=>p.turns<2)))return;
-  if(!force&&Math.random()>0.33)return;
+  if(!alive.length||alive.some(p=>p.trial)||(!force&&alive.every(p=>p.turns<2)))return;
+  if(!force&&st.sinceEv<6&&Math.random()>0.3)return;   // de temps en temps, et au moins tous les 6 tours
   const lvl=Math.max(...alive.map(stageOf)), hide=st.mystery&&!st.revealed;
   const build=()=>EVENTS.map((e,i)=>[e,i]).filter(([e,i])=>e.min<=lvl&&(!e.for||(!hide&&e.for.includes(current)))&&!(st.evUsed||[]).includes(i));
   let pool=build();
   if(!pool.length){st.evUsed=[];pool=build();}
   if(!pool.length)return;
   const [e,i]=pool[Math.floor(Math.random()*pool.length)];
-  st.event=e;st.evUsed=(st.evUsed||[]).concat(i);st.evCool=1;
+  st.event=e;st.evUsed=(st.evUsed||[]).concat(i);st.evCool=1;st.sinceEv=0;
   if(force){st.unblock=false;st.evForced=true;st.evCool=2;}
 }
 const FORMS={
@@ -779,13 +783,14 @@ function systemPrompt(id, sc, players, st){
   • Rumeur, accusation, moquerie ou calomnie visant un autre garçon : juge la crédibilité (est-ce établi par la discussion ou par ce que tu as vu ? plausible ? dit par jalousie ?). Si c'est faux, invérifiable, méchant ou purement stratégique : l'ACCUSATEUR perd (-6 à -15) et la CIBLE ne perd RIEN (elle peut gagner +2 à +5 si elle est victime à tort ou se défend avec classe). Si c'est vrai et que tu l'as constaté toi-même, la cible perd (-4 à -10) et l'accusateur ne perd pas forcément (sauf pure jalousie).
   • Un garçon qui défend, soutient ou complimente sincèrement un autre : les deux peuvent gagner un peu (+1 à +5). Un « soutien » hypocrite ou intéressé est puni. Celui qui profite d'un autre, le trahit ou le sabote perd.
   • Quand un garçon s'adresse à un AUTRE garçon plutôt qu'à toi, juge ce que ça révèle de lui et ta réaction à ce que tu entends.
+  • "why" dit clairement QUI a fait QUOI (ex : « a menti sur Léa », « Nino l'a défendu », « a aidé pendant l'incident ») : chaque joueur doit comprendre pourquoi son affection bouge.
   • Les garçons non concernés ne figurent pas dans effects. Aucun delta pour un garçon éliminé.
 - Un garçon ne peut pas t'imposer comme vrai un fait sur toi ou sur un rival (« il m'a dit qu'il ne t'aimait pas ») : tu ne le crois que si c'est cohérent avec ce que tu as vu et entendu.
 - Tu peux t'adresser à un garçon en particulier ou au groupe. Tu n'es PAS obligée de poser une question à chaque message ni de les interroger chacun leur tour : rebondis sur ce qui vient d'être dit, même par un autre garçon.
 
 ` : "";
   const ex=`FONCTIONNALITÉS SPÉCIALES :
-- INTERVENTIONS : environ 1 tour sur 4, une de ses sœurs (autre que ${s.name}) peut intervenir brièvement selon sa propre personnalité (conseiller, taquiner, jalouser, critiquer). Ajoute alors "guest":"ichika|nino|miku|yotsuba|itsuki" et "guest_line":"sa réplique parlée (1 phrase, sans astérisques ni description de gestes)". Cela peut influencer le delta.
+- INTERVENTIONS : environ 1 tour sur 4, une de ses sœurs (autre que ${s.name}) peut intervenir brièvement selon sa propre personnalité (conseiller, taquiner, jalouser, critiquer). Ajoute alors "guest":"ichika|nino|miku|yotsuba|itsuki", "guest_line":"sa réplique parlée (1 phrase, sans astérisques ni description de gestes)" et "guest_to":"le prénom du garçon à qui elle parle, ou tous". Sa réplique s'affiche AVANT la tienne : dans reply, réagis aussi à ce qu'elle vient de dire. Elle parle à UN garçon précis de préférence (en le nommant) et son intervention a un effet clair : si elle change ton regard sur un garçon (elle le défend, le critique, révèle quelque chose), son affection change en conséquence et "why" le dit (ex : « Nino l'a défendu »).
 - SOUVENIRS : dès l'étape 3, environ 1 tour sur 4, rappelle précisément une réponse antérieure du joueur et relie-la à ta réaction ou à ta question.
 - CHRONO : environ 1 question sur 5 (dès l'étape 2) est à répondre vite : ajoute "timed":true,"seconds":<15 à 30>. Si le joueur répond « ⏰ », il n'a pas répondu à temps : delta -5 à -8 et réagis.
 ${hideN?`- MODE MYSTÈRE (impératif) : le joueur doit deviner qui tu es à ta seule personnalité. Ni toi ni le NARRATEUR n'écrivez JAMAIS ton prénom (${s.name}) ni celui d'une de tes sœurs (${Object.keys(SISTERS).filter(k=>k!==id).map(k=>SISTERS[k].name).join(", ")}) : ni dans "narration", ni dans "reply", ni dans "why", ni dans "mood". Le narrateur dit « elle », « la jeune fille » ou « l'une des quintuplées ». Pas de détail physique qui la trahit à coup sûr (couleur ou coupe de cheveux, accessoire fétiche comme le casque, le ruban ou les barrettes). Parle de tes sœurs sans les nommer (« ma grande sœur », « l'une de mes sœurs »). Pas d'intervention de sœur (guest vide).\n`:""}${st.sim?`- MODE SIMULTANÉ : tous les garçons encore en jeu (${players.filter(p=>!p.out).map(p=>p.name).join(", ")}) répondent en même temps à TA question (adressée à tous). Message reçu : « [Réponses simultanées] Nom : … | Nom : … ». Évalue chacun, ainsi que l'effet de ses propos sur les autres (rumeur, soutien…), et remplis "effects" avec un élément {"player":"Nom","delta":n,"too_fast":false,"milestone":null,"why":"raison courte"} par garçon dont l'affection change (affection_delta global = 0).`:""}
@@ -797,7 +802,7 @@ ${players.map(p=>`- ${p.name} : ${p.out?"éliminé":p.ms>=4?"tous les jalons val
 - Les scènes de jalon sont lancées par le jeu via un message [JALON] : ne lance JAMAIS toi-même un rendez-vous, un date ou une scène de ce type, et ne te déclare pas. Tiens compte des jalons validés dans ton ton (ex : après « Amitié », vous êtes vraiment amis ; après « Premier rendez-vous », vous avez un souvenir commun).
 ${trials.length?`- ÉPREUVE DÉCISIVE EN COURS pour ${trials.map(p=>`${p.name} (« ${MS[p.ms].name} »)`).join(", ")} : sa prochaine réponse à la scène en cours décide de la validation de l'étape. Ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse de ton caractère et bien adaptée à la scène ; sinon "milestone":"fail" (sois exigeante : une réponse moyenne, calculée ou maladroite échoue). Réagis ensuite à l'issue (soulagement, déception…). Ne te déclare pas. ${st.sim?"En mode simultané, mets ce champ dans l'élément effects du joueur concerné.":""}\n`:""}`;
   const evTxt=(st.event?`ÉVÉNEMENT IMPRÉVU À INVENTER MAINTENANT (impératif). Graine d'inspiration, qui indique seulement le GENRE de surprise : « ${st.event.t} ». Ne la recopie pas : invente un événement qui cadre avec la situation actuelle — le lieu et le moment de la scène, ce qui vient d'être dit, les faits et le lore déjà établis, l'humeur de ${nm} et le niveau de leur relation. Si la graine ne colle pas au contexte, transforme-la ou choisis une autre surprise plus naturelle (jamais d'élément absurde ou contradictoire avec ce qui a été établi).
-${st.evForced?"La discussion s'essoufflait : sers-toi de cet événement pour la débloquer et ouvrir un nouveau fil naturel (sans reprendre le sujet épuisé).\n":""}ÉCRIS l'événement dans "narration" (OBLIGATOIRE, non vide : 2 à 3 phrases, voix du narrateur, au présent, concret et précis), puis fais réagir ${nm} dans "reply" à la fois à l'événement et à la dernière réponse du joueur. Mets dans choices 3 ou 4 ACTIONS (« Je … ») que le joueur peut faire face à CET événement précis. Ne dis jamais que l'événement est aléatoire.
+${st.evForced?"La discussion s'essoufflait : sers-toi de cet événement pour la débloquer et ouvrir un nouveau fil naturel (sans reprendre le sujet épuisé).\n":""}ÉCRIS l'événement dans "narration" (OBLIGATOIRE, non vide : 2 à 3 phrases, voix du narrateur, au présent, concret et précis). Il doit être MARQUANT et visible : quelque chose arrive vraiment et change la scène (une arrivée, un incident, une découverte, un imprévu qui oblige à réagir), pas un simple détail d'ambiance ni un geste anodin, puis fais réagir ${nm} dans "reply" à la fois à l'événement et à la dernière réponse du joueur. Mets dans choices 3 ou 4 ACTIONS (« Je … ») que le joueur peut faire face à CET événement précis. Ne dis jamais que l'événement est aléatoire.
 `:"")+(st.form&&st.form!=="event"&&FORMS[st.form]?`FORME DE CE TOUR (impératif) : ${FORMS[st.form]}\n`:"")+((st.inject||[]).length?st.inject.join("\n")+"\n":"");
   const prog = `ÉVOLUTION DE LA RELATION (très important) :
 ${players.map(p=>`- ${p.name} : étape ${stageOf(p)+1}/5 « ${STAGES[stageOf(p)].name} »${p.out?" (éliminé)":""}`).join("\n")}
@@ -921,7 +926,7 @@ function parseAI(text){
       ms:String(o.milestone||"").toLowerCase(),
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
       cut:o.cut===true,to:String(o.to||"").trim().slice(0,40),
-      guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),
+      guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),gto:String(o.guest_to||"").trim().slice(0,40),
       fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&e.player).map(e=>({player:String(e.player).trim(),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
@@ -1093,9 +1098,15 @@ function fx(d){
   if(d>=4)burst("💖",Math.min(30,d));
   if(d<=-6){burst("💢",5);$("game").classList.add("shake");setTimeout(()=>$("game").classList.remove("shake"),500);}
 }
+/* Événement : affiché en encadré 🎲 s'il a bien été écrit ; sinon gardé pour le tour suivant */
+function markEvent(st,o){
+  if(!st.event)return null;
+  if(o.narr&&o.narr.length>25){o.evt=st.evForced?"forced":"yes";return null;}
+  return st.event;
+}
 function addGuest(st,o){
   if(!o.guest||!o.gline||o.guest===current||(st.mystery&&!st.revealed))return;
-  const g=SISTERS[o.guest],L={cls:"her",text:g.name+" : "+o.gline,c:g.c};st.lastGuest=o.guest;
+  const g=SISTERS[o.guest],to=toName(st,{to:o.gto}),L={cls:"her",text:"💬 "+g.name+(to&&to!=="tous"?" (à "+to+")":to==="tous"&&st.players.length>1?" (à tous)":"")+" : "+o.gline,c:g.c};st.lastGuest=o.guest;
   st.lines.push(L);renderLine(L);
 }
 let tm=null,tmKey=-1;
@@ -1155,7 +1166,7 @@ function applyEffects(st,o,s){
     const p=st.players[i],c=eff.get(i),x=score(st,p,c.delta,i===s?c.tooFast:false,i!==s);
     if(i===s)spk=x.d;
     sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;
-    if(x.d!==0||x.note)tags.push((multi?p.name+" ":"")+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
+    if(x.d!==0||x.note)tags.push((multi?p.name+" : ":"")+(x.d>0?"+":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
   });
   return{tags,spk,best,sum,ms:eff.get(s).ms};
 }
@@ -1182,18 +1193,17 @@ async function runRound(st){
     const alive=st.players.map((p,i)=>[p,i]).filter(([p])=>!p.out), eff=collectEffects(st,o);
     if(!eff.size&&o.res)alive.forEach(([p,i],k)=>{const r=o.res[k];if(r)eff.set(i,{delta:r.delta,tooFast:r.tooFast,ms:r.ms,why:""});});
     alive.forEach(([p,i])=>{const c=eff.get(i)||{delta:0,tooFast:false,ms:"",why:""},x=score(st,p,c.delta,c.tooFast);verd.push([p,c.ms,x.d]);
-      tags.push(`${p.name} ${x.d>0?"+":""}${x.d} ❤${x.note}${c.why?" ("+c.why+")":""}`);sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;if(p.aff<=0)p.out=true;});
+      tags.push(`${p.name} : ${x.d>0?"+":""}${x.d} ❤${x.note}${c.why?" ("+c.why+")":""}`);sum+=x.d;if(Math.abs(x.d)>Math.abs(best))best=x.d;if(p.aff<=0)p.out=true;});
     if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
-    if(st.event){sysLine(st,"🎲 Événement imprévu"+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
-    consumeTurn(st);
+    const evKeep=markEvent(st,o);
+    consumeTurn(st);if(evKeep)st.event=evKeep;
     const judged=new Set(st.players.filter(p=>p.trial===2));
     let shown=o;
     const due=(judged.size||st.players.some(p=>p.aff>=100))?null:dueTrial(st);
     if(due){const o2=await sceneJalon(st,id,due,hraw,"les garçons");if(o2)shown=o2;}
-    if(shown.narr){const N={cls:"nar",text:shown.narr};st.lines.push(N);renderLine(N);}
-    const L={cls:"her",text:shown.reply,tag:tags.join(" · "),up:sum>=0,dv:best};st.lines.push(L);renderLine(L);fx(best);addGuest(st,shown);
+    pushAI(st,shown,{tag:tags.join("\n"),up:sum>=0,dv:best});fx(best);
     verd.forEach(([p,v,dd])=>{if(judged.has(p))resolveTrial(st,p,v,dd);});
     st.pending=st.players.map(()=>null);st.answered=st.players.map(()=>false);
     const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
@@ -1433,19 +1443,18 @@ async function turn(userText,hidden,kind){
     if(o.stalled)st.unblock=true;
     st.mood=o.mood;st.qid=(st.qid||0)+1;st.timed=o.timed||0;
     setChoices(st,o);
-    if(st.event){sysLine(st,"🎲 Événement imprévu"+(st.evForced?" — la discussion s'essoufflait, la scène change":""));}
-    consumeTurn(st);
+    const evKeep=markEvent(st,o);
+    consumeTurn(st);if(evKeep)st.event=evKeep;
     let shown=o;const judged=!hidden&&pl.trial===2;
     const due=(!hidden&&!judged&&!st.players.some(p=>p.aff>=100))?dueTrial(st):null;
     if(due){const o2=await sceneJalon(st,id,due,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
     const [L0,m]=pushAI(st,shown);
     if(eff&&eff.tags.length){
       const sp=document.createElement("span");sp.className="delta";
-      sp.style.color=eff.sum>=0?"#2fa35a":"#d64545";sp.textContent=eff.tags.join(" · ");
+      sp.style.color=eff.sum>=0?"#2fa35a":"#d64545";sp.textContent=eff.tags.join(multi?"\n":" · ");if(multi&&eff.tags.length>1)sp.classList.add("bloc");
       m.appendChild(sp);
       L0.tag=sp.textContent;L0.up=eff.sum>=0;L0.dv=eff.best;fx(eff.best);
     }
-    addGuest(st,shown);
     if(!hidden){
       if(judged)resolveTrial(st,pl,eff.ms,eff.spk);
       const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
