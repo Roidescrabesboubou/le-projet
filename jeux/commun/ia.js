@@ -16,7 +16,7 @@
    ============================================================ */
 (function(){
   const FOURNISSEURS = {
-    gemini:{short:"Gemini",label:"Google Gemini (gratuit, limité)",model:"gemini-3.8-flash",help:"Clé gratuite : aistudio.google.com → « Get API key ». Le palier gratuit est limité en requêtes par jour."},
+    gemini:{short:"Gemini",label:"Google Gemini (gratuit, limité)",model:"gemini-3.1-flash-lite",help:"Clé gratuite : aistudio.google.com → « Get API key ». Le palier gratuit est limité en requêtes par jour ; en payant, gemini-3.1-flash-lite (conseillé) est le moins cher des modèles fiables pour le jeu."},
     anthropic:{short:"Claude",label:"Anthropic Claude (payant)",model:"claude-haiku-5-5",url:"https://api.anthropic.com/v1/messages",help:"Clé : platform.claude.com → API keys. Crédits payants, séparés de l'abonnement Claude. Haiku 5.5 est le modèle le moins cher."},
     groq:{short:"Groq",label:"Groq (gratuit, très rapide)",model:"openai/gpt-oss-120b",url:"https://api.groq.com/openai/v1/chat/completions",help:"Clé gratuite : console.groq.com → API Keys."},
     mistral:{short:"Mistral",label:"Mistral (palier gratuit)",model:"mistral-small-latest",url:"https://api.mistral.ai/v1/chat/completions",help:"Clé : console.mistral.ai (palier gratuit « Experiment »)."},
@@ -68,7 +68,7 @@
     return out;
   }
 
-  const GEM_ALT = ["gemini-3.6-flash", "gemini-3.5-flash-lite"];   // modèles Gemini essayés si le modèle choisi est surchargé
+  const GEM_ALT = ["gemini-3.5-flash-lite", "gemini-3.6-flash"];   // modèles Gemini essayés si le modèle choisi est surchargé
   const modeles = (c, p) => p === "gemini" ? [modele(c, p), ...GEM_ALT.filter(m => m !== modele(c, p))] : [modele(c, p)];
 
   async function brut(c, p, o){
