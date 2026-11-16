@@ -126,7 +126,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.6 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.7 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -1145,11 +1145,12 @@ function splitTxt(st,players){
   const L=st.launch&&players[st.launch.i]?(()=>{const P=players[st.launch.i],S=SISTERS[st.launch.k],M=MS[P.m[st.launch.k].ms];if(!M)return"";
     return`- SCÈNE DE JALON À LANCER MAINTENANT (impératif) : ${P.name} atteint avec ${S.name} l'étape « ${M.name} ». ${M.brief} (« elle » = ${S.name}.) Dans ta réponse, amène ${S.name} et ${P.name} dans une scène où ils sont ensemble, de préférence seuls, par une transition naturelle ; ${S.name} y met en scène l'étape de façon originale, dans un lieu précis, et termine par une question ou une situation décisive à laquelle ${P.name} doit répondre. Personne ne se déclare.
 `;})():"";
-  return `MODE SCÈNES SÉPARÉES (très important) : les garçons jouent EN MÊME TEMPS, chacun sur son appareil, et ne sont pas forcément au même endroit. À chaque tour tu reçois leurs réponses simultanées, scène par scène (« [Réponses simultanées] Scène 1 — Nom : … | Nom : … »), et tu fais avancer TOUTES les scènes d'un coup.
+  return `MODE SCÈNES SÉPARÉES (très important) : les garçons jouent EN MÊME TEMPS, chacun sur son appareil, et ne sont pas forcément au même endroit. À chaque tour tu reçois leurs réponses simultanées, scène par scène (« [Réponses simultanées…] Scène 1 : • Nom dit : « … » • Nom dit : « … » »), et tu fais avancer TOUTES les scènes d'un coup.
 Scènes en cours :
 ${groupsTxt(st)}
 - C'est TOI qui décides des déplacements, selon l'histoire, les événements et les envies des sœurs : une sœur entraîne un garçon ailleurs (l'aider en cuisine, lui montrer quelque chose, une course à faire, une sœur qui boude dans sa chambre, une dispute qui éclate…), un groupe se sépare ou se retrouve (repas, sortie, retour au salon). Au début, tout le monde reste ensemble quelques tours ; ensuite, sépare et réunis de temps en temps, de façon naturelle et justifiée dans la narration, sans faire la navette à chaque tour (une séparation dure en général 2 à 5 tours). Si un garçon dit vouloir aller quelque part ou suivre quelqu'un, tiens-en compte si c'est plausible.
 - Chaque garçon est dans UNE seule scène ; chaque sœur dans une scène au plus (une sœur peut être ailleurs, hors scène). Une scène peut réunir des garçons sans aucune sœur.
+- AUTEURS (très important) : chaque garçon écrit SA réponse seul, sur son appareil, sans lire celle des autres (une ligne « • Nom dit : « … » » par garçon). Ne fusionne jamais leurs messages : attribue chaque parole, chaque idée, chaque question et chaque faute à son SEUL auteur ; une sœur ne reproche ou ne remercie un garçon que pour ce que LUI a dit ; ne fais jamais dire ou faire à un garçon ce qu'un autre a écrit. Réponds à chacun séparément ("to" = son prénom) et, dans "effects", le "why" décrit ce que CE garçon-là a dit.
 - SECRET : un garçon ne voit et n'entend QUE sa scène. Il ignore ce qui se passe ailleurs ; plus tard, les sœurs peuvent en parler, déformer, jalouser (« Nino m'a dit que tu étais dans sa cuisine… »). Une sœur ne parle jamais de ce qu'elle n'a pas pu voir ou entendre.
 - Quand des groupes se retrouvent, raconte-le dans la narration de la scène commune. Un ÉVÉNEMENT imprévu se produit dans une scène précise (dans sa narration) ou concerne tout le monde ; il peut provoquer une séparation ou des retrouvailles.
 ${L}
@@ -1593,9 +1594,9 @@ async function runRound5(st,intro){
     st.groups.forEach((g,n)=>{
       const al=g.players.filter(i=>!st.players[i].out);if(!al.length)return;
       al.forEach(i=>{const L={cls:pcls(i),text:st.players[i].name+" : "+st.pending[i],vis:al.slice()};st.lines.push(L);renderLine(L);});
-      parts.push(`Scène ${n+1}${g.place?" « "+g.place+" »":""} — `+al.map(i=>st.players[i].name+" : "+st.pending[i]+context(st,st.pending[i],i).replace(/\n/g," ")).join(" | "));
+      parts.push(`Scène ${n+1}${g.place?" « "+g.place+" »":""} :\n`+al.map(i=>`  • ${st.players[i].name} dit : « ${st.pending[i]} »`+context(st,st.pending[i],i).replace(/\n/g," ")).join("\n"));
     });
-    msg="[Réponses simultanées]\n"+parts.join("\n");
+    msg="[Réponses simultanées — chaque garçon a écrit SA réponse seul, sans lire celle des autres : ne mélange jamais leurs paroles]\n"+parts.join("\n");
     st.players.forEach((p,i)=>{if(/^📱/.test(st.pending[i]||"")){stat(p,"",0);p.stats.sms++;}});
     msg+=takeSms(st);
     const rum=st.players.map((p,i)=>st.ghostMsg[i]?p.name+" : « "+st.ghostMsg[i]+" »":"").filter(Boolean);
@@ -1767,7 +1768,7 @@ async function runRound(st){
   busy=true;$("btnSend").disabled=true;const id=current;
   st.players.forEach((p,i)=>{if(!p.out){const c=pcls(i),t=p.name+" : "+st.pending[i];addMsg(c,t);st.lines.push({cls:c,text:t});}});
   const dj=st.duel&&st.duel.open?st.duel:null;if(dj)dj.pl.forEach(i=>{dj.ans[i]=st.pending[i];});
-  st.history.push({role:"user",content:"[Réponses simultanées] "+st.players.map((p,i)=>p.out?"":p.name+" : "+st.pending[i]).filter(Boolean).join(" | ")});
+  st.history.push({role:"user",content:"[Réponses simultanées — chaque garçon a écrit SA réponse seul, sans lire celle des autres : ne mélange jamais leurs paroles]\n"+st.players.map((p,i)=>p.out?"":"  • "+p.name+" dit : « "+st.pending[i]+" »").filter(Boolean).join("\n")});
   {const ts=st.players.map((p,i)=>p.out?null:st.pending[i]).filter(t=>t!=null),isCh=t=>(st.choices||[]).includes(t);
    st.flat=(ts.length&&ts.every(t=>t.length<15&&!isCh(t)))?(st.flat||0)+1:0;
    st.devel=ts.some(t=>t.length>=40&&!isCh(t));
