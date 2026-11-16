@@ -126,7 +126,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.5 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.6 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -840,7 +840,7 @@ ${hideN?`- MODE MYSTÈRE (impératif) : le joueur doit deviner qui tu es à ta s
 - Étapes à valider avant toute déclaration : ${MS.map(m=>m.ico+" "+m.name).join(" → ")} → 💖 Déclaration.
 ${players.map(p=>`- ${p.name} : ${p.out?"éliminé":p.ms>=4?"tous les jalons validés, la déclaration est possible en fin de partie":`${p.ms}/4 jalons validés, prochain : « ${MS[p.ms].name} »`}`).join("\n")}
 - Les scènes de jalon sont lancées par le jeu via un message [JALON] : ne lance JAMAIS toi-même un rendez-vous, un date ou une scène de ce type, et ne te déclare pas. Tiens compte des jalons validés dans ton ton (ex : après « Amitié », vous êtes vraiment amis ; après « Premier rendez-vous », vous avez un souvenir commun).
-${trials.length?`- ÉPREUVE DÉCISIVE EN COURS pour ${trials.map(p=>`${p.name} (« ${MS[p.ms].name} »)`).join(", ")} : sa prochaine réponse à la scène en cours décide de la validation de l'étape. Ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse de ton caractère et bien adaptée à la scène ; sinon "milestone":"fail" (sois exigeante : une réponse moyenne, calculée ou maladroite échoue). Réagis ensuite à l'issue (soulagement, déception…). Ne te déclare pas. ${st.sim?"En mode simultané, mets ce champ dans l'élément effects du joueur concerné.":""}\n`:""}`;
+${trials.length?`- ÉPREUVE DÉCISIVE EN COURS pour ${trials.map(p=>`${p.name} (« ${MS[p.ms].name} »)`).join(", ")} : sa prochaine réponse à la scène en cours décide de la validation de l'étape. Ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse de ton caractère et bien adaptée à la scène ; sinon "milestone":"fail" ("fail" seulement si la réponse est froide, hors sujet, moqueuse, calculée ou en contradiction avec ce qu'il a montré ; une réponse sincère et adaptée, même simple ou maladroite dans la forme, réussit. Ton "milestone" doit aller dans le même sens que ton "why" et ton delta). Réagis ensuite à l'issue (soulagement, déception…). Ne te déclare pas. ${st.sim?"En mode simultané, mets ce champ dans l'élément effects du joueur concerné.":""}\n`:""}`;
   const evTxt=(st.event?`ÉVÉNEMENT IMPRÉVU À INVENTER MAINTENANT (impératif). Graine d'inspiration, qui indique seulement le GENRE de surprise : « ${st.event.t} ». Ne la recopie pas : invente un événement qui cadre avec la situation actuelle — le lieu et le moment de la scène, ce qui vient d'être dit, les faits et le lore déjà établis, l'humeur de ${nm} et le niveau de leur relation. Si la graine ne colle pas au contexte, transforme-la ou choisis une autre surprise plus naturelle (jamais d'élément absurde ou contradictoire avec ce qui a été établi).
 ${st.evForced?"La discussion s'essoufflait : sers-toi de cet événement pour la débloquer et ouvrir un nouveau fil naturel (sans reprendre le sujet épuisé).\n":""}ÉCRIS l'événement dans "narration" (OBLIGATOIRE, non vide : 2 à 3 phrases, voix du narrateur, au présent, concret et précis). Il doit être MARQUANT et visible : quelque chose arrive vraiment et change la scène (une arrivée, un incident, une découverte, un imprévu qui oblige à réagir), pas un simple détail d'ambiance ni un geste anodin, puis fais réagir ${nm} dans "reply" à la fois à l'événement et à la dernière réponse du joueur. Mets dans choices 3 ou 4 ACTIONS (« Je … ») que le joueur peut faire face à CET événement précis. Ne dis jamais que l'événement est aléatoire.
 `:"")+(st.form&&st.form!=="event"&&FORMS[st.form]?`FORME DE CE TOUR (impératif) : ${FORMS[st.form]}\n`:"")+((st.inject||[]).length?st.inject.join("\n")+"\n":"");
@@ -1172,7 +1172,7 @@ ${[...lv].map(i=>`Une sœur à l'étape « ${STAGES[i].name} » : ${STAGES[i].g}
 Ne saute jamais d'étape : une sœur à « Distante » reste réservée même si sa sœur est déjà proche du garçon.
 
 PROGRESSION PAR JALONS (pour chaque couple sœur / garçon) : ${MS.map(m=>m.ico+" "+m.name).join(" → ")} → 💖 Déclaration. Les scènes de jalon sont lancées par le jeu via un message [JALON] : ne lance JAMAIS toi-même un rendez-vous ou une scène de ce type. Tiens compte des jalons validés (« jalons n/4 » ci-dessus) : une sœur qui a déjà eu un rendez-vous avec un garçon s'en souvient, et ses sœurs sont peut-être au courant.
-${st.trial5&&players[st.trial5.i]?(()=>{const P=players[st.trial5.i],S=SISTERS[st.trial5.k],M=MS[P.m[st.trial5.k].ms];return`ÉPREUVE DÉCISIVE EN COURS : ${P.name} avec ${S.name} (« ${M.name} »). La prochaine réponse de ${P.name} décide de la validation : dans l'élément effects de ${S.name} pour ${P.name} (obligatoire), ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse du caractère de ${S.name} et bien adaptée à la scène ; sinon "milestone":"fail" (sois exigeante : une réponse moyenne, calculée ou maladroite échoue). ${S.name} réagit EN PREMIER à l'issue (soulagement, joie pudique, déception). Elle ne se déclare pas.
+${st.trial5&&players[st.trial5.i]?(()=>{const P=players[st.trial5.i],S=SISTERS[st.trial5.k],M=MS[P.m[st.trial5.k].ms];return`ÉPREUVE DÉCISIVE EN COURS : ${P.name} avec ${S.name} (« ${M.name} »). La prochaine réponse de ${P.name} décide de la validation : dans l'élément effects de ${S.name} pour ${P.name} (obligatoire), ajoute "milestone":"pass" si la réponse est sincère, cohérente avec ce qu'il a dit avant, respectueuse du caractère de ${S.name} et bien adaptée à la scène ; sinon "milestone":"fail" ("fail" seulement si la réponse est froide, hors sujet, moqueuse, calculée ou en contradiction avec ce qu'il a montré ; une réponse sincère et adaptée, même simple ou maladroite dans la forme, réussit. Ton "milestone" doit aller dans le même sens que ton "why" et ton delta). ${S.name} réagit EN PREMIER à l'issue (soulagement, joie pudique, déception). Elle ne se déclare pas.
 `;})():""}
 DYNAMIQUE DE GROUPE (très important) :
 - À chaque message, 1 à 5 sœurs parlent selon la situation : souvent 2 ou 3, mais 4 ou 5 quand le sujet les concerne toutes (accueil, dispute, annonce, repas, incident, moment de groupe). Toutes les sœurs PRÉSENTES et concernées réagissent ; ne fais jamais parler une sœur juste pour remplir. Varie d'un tour à l'autre : aucune sœur présente ne doit rester muette longtemps.
@@ -1666,12 +1666,46 @@ async function runRound5(st,intro){
     const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
     if(win&&!st.duel&&!st.duelLaunch){updateBar();await finish(st,id,"win",win);}
     else if(st.players.every(p=>p.out)){updateBar();await finish(st,id,"lose",st.players[0]);}
+    else if(st.launch&&state[id]===st)await launchNow(st,id);
   }catch(e){
     wait.textContent="Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();restoreSms(st);
     st.pending=st.players.map(()=>null);st.answered=st.players.map(p=>!!p.out);
   }
   busy=false;$("btnSend").disabled=st.over;updateBar();
   if(net.role==="host")broadcast(false);
+}
+/* Réponses simultanées : la scène du jalon est jouée aussitôt (un appel IA en plus, vu seulement par ce garçon) ;
+   sa réponse suivante décide. En cas d'erreur, st.launch reste et la scène est lancée au tour suivant. */
+async function launchNow(st,id){
+  const t=st.launch,P=st.players[t.i],r=P&&P.m&&P.m[t.k];if(!r||r.ms>=4)return;
+  const S=SISTERS[t.k],M=MS[r.ms],n=(r.tries[r.ms]||0)+1;
+  const w=addMsg("sys","…");
+  st.history.push({role:"user",content:`[JALON, hors tour] Écris UNE courte scène, vue seulement par ${P.name} (les autres garçons continuent leurs scènes : ne les mentionne pas). D'abord une transition douce et naturelle dans "narration" qui amène ${S.name} et ${P.name} à se retrouver, de préférence seuls (elle l'entraîne quelque part, le rejoint, lui envoie un message pour le voir…). Puis ${S.name} met en scène l'étape : ${P.name} atteint avec elle l'étape « ${M.name} » (tentative ${n}). ${M.brief} (« elle » = ${S.name}.) Mets-la en scène de façon originale, dans un lieu précis, selon son caractère${n>1?" ; change complètement de scène par rapport aux tentatives précédentes":""}. ${S.name} parle en DERNIER et termine par une question ou une situation décisive, claire, à laquelle ${P.name} doit répondre. Personne ne se déclare.
+Réponds en JSON : {"place":"lieu court","narration":"…","lines":[{"sister":"${t.k}","to":"${P.name}","mood":"un mot","text":"…"}],"choices":[],"effects":[]}`});
+  try{
+    const raw=await callAI(id,st.history);
+    const o=parseAI(raw);if(!o.lines5||!o.lines5.length)throw new Error("Réponse vide");
+    st.history.push({role:"assistant",content:raw});w.remove();
+    if(state[id]!==st)return;
+    let place="";try{const m=raw.match(/"place"\s*:\s*"([^"]{0,80})"/);if(m)place=m[1].replace(/\s+/g," ").trim().slice(0,50);}catch(e){}
+    const g0=st.groups.find(g=>g.players.includes(t.i));
+    st.groups.forEach(g=>{g.players=g.players.filter(i=>i!==t.i);g.sisters=g.sisters.filter(k=>k!==t.k);});
+    st.groups=st.groups.filter(g=>g.players.length);
+    if(!place)place=g0?g0.place:"";
+    st.groups.push({place,players:[t.i],sisters:[t.k]});
+    st.launch=null;P.trial=2;r.trial=2;st.trial5=t;
+    const vis=[t.i];
+    sysLineV(st,"📍 "+(place||"Un peu à l'écart")+" · avec "+S.name,vis);
+    sysLineV(st,`📍 Moment décisif pour ${P.name} avec ${S.name} : « ${M.ico} ${M.name} »`+(n>1?" (nouvelle tentative)":"")+" — ta prochaine réponse décide.",vis);
+    if(o.narr){const N={cls:"nar",text:o.narr,vis};st.lines.push(N);renderLine(N);}
+    o.lines5.forEach(l=>{const L={cls:"her",c:SISTERS[l.s].c,vis,text:(l.sms?"📱 "+SISTERS[l.s].name+" (texto)":"💬 "+SISTERS[l.s].name+" (à "+P.name+")")+" : "+l.text};st.lines.push(L);renderLine(L);});
+    const last=o.lines5[o.lines5.length-1];
+    st.sigBy[t.i]=place+"|"+t.k+"|"+t.i;st.placeBy[t.i]=place;st.choicesBy[t.i]=o.choices||[];st.spkBy[t.i]=last.s;st.moodBy[t.i]=last.mood;
+    if(t.i===0){st.choices=st.choicesBy[0];st.spk=last.s;st.mood=last.mood||st.mood;}
+    st.event=null;
+  }catch(e){
+    st.history.pop();w.remove();   // la scène sera lancée au prochain tour (st.launch reste)
+  }
 }
 function dueTrial5(st){
   if(st.players.some(p=>p.trial)||st.trial5||st.duel||st.duelLaunch)return null;
@@ -1709,7 +1743,7 @@ ${S.name} parle en DERNIER et termine par une question ou une situation décisiv
 function resolveTrial5(st,pl,eff){
   const t=st.trial5;if(!t||st.players[t.i]!==pl)return;
   const r=pl.m[t.k],m=MS[r.ms],S=SISTERS[t.k];
-  const pass=eff.ms==="pass"?true:eff.ms==="fail"?false:eff.spk>=3;
+  const pass=eff.ms==="pass"||(eff.ms!=="fail"&&eff.spk>0)||(eff.ms==="fail"&&eff.spk>=3);
   r.trial=0;pl.trial=0;st.trial5=null;
   if(pass){
     r.ms++;pl.h[t.k]=Math.min(CAPS[r.ms],pl.h[t.k]+4);
@@ -1779,7 +1813,7 @@ async function runRound(st){
 function resolveTrial(st,pl,verdict,d){
   if(pl.trial!==2)return;
   const m=MS[pl.ms];
-  const pass=verdict==="pass"?true:verdict==="fail"?false:d>=3;
+  const pass=verdict==="pass"||(verdict!=="fail"&&d>0)||(verdict==="fail"&&d>=3);
   pl.trial=0;
   if(pass){
     pl.ms++;pl.aff=Math.min(CAPS[pl.ms],pl.aff+4);
