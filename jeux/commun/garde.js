@@ -3,7 +3,8 @@
    À inclure dans chaque jeu : <script src="../commun/garde.js"></script>
    - Jeu caché ou « bientôt » (panel admin) : un visiteur qui
      arrive par l'adresse directe voit un message au lieu du jeu.
-     Les admins connectés peuvent toujours y jouer.
+     Les admins connectés peuvent toujours y jouer, et un invité
+     venu par un lien de salle (?salle=CODE) peut rejoindre un jeu caché.
    - Jeu IA (ia: true dans le catalogue) : réservé aux comptes
      autorisés dans le panel admin (et aux admins). Quelqu'un qui
      arrive avec un lien de salle (?salle=CODE) peut seulement
@@ -80,6 +81,7 @@
     if(etat !== "dispo"){
       const s = Compte.session();
       if(s && s.admin){ bandeau("🙈 Jeu caché aux visiteurs — tu le vois car tu es admin"); }
+      else if(salle && etat === "cache"){ bandeau("🔗 Tu rejoins la salle " + salle.toUpperCase() + " sur invitation"); }
       else{
         bloquer(etat === "bientot" ? "🛠️" : "🙈",
           etat === "bientot" ? "Ce jeu arrive bientôt, encore un peu de patience !" : "Ce jeu n'est pas disponible pour le moment.");

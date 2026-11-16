@@ -629,6 +629,25 @@ window.SALLE_CATALOGUE = [
     colors: ["#6cc4a1", "#3b5bdb"],
     etat: "cache",
   },
+  /* ---------- Apéro (dans la même pièce) : apero.js, cachés pour l'instant ---------- */
+  {
+    slug: "quipourrait",
+    title: "Qui pourrait… ?",
+    emoji: "👉",
+    desc: "« Qui pourrait rater son avion parce qu'il était au bar ? » Tout le monde vote en secret pour quelqu'un de la table, le plus désigné boit. Un seul téléphone qui tourne ou chacun le sien.",
+    tags: ["Apéro", "Party", "Multijoueur"],
+    colors: ["#e0457b", "#f2c14e"],
+    etat: "cache"
+  },
+  {
+    slug: "mainstable",
+    title: "Main stable",
+    emoji: "✋",
+    desc: "Un verre virtuel posé sur ton téléphone : tiens-le parfaitement immobile pendant un défi (boire, yeux fermés, sur un pied…). L'accéléromètre voit le moindre tremblement, le plus tremblant boit.",
+    tags: ["Apéro", "Party", "Multijoueur"],
+    colors: ["#2b8fd6", "#f2a03d"],
+    etat: "cache"
+  },
   {
     slug: "encore-un-autre",
     title: "Encore un autre",
@@ -655,6 +674,9 @@ window.SALLE_CATEGORIES = [
   {id: "soiree", emoji: "🎉", titre: "Soirée entre amis", c: ["#ff4f7b", "#8b4dff"],
    desc: "Des jeux de groupe où chacun joue sur son téléphone, il suffit d'un code de salle.",
    jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran", "menteur", "pireconseil", "aveugle"]},
+  {id: "apero", emoji: "🍻", titre: "Apéro", c: ["#f2a03d", "#e0457b"],
+   desc: "Des jeux à faire ensemble dans la même pièce : un téléphone qui tourne ou chacun le sien, avec caméra, micro et capteurs.",
+   jeux: ["quipourrait", "mainstable"]},
   {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
    desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
    jeux: ["puissance4", "morpion", "sumo", "serpents", "tour", "minigolf", "assaut", "bataille", "laser", "mainmise", "manufacture", "encheres"]},

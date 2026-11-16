@@ -1,0 +1,28 @@
+/* Style commun des jeux d'apéro (apero.js), en plus de soiree.css */
+.ap-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.ap-mode{display:flex;flex-direction:column;align-items:center;gap:4px;border:2px solid var(--line);background:var(--card);border-radius:18px;padding:16px 10px;font:inherit;color:inherit;cursor:pointer;text-align:center}
+.ap-mode:hover{border-color:var(--accent)}
+.ap-mode .i{font-size:2.2rem;line-height:1.1}
+.ap-mode b{font-size:1.05rem}
+.ap-mode span:last-child{color:var(--muted);font-size:.85rem;font-weight:700}
+.ap-x{border:0;background:none;font-size:1.3rem;color:var(--muted);cursor:pointer;padding:0 6px}
+.ap-passe{text-align:center;padding:28px 16px}
+.ap-passe .ap-av{font-size:4rem;line-height:1.1}
+.ap-passe h2{font-size:2rem;margin:4px 0 8px}
+.ap-carte{text-align:center}
+.ap-gros{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.6rem;line-height:1.25;margin:8px 0}
+.ap-enorme{font-family:Fredoka,sans-serif;font-weight:700;font-size:4.5rem;line-height:1;margin:10px 0}
+.ap-peine{background:color-mix(in srgb,#f2c14e 28%,var(--card));border:2px solid #e0a800;border-radius:14px;padding:10px 14px;font-weight:700;font-size:1.05rem;margin:6px 0;text-align:center}
+.ap-jauge{height:22px;border-radius:999px;background:var(--soft);border:2px solid var(--line);overflow:hidden;margin:10px 0}
+.ap-jauge i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),#f2c14e);transition:width .1s linear}
+.ap-pas{color:var(--muted);font-weight:700;font-size:.9rem;text-align:center;margin:6px 0 0}
+.ap-res{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.ap-res li{display:flex;align-items:center;gap:10px;background:var(--soft);border-radius:12px;padding:8px 12px;font-weight:700}
+.ap-res li .av{font-size:1.4rem}
+.ap-res li .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ap-res li.pire{background:color-mix(in srgb,var(--ko) 18%,var(--card))}
+.ap-res li.top{background:color-mix(in srgb,var(--ok) 18%,var(--card))}
+.ap-res li.moi{outline:2px solid var(--accent)}
+.ap-compte{font-family:Fredoka,sans-serif;font-size:5rem;font-weight:700;text-align:center;line-height:1;color:var(--accent)}
+.ap-zone{touch-action:none;user-select:none;-webkit-user-select:none}
+@media (max-width:420px){.ap-modes{grid-template-columns:1fr}}

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Qui pourrait… ?</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/soiree.css">
+<link rel="stylesheet" href="../commun/apero.css">
+<style>
+:root{--accent:#e0457b;--fond1:rgba(224,69,123,.14);--fond2:rgba(242,193,78,.14)}
+.q{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.55rem;line-height:1.3;text-align:center;margin:4px 0}
+.q small{display:block;font-size:.95rem;color:var(--muted);font-weight:700;margin-bottom:4px}
+.barres{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.barre{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-weight:800}
+.barre .av{font-size:1.5rem}
+.barre .fond{background:var(--soft);border-radius:999px;height:28px;overflow:hidden;position:relative}
+.barre .fond i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:999px;animation:pousse .7s cubic-bezier(.3,1.3,.5,1) both}
+.barre .fond span{position:relative;padding-left:10px;line-height:28px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4);white-space:nowrap}
+.barre.top .fond i{background:#e0a800}
+@keyframes pousse{from{width:0!important}}
+.voix{font-size:.9rem;color:var(--muted);font-weight:700;text-align:center;margin-top:6px}
+</style>
+</head>
+<body>
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="../commun/soiree.js"></script>
+<script src="../commun/apero.js"></script>
+<script src="questions.js"></script>
+<script>
+const {melanger, podium, pastilles} = Soiree;
+const esc = Base.esc;
+
+Base.entete({
+  titre: "Qui pourrait… ?",
+  emoji: "👉",
+  aide: `<p>Une question s'affiche : « Qui pourrait rater son avion parce qu'il était au bar ? ».</p>
+    <ul><li>Chacun vote <b>en secret</b> pour la personne de la table qui colle le mieux (soi-même compris).</li>
+    <li>Le résultat tombe d'un coup : <b>le plus désigné boit</b> autant de gorgées que de votes (3 max).</li>
+    <li>Il peut boire une gorgée de plus pour découvrir <b>qui a voté pour lui</b>.</li>
+    <li>Un seul téléphone ? On se le passe pour voter sans que les autres voient.</li></ul>`
+});
+
+const presents = G => G.J.filter(j => !j.parti);
+const jDe = (G, id) => G.J.find(j => j.id === id);
+
+function questions(R){
+  const n = R.niveau === "soft" ? [1] : R.niveau === "epice" ? [2] : [1, 2];
+  return melanger(window.QP_QUESTIONS.filter(q => n.includes(q[0])).map(q => q[1])).slice(0, R.nb);
+}
+function poser(G){ G.phase = "vote"; G.votes = {}; G.res = null; G.rev = false; }
+function compter(G){
+  const c = {};
+  for(const [v, cible] of Object.entries(G.votes)) if(jDe(G, v) && jDe(G, cible)) c[cible] = (c[cible] || 0) + 1;
+  const max = Math.max(0, ...Object.values(c));
+  const top = Object.keys(c).filter(id => c[id] === max);
+  top.forEach(id => { const j = jDe(G, id); if(j) j.pts += Math.min(3, max); });
+  G.res = {c, max, top, graine: Math.floor(Math.random() * 1e6)};
+  G.phase = "res";
+}
+function toutVote(G){ return presents(G).every(j => G.votes[j.id]); }
+
+Apero.demarrer({
+  jeu: "quipourrait", titre: "Qui pourrait… ?", emoji: "👉", min: 3, max: 12,
+  hero: {
+    texte: "Une question, tout le monde vote en secret pour la personne de la table qui colle le mieux. Le plus désigné boit !",
+    etapes: ["1 · Lis la question", "2 · Vote en secret", "3 · Le plus désigné boit"]
+  },
+  reglages: [
+    {k: "nb", titre: "Nombre de questions", options: [[10, "10"], [15, "15"], [20, "20"], [30, "30"]], def: 15},
+    {k: "niveau", titre: "Ambiance", options: [["soft", "😇 Tranquille"], ["mixte", "😏 Mélange"], ["epice", "🌶️ Épicé"]], def: "mixte"}
+  ],
+  nouvelle(joueurs, R){
+    const G = {R, J: joueurs.map(j => ({...j, pts: 0})), Q: questions(R), qi: 0, hote: joueurs[0].id};
+    poser(G); return G;
+  },
+  attendus(G){ return G.phase === "vote" ? presents(G).filter(j => !G.votes[j.id]).map(j => j.id) : []; },
+  action(G, id, a){
+    const j = jDe(G, id); if(!j) return false;
+    if(a.t === "vote" && G.phase === "vote" && jDe(G, a.c) && !jDe(G, a.c).parti){
+      G.votes[id] = a.c;
+      if(toutVote(G)) compter(G);
+      return true;
+    }
+    if(a.t === "reveler" && G.phase === "res" && !G.rev && (G._local || G.res.top.includes(id))){ G.rev = true; return true; }
+    if(a.t === "suite" && G.phase === "res" && (id === G.hote || G._local)){
+      G.qi++;
+      if(G.qi >= G.Q.length) G.phase = "fin"; else poser(G);
+      return true;
+    }
+    if(a.t === "arreter" && id === G.hote && G.phase !== "fin"){ G.phase = "fin"; return true; }
+    return false;
+  },
+  depart(G, id){
+    const j = jDe(G, id); if(!j) return;
+    j.parti = true; delete G.votes[id];
+    if(G.phase === "vote" && presents(G).length && toutVote(G)) compter(G);
+  },
+  arrivee(G, j){ if(!jDe(G, j.id)) G.J.push({...j, pts: 0}); },
+  publique(G){
+    const V = {phase: G.phase, q: G.Q[G.qi], qi: G.qi, nq: G.Q.length, J: G.J, faits: Object.keys(G.votes), res: G.res, rev: G.rev, hote: G.hote, R: G.R};
+    if(G.rev && G.res) V.voix = Object.fromEntries(G.res.top.map(t => [t, Object.keys(G.votes).filter(v => G.votes[v] === t)]));
+    return V;
+  },
+  privee(G, id){ return {vote: G.votes[id] || null}; },
+  rendre(box, ctx){
+    const {V, P, moi} = ctx, R = V.R;
+    const haut = `<div class="so-haut"><span>Question ${Math.min(V.qi + 1, V.nq)} / ${V.nq}</span><span>${R.niveau === "epice" ? "🌶️" : R.niveau === "soft" ? "😇" : "😏"}</span></div>`;
+    const question = `<div class="q"><small>Qui pourrait…</small>${esc(V.q)} ?</div>`;
+    if(V.phase === "vote"){
+      const vivants = V.J.filter(j => !j.parti), mon = P && P.vote;
+      box.innerHTML = `<section class="b-carte">${haut}${question}
+        <div class="so-choix">${vivants.map(j => `<button data-c="${esc(j.id)}" class="${mon === j.id ? "on" : ""}"><span class="av">${esc(j.av)}</span>${esc(j.nom)}${j.id === moi && !ctx.local ? " (toi)" : ""}</button>`).join("")}</div>
+        ${ctx.local ? "" : `<p class="so-attente">${mon ? "✅ Vote enregistré, tu peux encore changer d'avis" : "Touche un joueur pour voter en secret"}</p>${pastilles(V.J, V.faits)}`}
+        ${ctx.hote && !ctx.local ? `<div class="so-hote"><button class="btn ghost petit" data-a="arreter">⏹ Finir la partie</button></div>` : ""}
+      </section>`;
+    }else if(V.phase === "res"){
+      const vivants = V.J.filter(j => !j.parti || V.res.c[j.id]);
+      const tri = vivants.slice().sort((a, b) => (V.res.c[b.id] || 0) - (V.res.c[a.id] || 0));
+      const total = Math.max(1, ...Object.values(V.res.c));
+      const tops = V.res.top.map(id => V.J.find(j => j.id === id)).filter(Boolean);
+      const moiTop = V.res.top.includes(moi);
+      box.innerHTML = `<section class="b-carte">${haut}${question}
+        <div class="barres">${tri.map(j => { const n = V.res.c[j.id] || 0; return `<div class="barre ${V.res.top.includes(j.id) ? "top" : ""}"><span class="av">${esc(j.av)}</span>
+          <div class="fond"><i style="width:${Math.max(n ? 18 : 0, n / total * 100)}%"></i><span style="${n ? "" : "color:var(--muted);text-shadow:none"}">${esc(j.nom)}</span></div><b>${n}</b></div>`; }).join("")}</div>
+        ${tops.map((j, i) => `<div class="ap-peine">${Apero.boit(R, j.nom, Math.min(3, V.res.max), V.res.graine + i)}</div>`).join("")}
+        ${V.rev ? Object.entries(V.voix || {}).map(([t, l]) => `<p class="voix">🔍 Ont voté pour ${esc((V.J.find(j => j.id === t) || {}).nom)} : ${l.map(v => esc((V.J.find(j => j.id === v) || {}).nom)).join(", ")}</p>`).join("")
+          : (moiTop || ctx.local) ? `<div class="so-actions"><button class="btn ghost" data-a="reveler">🔍 ${ctx.local ? "Le plus désigné boit 1 de plus pour savoir qui a voté pour lui" : "Bois 1 gorgée de plus pour savoir qui a voté pour toi"}</button></div>` : ""}
+        ${ctx.hote ? `<div class="so-actions"><button class="btn so-gros" data-a="suite">${V.qi + 1 >= V.nq ? "🏁 Voir le bilan" : "Question suivante ➜"}</button></div>` : `<p class="so-attente">⏳ L'hôte passe à la suite…</p>`}
+      </section>`;
+    }else{
+      box.innerHTML = `<section class="b-carte"><h2 style="text-align:center;margin:0">🏁 Le plus désigné de la soirée</h2>
+        ${podium(V.J.map(j => ({...j})), moi, {unite: R.boisson === "soft" ? "pts" : "🍺"})}
+        <p class="so-note">Total des gorgées données par les votes.</p>${ctx.finHtml()}</section>`;
+    }
+    box.querySelectorAll("[data-c]").forEach(b => b.onclick = () => ctx.envoyer({t: "vote", c: b.dataset.c}));
+    box.querySelectorAll("[data-a]").forEach(b => b.onclick = () => ctx.envoyer({t: b.dataset.a}));
+  }
+});
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@
    À inclure après base.js et reseau.js (+ soiree.css).
 
    Soiree.demarrer({
-     jeu: "slug", titre, emoji, min: 3, max: 12,
+     jeu: "slug", titre, emoji, min: 3, max: 12, note (texte du menu),
      hero: {texte, etapes: ["1 · …", …]},
      reglages: [{k, titre, options: [[valeur, "libellé"], …], def}
                 | {k, titre, type: "texte", def: "", placeholder}],
@@ -58,7 +58,7 @@
           <input class="champ" id="soCode" maxlength="5" placeholder="CODE" autocomplete="off" style="text-transform:uppercase">
           <button class="btn ghost" id="soRejoindre">Rejoindre</button>
         </div>
-        <p class="so-note" id="soMsg">De ${MIN} à ${MAX} joueurs, chacun sur son appareil. Parlez-vous en vocal (Discord…) pendant la partie !</p>
+        <p class="so-note" id="soMsg">De ${MIN} à ${MAX} joueurs, ${o.note || "chacun sur son appareil. Parlez-vous en vocal (Discord…) pendant la partie !"}</p>
         <div class="so-actions"><button class="btn ghost petit" id="soTester">🩺 Tester la connexion</button></div>
       </section>
       <section id="soSalon" class="b-carte so-panneau cache">
@@ -91,7 +91,7 @@
     }
 
     /* ---------- État ---------- */
-    let salle = null, G = null, V = null, P = null, gid = 0, decalage = 0;
+    let salle = null, G = null, V = null, P = null, gid = 0, decalage = 0, ecarts = [];
     const dernier = {};               // hôte : dernier n° d'action reçu de chaque invité
     let attente = [], seq = Date.now(); // invité : actions pas encore confirmées
 
@@ -236,7 +236,10 @@
         ecran("soSalon"); afficherSalon(); return;
       }
       if(m.t === "etat" && m.V){
-        if(typeof m.h === "number") decalage = m.h - Date.now();
+        if(typeof m.h === "number"){   // horloge de l'hôte : le message le moins retardé des 30 derniers donne le meilleur écart
+          ecarts.push(m.h - Date.now()); if(ecarts.length > 30) ecarts.shift();
+          decalage = Math.max(...ecarts);
+        }
         const nouv = !V || V.gid !== m.V.gid;
         V = m.V;
         const x = m.P && m.P[salle.moi];
