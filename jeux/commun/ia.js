@@ -10,6 +10,7 @@
    await IA.appeler({system, messages:[{role:"user",content:"…"}], json:true})
      → texte de la réponse. Essaie l'IA principale, puis la secours,
        puis toutes les autres IA qui ont une clé.
+     image: {mime, data (base64)} → jointe au dernier message ; seulement Gemini et Claude
    IA.json(texte)                  → objet extrait d'une réponse JSON (ou null)
    IA.FOURNISSEURS / IA.config() / IA.enregistrer(cfg)  (page Réglages)
    ============================================================ */
@@ -79,7 +80,7 @@
       if(/^gemini-3/.test(model)) gc.thinkingConfig = {thinkingLevel: /^gemini-3\.(1|5|6)-/.test(model) ? "minimal" : "low"};   // réflexion courte : réponse plus rapide
       const envoyerG = () => fetchT(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
         systemInstruction: {parts: [{text: system}]},
-        contents: msgs.map(h => ({role: h.role === "user" ? "user" : "model", parts: [{text: h.content}]})),
+        contents: msgs.map((h, i) => ({role: h.role === "user" ? "user" : "model", parts: o.image && i === msgs.length - 1 ? [{inline_data: {mime_type: o.image.mime, data: o.image.data}}, {text: h.content}] : [{text: h.content}]})),
         generationConfig: gc})}, o.ms);
       let r = await envoyerG(), j = await r.json().catch(() => ({}));
       if(!r.ok && r.status === 400 && gc.thinkingConfig && /think/i.test(JSON.stringify(j))){ delete gc.thinkingConfig; r = await envoyerG(); j = await r.json().catch(() => ({})); }
@@ -88,7 +89,7 @@
     }
     if(p === "anthropic"){
       const r = await fetchT(FOURNISSEURS.anthropic.url, {method: "POST", headers: {"Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true"},
-        body: JSON.stringify({model, max_tokens: max, system, messages: msgs})}, o.ms);
+        body: JSON.stringify({model, max_tokens: max, system, messages: o.image ? msgs.map((h, i) => i === msgs.length - 1 ? {role: h.role, content: [{type: "image", source: {type: "base64", media_type: o.image.mime, data: o.image.data}}, {type: "text", text: h.content}]} : h) : msgs})}, o.ms);
       const j = await r.json().catch(() => ({}));
       if(!r.ok) throw erreur(r, j);
       return (j.content || []).filter(b => b.type === "text").map(b => b.text).join("");
@@ -108,7 +109,12 @@
   }
 
   async function appeler(o){
-    const c = config(), liste = o.fournisseur ? [o.fournisseur] : ordre(c);
+    const c = config();
+    let liste = o.fournisseur ? [o.fournisseur] : ordre(c);
+    if(o.image){   // photo : seuls Gemini et Claude savent la regarder
+      liste = liste.filter(p => p === "gemini" || p === "anthropic");
+      if(!liste.length) throw new Error("Pour noter une photo, il faut une clé Gemini ou Claude dans ⚙️ Réglages.");
+    }
     if(!liste.length) throw new Error("Aucune clé IA enregistrée : ajoute-en une dans ⚙️ Réglages.");
     const errs = [];
     for(let k = 0; k < liste.length; k++){

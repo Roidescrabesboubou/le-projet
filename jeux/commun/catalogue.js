@@ -703,6 +703,25 @@ window.SALLE_CATALOGUE = [
     etat: "cache"
   },
   {
+    slug: "contrat",
+    title: "Le Contrat",
+    emoji: "🗡️",
+    desc: "Toute la soirée, chacun a en secret une cible et une mission : « fais-lui dire ananas », « fais-lui trinquer avec toi »… La cible confirme sur son téléphone et boit. Méfie-toi de tout le monde !",
+    tags: ["Apéro", "Party", "Multijoueur"],
+    colors: ["#c92a2a", "#2b2118"],
+    etat: "cache"
+  },
+  {
+    slug: "pose",
+    title: "Recrée la pose",
+    emoji: "📸",
+    desc: "« Des pirates qui aperçoivent la terre », « une photo de classe où personne ne regarde » : prenez la pose, une photo, et l'IA vous note sur 10. Mauvaise note, tout le monde boit. En groupe ou en deux équipes.",
+    tags: ["Apéro", "Party", "IA"],
+    colors: ["#9c36b5", "#f2c14e"],
+    etat: "cache",
+    ia: true
+  },
+  {
     slug: "encore-un-autre",
     title: "Encore un autre",
     emoji: "🕹️",
@@ -730,7 +749,7 @@ window.SALLE_CATEGORIES = [
    jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran", "menteur", "pireconseil", "aveugle"]},
   {id: "apero", emoji: "🍻", titre: "Apéro", c: ["#f2a03d", "#e0457b"],
    desc: "Des jeux à faire ensemble dans la même pièce : un téléphone qui tourne ou chacun le sien, avec caméra, micro et capteurs.",
-   jeux: ["quipourrait", "ecrans", "western", "couleurs", "shaker", "mainstable", "souffleur", "silence"]},
+   jeux: ["quipourrait", "contrat", "ecrans", "western", "couleurs", "pose", "shaker", "mainstable", "souffleur", "silence"]},
   {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
    desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
    jeux: ["puissance4", "morpion", "sumo", "serpents", "tour", "minigolf", "assaut", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
