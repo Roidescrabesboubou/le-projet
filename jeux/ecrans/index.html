@@ -130,6 +130,7 @@ Apero.demarrer({
   rendre(box, ctx){
     const {V, moi} = ctx, R = V.R;
     if(V.phase === "placer"){
+      if(box._stop){ box._stop(); box._stop = null; }
       box._phase = null; box.innerHTML = "";
       const mon = V.ordre.indexOf(moi);
       box.innerHTML = `<section class="b-carte">

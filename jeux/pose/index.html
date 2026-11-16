@@ -116,7 +116,7 @@ function photographier(zone, V, envoyer){
   zone.innerHTML = `<div class="cam"><video muted playsinline></video><img hidden alt="Votre photo"><div class="chrono" id="ch"></div></div>
     <div class="so-actions" id="act">
       <button class="btn so-gros" id="ouvrir">📷 Ouvrir la caméra</button>
-      <label class="btn ghost" style="cursor:pointer">🖼️ Choisir une photo<input type="file" accept="image/*" capture="environment" hidden id="fic"></label>
+      <label class="btn ghost" style="cursor:pointer">🖼️ Choisir une photo<input type="file" accept="image/*" hidden id="fic"></label>
     </div>
     <p class="vie">📷 La photo part seulement chez l'IA (Gemini ou Claude) pour être notée, puis elle est oubliée.</p>`;
   const video = zone.querySelector("video"), img = zone.querySelector("img"), ch = zone.querySelector("#ch"), act = zone.querySelector("#act");
@@ -151,7 +151,7 @@ function photographier(zone, V, envoyer){
   }
   function boutonsCam(){
     act.innerHTML = `<button class="btn so-gros" id="ouvrir">📷 Ouvrir la caméra</button>
-      <label class="btn ghost" style="cursor:pointer">🖼️ Choisir une photo<input type="file" accept="image/*" capture="environment" hidden id="fic"></label>`;
+      <label class="btn ghost" style="cursor:pointer">🖼️ Choisir une photo<input type="file" accept="image/*" hidden id="fic"></label>`;
     lier();
   }
   function lier(){

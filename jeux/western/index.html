@@ -85,7 +85,8 @@ function duel(zone, V, maintenant, envoyer){
       const now = performance.now();
       if(bas && !etui){ etui = true; e.textContent = "🔫 Dans l'étui, ne bouge plus…"; }
       if(leve){
-        if(now < goLocal){ if(etui) tirer("faux"); else e.textContent = "⬇️ Pointe le téléphone vers le sol !"; }
+        if(!etui) e.textContent = "⬇️ Pointe le téléphone vers le sol !";   // jamais rangé dans l'étui : le tir ne compte pas
+        else if(now < goLocal) tirer("faux");
         else tirer(Math.round(now - goLocal));
       }
     }));

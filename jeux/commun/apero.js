@@ -101,14 +101,11 @@
   let eveilVoulu = false;
   const garderAllume = () => { eveilVoulu = true; eveil(); };
 
+  /* iPhone : les deux demandes partent dans le même clic ; le mouvement suffit pour secouer */
   async function permission(){
-    let ok = true;
-    for(const E of [window.DeviceMotionEvent, window.DeviceOrientationEvent]){
-      if(E && typeof E.requestPermission === "function"){
-        try{ if(await E.requestPermission() !== "granted") ok = false; }catch(e){ ok = false; }
-      }
-    }
-    return ok;
+    const ask = E => E && typeof E.requestPermission === "function" ? E.requestPermission().then(r => r === "granted", () => false) : Promise.resolve(true);
+    const [m] = await Promise.all([ask(window.DeviceMotionEvent), ask(window.DeviceOrientationEvent)]);
+    return m;
   }
   /* true si l'accéléromètre envoie vraiment des mesures (sinon : ordinateur → jeu au doigt) */
   async function mouvement(){
@@ -174,7 +171,7 @@
     const nouv = o.nouvelle, pub = o.publique;
     o.nouvelle = (j, R) => { const G = nouv(j, R); G._id = Math.random().toString(36).slice(2, 8); return G; };
     o.publique = G => Object.assign(pub(G), {_id: G._id});
-    if(!o.note) o.note = `De ${o.min || 3} à ${o.max || 12} joueurs dans la même pièce, chacun sur son téléphone : un crée la salle, les autres entrent le code.`;
+    if(!o.note) o.note = "dans la même pièce, chacun sur son téléphone : un crée la salle, les autres entrent le code.";   // après « De 2 à 8 joueurs, »
 
     if(Reseau.codeDansAdresse() || !o.local){ Soiree.demarrer(o); return; }
     if(!o.multi){ local(o); return; }
