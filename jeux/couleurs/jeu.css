@@ -1,0 +1,11 @@
+/* couleurs : styles du jeu, rangés sous .g-couleurs (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-couleurs{--accent:#0c8599;--fond1:rgba(12,133,153,.14);--fond2:rgba(250,82,82,.1)}
+.g-couleurs .cible{border-radius:20px;padding:16px;text-align:center;color:#fff;font-family:Fredoka,sans-serif;font-size:2.6rem;font-weight:700;text-shadow:0 2px 4px rgba(0,0,0,.35);border:3px solid var(--text)}
+.g-couleurs .cam{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:4/3;margin-top:10px}
+.g-couleurs .cam video{width:100%;height:100%;object-fit:cover;display:block}
+.g-couleurs .cam .vise{position:absolute;left:50%;top:50%;width:30%;aspect-ratio:1;transform:translate(-50%,-50%);border:4px solid #fff;border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.25)}
+.g-couleurs .cam .vise.ok{border-color:#40c057}
+.g-couleurs .cam .prog{position:absolute;left:0;bottom:0;height:8px;background:#40c057;width:0}
+.g-couleurs .chrono{font-family:Fredoka,sans-serif;font-size:2rem;font-weight:700;text-align:center;margin:6px 0 0}
+.g-couleurs .lu{text-align:center;font-weight:800;margin:6px 0 0;color:var(--muted)}
+.g-couleurs .lu i{display:inline-block;width:18px;height:18px;border-radius:5px;vertical-align:-3px;border:2px solid var(--text);margin-right:6px}

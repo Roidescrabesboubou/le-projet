@@ -1,0 +1,15 @@
+/* souffleur : styles du jeu, rangés sous .g-souffleur (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-souffleur{--accent:#e8590c;--fond1:rgba(232,89,12,.13);--fond2:rgba(91,107,208,.12)}
+.g-souffleur .scene{position:relative;height:300px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+.g-souffleur .ballon{position:relative;border-radius:50% 50% 48% 48%;background:radial-gradient(circle at 35% 30%,#fff8 0 8%,transparent 9%),var(--bc,#e8590c);
+  width:60px;height:72px;margin-bottom:26px;transition:width .08s linear,height .08s linear;box-shadow:inset -10px -14px 0 rgba(0,0,0,.15)}
+.g-souffleur .ballon::after{content:"";position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);border:8px solid transparent;border-bottom-color:var(--bc,#e8590c);border-top:0}
+.g-souffleur .ficelle{position:absolute;bottom:0;left:50%;width:2px;height:26px;background:var(--muted)}
+.g-souffleur .boum{font-size:7rem;line-height:1;animation:boum .5s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes boum{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+.g-souffleur .tour{font-weight:800;font-size:1.3rem;text-align:center;margin:4px 0}
+.g-souffleur .mini{display:flex;justify-content:center;gap:10px;font-weight:800;color:var(--muted);font-size:.9rem;margin-top:4px}
+.g-souffleur .souffle{border:3px dashed var(--accent);border-radius:20px;padding:22px 10px;text-align:center;font-weight:800;font-size:1.2rem;margin-top:8px}
+.g-souffleur .souffle.on{background:color-mix(in srgb,var(--accent) 18%,var(--card))}
+.g-souffleur .micro{height:10px;border-radius:99px;background:var(--soft);overflow:hidden;margin:6px 0}
+.g-souffleur .micro i{display:block;height:100%;width:0;background:var(--accent)}

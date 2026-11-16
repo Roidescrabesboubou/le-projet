@@ -1,0 +1,12 @@
+/* western : styles du jeu, rangés sous .g-western (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-western{--accent:#b8651b;--fond1:rgba(184,101,27,.16);--fond2:rgba(242,193,78,.14)}
+.g-western .duel{border-radius:20px;padding:26px 14px;text-align:center;min-height:300px;display:flex;flex-direction:column;justify-content:center;gap:8px;background:#3b2412;color:#ffe8c2;transition:background .05s}
+.g-western .duel.feu{background:#e03131;color:#fff}
+.g-western .duel.ok{background:#2f9e44;color:#fff}
+.g-western .duel.faux{background:#5c5c5c;color:#fff}
+.g-western .duel h2{font-family:Fredoka,sans-serif;font-size:3rem;margin:0;line-height:1}
+.g-western .duel p{margin:0;font-weight:700}
+.g-western .duel .gros{font-size:4rem;line-height:1}
+.g-western .etat{font-size:.9rem;opacity:.85}
+.g-western .bang{width:100%;border:0;border-radius:20px;padding:40px 10px;font:800 2rem Fredoka,sans-serif;background:#ffe8c2;color:#3b2412;margin-top:10px;cursor:pointer}
+.g-western .ms{font-family:Fredoka,sans-serif}

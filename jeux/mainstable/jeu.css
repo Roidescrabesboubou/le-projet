@@ -1,0 +1,11 @@
+/* mainstable : styles du jeu, rangés sous .g-mainstable (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-mainstable{--accent:#2b8fd6;--fond1:rgba(43,143,214,.14);--fond2:rgba(242,193,78,.12)}
+.g-mainstable .verre-zone{display:flex;justify-content:center;padding:18px 0 6px}
+.g-mainstable .verre{position:relative;width:140px;height:190px;border:5px solid var(--text);border-top:0;border-radius:0 0 26px 26px;overflow:hidden;background:color-mix(in srgb,var(--soft) 60%,transparent)}
+.g-mainstable .verre .eau{position:absolute;left:-30%;right:-30%;bottom:0;height:85%;background:linear-gradient(180deg,#ffd76a,#f2a03d);transition:height .15s linear;transform-origin:50% 100%}
+.g-mainstable .verre .eau::before{content:"";position:absolute;left:0;right:0;top:-8px;height:16px;background:#fff8e0;border-radius:50%;opacity:.9}
+.g-mainstable .gouttes{position:absolute;inset:0;pointer-events:none}
+.g-mainstable .defi{background:var(--soft);border-radius:14px;padding:10px 14px;font-weight:800;text-align:center;font-size:1.1rem}
+.g-mainstable .pct{font-family:Fredoka,sans-serif;font-size:2.4rem;font-weight:700;text-align:center;margin:0}
+.g-mainstable .doigt{border:3px dashed var(--line);border-radius:18px;padding:14px;text-align:center;color:var(--muted);font-weight:800;margin-top:8px}
+.g-mainstable .doigt.on{border-color:var(--accent);color:var(--text)}

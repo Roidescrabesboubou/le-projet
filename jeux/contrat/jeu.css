@@ -1,0 +1,17 @@
+/* contrat : styles du jeu, rangés sous .g-contrat (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-contrat{--accent:#c92a2a;--fond1:rgba(201,42,42,.13);--fond2:rgba(30,30,30,.1)}
+.g-contrat .dossier{position:relative;border-radius:18px;background:#2b2118;color:#f3e6cf;padding:18px 16px;text-align:center;user-select:none;-webkit-user-select:none;touch-action:none;cursor:pointer;min-height:150px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.g-contrat .dossier .cache{font-weight:800;font-size:1.1rem}
+.g-contrat .dossier .vu{display:none}
+.g-contrat .dossier.ouvert .cache{display:none}
+.g-contrat .dossier.ouvert .vu{display:block}
+.g-contrat .dossier .cible{font-family:Fredoka,sans-serif;font-size:2rem;font-weight:700}
+.g-contrat .dossier .mission{font-weight:800;font-size:1.15rem;line-height:1.3}
+.g-contrat .dossier small{opacity:.7;font-weight:700}
+.g-contrat .valider{background:color-mix(in srgb,var(--accent) 16%,var(--card));border:3px solid var(--accent);border-radius:18px;padding:14px;text-align:center}
+.g-contrat .valider p{font-weight:800;margin:4px 0}
+.g-contrat .journal{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:5px;font-size:.92rem}
+.g-contrat .journal li{background:var(--soft);border-radius:10px;padding:6px 10px;font-weight:700}
+.g-contrat .boutons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.g-contrat .boutons .btn{width:100%}
+.g-contrat .boutons .plein{grid-column:1/-1}

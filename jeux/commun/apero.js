@@ -20,6 +20,13 @@
    G reçoit _id (et V aussi) : à mettre dans les clés de Apero.phase ;
    G._local = true sur un seul téléphone.
 
+   Chaque jeu est dans jeux/<slug>/jeu.js : Apero.jeu({jeu, entete: {titre,
+   emoji, aide}, ...}) le range dans Apero.jeux ; index.html fait
+   Apero.seul(slug), La Soirée (jeux/lasoiree) les charge tous. Son style
+   (jeu.css) est rangé sous .g-<slug>.
+   Facultatif : bilan(G) → [[clé, id, n], …] gorgées dues à des joueurs
+   connus (compteur de La Soirée ; une clé n'est comptée qu'une fois).
+
    Apero.phase(box, cle, construire)  ne reconstruit l'écran que si la
      clé change ; construire() peut rendre une fonction d'arrêt (boucles,
      capteurs) appelée au changement d'écran.
@@ -314,7 +321,12 @@
     salon();
   }
 
-  window.Apero = {demarrer, phase, boit, GAGES, son, boum, vibrer, eveil: garderAllume, mouvement, surMouvement, surOrientation, micro, camera, audio,
+  /* ---------- Jeux rangés (jeu.js de chaque dossier) ---------- */
+  const jeux = {};
+  function jeu(o){ jeux[o.jeu] = o; }
+  function seul(slug){ const o = jeux[slug]; Base.entete(o.entete); demarrer(o); }
+
+  window.Apero = {demarrer, jeu, jeux, seul, BOISSON, phase, boit, GAGES, son, boum, vibrer, eveil: garderAllume, mouvement, surMouvement, surOrientation, micro, camera, audio,
     sonActif: () => !!(ac && ac.state === "running"),
     rafraichir: () => {}};
 })();

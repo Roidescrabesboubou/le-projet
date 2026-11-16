@@ -1,0 +1,12 @@
+/* pose : styles du jeu, rangés sous .g-pose (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-pose{--accent:#9c36b5;--fond1:rgba(156,54,181,.14);--fond2:rgba(242,193,78,.12)}
+.g-pose .defi{font-family:"Bricolage Grotesque",Nunito,sans-serif;font-weight:800;font-size:1.5rem;line-height:1.3;text-align:center;background:var(--soft);border-radius:16px;padding:14px;margin:6px 0}
+.g-pose .equipe{text-align:center;font-weight:800;color:var(--muted)}
+.g-pose .cam{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:3/4;max-height:60vh;margin:10px auto 0;width:100%}
+.g-pose .cam video,.g-pose .cam img{width:100%;height:100%;object-fit:cover;display:block}
+.g-pose .cam video.miroir{transform:scaleX(-1)}
+.g-pose .chrono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 6rem Fredoka,sans-serif;color:#fff;text-shadow:0 4px 12px rgba(0,0,0,.6);pointer-events:none}
+.g-pose .note{font-family:Fredoka,sans-serif;font-size:5rem;font-weight:700;text-align:center;line-height:1;margin:8px 0 0}
+.g-pose .note small{font-size:1.6rem;color:var(--muted)}
+.g-pose .com{font-weight:700;text-align:center;font-size:1.1rem;margin:8px 0}
+.g-pose .vie{font-size:.82rem;color:var(--muted);text-align:center;margin:8px 0 0}

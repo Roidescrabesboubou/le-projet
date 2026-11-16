@@ -1,0 +1,7 @@
+/* shaker : styles du jeu, rangés sous .g-shaker (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-shaker{--accent:#d6336c;--fond1:rgba(214,51,108,.14);--fond2:rgba(59,201,219,.12)}
+.g-shaker .shaker{font-size:6rem;text-align:center;line-height:1.1;margin:10px 0;transition:transform .05s}
+.g-shaker .score{font-family:Fredoka,sans-serif;font-size:3rem;font-weight:700;text-align:center;margin:0}
+.g-shaker .tape{border:3px dashed var(--accent);border-radius:20px;padding:30px 10px;text-align:center;font-weight:800;font-size:1.3rem;cursor:pointer;margin-top:8px}
+.g-shaker .tape:active{background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+.g-shaker .attention{font-size:.85rem;color:var(--muted);text-align:center;font-weight:700}

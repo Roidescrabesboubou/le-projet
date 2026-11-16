@@ -1,0 +1,11 @@
+/* silence : styles du jeu, rangés sous .g-silence (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-silence{--accent:#5f3dc4;--fond1:rgba(95,61,196,.14);--fond2:rgba(20,20,40,.1)}
+.g-silence .clown{font-size:4rem;text-align:center;line-height:1.1}
+.g-silence .vu{position:relative;height:30px;border-radius:999px;background:var(--soft);border:2px solid var(--line);overflow:hidden;margin:12px 0}
+.g-silence .vu i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#2f9e44,#f59f00,#e03131);transition:width .06s linear}
+.g-silence .vu b{position:absolute;top:-2px;bottom:-2px;width:3px;background:var(--text)}
+.g-silence .chrono{font-family:Fredoka,sans-serif;font-size:4.5rem;font-weight:700;text-align:center;line-height:1;margin:6px 0}
+.g-silence .alerte{background:#e03131;color:#fff;border-radius:20px;padding:22px 12px;text-align:center;animation:secoue .4s}
+.g-silence .alerte h2{font-size:2.2rem;margin:0}
+@keyframes secoue{0%,100%{transform:none}25%{transform:translateX(-10px) rotate(-2deg)}75%{transform:translateX(10px) rotate(2deg)}}
+.g-silence .consigne{background:var(--soft);border-radius:14px;padding:10px 14px;font-weight:700;text-align:center}

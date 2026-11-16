@@ -1,0 +1,19 @@
+/* ecrans : styles du jeu, rangés sous .g-ecrans (sur <body> seul, sur la boîte du jeu dans La Soirée) */
+.g-ecrans{--accent:#f59f00;--fond1:rgba(245,159,0,.15);--fond2:rgba(224,49,49,.1)}
+.g-ecrans .ordre{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.g-ecrans .ordre li{display:flex;align-items:center;gap:10px;background:var(--soft);border-radius:12px;padding:6px 10px;font-weight:700}
+.g-ecrans .ordre .r{width:26px;text-align:center;font-family:Fredoka,sans-serif;font-size:1.2rem;color:var(--accent)}
+.g-ecrans .ordre .n{flex:1}
+.g-ecrans .ordre button{border:0;background:var(--card);border-radius:8px;width:34px;height:30px;font-size:1rem;cursor:pointer}
+.g-ecrans .plein{position:relative;min-height:calc(100vh - 150px);border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;
+  background:#0d0b1a;color:#6d6890;transition:background .06s}
+.g-ecrans .plein .av{font-size:5rem;line-height:1;filter:grayscale(1) opacity(.4);transition:filter .06s}
+.g-ecrans .plein .nom{font-family:Fredoka,sans-serif;font-size:2rem;font-weight:700}
+.g-ecrans .plein .msg{font-weight:800;font-size:1.15rem;max-width:520px}
+.g-ecrans .plein.allume{background:var(--lum,#ffd43b);color:#1d1a3a}
+.g-ecrans .plein.allume .av{filter:none}
+.g-ecrans .plein.gagne{animation:clignote .25s steps(1) infinite;color:#fff}
+.g-ecrans .plein.gagne .av{filter:none}
+@keyframes clignote{0%{background:#e03131}50%{background:#f59f00}}
+.g-ecrans .plein .bas{position:absolute;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.g-ecrans .plein .btn.ghost{color:inherit;border-color:currentColor}
