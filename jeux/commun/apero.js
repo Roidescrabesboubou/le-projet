@@ -30,7 +30,8 @@
      Apero.surOrientation(cb) cb({alpha, beta, gamma}) → arrêt()
      await Apero.micro()      → {niveau() 0…1, arret()}
      await Apero.camera(video, avant) → arrêt()
-     Apero.son(freq, ms, type, vol), Apero.vibrer(motif), Apero.eveil()
+     Apero.son(freq, ms, type, vol), Apero.boum(ms), Apero.vibrer(motif), Apero.eveil(),
+     Apero.audio() (à appeler dans un clic pour débloquer le son), Apero.sonActif()
    ============================================================ */
 (function(){
   const esc = Base.esc;
@@ -317,5 +318,6 @@
   }
 
   window.Apero = {demarrer, phase, boit, GAGES, son, boum, vibrer, eveil: garderAllume, mouvement, surMouvement, surOrientation, micro, camera, audio,
+    sonActif: () => !!(ac && ac.state === "running"),
     rafraichir: () => {}};
 })();

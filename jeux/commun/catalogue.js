@@ -649,6 +649,60 @@ window.SALLE_CATALOGUE = [
     etat: "cache"
   },
   {
+    slug: "shaker",
+    title: "Shaker",
+    emoji: "🍸",
+    desc: "Secoue ton téléphone comme un shaker à cocktail pendant 10 secondes : l'accéléromètre mesure ta force. Le plus mou boit, le plus fort distribue.",
+    tags: ["Apéro", "Party", "Multijoueur"],
+    colors: ["#d6336c", "#3bc9db"],
+    etat: "cache"
+  },
+  {
+    slug: "souffleur",
+    title: "Le Souffleur",
+    emoji: "🎈",
+    desc: "Un ballon passe de main en main : souffle dans le micro pour le gonfler, puis passe le téléphone… Il éclate à une taille secrète, celui qui le fait péter boit.",
+    tags: ["Apéro", "Party"],
+    colors: ["#e8590c", "#5b6bd0"],
+    etat: "cache"
+  },
+  {
+    slug: "silence",
+    title: "Le Silence",
+    emoji: "🤫",
+    desc: "Le téléphone écoute la pièce pendant qu'un clown tente de vous faire rire sans bruit. Au premier son, l'alarme sonne : celui qui a craqué boit.",
+    tags: ["Apéro", "Party"],
+    colors: ["#5f3dc4", "#212529"],
+    etat: "cache"
+  },
+  {
+    slug: "western",
+    title: "Duel de western",
+    emoji: "🤠",
+    desc: "Téléphone pointé vers le sol comme un revolver dans son étui. Au signal « FEU ! », dégaine : le gyroscope chronomètre ta vitesse. Le plus lent boit.",
+    tags: ["Apéro", "Party", "Multijoueur"],
+    colors: ["#b8651b", "#f2c14e"],
+    etat: "cache"
+  },
+  {
+    slug: "ecrans",
+    title: "Roulette des écrans",
+    emoji: "🎰",
+    desc: "Tous les téléphones posés en cercle sur la table : une lumière passe d'écran en écran, ralentit… et s'arrête sur quelqu'un. À lui de subir le sort.",
+    tags: ["Apéro", "Party", "Multijoueur"],
+    colors: ["#f59f00", "#e03131"],
+    etat: "cache"
+  },
+  {
+    slug: "couleurs",
+    title: "Chasse aux couleurs",
+    emoji: "🎨",
+    desc: "« ROUGE ! » Cours trouver un objet de la bonne couleur et vise-le avec la caméra : le téléphone la reconnaît tout seul. Le plus lent boit.",
+    tags: ["Apéro", "Party", "Multijoueur"],
+    colors: ["#0c8599", "#fa5252"],
+    etat: "cache"
+  },
+  {
     slug: "encore-un-autre",
     title: "Encore un autre",
     emoji: "🕹️",
@@ -676,7 +730,7 @@ window.SALLE_CATEGORIES = [
    jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran", "menteur", "pireconseil", "aveugle"]},
   {id: "apero", emoji: "🍻", titre: "Apéro", c: ["#f2a03d", "#e0457b"],
    desc: "Des jeux à faire ensemble dans la même pièce : un téléphone qui tourne ou chacun le sien, avec caméra, micro et capteurs.",
-   jeux: ["quipourrait", "mainstable"]},
+   jeux: ["quipourrait", "ecrans", "western", "couleurs", "shaker", "mainstable", "souffleur", "silence"]},
   {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
    desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
    jeux: ["puissance4", "morpion", "sumo", "serpents", "tour", "minigolf", "assaut", "bataille", "laser", "mainmise", "manufacture", "encheres"]},
