@@ -125,6 +125,13 @@ function chasser(zone, couleur, t0, maintenant, fin){
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){
+    if(G.phase !== "res") return [];
+    const val = j => G.temps[j.id] >= 0 ? G.temps[j.id] : 1e9;
+    const l = G.J.filter(j => G.temps[j.id] != null), v = l.map(val), pire = Math.max(...v);
+    if(!l.length || pire === Math.min(...v)) return [];
+    return l.filter(j => val(j) === pire).map(j => ["m" + G.m + ":" + j.id, j.id, pire >= 1e9 ? 3 : 2]);
+  },
   jeu: "couleurs", titre: "Chasse aux couleurs", emoji: "🎨", min: 2, max: 12,
   hero: {
     texte: "Une couleur s'affiche : trouve vite un objet de cette couleur dans la pièce et vise-le avec la caméra. Le plus lent boit !",

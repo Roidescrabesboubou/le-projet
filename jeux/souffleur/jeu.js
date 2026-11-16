@@ -67,6 +67,7 @@ function souffler(zone, V, envoyer){
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){ return G.phase === "boum" && G.J[G.perdant] ? [["b" + G.b, G.J[G.perdant].id, G.n]] : []; },
   jeu: "souffleur", titre: "Le Souffleur", emoji: "🎈", min: 2, max: 12, multi: false,
   hero: {texte: "Un ballon qui passe de main en main : souffle dans le micro pour le gonfler, et prie pour qu'il n'éclate pas sur toi !"},
   reglages: [{k: "nb", titre: "Nombre de ballons", options: [[3, "3"], [5, "5"], [8, "8"]], def: 5}],

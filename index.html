@@ -259,7 +259,8 @@ Compte.bouton(document.getElementById("compte"));
 function visibles(){
   const s = Compte.session(), admin = !!(s && s.admin), ia = !!(s && (s.ia || s.admin));
   return Compte.trier(GAMES, regl).map(g => ({...g, ...Compte.etatDe(g, regl)}))
-    .filter(g => (g.etat !== "cache" || admin) && (!g.ia || ia));
+    .filter(g => (g.etat !== "cache" || admin) && (!g.ia || ia))
+    .filter(g => !g.dans || (regl && regl.cats && regl.cats[g.slug]));   // joué dans un autre (La Soirée) : pas de carte, sauf catégorie choisie dans l'admin
 }
 
 function render(list, cible){
@@ -440,6 +441,7 @@ const MOTS_CLES = {
   menteur: "menteur bluff anecdote vraie fausse reponse fibbage mensonge verite culture insolite soiree discord",
   pireconseil: "pire conseil situation genante drole vote anonyme ecrire humour soiree discord",
   aveugle: "dessin aveugle dessiner sans voir deviner mot pictionary gartic soiree discord",
+  lasoiree: "la soiree apero soirée hub tous les jeux alcool boire gorgee jeu a boire contrat roles maitre du pouce mot interdit regles compteur gorgees meme piece telephones",
   quipourrait: "qui pourrait plus susceptible de most likely vote secret designer pointer alcool boire gorgee apero soiree jeu a boire",
   mainstable: "main stable verre tenir immobile tremblement accelerometre capteur equilibre adresse alcool boire gorgee apero soiree",
   shaker: "shaker secouer cocktail force vitesse accelerometre capteur alcool boire gorgee apero soiree",

@@ -28,6 +28,7 @@ function noter(G, t){ G.log.unshift({t, h: Date.now()}); G.log = G.log.slice(0, 
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){ return G.J.flatMap(j => Array.from({length: j.bu}, (_, i) => [j.id + ":" + i, j.id, 1])); },
   jeu: "contrat", titre: "Le Contrat", emoji: "🗡️", min: 3, max: 16, local: false,
   hero: {
     texte: "Chacun reçoit en secret une cible et une mission à lui faire faire sans se faire griller. Ça dure toute la soirée !",

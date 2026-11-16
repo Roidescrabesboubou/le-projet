@@ -18,6 +18,8 @@
      "dispo"   → visible et jouable
      "bientot" → affiché grisé, sans lien
      "cache"   → absent de l'accueil
+   dans: "lasoiree" → se joue dans La Soirée : pas de carte à l'accueil
+     (sauf si l'admin lui donne une catégorie), page seule toujours là.
    ia: true → jeu qui utilise une IA : réservé aux comptes autorisés
      dans le panel admin (sauf invités arrivés par un lien de salle).
    Le panel admin (/admin/) peut changer l'état et le badge de
@@ -631,12 +633,22 @@ window.SALLE_CATALOGUE = [
   },
   /* ---------- Apéro (dans la même pièce) : apero.js, cachés pour l'instant ---------- */
   {
+    slug: "lasoiree",
+    title: "La Soirée",
+    emoji: "🍻",
+    desc: "Tout l'apéro dans une seule salle : l'hôte enchaîne les jeux (votes, duel de western, roulette des écrans, shaker…) pendant que Le Contrat, les rôles et le mot interdit tournent en fond. Chacun son téléphone, dans la même pièce.",
+    tags: ["Apéro", "Party", "Multijoueur"],
+    colors: ["#f2a03d", "#e0457b"],
+    etat: "cache"
+  },
+  {
     slug: "quipourrait",
     title: "Qui pourrait… ?",
     emoji: "👉",
     desc: "« Qui pourrait rater son avion parce qu'il était au bar ? » Tout le monde vote en secret pour quelqu'un de la table, le plus désigné boit. Un seul téléphone qui tourne ou chacun le sien.",
     tags: ["Apéro", "Party", "Multijoueur"],
     colors: ["#e0457b", "#f2c14e"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -646,6 +658,7 @@ window.SALLE_CATALOGUE = [
     desc: "Un verre virtuel posé sur ton téléphone : tiens-le parfaitement immobile pendant un défi (boire, yeux fermés, sur un pied…). L'accéléromètre voit le moindre tremblement, le plus tremblant boit.",
     tags: ["Apéro", "Party", "Multijoueur"],
     colors: ["#2b8fd6", "#f2a03d"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -655,6 +668,7 @@ window.SALLE_CATALOGUE = [
     desc: "Secoue ton téléphone comme un shaker à cocktail pendant 10 secondes : l'accéléromètre mesure ta force. Le plus mou boit, le plus fort distribue.",
     tags: ["Apéro", "Party", "Multijoueur"],
     colors: ["#d6336c", "#3bc9db"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -664,6 +678,7 @@ window.SALLE_CATALOGUE = [
     desc: "Un ballon passe de main en main : souffle dans le micro pour le gonfler, puis passe le téléphone… Il éclate à une taille secrète, celui qui le fait péter boit.",
     tags: ["Apéro", "Party"],
     colors: ["#e8590c", "#5b6bd0"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -673,6 +688,7 @@ window.SALLE_CATALOGUE = [
     desc: "Le téléphone écoute la pièce pendant qu'un clown tente de vous faire rire sans bruit. Au premier son, l'alarme sonne : celui qui a craqué boit.",
     tags: ["Apéro", "Party"],
     colors: ["#5f3dc4", "#212529"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -682,6 +698,7 @@ window.SALLE_CATALOGUE = [
     desc: "Téléphone pointé vers le sol comme un revolver dans son étui. Au signal « FEU ! », dégaine : le gyroscope chronomètre ta vitesse. Le plus lent boit.",
     tags: ["Apéro", "Party", "Multijoueur"],
     colors: ["#b8651b", "#f2c14e"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -691,6 +708,7 @@ window.SALLE_CATALOGUE = [
     desc: "Tous les téléphones posés en cercle sur la table : une lumière passe d'écran en écran, ralentit… et s'arrête sur quelqu'un. À lui de subir le sort.",
     tags: ["Apéro", "Party", "Multijoueur"],
     colors: ["#f59f00", "#e03131"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -700,6 +718,7 @@ window.SALLE_CATALOGUE = [
     desc: "« ROUGE ! » Cours trouver un objet de la bonne couleur et vise-le avec la caméra : le téléphone la reconnaît tout seul. Le plus lent boit.",
     tags: ["Apéro", "Party", "Multijoueur"],
     colors: ["#0c8599", "#fa5252"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -709,6 +728,7 @@ window.SALLE_CATALOGUE = [
     desc: "Toute la soirée, chacun a en secret une cible et une mission : « fais-lui dire ananas », « fais-lui trinquer avec toi »… La cible confirme sur son téléphone et boit. Méfie-toi de tout le monde !",
     tags: ["Apéro", "Party", "Multijoueur"],
     colors: ["#c92a2a", "#2b2118"],
+    dans: "lasoiree",
     etat: "cache"
   },
   {
@@ -718,6 +738,7 @@ window.SALLE_CATALOGUE = [
     desc: "« Des pirates qui aperçoivent la terre », « une photo de classe où personne ne regarde » : prenez la pose, une photo, et l'IA vous note sur 10. Mauvaise note, tout le monde boit. En groupe ou en deux équipes.",
     tags: ["Apéro", "Party", "IA"],
     colors: ["#9c36b5", "#f2c14e"],
+    dans: "lasoiree",
     etat: "cache",
     ia: true
   },
@@ -749,7 +770,7 @@ window.SALLE_CATEGORIES = [
    jeux: ["freestyle", "blindtest", "dessin", "telephone", "quiz", "imposteur", "categorie", "quiaditca", "emojis", "cadran", "menteur", "pireconseil", "aveugle"]},
   {id: "apero", emoji: "🍻", titre: "Apéro", c: ["#f2a03d", "#e0457b"],
    desc: "Des jeux à faire ensemble dans la même pièce : un téléphone qui tourne ou chacun le sien, avec caméra, micro et capteurs.",
-   jeux: ["quipourrait", "contrat", "ecrans", "western", "couleurs", "pose", "shaker", "mainstable", "souffleur", "silence"]},
+   jeux: ["lasoiree"]},
   {id: "duels", emoji: "⚔️", titre: "Duels et plateau", c: ["#3d6bff", "#22b8cf"],
    desc: "Contre l'ordinateur ou contre un ami, sur le même écran ou en ligne.",
    jeux: ["puissance4", "morpion", "sumo", "serpents", "tour", "minigolf", "assaut", "bataille", "laser", "mainmise", "manufacture", "encheres"]},

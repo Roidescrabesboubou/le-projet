@@ -140,6 +140,14 @@ function photographier(zone, V, envoyer){
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){
+    if(G.phase !== "res" || !G.res) return [];
+    const k = "d" + G.m + ":" + G.tour + ":", n = G.res.note;
+    if(!G.eq) return n < 5 ? G.J.map(j => [k + j.id, j.id, n < 3 ? 3 : 2]) : [];
+    if(G.tour !== 1) return [];
+    const [a, b] = G.hist.slice(-2).map(h => h.note);
+    return a === b ? [] : G.eq[a < b ? 0 : 1].map(id => [k + id, id, Math.min(4, Math.abs(a - b))]);
+  },
   jeu: "pose", titre: "Recrée la pose", emoji: "📸", min: 2, max: 16, multi: false,
   hero: {texte: "Un défi, une photo, et l'IA vous note sur 10. Mauvaise note ? Tout le monde boit !"},
   reglages: [

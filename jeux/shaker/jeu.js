@@ -68,6 +68,12 @@ function secouer(zone, fin){
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){
+    if(G.phase !== "res") return [];
+    const l = G.J.filter(j => G.sc[j.id] != null), v = l.map(j => G.sc[j.id]), min = Math.min(...v);
+    if(!l.length || min === Math.max(...v)) return [];
+    return l.filter(j => G.sc[j.id] === min).map(j => ["m" + G.m + ":" + j.id, j.id, 2]);
+  },
   jeu: "shaker", titre: "Shaker", emoji: "🍸", min: 2, max: 12,
   hero: {
     texte: "Secoue ton téléphone comme un shaker pendant 10 secondes. Le plus mou boit, le plus fort distribue !",

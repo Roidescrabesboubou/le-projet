@@ -67,6 +67,7 @@ function ecouter(zone, V, envoyer){
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){ return G.phase === "tenu" && G.J[G.clown] ? [["m" + G.m, G.J[G.clown].id, 2]] : []; },
   jeu: "silence", titre: "Le Silence", emoji: "🤫", min: 2, max: 16, multi: false,
   hero: {texte: "Le téléphone écoute la pièce. Un clown tente de vous faire craquer sans bruit : le premier qui rit boit !"},
   reglages: [

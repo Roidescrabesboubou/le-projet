@@ -67,6 +67,15 @@ function roulette(el, V, moi, maintenant, R){
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){
+    const sp = G.spin, n = G.ordre.length;
+    if(!sp || !n || Date.now() < sp.t0 + horaires(sp.N)[sp.N] + 300) return [];
+    const i = sp.N % n, c = G.ordre[i], k = "s" + sp.k + ":";
+    if(/^boit[123]$/.test(sp.sort)) return [[k + c, c, +sp.sort.slice(4)]];
+    if(sp.sort === "voisins") return [...new Set([G.ordre[(i + n - 1) % n], c, G.ordre[(i + 1) % n]])].map(id => [k + id, id, 1]);
+    if(sp.sort === "tous") return G.ordre.map(id => [k + id, id, 1]);
+    return [];
+  },
   jeu: "ecrans", titre: "Roulette des écrans", emoji: "🎰", min: 2, max: 12, local: false,
   hero: {
     texte: "Tous les téléphones en cercle sur la table : une lumière passe d'écran en écran, ralentit… et tombe sur quelqu'un.",

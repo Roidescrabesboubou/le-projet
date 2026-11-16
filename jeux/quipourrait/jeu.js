@@ -34,6 +34,11 @@ function toutVote(G){ return presents(G).every(j => G.votes[j.id]); }
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){
+    if(G.phase !== "res" || !G.res) return [];
+    const n = Math.min(3, G.res.max);
+    return G.res.top.flatMap(id => [["q" + G.qi + ":" + id, id, n]].concat(G.rev ? [["q" + G.qi + "r:" + id, id, 1]] : []));
+  },
   jeu: "quipourrait", titre: "Qui pourrait… ?", emoji: "👉", min: 3, max: 12,
   hero: {
     texte: "Une question, tout le monde vote en secret pour la personne de la table qui colle le mieux. Le plus désigné boit !",

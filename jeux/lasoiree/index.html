@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>La Soirée</title>
+<link rel="stylesheet" href="../commun/base.css">
+<link rel="stylesheet" href="../commun/soiree.css">
+<link rel="stylesheet" href="../commun/apero.css">
+<link rel="stylesheet" href="../quipourrait/jeu.css">
+<link rel="stylesheet" href="../ecrans/jeu.css">
+<link rel="stylesheet" href="../western/jeu.css">
+<link rel="stylesheet" href="../couleurs/jeu.css">
+<link rel="stylesheet" href="../mainstable/jeu.css">
+<link rel="stylesheet" href="../shaker/jeu.css">
+<link rel="stylesheet" href="../souffleur/jeu.css">
+<link rel="stylesheet" href="../silence/jeu.css">
+<link rel="stylesheet" href="../pose/jeu.css">
+<link rel="stylesheet" href="../contrat/jeu.css">
+<style>
+:root{--accent:#f2a03d;--fond1:rgba(242,160,61,.15);--fond2:rgba(224,69,123,.12)}
+/* bandeau des jeux de fond, toujours en haut */
+.hb{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:6px 2px 8px;margin:0 0 4px;background:var(--bg);scrollbar-width:none}
+.hb::-webkit-scrollbar{display:none}
+.hb button{flex:none;border:2px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-weight:800;font-size:.92rem;white-space:nowrap}
+.hb button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--card))}
+.hb button.alerte{border-color:#e03131;background:#e03131;color:#fff;animation:hbPulse 1s infinite}
+@keyframes hbPulse{50%{transform:scale(1.06)}}
+.hp{background:var(--card);border:2px solid var(--accent);border-radius:18px;padding:12px 14px;margin:0 0 12px}
+.hp h3{margin:0 0 8px}
+#hcBox{margin:0 0 12px;border:2px solid #c92a2a;border-radius:20px;padding:8px}
+.h-liste{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:6px}
+.h-liste li{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--soft);border-radius:12px;padding:8px 10px;font-weight:700}
+.h-x{border:0;background:none;font-size:1rem;cursor:pointer;color:var(--muted)}
+.h-role{background:color-mix(in srgb,var(--accent) 14%,var(--card));border-radius:14px;padding:10px 12px}
+.h-role p{margin:4px 0}
+.h-mot{display:block;width:100%;border:0;border-radius:16px;padding:20px 12px;background:#2b2118;color:#f3e6cf;font-weight:800;font-size:1.05rem;cursor:pointer}
+.h-mot.vu b{font-family:Fredoka,sans-serif;font-size:1.8rem;display:block;margin-top:4px}
+.h-tete{display:flex;align-items:center;gap:6px;margin:0 0 8px}
+.h-tete .t{flex:1;font-family:Fredoka,sans-serif;font-weight:700;font-size:1.15rem}
+.h-jeux{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.h-jeu{display:flex;gap:12px;align-items:center;text-align:left;border:2px solid var(--line);background:var(--soft);border-radius:16px;padding:10px 12px;cursor:pointer}
+.h-jeu:disabled{cursor:default;opacity:.75}
+.h-jeu.on{border-color:var(--accent)}
+.h-jeu .e{font-size:2rem}
+.h-jeu .t{display:flex;flex-direction:column;gap:2px}
+.h-jeu small{color:var(--muted);font-weight:600;line-height:1.3}
+.h-jeu small.m{font-weight:800}
+.h-reg{background:var(--card);border:2px dashed var(--accent);border-radius:16px;padding:10px 12px}
+.h-fond{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.h-fond span{display:flex;flex-direction:column}
+.h-fond small{color:var(--muted);font-weight:600}
+.h-seul a{font-weight:800;white-space:nowrap}
+</style>
+</head>
+<body>
+<script src="../commun/garde.js"></script>
+<script src="../commun/base.js"></script>
+<script src="../commun/reseau.js"></script>
+<script src="../commun/soiree.js"></script>
+<script src="../commun/apero.js"></script>
+<script src="../commun/ia.js"></script>
+<script src="../quipourrait/questions.js"></script>
+<script src="../contrat/missions.js"></script>
+<script src="../quipourrait/jeu.js"></script>
+<script src="../ecrans/jeu.js"></script>
+<script src="../western/jeu.js"></script>
+<script src="../couleurs/jeu.js"></script>
+<script src="../mainstable/jeu.js"></script>
+<script src="../shaker/jeu.js"></script>
+<script src="../souffleur/jeu.js"></script>
+<script src="../silence/jeu.js"></script>
+<script src="../pose/jeu.js"></script>
+<script src="../contrat/jeu.js"></script>
+<script src="fond.js"></script>
+<script src="hub.js"></script>
+</body>
+</html>

@@ -73,6 +73,15 @@ function duel(zone, V, maintenant, envoyer){
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){
+    if(G.phase !== "res") return [];
+    const l = G.J.filter(j => G.tirs[j.id] != null);
+    const bons = l.filter(j => typeof G.tirs[j.id] === "number").sort((a, b) => G.tirs[a.id] - G.tirs[b.id]);
+    const perdants = l.filter(j => typeof G.tirs[j.id] !== "number");
+    if(bons.length > 1 && !perdants.length) perdants.push(bons[bons.length - 1]);
+    if(!bons.length && !perdants.length) perdants.push(...l);
+    return perdants.map(j => ["m" + G.m + ":" + j.id, j.id, G.tirs[j.id] === "faux" ? 2 : 1]);
+  },
   jeu: "western", titre: "Duel de western", emoji: "🤠", min: 2, max: 8, local: false,
   hero: {
     texte: "Téléphone pointé vers le sol comme un revolver dans son étui. Au signal, dégaine ! Le plus lent boit.",

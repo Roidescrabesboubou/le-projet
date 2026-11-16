@@ -101,6 +101,12 @@ function mesurer(zone, fin){
 
 Apero.jeu({
   entete: ENTETE,
+  bilan(G){
+    if(G.phase !== "res") return [];
+    const l = G.J.filter(j => G.sc[j.id] != null), v = l.map(j => G.sc[j.id]), min = Math.min(...v);
+    if(!l.length || min === Math.max(...v)) return [];
+    return l.filter(j => G.sc[j.id] === min).map(j => ["m" + G.m + ":" + j.id, j.id, min < 30 ? 3 : 2]);
+  },
   jeu: "mainstable", titre: "Main stable", emoji: "✋", min: 2, max: 12,
   hero: {
     texte: "Un verre virtuel posé sur ton téléphone : tiens-le parfaitement immobile pendant un défi. Le plus tremblant boit !",
