@@ -165,6 +165,8 @@
         salle.joueurs.slice(1).forEach(j => { if(now - (vus[j.id] || now) > 25000) partir(j); });
         salle.joueurs.slice(1).forEach(j => { if(!vus[j.id]) vus[j.id] = now; });
       }else if(salle.joueurs.length){
+        // téléphone revenu de veille : l'hôte nous a retiré de la liste → on se réannonce (même id)
+        if(salle._interne && !salle.joueurs.some(j => j.id === moi)){ const me = moiInfos(moi); salle.envoyer({t: "_bonjour", pseudo: me.pseudo, avatar: me.avatar}); }
         if(now - hoteVu > 20000){
           if(!perduSignale){ perduSignale = true; bandeau("⚠️ L'hôte ne répond plus… (il a peut-être fermé la page)"); o.surHotePerdu && o.surHotePerdu(); }
         }else if(perduSignale){ perduSignale = false; bandeau(""); }

@@ -92,7 +92,13 @@ Apero.jeu({
     noter(G, `🚪 ${j.nom} a quitté la partie`);
   },
   arrivee(G, j){
-    if(jDe(G, j.id)) return;
+    const x = jDe(G, j.id);
+    if(x){   // revenu (téléphone sorti de veille) : il garde ses points
+      if(!x.parti) return;
+      x.parti = false; nouveauContrat(G, j.id);
+      noter(G, `👋 ${x.nom} est de retour`);
+      return;
+    }
     G.J.push({...j, pts: 0, bu: 0}); nouveauContrat(G, j.id);
     noter(G, `👋 ${j.nom} rejoint la partie`);
   },

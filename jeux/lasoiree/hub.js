@@ -73,7 +73,7 @@
     const c = cfg(s); if(!c || !JEUX.includes(s)) return false;
     if(c.ia && !peutIA()) return false;
     const J = presents(G).map(j => ({id: j.id, nom: j.nom, av: j.av}));
-    if(J.length < (c.min || 2)) return false;
+    if(J.length < (c.min || 2) || J.length > (c.max || 99)) return false;
     const R = {};
     (c.reglages || []).forEach(r => { const v = (G.Rj[s] || {})[r.k]; R[r.k] = v === undefined ? r.def : v; });
     R.boisson = G.R.boisson;
@@ -174,7 +174,7 @@
     },
     reglages: [Apero.BOISSON],
     nouvelle(joueurs, R){
-      return {R, J: joueurs.map(j => ({...j})), hote: joueurs[0].id, cur: null, nb: 0, Rj: {}, contrat: null, contratN: 0,
+      return {hid: rid(), R, J: joueurs.map(j => ({...j})), hote: joueurs[0].id, cur: null, nb: 0, Rj: {}, contrat: null, contratN: 0,
         roles: null, rolesDepuis: 0, regles: [], ri: 0, mot: null, gorg: {}, vus: {}, log: [], logN: 0};
     },
     action,
@@ -188,7 +188,16 @@
       compter(G);
     },
     arrivee(G, j){
-      if(jDe(G, j.id)) return;
+      const x = jDe(G, j.id);
+      if(x){   // téléphone revenu de veille : même id, il garde son compteur
+        if(!x.parti) return;
+        x.parti = false;
+        if(G.cur && !G.cur.loc){ const y = G.cur.G.J && G.cur.G.J.find(z => z.id === j.id); if(y) y.parti = false; }
+        if(G.contrat) CONTRAT().arrivee(G.contrat, {...j});
+        if(G.mot && !G.mot.M[j.id]) nouveauMot(G, j.id);
+        noter(G, `👋 ${x.nom} est de retour`);
+        return;
+      }
       G.J.push({...j});
       if(G.cur && !G.cur.loc && cfg(G.cur.s).arrivee) cfg(G.cur.s).arrivee(G.cur.G, {...j});
       if(G.contrat) CONTRAT().arrivee(G.contrat, {...j});
@@ -199,7 +208,7 @@
       HG = G;   // chez l'hôte : les jeux à un téléphone se lisent directement ici
       const c = G.cur && cfg(G.cur.s);
       return {
-        R: G.R, J: G.J, hote: G.hote, nb: G.nb, Rj: G.Rj, gorg: G.gorg, log: G.log, regles: G.regles, roles: G.roles,
+        hid: G.hid, R: G.R, J: G.J, hote: G.hote, nb: G.nb, Rj: G.Rj, gorg: G.gorg, log: G.log, regles: G.regles, roles: G.roles,
         cur: G.cur ? {s: G.cur.s, n: G.cur.n, loc: G.cur.loc, v: G.cur.v, V: G.cur.loc ? null : Object.assign(c.publique(G.cur.G), {_id: G.cur.G._id})} : null,
         contrat: G.contrat ? Object.assign(CONTRAT().publique(G.contrat), {_id: G.contrat._id}) : null,
         mot: G.mot ? {pts: G.mot.pts, vieux: G.mot.vieux} : null,
@@ -225,7 +234,9 @@
   /* ---------- Affichage ---------- */
   function rendre(box, ctx){
     dernierCtx = ctx;
-    if(!box.querySelector("#hb")){
+    if(!box.querySelector("#hb") || box._hid !== ctx.V.hid){
+      const hj = box.querySelector("#hj"); if(hj) arreterJeu(hj);
+      box._hid = ctx.V.hid; box._choix = null; box._motVu = false; box._alerte = null; box._passe = null;
       box.innerHTML = `<div id="hb" class="hb"></div><div id="hp" class="hp" hidden></div><div id="hm"></div><div id="hj" class="hj"></div><div id="hcBox" hidden><div id="hc" class="g-contrat"></div></div>`;
       box._ouvert = null; box._vu = null; box._re = () => rendre(box, dernierCtx);
     }
@@ -430,10 +441,10 @@
     hm._h = cle;
     const dispo = s => { const c = cfg(s); return c && !(c.ia && !V.ia); };
     const carte = s => {
-      const c = cfg(s), manque = n < (c.min || 2);
-      return `<button class="h-jeu ${choix === s ? "on" : ""}" data-j="${s}" ${!ctx.hote || manque ? "disabled" : ""}>
+      const c = cfg(s), manque = n < (c.min || 2), trop = n > (c.max || 99);
+      return `<button class="h-jeu ${choix === s ? "on" : ""}" data-j="${s}" ${!ctx.hote || manque || trop ? "disabled" : ""}>
         <span class="e">${c.entete.emoji}</span><span class="t"><b>${esc(c.titre)}</b><small>${esc((c.hero && c.hero.texte) || "")}</small>
-        <small class="m">${c.multi === false ? "📱 sur le téléphone de l'hôte" : "📱📱 chacun le sien"}${manque ? ` · ${c.min} joueurs minimum` : ""}</small></span></button>
+        <small class="m">${c.multi === false ? "📱 sur le téléphone de l'hôte" : "📱📱 chacun le sien"}${manque ? ` · ${c.min} joueurs minimum` : ""}${trop ? ` · ${c.max} joueurs maximum` : ""}</small></span></button>
         ${choix === s ? reglages(s, V) : ""}`;
     };
     const fond = (k, on, titre, desc, min) => `<div class="h-fond"><span><b>${titre}</b><small>${desc}</small></span>
