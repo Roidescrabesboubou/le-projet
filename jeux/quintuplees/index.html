@@ -127,7 +127,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v15.0 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v15.1 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -1578,7 +1578,7 @@ function applyEffects5(st,o,s,pass){
     if(x.d!==0||x.note||c.why)tags.push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":x.d===0?"±":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));
   });
   if(!pass&&st.players[s])st.players[s].turns++;
-  st.players.forEach(p=>{p.aff=Math.max(...Object.values(p.h));});
+  st.players.forEach(p=>{p.aff=affMax(st,p);});
   return{tags,spk:vd.d,best,sum,ms:vd.ms};
 }
 function sysLineV(st,t,vis){const L={cls:"sys",text:t};if(vis)L.vis=vis;st.lines.push(L);renderLine(L);}
@@ -1651,7 +1651,7 @@ async function runRound5(st,intro){
         p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,spk:c.delta};if(Math.abs(x.d)>Math.abs(best))best=x.d;
         noteConduct(st,c.i,x.d,c.why);
         if(x.d!==0||x.note||c.why)(tagsBy[c.i]=tagsBy[c.i]||[]).push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":x.d===0?"±":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));});
-      st.players.forEach(p=>{if(!p.out)p.turns++;p.aff=Math.max(...Object.values(p.h));});
+      st.players.forEach(p=>{if(!p.out)p.turns++;p.aff=affMax(st,p);});
     }
     if(o.stalled)st.unblock=true;
     // événement : la scène à la plus longue narration le porte
@@ -1735,10 +1735,18 @@ Réponds en JSON : {"place":"lieu court","narration":"…","lines":[{"sister":"$
     st.history.pop();w.remove();   // la scène sera lancée au prochain tour (st.launch reste)
   }
 }
+/* Partie continuée : une sœur conquise (st.taken) est en couple, elle ne compte plus pour la victoire ni les étapes */
+const isTaken=(st,k)=>!!(st&&st.taken&&st.taken.some(t=>t.k===k));
+function affMax(st,p){
+  const T=(st&&st.taken)||[],me=st?st.players.indexOf(p):-1;
+  T.forEach(t=>{if(t.i!==me&&p.h[t.k]>99)p.h[t.k]=99;});
+  const v=Object.keys(p.h).filter(k=>!T.some(t=>t.k===k)).map(k=>p.h[k]);
+  return v.length?Math.max(...v):0;
+}
 function dueTrial5(st){
   if(st.players.some(p=>p.trial)||st.trial5||st.duel||st.duelLaunch)return null;
   for(let i=0;i<st.players.length;i++){const p=st.players[i];if(p.out||!p.m)continue;
-    for(const k of Object.keys(SISTERS)){const r=p.m[k];if(r.ms<4&&!r.trial&&p.h[k]>0&&p.h[k]>=CAPS[r.ms])return{i,k};}}
+    for(const k of Object.keys(SISTERS)){const r=p.m[k];if(isTaken(st,k))continue;if(r.ms<4&&!r.trial&&p.h[k]>0&&p.h[k]>=CAPS[r.ms])return{i,k};}}
   return null;
 }
 async function sceneJalon5(st,id,t,hraw,speaker){
@@ -1784,7 +1792,7 @@ function resolveTrial5(st,pl,eff){
     st.inject.push(`TRANSITION : après l'échec de « ${m.name} », ${S.name} est plus distante avec ${pl.name} ; reprends la scène de groupe, sans rompre.`);
     burst("💔",5);
   }
-  pl.aff=Math.max(...Object.values(pl.h));
+  pl.aff=affMax(st,pl);
 }
 function submitSim(i,text){
   const st=state[current];st.pending[i]=text;st.answered[i]=true;updateBar();
@@ -1861,9 +1869,9 @@ function findDuel(st){
   if(!st||st.duel||st.duelLaunch||st.players.length<2)return null;
   const al=st.players.map((p,i)=>[p,i]).filter(([p])=>!p.out);
   if(st.cinq){
-    for(const k of Object.keys(SISTERS)){const f=al.filter(([p])=>p.h&&p.h[k]>=100);if(f.length>=2)return{kind:"final",k,pl:f.map(([,i])=>i)};}
+    for(const k of Object.keys(SISTERS)){if(isTaken(st,k))continue;const f=al.filter(([p])=>p.h&&p.h[k]>=100);if(f.length>=2)return{kind:"final",k,pl:f.map(([,i])=>i)};}
     for(const k of Object.keys(SISTERS))for(let lv=0;lv<4;lv++){
-      const f=al.filter(([p])=>p.m&&p.m[k].ms===lv&&!p.m[k].trial&&!p.trial&&p.h[k]>0&&p.h[k]>=CAPS[lv]);
+      if(isTaken(st,k))continue;const f=al.filter(([p])=>p.m&&p.m[k].ms===lv&&!p.m[k].trial&&!p.trial&&p.h[k]>0&&p.h[k]>=CAPS[lv]);
       if(f.length>=2)return{kind:"palier",k,lv,pl:f.map(([,i])=>i)};
     }
   }else{
@@ -1913,12 +1921,12 @@ function resolveDuel(st,name){
   let w=matchPlayer(st,name),rnd=false;if(w<0||!d.pl.includes(w)){w=d.pl[Math.floor(Math.random()*d.pl.length)];rnd=true;}
   const S=duelSis(st,d),W=st.players[w],lo=d.pl.filter(i=>i!==w).map(i=>st.players[i].name),los=lo.length>1?lo.slice(0,-1).join(", ")+" et "+lo[lo.length-1]:lo[0],pl2=lo.length>1,vis=st.split?d.pl:null;
   if(d.kind==="final"){
-    d.pl.forEach(i=>{if(i===w)return;const p=st.players[i];if(st.cinq){p.h[d.k]=Math.min(p.h[d.k],95);p.aff=Math.max(...Object.values(p.h));}else p.aff=Math.min(p.aff,95);});
+    d.pl.forEach(i=>{if(i===w)return;const p=st.players[i];if(st.cinq){p.h[d.k]=Math.min(p.h[d.k],95);p.aff=affMax(st,p);}else p.aff=Math.min(p.aff,95);});
     sysLineV(st,`⚔️ ${S} a tranché${rnd?" (sans hésiter longtemps)":""} : c'est ${W.name} qu'elle choisit !`,vis);
   }else{
     const m=MS[d.lv];
     d.pl.forEach(i=>{const p=st.players[i];
-      if(st.cinq){const r=p.m[d.k];if(i===w){r.ms++;p.h[d.k]=Math.min(CAPS[r.ms],p.h[d.k]+4);}else{r.tries[d.lv]=(r.tries[d.lv]||0)+1;p.h[d.k]=Math.max(1,p.h[d.k]-8);}p.aff=Math.max(...Object.values(p.h));}
+      if(st.cinq){const r=p.m[d.k];if(i===w){r.ms++;p.h[d.k]=Math.min(CAPS[r.ms],p.h[d.k]+4);}else{r.tries[d.lv]=(r.tries[d.lv]||0)+1;p.h[d.k]=Math.max(1,p.h[d.k]-8);}p.aff=affMax(st,p);}
       else{if(i===w){p.ms++;p.aff=Math.min(CAPS[p.ms],p.aff+4);}else{p.tries[d.lv]=(p.tries[d.lv]||0)+1;p.aff=Math.max(1,p.aff-8);}}});
     sysLineV(st,`⚔️ ${S} a départagé : ${W.name} franchit l'étape « ${m.ico} ${m.name} » ! ${los} devr${pl2?"ont":"a"} retenter plus tard (−8).`,vis);
     st.inject.push(`TRANSITION : après le duel, ${W.name} a franchi l'étape « ${m.name} »${st.cinq?" avec "+S:""} ; ${los} ${pl2?"sont un peu déçus":"est un peu déçu"}. Reprends naturellement.`);
@@ -2281,7 +2289,7 @@ async function finish(st,id,kind,pl){
   if(st.cinq){
     if(kind==="win"){
       const W=st.players.filter(p=>!p.out&&p.h&&p.aff>=100);if(!W.length)W.push(pl);
-      st.wins=W.map(p=>({name:p.name,sis:Object.keys(SISTERS).filter(k=>p.h[k]>=100)}));
+      st.wins=W.map(p=>({name:p.name,sis:Object.keys(SISTERS).filter(k=>p.h[k]>=100&&!isTaken(st,k))}));
       st.wins.forEach(w=>{if(!w.sis.length){const q=st.players.find(p=>p.name===w.name);w.sis=[Object.keys(q.h).sort((a,b)=>q.h[b]-q.h[a])[0]];}});
       st.winner=W.map(p=>p.name).join(" et ");st.winSis=st.wins[0].sis[0];
       const nm=w=>w.sis.map(k=>SISTERS[k].name),et=a=>a.length>1?a.slice(0,-1).join(", ")+" et "+a[a.length-1]:a[0];
@@ -2327,6 +2335,7 @@ function showEnd(st){
     st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+(r.won>1?r.won+" sœurs conquises":(r.won?"👑 ":"")+SISTERS[r.best].name+" "+r.v+" %")+(r.avg!=null?", moyenne "+r.avg+" %":"")+", "+r.ms+" étape"+(r.ms>1?"s":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
     fz.appendChild(ol);
     const ex=document.createElement("small");ex.className="hint";ex.style.cssText="display:block;margin:-6px 0 10px";
+    if(st.taken&&st.taken.length){const tk=document.createElement("small");tk.className="hint";tk.style.cssText="display:block;margin:-6px 0 4px";tk.textContent="💞 Couples déjà formés : "+st.taken.map(t=>SISTERS[t.k].name+" et "+(st.players[t.i]||{name:"?"}).name).join(", ");fz.appendChild(tk);}
     ex.textContent="Points = meilleure sœur + moyenne des cinq + 10 par étape + 15 si mission réussie + 20 par sœur conquise. Qui a conquis une sœur passe devant.";fz.appendChild(ex);
     if(st.final.med.length){const h2=document.createElement("b");h2.textContent="🏅 Médailles";fz.appendChild(h2);
       const ul=document.createElement("ul");ul.style.margin="4px 0";
@@ -2335,8 +2344,31 @@ function showEnd(st){
   }
   const b=document.createElement("button");b.textContent=st.cinq?"Rejouer avec les cinq":"Rejouer avec elle";
   b.onclick=()=>{delete state[current];openSister(current)};
-  if(net.role!=="guest")div.appendChild(b);box.appendChild(div);
+  if(net.role!=="guest")div.appendChild(b);
+  const free=st.cinq?Object.keys(SISTERS).filter(k=>!isTaken(st,k)&&!(st.wins||[]).some(w=>w.sis.includes(k))):[];
+  if(net.role!=="guest"&&st.cinq&&st.winner&&st.wins&&free.length&&st.players.some(p=>!p.out)){
+    const c=document.createElement("button");c.textContent="▶️ Continuer la partie";c.style.marginLeft="8px";
+    c.title="Les sœurs conquises restent en couple ; on continue avec "+free.map(k=>SISTERS[k].name).join(", ");
+    c.onclick=()=>continueGame(st);div.appendChild(c);
+  }else if(net.role==="guest"&&st.cinq&&st.winner){const w=document.createElement("small");w.className="hint";w.textContent="L'hôte peut relancer ou continuer la partie.";div.appendChild(w);}
+  box.appendChild(div);
   $("input").disabled=true;$("btnSend").disabled=true;
+}
+/* Continuer après une déclaration : les couples formés restent, la partie repart avec les autres sœurs */
+function continueGame(st){
+  if(!st||!st.over||!st.wins)return;
+  st.taken=st.taken||[];
+  st.wins.forEach(w=>{const i=st.players.findIndex(p=>p.name===w.name);w.sis.forEach(k=>{if(!isTaken(st,k))st.taken.push({k,i});});});
+  const couples=st.taken.map(t=>SISTERS[t.k].name+" et "+(st.players[t.i]||{name:"?"}).name).join(", ");
+  const free=Object.keys(SISTERS).filter(k=>!isTaken(st,k)).map(k=>SISTERS[k].name);
+  st.over=false;st.winner=null;st.wins=null;st.winSis=null;st.final=null;st.choices=[];
+  st.players.forEach(p=>{if(p.h)p.aff=affMax(st,p);});
+  if(st.sim){st.pending=st.players.map(()=>null);st.answered=st.players.map(p=>!!p.out);}
+  st.history.push({role:"user",content:`[SUITE] La partie continue après cette déclaration. Couples formés : ${couples}. Une sœur en couple reste tendre et fidèle à son garçon, elle peut encore parler et réagir, mais elle ne peut plus être séduite par un autre (aucun effect pour elle). Restent à conquérir : ${free.join(", ")}. Enchaîne naturellement sur la suite de la journée et relance les garçons.`});
+  st.history.push({role:"assistant",content:'{"narration":"La vie continue chez les Nakano…","lines":[],"effects":[]}'});
+  sysLine(st,"▶️ La partie continue ! En couple : "+couples+". Encore à conquérir : "+free.join(", ")+".");
+  $("endBox").innerHTML="";$("input").disabled=false;$("btnSend").disabled=false;
+  updateBar();if(net.role==="host")broadcast(false);
 }
 function send(){doSend($("input").value.trim());}
 function doSend(v){
