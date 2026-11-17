@@ -127,7 +127,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.9 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v15.0 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -1090,7 +1090,9 @@ async function finishExtras(st,id){
   }
   const K=Object.keys(SISTERS),P=st.players;
   const rank=P.map(p=>{const best=K.slice().sort((a,b)=>p.h[b]-p.h[a])[0],ms=K.reduce((a,k)=>a+(p.m?p.m[k].ms:0),0);
-    return{name:p.name,best,v:p.h[best],ms,mis:p.mission?p.mission.done:null,won:K.filter(k=>p.h[k]>=100).length,score:p.h[best]+10*ms+(p.mission&&p.mission.done?15:0)+20*K.filter(k=>p.h[k]>=100).length};}).sort((a,b)=>b.score-a.score);
+    const avg=Math.round(K.reduce((a,k)=>a+Math.max(0,p.h[k]),0)/K.length),won=K.filter(k=>p.h[k]>=100).length;
+    // points = meilleure sœur + moyenne des cinq (être apprécié de toutes compte autant) + étapes + mission + conquêtes
+    return{name:p.name,best,v:p.h[best],avg,ms,mis:p.mission?p.mission.done:null,won,score:p.h[best]+avg+10*ms+(p.mission&&p.mission.done?15:0)+20*won};}).sort((a,b)=>(b.won>0)-(a.won>0)||b.score-a.score);
   const med=[],top=(f,cond)=>{const b=P.slice().sort((x,y)=>f(y)-f(x))[0];return b&&cond(f(b))?b:null;};
   P.forEach(p=>{const n=K.filter(k=>p.h[k]>=100).length;if(n>=2)med.push({ico:"👑",t:n===5?"Le cœur des cinq":"Cœur multiple",n:p.name,d:n+" sœurs conquises en même temps"});});
   let b=top(p=>K.reduce((a,k)=>a+p.h[k],0),v=>v>0);if(b)med.push({ico:"💘",t:"Le plus aimé des cinq",n:b.name,d:"le plus d'affection en tout"});
@@ -2322,8 +2324,10 @@ function showEnd(st){
     const fz=document.createElement("div");fz.style.cssText="text-align:left;font-weight:400;margin:4px auto 12px;max-width:460px";
     const h=document.createElement("b");h.textContent="🏆 Classement";fz.appendChild(h);
     const ol=document.createElement("ol");ol.style.margin="4px 0 10px";
-    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+(r.won>1?r.won+" sœurs conquises":SISTERS[r.best].name+" "+r.v+" %")+", "+r.ms+" étape"+(r.ms>1?"s":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
+    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+(r.won>1?r.won+" sœurs conquises":(r.won?"👑 ":"")+SISTERS[r.best].name+" "+r.v+" %")+(r.avg!=null?", moyenne "+r.avg+" %":"")+", "+r.ms+" étape"+(r.ms>1?"s":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
     fz.appendChild(ol);
+    const ex=document.createElement("small");ex.className="hint";ex.style.cssText="display:block;margin:-6px 0 10px";
+    ex.textContent="Points = meilleure sœur + moyenne des cinq + 10 par étape + 15 si mission réussie + 20 par sœur conquise. Qui a conquis une sœur passe devant.";fz.appendChild(ex);
     if(st.final.med.length){const h2=document.createElement("b");h2.textContent="🏅 Médailles";fz.appendChild(h2);
       const ul=document.createElement("ul");ul.style.margin="4px 0";
       st.final.med.forEach(m=>{const li=document.createElement("li");li.textContent=m.ico+" "+m.t+" : "+m.n+" ("+m.d+")";ul.appendChild(li);});fz.appendChild(ul);}
