@@ -127,7 +127,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.8 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v14.9 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -1002,6 +1002,8 @@ function factsTxt(st,players){
 - Le lore accepté sans preuve se limite au contexte anodin qu'un garçon donne sur LUI-MÊME (souvenirs, goûts, petits détails). Jamais un retournement dramatique qui accuse ou met en danger quelqu'un d'autre.
 - Une accusation grave contre un autre garçon, une rumeur ou un message anonyme ne sont PAS des preuves : on doute, on demande des explications, on se méfie aussi de celui qui accuse. Sans preuve vue de ses propres yeux, l'effet sur la cible est au plus de -3, et la cible qui se défend calmement et logiquement doit être écoutée.
 - Approuver, excuser ou tourner en plaisanterie des menaces, des violences ou des propos haineux est aussi grave que les tenir (-15) et entre dans la mémoire de conduite.
+- MÊME RÉPONSE, MÊME NOTE : si deux garçons disent à peu près la même chose au même tour (même salutation, même question), ils reçoivent le même traitement, à quelques points près ; ne punis pas l'un pour ce que tu laisses passer chez l'autre.
+- UNE SŒUR NE JUGE QUE CE QU'ELLE CONNAÎT : elle ne gagne ni ne perd d'affection pour ce qu'elle n'a pas vu, entendu ou reçu (texto, appel). Absente, elle ne sait pas qu'un garçon l'attend, révise seul ou parle à une autre : aucun effet. Une sœur occupée ailleurs qui ne répond pas à un message ne le lui reproche pas (0, pas de malus). Un garçon qui écrit ou appelle poliment une sœur ne « harcèle » pas : tout au plus un léger agacement d'une sœur présente, jamais au-delà de -3.
 - ÉQUITÉ : évalue CHAQUE garçon à chaque tour sur ce qu'il vient de dire, sans figer ton jugement : personne n'est immunisé (un garçon apprécié qui dérape perd quand même) et personne n'est ignoré (une défense ou des excuses sincères et cohérentes comptent, même si la confiance revient lentement).
 ${rows.length?`MÉMOIRE DE CONDUITE (fautes graves relevées par le jeu ; ne les oublie JAMAIS, même longtemps après) :
 ${rows.join("\n")}
@@ -1063,13 +1065,25 @@ function advanceTime(st){
     t=`Une tension éclate entre ${SISTERS[a].name} et ${SISTERS[b].name} (vieille rivalité, vêtement emprunté, dernier dessert, jalousie…) : les garçons présents peuvent s'en mêler, apaiser ou envenimer.`;}
   if(t){st.inject.push("CONFLIT ENTRE SŒURS à mettre en scène ce tour-ci, de façon naturelle et selon leurs caractères : "+t);st.jalCool=5;}
 }
+/* Le récap doit être du texte : si l'IA a quand même répondu en JSON, on garde la narration et les répliques */
+function recapText(t){
+  const m=t.replace(/^```(json)?/i,"").replace(/```$/,"").trim();
+  if(!/^[\[{]/.test(m))return t;
+  try{const o=JSON.parse(m),out=[];
+    const pick=v=>typeof v==="string"?v:v&&typeof v==="object"?(v.sister||v.name?(SISTERS[sisKey(v.sister||v.name)]||{name:v.sister||v.name}).name+" : « "+(v.text||"")+" »":v.text||""):"";
+    ["recap","narration","text","texte"].forEach(k=>{if(typeof o[k]==="string")out.push(o[k]);});
+    (Array.isArray(o.lines)?o.lines:[]).forEach(l=>{const x=pick(l);if(x)out.push(x);});
+    return out.join("\n").trim()||t;
+  }catch(e){return t;}
+}
 /* Fin de partie à plusieurs : récap secret, missions dévoilées, classement et médailles */
 async function finishExtras(st,id){
   if(st.split){
     const sis=transcript(histOfSt(st),"Les sœurs"),txt=((st.sum&&st.sum.text?"RÉSUMÉ DU DÉBUT :\n"+st.sum.text+"\n\n":"")+"DÉROULÉ (scène par scène) :\n"+sis).slice(-14000);
     const system="Tu es le narrateur malicieux d'un jeu de séduction avec les cinq sœurs Nakano. Pendant la partie, les garçons étaient parfois dans des scènes séparées et ne voyaient que la leur. Écris maintenant le RÉCAP SECRET, lu par tous les joueurs à la fin : 6 à 10 phrases vivantes et drôles, en français, qui dévoilent ce qui s'est passé dans les scènes où chacun n'était pas (qui était avec qui, moments forts, gaffes, rumeurs, textos, étapes réussies ou ratées). Commence par « Pendant ce temps… ». Ne parle ni de scores ni de règles. Réponds uniquement par le texte.";
     for(const p of aiOrder()){
-      try{const t=(await rawCall(p,{system,messages:[{role:"user",content:txt}],json:false,max:900,ms:30000})).trim();
+      try{let t=(await rawCall(p,{system,messages:[{role:"user",content:txt}],json:false,max:900,ms:30000})).trim();
+        t=recapText(t);
         if(t.length>60){const L={cls:"evt",text:"🕵️ Le récap secret\n"+t.slice(0,2000)};st.lines.push(L);renderLine(L);break;}}catch(e){}
     }
     if(st.players.some(p=>p.mission))sysLineV(st,"🎯 Missions secrètes — "+st.players.map(p=>p.name+" : « "+(p.mission?p.mission.t:"?")+" » "+(p.mission&&p.mission.done?"✅":"❌")).join(" · "),null);
@@ -1624,7 +1638,14 @@ async function runRound5(st,intro){
       (o.fx||[]).forEach(e=>{if(!e.sister)return;const i=matchPlayer(st,e.player);if(i<0||st.players[i].out)return;
         const key=i+"|"+e.sister,c=acc.get(key)||{i,k:e.sister,delta:0,tooFast:false,why:"",ms:""};
         c.delta+=e.delta;c.tooFast=c.tooFast||e.tooFast;c.why=c.why||e.why;c.ms=c.ms||e.ms;acc.set(key,c);});
-      acc.forEach(c=>{if(dj&&dj.pl.includes(c.i))return;const p=st.players[c.i],r={aff:p.h[c.k],turns:p.turns,ms:p.m[c.k].ms,trial:p.m[c.k].trial},x=score(st,r,c.delta,c.tooFast,false);
+      const knows=(i,k)=>{
+        if((st.groups||[]).some(g=>g.players.includes(i)&&g.sisters.includes(k)))return true;   // même scène avant le tour
+        if(sc.some(c=>c.players.includes(i)&&c.sisters.includes(k)))return true;               // même scène après le tour
+        if((st.smsSent||[]).some(x=>x.i===i&&x.k===k))return true;                              // texto envoyé
+        if((o.texts||[]).some(x=>sisKey(x.sister)===k&&matchPlayer(st,x.player)===i))return true; // texto reçu
+        const pd=st.pending[i]||"";return /^📣/.test(pd)&&pd.includes(SISTERS[k].name);             // appel
+      };
+      acc.forEach(c=>{if(dj&&dj.pl.includes(c.i))return;if(st.split&&!knows(c.i,c.k))return;const p=st.players[c.i],r={aff:p.h[c.k],turns:p.turns,ms:p.m[c.k].ms,trial:p.m[c.k].trial},x=score(st,r,c.delta,c.tooFast,false);
         p.h[c.k]=r.aff;stat(p,c.k,x.d,c.why);if(T&&T.i===c.i&&T.k===c.k)vd={ms:c.ms,spk:c.delta};if(Math.abs(x.d)>Math.abs(best))best=x.d;
         noteConduct(st,c.i,x.d,c.why);
         if(x.d!==0||x.note||c.why)(tagsBy[c.i]=tagsBy[c.i]||[]).push(SISTERS[c.k].name+(multi?" → "+p.name:"")+" : "+(x.d>0?"+":x.d===0?"±":"")+x.d+" ❤"+x.note+(c.why?" ("+c.why+")":""));});
