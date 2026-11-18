@@ -127,7 +127,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v15.2 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v16.0 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -242,6 +242,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
   <p style="text-align:center;margin-top:14px"><button id="helpOk">C'est parti !</button></p>
 </div></div>
 <script src="../commun/reseau.js"></script>
+<script src="variete.js"></script>
 <script>
 const SISTERS = {
   ichika:{name:"Ichika",c:"#d96a8f",ini:"I",tag:"L'aînée, actrice, taquine",
@@ -466,7 +467,7 @@ function sendState(st,b,slot,to){
   const P=slot!=null;
   let lines=P&&!isGhost(st,slot)?st.lines.filter(l=>!l.vis||l.vis.includes(slot)):st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,thr:((st.threads||{})[P?slot:0])||{},cinq:st.cinq,wins:st.wins,duel:st.duel?{kind:st.duel.kind,k:st.duel.k,lv:st.duel.lv,pl:st.duel.pl,open:st.duel.open,ans:Object.fromEntries(Object.keys(st.duel.ans).map(k=>[k,1]))}:null,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,parts:st.parts,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,thr:((st.threads||{})[P?slot:0])||{},cinq:st.cinq,wins:st.wins,duel:st.duel?{kind:st.duel.kind,k:st.duel.k,lv:st.duel.lv,pl:st.duel.pl,open:st.duel.open,ans:Object.fromEntries(Object.keys(st.duel.ans).map(k=>[k,1]))}:null,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<16000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -741,6 +742,7 @@ function rollEvent(st){
   if(!alive.length||alive.some(p=>p.trial)||(!force&&alive.every(p=>p.turns<2)))return;
   if(!force&&st.sinceEv<6&&Math.random()>0.3)return;   // de temps en temps, et au moins tous les 6 tours
   const lvl=Math.max(...alive.map(stageOf)), hide=st.mystery&&!st.revealed;
+  if(st.var){const ve=varEvent(st);if(ve){st.event=ve;st.evCool=1;st.sinceEv=0;if(force){st.unblock=false;st.evForced=true;st.evCool=2;}return;}}
   const build=()=>EVENTS.map((e,i)=>[e,i]).filter(([e,i])=>e.min<=lvl&&(!e.for||(!hide&&e.for.includes(current)))&&!(st.evUsed||[]).includes(i));
   let pool=build();
   if(!pool.length){st.evUsed=[];pool=build();}
@@ -997,7 +999,7 @@ function renderPhone(){
 function noteConduct(st,i,d,why){
   if(d>-6||!st.players[i])return;
   const q=st.qid||0,C=(st.casier=st.casier||{}),L=(C[i]=C[i]||[]),last=L[L.length-1];
-  const when=st.day?"jour "+st.day.n+", "+PARTS[st.day.p].name.toLowerCase():"tour "+(q+1);
+  const when=st.day?"jour "+st.day.n+", "+partsOf(st)[st.day.p].name.toLowerCase():"tour "+(q+1);
   if(last&&last.q===q){if(d<last.d){last.d=d;last.why=why||last.why;}return;}
   L.push({q,d,why:why||"faute grave",when});if(L.length>8)L.shift();
 }
@@ -1036,7 +1038,7 @@ function stat(p,k,x,why){   // statistiques pour les médailles
 }
 function momentTxt(st){
   if(!st.day)return"";
-  const P=PARTS[st.day.p];
+  const P=partsOf(st)[st.day.p];
   return`MOMENT DE LA JOURNÉE : jour ${st.day.n}, « ${P.name} » (${P.hint}). Les lieux et activités doivent correspondre à ce moment.
 `;
 }
@@ -1056,7 +1058,7 @@ function advanceTime(st){
   if(++st.day.k>=len){
     st.day.k=0;
     if(st.day.p===2){bilanJour(st);st.day.n++;st.day.p=0;}else st.day.p++;
-    const P=PARTS[st.day.p];
+    const P=partsOf(st)[st.day.p];
     sysLineV(st,`🕒 Jour ${st.day.n} · ${P.ico} ${P.name}`,null);
     st.inject.push(`CHANGEMENT DE MOMENT (impératif) : on passe à « ${P.name} » du jour ${st.day.n} (${P.hint}). Commence par une courte transition dans la narration (le temps passe, on change de lieu)${st.split?" ; les groupes peuvent se recomposer naturellement":""}.`);
   }
@@ -1092,13 +1094,14 @@ async function finishExtras(st,id){
         t=recapText(t);
         if(t.length>60){const L={cls:"evt",text:"🕵️ Le récap secret\n"+t.slice(0,2000)};st.lines.push(L);renderLine(L);break;}}catch(e){}
     }
+    if(st.var){const V=st.var;sysLineV(st,"🤫 Les secrets de cette partie — "+Object.keys(V.situ).map(k=>SISTERS[k].name+" : "+V.situ[k]+" Aime "+V.gouts[k].aime.join(" et ")+", déteste "+V.gouts[k].deteste[0]+".").join("\n"),null);}
     if(st.players.some(p=>p.mission))sysLineV(st,"🎯 Missions secrètes — "+st.players.map(p=>p.name+" : « "+(p.mission?p.mission.t:"?")+" » "+(p.mission&&p.mission.done?"✅":"❌")).join(" · "),null);
   }
   const K=Object.keys(SISTERS),P=st.players;
   const rank=P.map(p=>{const best=K.slice().sort((a,b)=>p.h[b]-p.h[a])[0],ms=K.reduce((a,k)=>a+(p.m?p.m[k].ms:0),0);
     const avg=Math.round(K.reduce((a,k)=>a+Math.max(0,p.h[k]),0)/K.length),won=K.filter(k=>p.h[k]>=100).length;
     // points = meilleure sœur + moyenne des cinq (être apprécié de toutes compte autant) + étapes + mission + conquêtes
-    return{name:p.name,best,v:p.h[best],avg,ms,mis:p.mission?p.mission.done:null,won,score:p.h[best]+avg+10*ms+(p.mission&&p.mission.done?15:0)+20*won};}).sort((a,b)=>(b.won>0)-(a.won>0)||b.score-a.score);
+    return{name:p.name,best,v:p.h[best],avg,ms,mis:p.mission?p.mission.done:null,won,fd:(p.found||[]).length,score:p.h[best]+avg+10*ms+(p.mission&&p.mission.done?15:0)+20*won+5*(p.found||[]).length};}).sort((a,b)=>(b.won>0)-(a.won>0)||b.score-a.score);
   const med=[],top=(f,cond)=>{const b=P.slice().sort((x,y)=>f(y)-f(x))[0];return b&&cond(f(b))?b:null;};
   P.forEach(p=>{const n=K.filter(k=>p.h[k]>=100).length;if(n>=2)med.push({ico:"👑",t:n===5?"Le cœur des cinq":"Cœur multiple",n:p.name,d:n+" sœurs conquises en même temps"});});
   let b=top(p=>K.reduce((a,k)=>a+p.h[k],0),v=>v>0);if(b)med.push({ico:"💘",t:"Le plus aimé des cinq",n:b.name,d:"le plus d'affection en tout"});
@@ -1166,7 +1169,7 @@ function groupsTxt(st){
 }
 function splitTxt(st,players){
   const L=st.launch&&players[st.launch.i]?(()=>{const P=players[st.launch.i],S=SISTERS[st.launch.k],M=MS[P.m[st.launch.k].ms];if(!M)return"";
-    return`- SCÈNE DE JALON À LANCER MAINTENANT (impératif) : ${P.name} atteint avec ${S.name} l'étape « ${M.name} ». ${M.brief} (« elle » = ${S.name}.) Dans ta réponse, amène ${S.name} et ${P.name} dans une scène où ils sont ensemble, de préférence seuls, par une transition naturelle ; ${S.name} y met en scène l'étape de façon originale, dans un lieu précis, et termine par une question ou une situation décisive à laquelle ${P.name} doit répondre. Personne ne se déclare.
+    return`- SCÈNE DE JALON À LANCER MAINTENANT (impératif) : ${P.name} atteint avec ${S.name} l'étape « ${M.name} ». ${msBrief(st,st.players[st.launch.i],st.launch.k,M)} (« elle » = ${S.name}.) Dans ta réponse, amène ${S.name} et ${P.name} dans une scène où ils sont ensemble, de préférence seuls, par une transition naturelle ; ${S.name} y met en scène l'étape de façon originale, dans un lieu précis, et termine par une question ou une situation décisive à laquelle ${P.name} doit répondre. Personne ne se déclare.
 `;})():"";
   return `MODE SCÈNES SÉPARÉES (très important) : les garçons jouent EN MÊME TEMPS, chacun sur son appareil, et ne sont pas forcément au même endroit. À chaque tour tu reçois leurs réponses simultanées, scène par scène (« [Réponses simultanées…] Scène 1 : • Nom dit : « … » • Nom dit : « … » »), et tu fais avancer TOUTES les scènes d'un coup.
 Scènes en cours :
@@ -1189,7 +1192,7 @@ LES CINQ SŒURS (chacune garde sa voix, son caractère et ses propres réactions
 ${K.map(k=>{const S=SISTERS[k];return`- ${S.name} ("${k}") : ${S.tag}. ${S.bio.split(". ").slice(1,3).join(". ")}. Aime : ${S.likes}. N'aime pas : ${S.dislikes}.`;}).join("\n")}
 
 SITUATION DE DÉPART : ${sc.name}. ${sc.ctx} (Ce texte parle d'« elle » : il vaut pour chacune des cinq sœurs.)
-
+${varTxt(st)}
 AFFECTION ACTUELLE de chaque sœur pour chaque garçon (ne la révèle jamais en chiffres ; elle règle le ton de CHAQUE sœur envers CHAQUE garçon) :
 ${aff}
 ${[...lv].map(i=>`Une sœur à l'étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
@@ -1288,7 +1291,7 @@ function parseAI(text){
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
       cut:o.cut===true,to:String(o.to||"").trim().slice(0,40),
       guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),gto:String(o.guest_to||"").trim().slice(0,40),
-      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,texts:Array.isArray(o.texts)?o.texts.filter(x=>x&&typeof x==="object"):[],duelWinner:String(o.duel_winner||"").trim().slice(0,40),missionsDone:Array.isArray(o.missions_done)?o.missions_done.map(String):[],here:Array.isArray(o.here)?o.here.map(sisKey).filter(Boolean):null,away:o.away&&typeof o.away==="object"&&!Array.isArray(o.away)?Object.fromEntries(Object.entries(o.away).map(([k,v])=>[sisKey(k),v]).filter(([k])=>k)):null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
+      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,texts:Array.isArray(o.texts)?o.texts.filter(x=>x&&typeof x==="object"):[],duelWinner:String(o.duel_winner||"").trim().slice(0,40),missionsDone:Array.isArray(o.missions_done)?o.missions_done.map(String):[],found:Array.isArray(o.secrets_found)?o.secrets_found.filter(x=>x&&typeof x==="object"):[],here:Array.isArray(o.here)?o.here.map(sisKey).filter(Boolean):null,away:o.away&&typeof o.away==="object"&&!Array.isArray(o.away)?Object.fromEntries(Object.entries(o.away).map(([k,v])=>[sisKey(k),v]).filter(([k])=>k)):null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
     return {reply:"…",narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
@@ -1686,6 +1689,8 @@ async function runRound5(st,intro){
     });
     st.groups=sc.map(c=>({place:c.place,players:c.players,sisters:c.sisters}));
     updatePresence(st,o);handleTexts(st,o);
+    varTrack(st,sc.flatMap(c=>c.lines.map(l=>({s:l.s,text:l.text})).concat(c.sisters.length===1&&c.narr?[{s:c.sisters[0],text:c.narr}]:[])));
+    varFound(st,o,matchPlayer,(t,i)=>sysLineV(st,t,[i]));
     st.choices=st.choicesBy[0]||[];st.spk=st.spkBy[0]||st.spk;st.mood=st.moodBy[0]||st.mood;st.timed=0;st.qid=(st.qid||0)+1;
     fx(best);
     if(T&&!intro)resolveTrial5(st,st.players[T.i],vd||{ms:"",spk:0});
@@ -1714,7 +1719,7 @@ async function launchNow(st,id){
   const t=st.launch,P=st.players[t.i],r=P&&P.m&&P.m[t.k];if(!r||r.ms>=4)return;
   const S=SISTERS[t.k],M=MS[r.ms],n=(r.tries[r.ms]||0)+1;
   const w=addMsg("sys","…");
-  st.history.push({role:"user",content:`[JALON, hors tour] Écris UNE courte scène, vue seulement par ${P.name} (les autres garçons continuent leurs scènes : ne les mentionne pas). D'abord une transition douce et naturelle dans "narration" qui amène ${S.name} et ${P.name} à se retrouver, de préférence seuls (elle l'entraîne quelque part, le rejoint, lui envoie un message pour le voir…). Puis ${S.name} met en scène l'étape : ${P.name} atteint avec elle l'étape « ${M.name} » (tentative ${n}). ${M.brief} (« elle » = ${S.name}.) Mets-la en scène de façon originale, dans un lieu précis, selon son caractère${n>1?" ; change complètement de scène par rapport aux tentatives précédentes":""}. ${S.name} parle en DERNIER et termine par une question ou une situation décisive, claire, à laquelle ${P.name} doit répondre. Personne ne se déclare.
+  st.history.push({role:"user",content:`[JALON, hors tour] Écris UNE courte scène, vue seulement par ${P.name} (les autres garçons continuent leurs scènes : ne les mentionne pas). D'abord une transition douce et naturelle dans "narration" qui amène ${S.name} et ${P.name} à se retrouver, de préférence seuls (elle l'entraîne quelque part, le rejoint, lui envoie un message pour le voir…). Puis ${S.name} met en scène l'étape : ${P.name} atteint avec elle l'étape « ${M.name} » (tentative ${n}). ${msBrief(st,P,t.k,M)} (« elle » = ${S.name}.) Mets-la en scène de façon originale, dans un lieu précis, selon son caractère${n>1?" ; change complètement de scène par rapport aux tentatives précédentes":""}. ${S.name} parle en DERNIER et termine par une question ou une situation décisive, claire, à laquelle ${P.name} doit répondre. Personne ne se déclare.
 Réponds en JSON : {"place":"lieu court","narration":"…","lines":[{"sister":"${t.k}","to":"${P.name}","mood":"un mot","text":"…"}],"choices":[],"effects":[]}`});
   try{
     const raw=await callAI(id,st.history);
@@ -1765,7 +1770,7 @@ async function sceneJalon5(st,id,t,hraw,speaker){
   st.history.push({role:"user",content:`[JALON] Écris UN SEUL message (pas deux) qui, dans l'ordre :
 1) fait d'abord réagir brièvement la ou les sœurs concernées à ce que ${speaker} vient de dire (premières lignes de "lines"), comme d'habitude ;
 2) enchaîne par une petite transition douce et naturelle dans "narration" qui amène ${S.name} et ${pl.name} à se retrouver pour cette scène (les autres sœurs s'éclipsent, restent en retrait ou observent, selon ce qui est logique) : la conversation ne doit pas être coupée net ;
-3) ${S.name} met en scène l'étape : ${pl.name} atteint avec elle l'étape « ${m.name} » (tentative ${n}). ${m.brief} (« elle » = ${S.name}.) Mets-la en scène de façon originale, dans un lieu précis, selon le caractère de ${S.name} et son niveau de relation avec ${pl.name}${n>1?" ; change complètement de scène par rapport aux tentatives précédentes":""}.
+3) ${S.name} met en scène l'étape : ${pl.name} atteint avec elle l'étape « ${m.name} » (tentative ${n}). ${msBrief(st,pl,t.k,m)} (« elle » = ${S.name}.) Mets-la en scène de façon originale, dans un lieu précis, selon le caractère de ${S.name} et son niveau de relation avec ${pl.name}${n>1?" ; change complètement de scène par rapport aux tentatives précédentes":""}.
 ${S.name} parle en DERNIER et termine par une question ou une situation décisive à laquelle ${pl.name} doit répondre. Personne ne se déclare. effects = [], timed = false.`});
   try{
     const raw=await callAI(id,st.history);
@@ -2020,7 +2025,7 @@ function updateBar5(st,el){
   const multi=st.players.length>1,K=Object.keys(SISTERS);
   const head=document.createElement("div"),b=document.createElement("b");b.textContent="👭 Les cinq sœurs";
   const me=mySlot(),place=st.split?(net.role==="guest"?st.place:(st.placeBy||[])[0]):"";
-  const sm=document.createElement("small");sm.textContent=(st.day?" · "+PARTS[st.day.p].ico+" Jour "+st.day.n+", "+PARTS[st.day.p].name.toLowerCase():"")+(place?" · 📍 "+place:"")+(st.spk&&SISTERS[st.spk]?" · "+SISTERS[st.spk].name+(st.mood?" "+st.mood:""):"");
+  const sm=document.createElement("small");sm.textContent=(st.day?" · "+partsOf(st)[st.day.p].ico+" Jour "+st.day.n+", "+partsOf(st)[st.day.p].name.toLowerCase():"")+(place?" · 📍 "+place:"")+(st.spk&&SISTERS[st.spk]?" · "+SISTERS[st.spk].name+(st.mood?" "+st.mood:""):"");
   head.append(b,sm);el.appendChild(head);
   const pres=net.role==="guest"?st.pres:presenceFor(st,0);
   if(pres){
@@ -2099,6 +2104,7 @@ function showScenarios(id){
       const c5=id==="cinq",sp=c5&&mode===3&&net.guests.length>0;
       state[id]={cinq:c5,players:names.map(n=>({name:n,aff:chosen.aff,turns:0,out:false,ms:c5?4:msStart(chosen.aff),trial:0,tries:[0,0,0,0],...(c5?{stats:{worst:null,sms:0,rum:0},dayStart:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),h:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,chosen.aff])),m:Object.fromEntries(Object.keys(SISTERS).map(k=>[k,{ms:msStart(chosen.aff),trial:0,tries:[0,0,0,0]}]))}:{})})),inject:[],event:null,evCool:2,evUsed:[],form:null,lastForm:[],choices:[],cur:firstPlayer(names.length),history:[],over:false,mood:"",lines:[],sc:chosen,winner:null,mystery:mys&&!c5,revealed:false,wrong:[],sim:sp||(!c5&&mode===3&&$("simChk").checked),split:sp,...(c5&&names.length>1?{day:{n:1,p:chosen.id==="tuteur"?1:0,k:0},jalCool:4}:{}),ghostCd:names.map(()=>0),ghostMsg:names.map(()=>""),groups:[{place:"",players:names.map((n,i)=>i),sisters:Object.keys(SISTERS)}],answered:names.map(()=>false),pending:names.map(()=>null),qid:0,timed:0,cutCool:c5?1e9:3,passRow:0,passNote:[],silent:0,lastGuest:""};
       if(sp)newMissions(names.length).forEach((m,i)=>{state[id].players[i].mission=m;});
+      if(c5){state[id].var=newVariete();const C=cadreOf(state[id]);if(C&&C.parts)state[id].parts=C.parts;}
       $("scen").classList.add("hidden");enterGame(id);
     };
     $("scGrid").appendChild(d);
@@ -2114,7 +2120,8 @@ function enterGame(id){
   addMsg("sys",`${st.sc.ico} ${st.sc.name} — ${st.sc.diff}`+(multi?` · ${namesOf(st.players)}`:""));
   st.lines.forEach(renderLine);
   if(!st.over&&st.history.length===0&&multi&&!st.sim)sysLine(st,"🎲 "+st.players[st.cur].name+" commence.");
-  if(!st.over&&st.history.length===0&&st.day){const P=PARTS[st.day.p];sysLine(st,`🕒 Jour 1 · ${P.ico} ${P.name}`);}
+  if(!st.over&&st.history.length===0&&st.var){const C=cadreOf(st);if(C)sysLine(st,"🗺️ Cadre de la partie : "+C.ico+" "+C.name);}
+  if(!st.over&&st.history.length===0&&st.day){const P=partsOf(st)[st.day.p];sysLine(st,`🕒 Jour 1 · ${P.ico} ${P.name}`);}
   if(!st.over&&st.history.length===0&&st.split)st.players.forEach((p,i)=>{if(p.mission)sysLineV(st,"🎯 Ta mission secrète (personne d'autre ne la connaît) : « "+p.mission.t+" ». Réussie = +15 points au classement final.",[i]);});
   updateBar();
   if(st.over) showEnd(st);
@@ -2237,7 +2244,7 @@ async function turn(userText,hidden,kind){
     if(duelNew){const o2=await sceneDuel(st,id,duelNew,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
     else if(due){const o2=st.cinq?await sceneJalon5(st,id,due,hraw,multi?pl.name:"le garçon"):await sceneJalon(st,id,due,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
     const [L0,m]=pushAI(st,shown);
-    if(st.cinq)handleTexts(st,o);
+    if(st.cinq){handleTexts(st,o);varTrack(st,(o.lines5||[]).map(l=>({s:l.s,text:l.text})));varFound(st,o,matchPlayer,t=>sysLineV(st,t,null));}
     if(eff&&eff.tags.length){
       const sp=document.createElement("span");sp.className="delta";
       sp.style.color=eff.sum>=0?"#2fa35a":"#d64545";const blk=multi||st.cinq;sp.textContent=eff.tags.join(blk?"\n":" · ");if(blk&&eff.tags.length>1)sp.classList.add("bloc");
@@ -2343,11 +2350,11 @@ function showEnd(st){
     const fz=document.createElement("div");fz.style.cssText="text-align:left;font-weight:400;margin:4px auto 12px;max-width:460px";
     const h=document.createElement("b");h.textContent="🏆 Classement";fz.appendChild(h);
     const ol=document.createElement("ol");ol.style.margin="4px 0 10px";
-    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+(r.won>1?r.won+" sœurs conquises":(r.won?"👑 ":"")+SISTERS[r.best].name+" "+r.v+" %")+(r.avg!=null?", moyenne "+r.avg+" %":"")+", "+r.ms+" étape"+(r.ms>1?"s":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
+    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+(r.won>1?r.won+" sœurs conquises":(r.won?"👑 ":"")+SISTERS[r.best].name+" "+r.v+" %")+(r.avg!=null?", moyenne "+r.avg+" %":"")+", "+r.ms+" étape"+(r.ms>1?"s":"")+(r.fd?", "+r.fd+" goût"+(r.fd>1?"s":"")+" secret"+(r.fd>1?"s":"")+" 🔍":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
     fz.appendChild(ol);
     const ex=document.createElement("small");ex.className="hint";ex.style.cssText="display:block;margin:-6px 0 10px";
     if(st.taken&&st.taken.length){const tk=document.createElement("small");tk.className="hint";tk.style.cssText="display:block;margin:-6px 0 4px";tk.textContent="💞 Couples déjà formés : "+st.taken.map(t=>SISTERS[t.k].name+" et "+(st.players[t.i]||{name:"?"}).name).join(", ");fz.appendChild(tk);}
-    ex.textContent="Points = meilleure sœur + moyenne des cinq + 10 par étape + 15 si mission réussie + 20 par sœur conquise. Qui a conquis une sœur passe devant.";fz.appendChild(ex);
+    ex.textContent="Points = meilleure sœur + moyenne des cinq + 10 par étape + 15 si mission réussie + 20 par sœur conquise + 5 par goût secret découvert. Qui a conquis une sœur passe devant.";fz.appendChild(ex);
     if(st.final.med.length){const h2=document.createElement("b");h2.textContent="🏅 Médailles";fz.appendChild(h2);
       const ul=document.createElement("ul");ul.style.margin="4px 0";
       st.final.med.forEach(m=>{const li=document.createElement("li");li.textContent=m.ico+" "+m.t+" : "+m.n+" ("+m.d+")";ul.appendChild(li);});fz.appendChild(ul);}
