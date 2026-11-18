@@ -46,8 +46,9 @@
 
   function ordre(c){
     const o = [];
-    // principale, secours, puis les IA gratuites, Claude (payant) en tout dernier
-    [c.primary, c.fallback, "gemini", "groq", "mistral", "openrouter", "anthropic"].forEach(p => { if(utilisable(c, p) && !o.includes(p)) o.push(p); });
+    // principale, secours, puis les IA gratuites, Claude ; Gemini (payant) toujours en tout dernier
+    [c.primary, c.fallback, "groq", "mistral", "openrouter", "anthropic"].forEach(p => { if(p !== "gemini" && utilisable(c, p) && !o.includes(p)) o.push(p); });
+    if(utilisable(c, "gemini")) o.push("gemini");
     return o;
   }
   const disponible = () => ordre(config()).length > 0;

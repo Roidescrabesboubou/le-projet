@@ -301,8 +301,8 @@ function saveCfg(){store.set("cfg2",JSON.stringify({keys:cfg.keys,models:cfg.mod
 const usable=p=>!!(p&&PROVIDERS[p]&&cfg.keys[p]);
 const provModel=p=>cfg.models[p]||PROVIDERS[p].model;
 const provName=p=>PROVIDERS[p].short+" ("+provModel(p)+")";
-const CHAIN=["gemini","groq","mistral","openrouter","anthropic"];   // ordre du relais : gratuits d'abord, Claude (payant) en dernier
-function aiOrder(){const out=[];[cfg.active,cfg.primary,cfg.fallback,...CHAIN].forEach(p=>{if(usable(p)&&!out.includes(p))out.push(p);});return out;}
+const CHAIN=["gemini","groq","mistral","openrouter","anthropic"];   // ordre du relais : gratuits d'abord, puis Claude ; Gemini (payant) toujours en dernier (aiOrder)
+function aiOrder(){const out=[];[cfg.active,cfg.primary,cfg.fallback,...CHAIN].forEach(p=>{if(p!=="gemini"&&usable(p)&&!out.includes(p))out.push(p);});if(usable("gemini"))out.push("gemini");return out;}   // Gemini (payant) toujours en dernier
 const state = {}; // par soeur : {aff, history, turns, over}
 let current = null, busy = false;
 

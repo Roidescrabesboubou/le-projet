@@ -48,7 +48,7 @@ L'état et les catégories choisis dans le panel admin passent avant le code.
 
 ## Choix techniques (essentiel)
 - **Firebase** (`salle-de-jeux-249d2`) : comptes, classements (semaine remise à zéro le lundi 0 h heure de Paris + tous les temps), séries, médailles, groupes, jetons, état des jeux. Joueurs sans compte = identité anonyme (`Compte.anonyme()`, écriture via `Classement.ecrireMoi`).
-- **IA** (`ia.js`) : appels depuis le navigateur avec la clé du joueur. Gemini principal (gemini-3.1-flash-lite conseillé, relais 3.5-flash-lite puis 3.6-flash), Claude Haiku 5.5 en secours, OpenRouter (Gemma 4) et Groq (gpt-oss-120b). Relais pour un seul message ; JSON coupé = redemandé. Jeux `ia: true` réservés aux comptes autorisés (sauf invités par lien de salle).
+- **IA** (`ia.js`) : appels depuis le navigateur avec la clé du joueur. Ordre du relais : IA principale et secours des Réglages, puis Groq, Mistral, OpenRouter, Claude Haiku 5.5, et **Gemini toujours en dernier** (c’est le seul payé ; `ordre` dans ia.js et `aiOrder` des Quintuplées). Gemini : gemini-3.1-flash-lite conseillé, relais 3.5-flash-lite puis 3.6-flash, OpenRouter (Gemma 4) et Groq (gpt-oss-120b). Relais pour un seul message ; JSON coupé = redemandé. Jeux `ia: true` réservés aux comptes autorisés (sauf invités par lien de salle).
 - **En ligne** (`reseau.js`) : relais MQTT public HiveMQ → Mosquitto → EMQX (EMQX en dernier : perd des messages en temps réel ; code en 1). L'hôte fait tourner la partie. Serveur Cloudflare pour le temps réel (`Reseau.creer(jeu, {serveur: true})`, codes en 9, branché : Sumo) ; essai local `localStorage.salle_serveur = "ws://localhost:8787"` + config « serveur » de launch.json ; déployer : `npx.cmd wrangler deploy` dans `serveur/`. WebRTC de l'Arène coupé (`DIRECT = false`).
 - **Casino** : un portefeuille par jeu, 1 000 jetons au départ, 500 le lendemain sous 50, rien d'autre.
 - **Défis du jour** : utiliser `Base.jour`, `Base.rng`, `Base.melanger`, `Base.avantMinuit`, `Base.partager`. Ne jamais changer une date de départ ou une graine.
@@ -66,5 +66,5 @@ L'état et les catégories choisis dans le panel admin passent avant le code.
 - Caché : `geoguessr`
 
 ## Dette technique (à traiter quand on touche ces jeux)
-- `quintuplees` a encore son propre code IA : à migrer vers `ia.js`.
+- `quintuplees` garde son propre code IA (migration vers `ia.js` écartée) : tout changement de fournisseur est à faire dans ia.js ET dans les Quintuplées.
 - `quiz`, `dessin`, `telephone`, `blindtest` : propre protocole et propre thème ; passer sur `base.css` demande de revoir leur style (`.btn`, `.ghost`, `.row`, `.hidden` en conflit).
