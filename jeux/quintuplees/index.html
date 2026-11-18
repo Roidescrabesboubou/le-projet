@@ -127,7 +127,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v16.0 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v16.1 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -243,6 +243,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
 </div></div>
 <script src="../commun/reseau.js"></script>
 <script src="variete.js"></script>
+<script src="drame.js"></script>
 <script>
 const SISTERS = {
   ichika:{name:"Ichika",c:"#d96a8f",ini:"I",tag:"L'aînée, actrice, taquine",
@@ -467,7 +468,7 @@ function sendState(st,b,slot,to){
   const P=slot!=null;
   let lines=P&&!isGhost(st,slot)?st.lines.filter(l=>!l.vis||l.vis.includes(slot)):st.lines.slice(), m;
   for(;;){
-    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,parts:st.parts,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,thr:((st.threads||{})[P?slot:0])||{},cinq:st.cinq,wins:st.wins,duel:st.duel?{kind:st.duel.kind,k:st.duel.k,lv:st.duel.lv,pl:st.duel.pl,open:st.duel.open,ans:Object.fromEntries(Object.keys(st.duel.ans).map(k=>[k,1]))}:null,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
+    m={t:"state",seq:++net.seq,sid:current,busy:!!b,...(to?{to}:{}),st:{split:st.split,pres:st.cinq?presenceFor(st,P?slot:0):null,place:P&&st.placeBy?st.placeBy[slot]||"":"",players:st.players.map((p,i)=>({name:p.name,aff:p.aff,out:p.out,dead:p.dead,arrested:p.arrested,expelled:p.expelled,ms:p.ms,trial:p.trial,turns:p.turns,h:p.h,m:p.m,mission:!P||i===slot?p.mission:null})),day:st.day,parts:st.parts,final:st.final,ghost:P?{cd:(st.ghostCd||[])[slot]||0,sent:!!(st.ghostMsg||[])[slot]}:null,thr:((st.threads||{})[P?slot:0])||{},cinq:st.cinq,wins:st.wins,duel:st.duel?{kind:st.duel.kind,k:st.duel.k,lv:st.duel.lv,pl:st.duel.pl,open:st.duel.open,ans:Object.fromEntries(Object.keys(st.duel.ans).map(k=>[k,1]))}:null,spk:P&&st.spkBy?st.spkBy[slot]:st.spk,winSis:st.winSis,cur:st.cur,over:st.over,mood:P&&st.moodBy?st.moodBy[slot]:st.mood,lines,sc:{id:st.sc.id,ico:st.sc.ico,name:st.sc.name,diff:st.sc.diff},winner:st.winner,choices:P&&st.choicesBy?st.choicesBy[slot]||[]:st.choices||[],timed:st.timed,qid:st.qid,sim:st.sim,answered:st.answered,passRow:st.passRow||0,mystery:st.mystery,revealed:st.revealed,wrong:st.wrong}};
     if(JSON.stringify(m).length<16000||lines.length<2)break;
     net.seq--;lines=lines.slice(1);
   }
@@ -1031,7 +1032,7 @@ function newMissions(n){
   return Array.from({length:n},(_,i)=>{const a=K[Math.floor(Math.random()*5)];let b;do{b=K[Math.floor(Math.random()*5)];}while(b===a);
     return{t:pool[i%pool.length].replace("{A}",SISTERS[a].name).replace("{B}",SISTERS[b].name).replace(/\bque ([AEIOU])/g,"qu'$1").replace(/\bde ([AEIOU])/g,"d'$1"),done:false};});
 }
-const isGhost=(st,i)=>!!(st&&st.split&&st.players[i]&&st.players[i].out&&!st.over);
+const isGhost=(st,i)=>!!(st&&st.split&&st.players[i]&&st.players[i].out&&!st.players[i].expelled&&!st.players[i].arrested&&!st.over);
 function stat(p,k,x,why){   // statistiques pour les médailles
   p.stats=p.stats||{worst:null,sms:0,rum:0};
   if(x<0&&(!p.stats.worst||x<p.stats.worst.d))p.stats.worst={d:x,why:why||"",k};
@@ -1095,13 +1096,14 @@ async function finishExtras(st,id){
         if(t.length>60){const L={cls:"evt",text:"🕵️ Le récap secret\n"+t.slice(0,2000)};st.lines.push(L);renderLine(L);break;}}catch(e){}
     }
     if(st.var){const V=st.var;sysLineV(st,"🤫 Les secrets de cette partie — "+Object.keys(V.situ).map(k=>SISTERS[k].name+" : "+V.situ[k]+" Aime "+V.gouts[k].aime.join(" et ")+", déteste "+V.gouts[k].deteste[0]+".").join("\n"),null);}
+    if(st.crimes&&st.crimes.length)sysLineV(st,"🔪 Les crimes de cette partie — "+st.crimes.map(c=>(st.players[c.i]||{name:"?"}).name+" a tué "+c.vn+(c.found?" (démasqué)":" : jamais découvert ! Corps : "+(c.body||"jamais déplacé")+", soupçons "+c.susp+"/100")).join("\n"),null);
     if(st.players.some(p=>p.mission))sysLineV(st,"🎯 Missions secrètes — "+st.players.map(p=>p.name+" : « "+(p.mission?p.mission.t:"?")+" » "+(p.mission&&p.mission.done?"✅":"❌")).join(" · "),null);
   }
   const K=Object.keys(SISTERS),P=st.players;
   const rank=P.map(p=>{const best=K.slice().sort((a,b)=>p.h[b]-p.h[a])[0],ms=K.reduce((a,k)=>a+(p.m?p.m[k].ms:0),0);
     const avg=Math.round(K.reduce((a,k)=>a+Math.max(0,p.h[k]),0)/K.length),won=K.filter(k=>p.h[k]>=100).length;
     // points = meilleure sœur + moyenne des cinq (être apprécié de toutes compte autant) + étapes + mission + conquêtes
-    return{name:p.name,best,v:p.h[best],avg,ms,mis:p.mission?p.mission.done:null,won,fd:(p.found||[]).length,score:p.h[best]+avg+10*ms+(p.mission&&p.mission.done?15:0)+20*won+5*(p.found||[]).length};}).sort((a,b)=>(b.won>0)-(a.won>0)||b.score-a.score);
+    return{name:p.name,best,v:p.h[best],avg,ms,mis:p.mission?p.mission.done:null,won,fd:(p.found||[]).length,bad:p.killer?"🔪 meurtrier":p.expelled?"⛔ exclu":"",score:p.h[best]+avg+10*ms+(p.mission&&p.mission.done?15:0)+20*won+5*(p.found||[]).length};}).sort((a,b)=>(!!a.bad-!!b.bad)||(b.won>0)-(a.won>0)||b.score-a.score);
   const med=[],top=(f,cond)=>{const b=P.slice().sort((x,y)=>f(y)-f(x))[0];return b&&cond(f(b))?b:null;};
   P.forEach(p=>{const n=K.filter(k=>p.h[k]>=100).length;if(n>=2)med.push({ico:"👑",t:n===5?"Le cœur des cinq":"Cœur multiple",n:p.name,d:n+" sœurs conquises en même temps"});});
   let b=top(p=>K.reduce((a,k)=>a+p.h[k],0),v=>v>0);if(b)med.push({ico:"💘",t:"Le plus aimé des cinq",n:b.name,d:"le plus d'affection en tout"});
@@ -1118,6 +1120,8 @@ function presenceFor(st,slot){
   const g=st.split?(st.groups||[]).find(x=>x.players.includes(slot)):null;
   const mine=st.split?(g?g.sisters:[]):(st.here||K);
   K.forEach(k=>{
+    const D=isDead(st,k)?deadOf(st,k):null;
+    if(D){out[k]=D.found||(D.kn||[]).includes(slot)?{s:"dead"}:{s:"far",place:"introuvable"};return;}
     if(mine.includes(k))out[k]={s:"here"};
     else if(st.split&&(st.groups||[]).some(x=>x.sisters.includes(k)))out[k]={s:"other"};
     else out[k]={s:aw[k]&&aw[k].far?"far":"near",place:(aw[k]&&aw[k].place)||""};
@@ -1153,7 +1157,7 @@ Quand un garçon accomplit VRAIMENT le sien (de façon claire et méritée, pas 
 function presTxt(st){
   const K=Object.keys(SISTERS),aw=st.away||{};
   const where=k=>st.split?((st.groups||[]).findIndex(g=>g.sisters.includes(k))):-2;
-  const lst=K.map(k=>{const w=where(k);
+  const lst=K.map(k=>{const w=where(k);if(isDead(st,k))return SISTERS[k].name+" : MORTE";
     if(st.split?w>=0:(st.here||K).includes(k))return SISTERS[k].name+" : "+(st.split?"scène "+(w+1):"présente");
     const a=aw[k]||{};return SISTERS[k].name+" : absente"+(a.place?" ("+a.place+")":"")+(a.far?", HORS DE PORTÉE":", à portée");}).join(" ; ");
   return `PRÉSENCE DES SŒURS (très important, le jeu l'affiche aux joueurs) : ${lst}.
@@ -1192,7 +1196,7 @@ LES CINQ SŒURS (chacune garde sa voix, son caractère et ses propres réactions
 ${K.map(k=>{const S=SISTERS[k];return`- ${S.name} ("${k}") : ${S.tag}. ${S.bio.split(". ").slice(1,3).join(". ")}. Aime : ${S.likes}. N'aime pas : ${S.dislikes}.`;}).join("\n")}
 
 SITUATION DE DÉPART : ${sc.name}. ${sc.ctx} (Ce texte parle d'« elle » : il vaut pour chacune des cinq sœurs.)
-${varTxt(st)}
+${varTxt(st)}${dramaTxt(st,players)}
 AFFECTION ACTUELLE de chaque sœur pour chaque garçon (ne la révèle jamais en chiffres ; elle règle le ton de CHAQUE sœur envers CHAQUE garçon) :
 ${aff}
 ${[...lv].map(i=>`Une sœur à l'étape « ${STAGES[i].name} » : ${STAGES[i].g}`).join("\n")}
@@ -1227,11 +1231,11 @@ ${momentTxt(st)}${st.split?splitTxt(st,players):""}${presTxt(st)}${extraTxt(st,p
 - Réponds en français. "narration" = voix du narrateur, 3e personne, présent, 0 à 3 phrases (décor, gestes, réactions muettes des sœurs, événements). Dans "lines", "text" = UNIQUEMENT les paroles de la sœur, 1 à 3 phrases, sans astérisques ni description de gestes. N'invente pas de paroles pour les garçons.
 - Ce n'est pas un interrogatoire : réactions, anecdotes, taquineries entre sœurs. ${st.split?"Dans chaque scène, au plus UNE question par garçon, et chaque garçon de la scène doit pouvoir répondre quelque chose.":"AU PLUS UNE question au garçon dans tout le message (posée de préférence par la dernière sœur qui parle)."}
 - Les questions simples (goûts, A ou B) se posent avec 2 à 4 options courtes dans choices (« Je … »), aucune évidemment « la bonne » ; sinon choices = [].
-- Ne sors jamais du personnage, ne mentionne ni IA ni règles ni scores. Contenu tout public.
+- Ne sors jamais du personnage, ne mentionne ni IA ni règles ni scores. Aucun contenu sexuel. La violence n'apparaît que dans les cas extrêmes (voir VIOLENCE ET MORT), racontée sobrement, sans gore.
 
 FORMAT DE SORTIE : uniquement un objet JSON valide, sans texte autour :
-${st.split&&!st.over?`{"scenes":[{"players":["Prénom"],"place":"lieu court","sisters":["nino"],"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"choices":[]}],"away":{"miku":{"place":"sa chambre","far":false}},"texts":[],"effects":[],"missions_done":[]${st.duel?',"duel_winner":""':''},"stalled":false}
-(scenes : la situation APRÈS ce tour, une entrée par endroit : où est chaque garçon, avec quelles sœurs, et ce qui s'y passe. TOUS les garçons encore en jeu y figurent, chacun dans une seule scène. lines : 0 à 5 sœurs par scène, selon la situation. choices : options pour les garçons de cette scène, ou [].)`:`{"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"here":["ichika","nino","miku","yotsuba","itsuki"],"away":{},"texts":[],"effects":[],"choices":[]${st.duel?',"duel_winner":""':''},"stalled":false,"timed":false}
+${st.split&&!st.over?`{"scenes":[{"players":["Prénom"],"place":"lieu court","sisters":["nino"],"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"choices":[]}],"away":{"miku":{"place":"sa chambre","far":false}},"texts":[],"effects":[],"deaths":[]${(st.crimes||[]).some(c=>!c.found)?',"crimes":[]':''},"missions_done":[]${st.duel?',"duel_winner":""':''},"stalled":false}
+(scenes : la situation APRÈS ce tour, une entrée par endroit : où est chaque garçon, avec quelles sœurs, et ce qui s'y passe. TOUS les garçons encore en jeu y figurent, chacun dans une seule scène. lines : 0 à 5 sœurs par scène, selon la situation. choices : options pour les garçons de cette scène, ou [].)`:`{"narration":"voix du narrateur ou \\"\\"","lines":[{"sister":"nino","to":"Prénom, tous ou une sœur","mood":"un mot-émotion","text":"ce qu'elle dit"}],"here":["ichika","nino","miku","yotsuba","itsuki"],"away":{},"texts":[],"effects":[],"deaths":[]${(st.crimes||[]).some(c=>!c.found)?',"crimes":[]':''},"choices":[]${st.duel?',"duel_winner":""':''},"stalled":false,"timed":false}
 (lines : 1 à 5 sœurs PRÉSENTES selon la situation, dans l'ordre où elles parlent ; "sister" parmi ichika, nino, miku, yotsuba, itsuki. here : les sœurs présentes dans la scène après ce message ; away : les absentes, avec lieu et far.)`}`;
 }
 
@@ -1291,7 +1295,7 @@ function parseAI(text){
       choices:(a=>a.length>=2?a:[])(Array.isArray(o.choices)?o.choices.map(c=>String(c).trim().slice(0,90)).filter(Boolean).slice(0,4):[]),
       cut:o.cut===true,to:String(o.to||"").trim().slice(0,40),
       guest:SISTERS[String(o.guest||"").toLowerCase()]?String(o.guest).toLowerCase():"",gline:String(o.guest_line||"").replace(/\*/g,"").slice(0,300),gto:String(o.guest_to||"").trim().slice(0,40),
-      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,texts:Array.isArray(o.texts)?o.texts.filter(x=>x&&typeof x==="object"):[],duelWinner:String(o.duel_winner||"").trim().slice(0,40),missionsDone:Array.isArray(o.missions_done)?o.missions_done.map(String):[],found:Array.isArray(o.secrets_found)?o.secrets_found.filter(x=>x&&typeof x==="object"):[],here:Array.isArray(o.here)?o.here.map(sisKey).filter(Boolean):null,away:o.away&&typeof o.away==="object"&&!Array.isArray(o.away)?Object.fromEntries(Object.entries(o.away).map(([k,v])=>[sisKey(k),v]).filter(([k])=>k)):null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
+      lines5,scenes:Array.isArray(o.scenes)?o.scenes:null,texts:Array.isArray(o.texts)?o.texts.filter(x=>x&&typeof x==="object"):[],duelWinner:String(o.duel_winner||"").trim().slice(0,40),missionsDone:Array.isArray(o.missions_done)?o.missions_done.map(String):[],deaths:Array.isArray(o.deaths)?o.deaths:[],crimes:Array.isArray(o.crimes)?o.crimes:(o.crime&&typeof o.crime==="object"?[o.crime]:[]),expelled:Array.isArray(o.expelled)?o.expelled.map(String):(typeof o.expelled==="string"&&o.expelled?[o.expelled]:[]),found:Array.isArray(o.secrets_found)?o.secrets_found.filter(x=>x&&typeof x==="object"):[],here:Array.isArray(o.here)?o.here.map(sisKey).filter(Boolean):null,away:o.away&&typeof o.away==="object"&&!Array.isArray(o.away)?Object.fromEntries(Object.entries(o.away).map(([k,v])=>[sisKey(k),v]).filter(([k])=>k)):null,fx:Array.isArray(o.effects)?o.effects.filter(e=>e&&(e.player||e.sister)).map(e=>({player:String(e.player||"").trim(),sister:sisKey(e.sister),delta:cl(e.delta!==undefined?e.delta:e.affection_delta,-15,15),tooFast:e.too_fast===true,ms:String(e.milestone||"").toLowerCase(),why:String(e.why||"").trim().slice(0,60)})):null,
       res:Array.isArray(o.results)?o.results.map(r=>({delta:cl(r&&r.affection_delta,-15,15),tooFast:!!(r&&r.too_fast),ms:String((r&&r.milestone)||"").toLowerCase()})):null};
   }catch(e){
     return {reply:"…",narr:"",delta:0,mood:"",tooFast:false,why:"",stalled:false,choices:[],fx:null,res:null};
@@ -1328,6 +1332,7 @@ async function rawCall(prov,{system,messages,json=true,max=1400,ms=45000,model})
     let r=await send(),j=await r.json().catch(()=>({}));
     if(!r.ok&&r.status===400&&gc.thinkingConfig&&/think/i.test(JSON.stringify(j))){delete gc.thinkingConfig;r=await send();j=await r.json().catch(()=>({}));}
     if(!r.ok)throw apiErr(r,j);
+    if(j.promptFeedback?.blockReason||/SAFETY|PROHIBITED|BLOCKLIST|SPII/.test(j.candidates?.[0]?.finishReason||"")){const e=new Error("contenu refusé");e.blocked=true;throw e;}
     return j.candidates?.[0]?.content?.parts?.filter(p=>!p.thought).map(p=>p.text).join("")||"";
   }
   if(prov==="anthropic"){
@@ -1335,6 +1340,7 @@ async function rawCall(prov,{system,messages,json=true,max=1400,ms=45000,model})
       body:JSON.stringify({model,max_tokens:max,system,messages:msgs})},ms);
     const j=await r.json().catch(()=>({}));
     if(!r.ok)throw apiErr(r,j);
+    if(j.stop_reason==="refusal"){const e=new Error("contenu refusé");e.blocked=true;throw e;}
     return(j.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
   }
   const body={model,temperature:json?1:0.3,messages:[{role:"system",content:system},...msgs]};
@@ -1441,7 +1447,7 @@ async function callAI(id, history){
         compactLater(st,id);
         return raw;
       }catch(e){
-        last=e;if(a>=tries)break;
+        last=e;if(a>=tries||e.blocked)break;   // refus de l'IA : inutile de réessayer le même fournisseur
         if(models.length>1){   // autre modèle Gemini : pas d'attente, sauf clé refusée
           if(e.status===401||e.status===403||/API key not valid|invalid api key/i.test(String(e.message)))break;
           continue;
@@ -1456,6 +1462,7 @@ async function callAI(id, history){
     if(k<order.length-1)addMsg("sys","⚠️ "+name+" indisponible ("+shortErr(last)+") → relais vers "+PROVIDERS[order[k+1]].short+"…");
   }
   }finally{clearInterval(iv);tick.remove();}
+  if(errs.some(x=>/contenu refusé/.test(x))){const e=new Error("L'IA refuse d'écrire la suite de ce message (trop violent ou choquant pour elle) : reformulez-le autrement.");e.blocked=true;throw e;}
   throw new Error(errs.join(" · "));
 }
 
@@ -1639,7 +1646,7 @@ async function runRound5(st,intro){
   const wait=addMsg("sys","…");
   try{
     const raw=await callAI(id,st.history);
-    const o=parseAI(raw),sc=scenesOf(st,o);
+    const o=parseAI(raw);dropDead(st,o);const sc=scenesOf(st,o);
     if(!sc.some(c=>c.lines.length||c.narr))throw new Error("Réponse illisible de l'IA");
     st.history.push({role:"assistant",content:raw});wait.remove();
     // notation : tout le monde a parlé en même temps
@@ -1691,6 +1698,7 @@ async function runRound5(st,intro){
     updatePresence(st,o);handleTexts(st,o);
     varTrack(st,sc.flatMap(c=>c.lines.map(l=>({s:l.s,text:l.text})).concat(c.sisters.length===1&&c.narr?[{s:c.sisters[0],text:c.narr}]:[])));
     varFound(st,o,matchPlayer,(t,i)=>sysLineV(st,t,[i]));
+    if(!intro)handleDrama(st,o);
     st.choices=st.choicesBy[0]||[];st.spk=st.spkBy[0]||st.spk;st.mood=st.moodBy[0]||st.mood;st.timed=0;st.qid=(st.qid||0)+1;
     fx(best);
     if(T&&!intro)resolveTrial5(st,st.players[T.i],vd||{ms:"",spk:0});
@@ -1704,10 +1712,10 @@ async function runRound5(st,intro){
     st.pending=st.players.map(()=>null);st.answered=st.players.map(p=>!!p.out);
     const win=st.players.filter(p=>p.aff>=100).sort((a,b)=>b.aff-a.aff)[0];
     if(win&&!st.duel&&!st.duelLaunch){updateBar();await finish(st,id,"win",win);}
-    else if(st.players.every(p=>p.out)){updateBar();await finish(st,id,"lose",st.players[0]);}
+    else if(st.players.every(p=>p.out)||Object.keys(SISTERS).every(k=>isGone(st,k))){updateBar();await finish(st,id,"lose",st.players[0]);}
     else if(st.launch&&state[id]===st)await launchNow(st,id);
   }catch(e){
-    wait.textContent="Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();restoreSms(st);
+    wait.textContent=e.blocked?"⛔ "+e.message:"Erreur : "+e.message+" — renvoyez vos réponses.";st.history.pop();restoreSms(st);
     st.pending=st.players.map(()=>null);st.answered=st.players.map(p=>!!p.out);
   }
   busy=false;$("btnSend").disabled=st.over;updateBar();
@@ -1748,16 +1756,18 @@ Réponds en JSON : {"place":"lieu court","narration":"…","lines":[{"sister":"$
 }
 /* Partie continuée : une sœur conquise (st.taken) est en couple, elle ne compte plus pour la victoire ni les étapes */
 const isTaken=(st,k)=>!!(st&&st.taken&&st.taken.some(t=>t.k===k));
+const isGone=(st,k)=>isTaken(st,k)||isDead(st,k);   // en couple ou morte : ne compte plus pour la victoire ni les étapes
 function affMax(st,p){
   const T=(st&&st.taken)||[],me=st?st.players.indexOf(p):-1;
   T.forEach(t=>{if(t.i!==me&&p.h[t.k]>99)p.h[t.k]=99;});
-  const v=Object.keys(p.h).filter(k=>!T.some(t=>t.k===k)).map(k=>p.h[k]);
+  if(p.killer)Object.keys(p.h).forEach(k=>{if(p.h[k]>99)p.h[k]=99;});   // un meurtrier ne peut pas gagner
+  const v=Object.keys(p.h).filter(k=>!T.some(t=>t.k===k)&&!isDead(st,k)).map(k=>p.h[k]);
   return v.length?Math.max(...v):0;
 }
 function dueTrial5(st){
   if(st.players.some(p=>p.trial)||st.trial5||st.duel||st.duelLaunch)return null;
   for(let i=0;i<st.players.length;i++){const p=st.players[i];if(p.out||!p.m)continue;
-    for(const k of Object.keys(SISTERS)){const r=p.m[k];if(isTaken(st,k))continue;if(r.ms<4&&!r.trial&&p.h[k]>0&&p.h[k]>=CAPS[r.ms])return{i,k};}}
+    for(const k of Object.keys(SISTERS)){const r=p.m[k];if(isGone(st,k))continue;if(r.ms<4&&!r.trial&&p.h[k]>0&&p.h[k]>=CAPS[r.ms])return{i,k};}}
   return null;
 }
 async function sceneJalon5(st,id,t,hraw,speaker){
@@ -1885,9 +1895,9 @@ function findDuel(st){
   if(!st||st.duel||st.duelLaunch||st.players.length<2)return null;
   const al=st.players.map((p,i)=>[p,i]).filter(([p])=>!p.out);
   if(st.cinq){
-    for(const k of Object.keys(SISTERS)){if(isTaken(st,k))continue;const f=al.filter(([p])=>p.h&&p.h[k]>=100);if(f.length>=2)return{kind:"final",k,pl:f.map(([,i])=>i)};}
+    for(const k of Object.keys(SISTERS)){if(isGone(st,k))continue;const f=al.filter(([p])=>p.h&&p.h[k]>=100);if(f.length>=2)return{kind:"final",k,pl:f.map(([,i])=>i)};}
     for(const k of Object.keys(SISTERS))for(let lv=0;lv<4;lv++){
-      if(isTaken(st,k))continue;const f=al.filter(([p])=>p.m&&p.m[k].ms===lv&&!p.m[k].trial&&!p.trial&&p.h[k]>0&&p.h[k]>=CAPS[lv]);
+      if(isGone(st,k))continue;const f=al.filter(([p])=>p.m&&p.m[k].ms===lv&&!p.m[k].trial&&!p.trial&&p.h[k]>0&&p.h[k]>=CAPS[lv]);
       if(f.length>=2)return{kind:"palier",k,lv,pl:f.map(([,i])=>i)};
     }
   }else{
@@ -2001,7 +2011,7 @@ function updateBar(){
     const row=document.createElement("div");row.className="prow";
     row.style.setProperty("--pc",i===0?SISTERS[current].c:PCOL[i]);
     const lab=document.createElement("div");
-    lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"% · "+STAGES[stageOf(pl)].name+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
+    lab.textContent=(multi?pl.name:"Affection")+" : "+pl.aff+"% · "+STAGES[stageOf(pl)].name+(pl.out?outTag(pl):"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
     if(st.duel&&st.duel.pl.includes(i))lab.textContent+=" ⚔️ duel";
     const big=document.createElement("div");big.className="big";
     const f=document.createElement("i");f.style.width=pl.aff+"%";big.appendChild(f);
@@ -2035,11 +2045,11 @@ function updateBar5(st,el){
       c.style.cssText="display:flex;align-items:center;gap:4px;padding:1px 8px 1px 1px;border-radius:20px;font-size:.75rem;border:1px solid "+(p.s==="here"?S.c:"var(--line)")+(p.s==="here"?";background:color-mix(in srgb,"+S.c+" 14%,transparent)":";opacity:.6");
       c.innerHTML='<span style="width:22px;height:22px;display:inline-block'+(p.s==="here"?"":";filter:grayscale(1)")+'">'+avatarSVG(k,"")+"</span>";
       const t=document.createElement("span");
-      t.textContent=S.name+" · "+(p.s==="here"?"ici":p.s==="far"?"🚶 loin"+(p.place?" ("+p.place+")":""):p.s==="other"?"ailleurs · 📣":"🚪 "+(p.place||"ailleurs")+" · 📣");
+      t.textContent=S.name+" · "+(p.s==="dead"?"☠️":p.s==="here"?"ici":p.s==="far"?"🚶 loin"+(p.place?" ("+p.place+")":""):p.s==="other"?"ailleurs · 📣":"🚪 "+(p.place||"ailleurs")+" · 📣");
       c.appendChild(t);
       c.title=p.s==="here"?S.name+" est avec toi.":p.s==="far"?S.name+" est partie trop loin : impossible de la faire venir pour l'instant.":S.name+" n'est pas là mais reste à portée : clique pour l'appeler.";
       if(call&&!st.over){c.style.cursor="pointer";c.onclick=()=>{if(!canAct(st))return;$("input").value="📣 J'appelle "+S.name+" : ";$("input").focus();};}
-      if(p.s!=="here"&&!st.over){const sm2=document.createElement("span");sm2.textContent=" 📱";sm2.title="Envoyer un texto à "+S.name+" (conversation privée, ne remplace pas ta réponse)";sm2.style.cursor="pointer";
+      if(p.s!=="here"&&p.s!=="dead"&&!st.over){const sm2=document.createElement("span");sm2.textContent=" 📱";sm2.title="Envoyer un texto à "+S.name+" (conversation privée, ne remplace pas ta réponse)";sm2.style.cursor="pointer";
         sm2.onclick=e=>{e.stopPropagation();phoneOpen=true;phoneSis=k;renderPhone();const pi=$("phoneIn");if(pi)pi.focus();};c.appendChild(sm2);}
       box.appendChild(c);
     });
@@ -2048,7 +2058,7 @@ function updateBar5(st,el){
   st.players.forEach((pl,i)=>{
     const row=document.createElement("div");row.className="prow";
     const lab=document.createElement("div");
-    lab.textContent=(multi?pl.name:"Affection")+(pl.out?" 💔 éliminé":"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
+    lab.textContent=(multi?pl.name:"Affection")+(pl.out?outTag(pl):"")+(multi&&!st.over&&!pl.out?(st.sim?(st.answered[i]?" ✅ a répondu":" ✍️ réfléchit…"):(i===st.cur?"  ◀ à toi de jouer":"")):"");
     if(st.duel&&st.duel.pl.includes(i))lab.textContent+=" ⚔️ duel";
     if(st.split&&i!==me){row.append(lab);el.appendChild(row);return;}   // scènes séparées : on ne voit que ses propres jauges
     if(st.split&&pl.mission){const ms=document.createElement("small");ms.className="hint";ms.style.display="block";ms.textContent="🎯 Mission secrète : « "+pl.mission.t+" »"+(pl.mission.done?" ✅":"");lab.appendChild(ms);}
@@ -2143,7 +2153,7 @@ function mentions(st,text,self){
   const t=" "+norm(text).replace(/[^a-z0-9]+/g," ")+" ",out=[];
   const has=n=>{const w=norm(n).replace(/[^a-z0-9]+/g," ").trim();return w.length>=2&&t.includes(" "+w+" ");};
   st.players.forEach((p,i)=>{if(i!==self&&has(p.name))out.push(p.name);});
-  if(!(st.mystery&&!st.revealed))Object.keys(SISTERS).forEach(k=>{if(has(SISTERS[k].name))out.push(SISTERS[k].name+(current==="cinq"?(p=>p.s==="here"?" (présente)":p.s==="far"?" (absente, HORS DE PORTÉE : elle ne peut pas venir)":" (absente, à portée)")(presenceFor(st,self)[k]):k===current?" (toi)":" (ta sœur)"));});
+  if(!(st.mystery&&!st.revealed))Object.keys(SISTERS).forEach(k=>{if(has(SISTERS[k].name))out.push(SISTERS[k].name+(current==="cinq"?(p=>p.s==="dead"?" (MORTE)":p.s==="here"?" (présente)":p.s==="far"?" (absente, HORS DE PORTÉE : elle ne peut pas venir)":" (absente, à portée)")(presenceFor(st,self)[k]):k===current?" (toi)":" (ta sœur)"));});
   return out;
 }
 function context(st,text,self){
@@ -2227,7 +2237,7 @@ async function turn(userText,hidden,kind){
     const raw = await callAI(id,st.history);
     st.cutOK=false;
     if(!raw||!raw.trim()) throw new Error("Réponse vide de l'IA");
-    const o = parseAI(raw), hraw=histOf(st,o,raw);
+    const o = parseAI(raw), hraw=histOf(st,o,raw);if(st.cinq)dropDead(st,o);
     st.history.push({role:"assistant",content:hraw});
     clearInterval(tick);wait.remove();
     let eff=null;
@@ -2244,7 +2254,7 @@ async function turn(userText,hidden,kind){
     if(duelNew){const o2=await sceneDuel(st,id,duelNew,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
     else if(due){const o2=st.cinq?await sceneJalon5(st,id,due,hraw,multi?pl.name:"le garçon"):await sceneJalon(st,id,due,hraw,multi?pl.name:"le joueur");if(o2)shown=o2;}
     const [L0,m]=pushAI(st,shown);
-    if(st.cinq){handleTexts(st,o);varTrack(st,(o.lines5||[]).map(l=>({s:l.s,text:l.text})));varFound(st,o,matchPlayer,t=>sysLineV(st,t,null));}
+    if(st.cinq){handleTexts(st,o);varTrack(st,(o.lines5||[]).map(l=>({s:l.s,text:l.text})));varFound(st,o,matchPlayer,t=>sysLineV(st,t,null));if(!hidden)handleDrama(st,o);}
     if(eff&&eff.tags.length){
       const sp=document.createElement("span");sp.className="delta";
       sp.style.color=eff.sum>=0?"#2fa35a":"#d64545";const blk=multi||st.cinq;sp.textContent=eff.tags.join(blk?"\n":" · ");if(blk&&eff.tags.length>1)sp.classList.add("bloc");
@@ -2263,7 +2273,7 @@ async function turn(userText,hidden,kind){
             if(multi){const t=`💔 ${q.name} a été éconduit et quitte la compétition.`;addMsg("sys",t);st.lines.push({cls:"sys",text:t});}
           }
         });
-        if(st.players.every(p=>p.out)){ updateBar(); await finish(st,id,"lose",pl); }
+        if(st.players.every(p=>p.out)||(st.cinq&&Object.keys(SISTERS).every(k=>isGone(st,k)))){ updateBar(); await finish(st,id,"lose",pl); }
         else{
           const ti=st.players.findIndex(p=>p.trial===2);
           const cut=o.cut&&canCut&&ti<0&&!st.over, who=st.mystery&&!st.revealed?"Elle":SISTERS[id].name;
@@ -2286,7 +2296,7 @@ async function turn(userText,hidden,kind){
     }else updateBar();
   }catch(e){
     const msg = e.name==="AbortError" ? "Délai dépassé (45 s) : l'IA ne répond pas." : e.message;
-    wait.textContent="Erreur : "+msg+" — vérifie ta clé / ton modèle, puis réessaie.";
+    wait.textContent=e.blocked?"⛔ "+msg:"Erreur : "+msg+" — vérifie ta clé / ton modèle, puis réessaie.";
     st.history.pop();st.cutOK=false;
     clearInterval(tick);
     if(pass)st.silent=Math.max(0,(st.silent||0)-1);
@@ -2307,7 +2317,7 @@ async function finish(st,id,kind,pl){
   if(st.cinq){
     if(kind==="win"){
       const W=st.players.filter(p=>!p.out&&p.h&&p.aff>=100);if(!W.length)W.push(pl);
-      st.wins=W.map(p=>({name:p.name,sis:Object.keys(SISTERS).filter(k=>p.h[k]>=100&&!isTaken(st,k))}));
+      st.wins=W.map(p=>({name:p.name,sis:Object.keys(SISTERS).filter(k=>p.h[k]>=100&&!isGone(st,k))}));
       st.wins.forEach(w=>{if(!w.sis.length){const q=st.players.find(p=>p.name===w.name);w.sis=[Object.keys(q.h).sort((a,b)=>q.h[b]-q.h[a])[0]];}});
       st.winner=W.map(p=>p.name).join(" et ");st.winSis=st.wins[0].sis[0];
       const nm=w=>w.sis.map(k=>SISTERS[k].name),et=a=>a.length>1?a.slice(0,-1).join(", ")+" et "+a[a.length-1]:a[0];
@@ -2315,7 +2325,8 @@ async function finish(st,id,kind,pl){
       if(one){const S=SISTERS[st.winSis];
         msg=`[FIN] ${S.name} est conquise par ${multi?pl.name:"le garçon"} (100 %). Dans ce dernier message, ${S.name} parle EN PREMIER et lui avoue ses sentiments de façon touchante et fidèle à son caractère${multi?", en le choisissant lui plutôt que les autres":""} ; puis 1 ou 2 autres sœurs réagissent brièvement (émotion, jalousie, joie pour leur sœur). Plus de question. effects = [].`;
       }else msg=`[FIN] Fin exceptionnelle, au même moment : ${st.wins.map(w=>et(nm(w))+(w.sis.length>1?" sont conquises":" est conquise")+" par "+(multi?w.name:"le garçon")).join(" ; ")} (100 %). Dans ce dernier message (jusqu'à 6 lignes), CHACUNE de ces sœurs, l'une après l'autre, avoue ses sentiments de façon touchante et fidèle à son caractère${st.wins.some(w=>w.sis.length>1)?" ; elles découvrent qu'elles aiment le même garçon et réagissent entre elles (surprise, gêne, rivalité puis complicité ou fou rire)":""}${st.wins.length>1?" ; chacune s'adresse à SON garçon":""}. Les sœurs non conquises réagissent brièvement si elles sont là. Plus de question. effects = [].`;
-    }else msg="[FIN] Aucune sœur n'a été conquise : toutes ont perdu patience. 2 ou 3 sœurs mettent fin à la rencontre et partent, chacune selon son caractère. Plus de question. effects = [].";
+    }else if((st.dead&&st.dead.length)||st.players.some(p=>p.dead||p.arrested||p.expelled))msg="[FIN] La partie s'arrête sur ce drame : plus personne ne peut continuer. Les sœurs encore en vie réagissent sobrement, chacune selon son caractère (choc, deuil, colère, peur). Pas de gore. Plus de question. effects = [], deaths = [].";
+    else msg="[FIN] Aucune sœur n'a été conquise : toutes ont perdu patience. 2 ou 3 sœurs mettent fin à la rencontre et partent, chacune selon son caractère. Plus de question. effects = [].";
     if(st.split)msg+=' Tout le monde se retrouve pour cette fin : réponds au format simple {"narration":"…","lines":[…],"effects":[]}, sans "scenes".';
   }else if(kind==="win"){
     st.winner=pl.name;
@@ -2350,7 +2361,7 @@ function showEnd(st){
     const fz=document.createElement("div");fz.style.cssText="text-align:left;font-weight:400;margin:4px auto 12px;max-width:460px";
     const h=document.createElement("b");h.textContent="🏆 Classement";fz.appendChild(h);
     const ol=document.createElement("ol");ol.style.margin="4px 0 10px";
-    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+(r.won>1?r.won+" sœurs conquises":(r.won?"👑 ":"")+SISTERS[r.best].name+" "+r.v+" %")+(r.avg!=null?", moyenne "+r.avg+" %":"")+", "+r.ms+" étape"+(r.ms>1?"s":"")+(r.fd?", "+r.fd+" goût"+(r.fd>1?"s":"")+" secret"+(r.fd>1?"s":"")+" 🔍":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
+    st.final.rank.forEach(r=>{const li=document.createElement("li");li.textContent=r.name+" — "+r.score+" pts ("+(r.won>1?r.won+" sœurs conquises":(r.won?"👑 ":"")+SISTERS[r.best].name+" "+r.v+" %")+(r.avg!=null?", moyenne "+r.avg+" %":"")+", "+r.ms+" étape"+(r.ms>1?"s":"")+(r.bad?", "+r.bad:"")+(r.fd?", "+r.fd+" goût"+(r.fd>1?"s":"")+" secret"+(r.fd>1?"s":"")+" 🔍":"")+(r.mis===true?", mission ✅":r.mis===false?", mission ❌":"")+")";ol.appendChild(li);});
     fz.appendChild(ol);
     const ex=document.createElement("small");ex.className="hint";ex.style.cssText="display:block;margin:-6px 0 10px";
     if(st.taken&&st.taken.length){const tk=document.createElement("small");tk.className="hint";tk.style.cssText="display:block;margin:-6px 0 4px";tk.textContent="💞 Couples déjà formés : "+st.taken.map(t=>SISTERS[t.k].name+" et "+(st.players[t.i]||{name:"?"}).name).join(", ");fz.appendChild(tk);}
@@ -2372,7 +2383,7 @@ function showEnd(st){
       try{await navigator.clipboard.writeText(fullText(st,L));c.textContent="✅ Copiée !";}catch(e){c.textContent="❌ Copie impossible";}};
     row.appendChild(v);row.appendChild(c);div.appendChild(row);
   }
-  const free=st.cinq?Object.keys(SISTERS).filter(k=>!isTaken(st,k)&&!(st.wins||[]).some(w=>w.sis.includes(k))):[];
+  const free=st.cinq?Object.keys(SISTERS).filter(k=>!isGone(st,k)&&!(st.wins||[]).some(w=>w.sis.includes(k))):[];
   if(net.role!=="guest"&&st.cinq&&st.winner&&st.wins&&free.length&&st.players.some(p=>!p.out)){
     const c=document.createElement("button");c.textContent="▶️ Continuer la partie";c.style.marginLeft="8px";
     c.title="Les sœurs conquises restent en couple ; on continue avec "+free.map(k=>SISTERS[k].name).join(", ");
