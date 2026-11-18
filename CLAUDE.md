@@ -10,6 +10,7 @@ En ligne : https://roidescrabesboubou.github.io/le-projet/ (GitHub Pages, mise �
 - Un jeu = un dossier `jeux/<slug>/`, avec parfois un fichier de données à côté (`mots.js`, `questions.js`…).
 - Git : `C:\Program Files\Git\cmd\git.exe` (Git pour Windows, identifiants GitHub enregistrés).
 - Quand `firebase-regles.json` change, publie-le toi-même après le push : `firebase.cmd deploy --only database` (projet `salle-de-jeux-249d2`, déjà connecté, commande autorisée dans `.claude/settings.local.json`), puis dis-moi que c'est publié. Sous PowerShell, toujours `firebase.cmd` / `npm.cmd` (scripts .ps1 bloqués).
+- **Obsidian** : le suivi du projet est dans le coffre `F:\obsi\brain` → `2 - PROJETS/Salle de jeux.md` (état, décisions, à faire, sessions) et ses notes dans `2 - PROJETS/Salle de jeux/` (Catalogue des jeux, Architecture, Journal, Outils Claude). Lis la note du projet en début de session. En fin de session de travail : résumé dans `0 - INBOX/Sessions/`, puis mets à jour la note du projet (État actuel, À faire, Historique des sessions), une ligne dans le Journal, et le Catalogue si un jeu est ajouté, renommé ou caché. Quand « Reste à faire » ou « Décisions en attente » change ici, reporte-le dans « À faire » de la note.
 
 ## Structure
 ```
