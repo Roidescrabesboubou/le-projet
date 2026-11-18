@@ -127,7 +127,7 @@ body.invite-seul #m1,body.invite-seul #m2,body.invite-seul #btnHost,body.invite-
           <button class="ghost" id="btnJoin">🔗 Rejoindre</button>
         </div>
         <label id="simRow" style="display:block;margin-top:8px"><input type="checkbox" id="simChk"> ⚡ Réponses simultanées (tous répondent en même temps)</label>
-        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v15.1 (relais MQTT communs)</small></div>
+        <div style="margin-top:8px"><button class="ghost" id="btnNetTest">🩺 Tester la connexion en ligne</button> <small class="hint">version : v15.2 (relais MQTT communs)</small></div>
         <p class="hint" id="netInfo"></p>
         <div id="roomLink" class="hidden"><input id="roomUrl" readonly><button class="ghost" id="btnCopy">📋 Copier le lien</button></div>
       </div>
@@ -472,8 +472,9 @@ function sendState(st,b,slot,to){
   }
   net.conn.send(m);
 }
+let seeAll=false;
 function renderLine(l){
-  if(l.vis&&!l.vis.includes(mySlot())&&!isGhost(state[current],mySlot()))return null;   // scène où je ne suis pas (sauf éliminé : il voit tout)
+  if(!seeAll&&l.vis&&!l.vis.includes(mySlot())&&!isGhost(state[current],mySlot()))return null;   // scène où je ne suis pas (sauf éliminé : il voit tout)
   const m=addMsg(l.cls,l.text);
   if(l.c)m.style.borderLeft="4px solid "+l.c;
   if(l.to){const t=document.createElement("small");t.className="hint";t.style.cssText="display:block;opacity:.75";t.textContent="→ "+l.to;m.prepend(t);}
@@ -596,6 +597,11 @@ $("btnJoin").onclick=async()=>{
       $("netInfo").textContent="✅ Connecté (joueur "+(m.slot+1)+") ! L'hôte choisit la sœur…";
     }
     if(m.t==="state"&&net.slot!=null){if(m.to&&m.to!==myId)return;if(m.seq<=net.last)return;net.last=m.seq;guestRender(m);}
+    if(m.t==="log"&&m.to===myId){   // partie complète envoyée par l'hôte à la fin, en morceaux
+      if(!net.logParts||net.logId!==m.id){net.logParts=[];net.logId=m.id;}
+      net.logParts[m.k]=m.lines;
+      if(net.logParts.filter(Boolean).length===m.n){net.fullLog=[].concat(...net.logParts);const b=$("btnFullLog");if(b)b.disabled=false;}
+    }
   };
   $("netInfo").textContent="Étape 2/2 : contact de l'hôte…";
   try{
@@ -1778,6 +1784,11 @@ ${S.name} parle en DERNIER et termine par une question ou une situation décisiv
 }
 function resolveTrial5(st,pl,eff){
   const t=st.trial5;if(!t||st.players[t.i]!==pl)return;
+  if(!eff.ms&&!eff.spk){   // l'IA n'a pas jugé l'étape (oubli, événement…) : on n'invente pas un échec
+    t.miss=(t.miss||0)+1;
+    if(t.miss<2){sysLineV(st,"⏳ "+SISTERS[t.k].name+" n'a pas encore tranché : ta prochaine réponse décide de l'étape.",st.split?[t.i]:null);return;}
+    eff={ms:"pass",spk:1};
+  }
   const r=pl.m[t.k],m=MS[r.ms],S=SISTERS[t.k];
   const pass=eff.ms==="pass"||(eff.ms!=="fail"&&eff.spk>0)||(eff.ms==="fail"&&eff.spk>=3);
   r.trial=0;pl.trial=0;st.trial5=null;
@@ -2314,7 +2325,7 @@ async function finish(st,id,kind,pl){
     const o=parseAI(await callAI(id,st.history));maskO(st,o);
     pushAI(st,o);
   }catch(e){}
-  if(st.cinq&&multi){const w=addMsg("sys","… préparation du récap et des médailles");try{await finishExtras(st,id);}catch(e){}w.remove();if(net.role==="host")broadcast(false);}
+  if(st.cinq&&multi){const w=addMsg("sys","… préparation du récap et des médailles");try{await finishExtras(st,id);}catch(e){}w.remove();if(net.role==="host"){broadcast(false);sendFullLog(st);}}
   showEnd(st);
 }
 function showEnd(st){
@@ -2345,6 +2356,15 @@ function showEnd(st){
   const b=document.createElement("button");b.textContent=st.cinq?"Rejouer avec les cinq":"Rejouer avec elle";
   b.onclick=()=>{delete state[current];openSister(current)};
   if(net.role!=="guest")div.appendChild(b);
+  if(st.split&&st.players.length>1){
+    const row=document.createElement("div");row.style.marginTop="8px";
+    const v=document.createElement("button");v.className="ghost";v.id="btnFullLog";v.textContent="📜 Voir toute la partie";
+    v.title="Toutes les scènes, même celles où tu n'étais pas";v.disabled=!fullLines(st);v.onclick=()=>showFullLog(st);
+    const c=document.createElement("button");c.className="ghost";c.textContent="📋 Copier toute la partie";c.style.marginLeft="8px";
+    c.onclick=async()=>{const L=fullLines(st);if(!L){c.textContent="⏳ Pas encore reçue…";return;}
+      try{await navigator.clipboard.writeText(fullText(st,L));c.textContent="✅ Copiée !";}catch(e){c.textContent="❌ Copie impossible";}};
+    row.appendChild(v);row.appendChild(c);div.appendChild(row);
+  }
   const free=st.cinq?Object.keys(SISTERS).filter(k=>!isTaken(st,k)&&!(st.wins||[]).some(w=>w.sis.includes(k))):[];
   if(net.role!=="guest"&&st.cinq&&st.winner&&st.wins&&free.length&&st.players.some(p=>!p.out)){
     const c=document.createElement("button");c.textContent="▶️ Continuer la partie";c.style.marginLeft="8px";
@@ -2355,6 +2375,24 @@ function showEnd(st){
   $("input").disabled=true;$("btnSend").disabled=true;
 }
 /* Continuer après une déclaration : les couples formés restent, la partie repart avec les autres sœurs */
+/* Partie complète (toutes les scènes) : l'hôte l'a, il l'envoie aux invités à la fin */
+function fullLines(st){return net.role==="guest"?(net.fullLog||null):st.lines;}
+function sceneOf(st,l){return l.vis?"["+l.vis.map(i=>(st.players[i]||{name:"?"}).name).join(", ")+"] ":"";}
+function fullText(st,L){return L.map(l=>sceneOf(st,l)+l.text+(l.tag?"\n   "+l.tag.replace(/\n/g,"\n   "):"")).join("\n");}
+function sendFullLog(st){
+  if(net.role!=="host"||!net.conn||!net.conn.open||!st.split)return;
+  const parts=[];let cur=[],size=0;
+  st.lines.forEach(l=>{const n=JSON.stringify(l).length;if(size+n>12000&&cur.length){parts.push(cur);cur=[];size=0;}cur.push(l);size+=n;});
+  if(cur.length)parts.push(cur);
+  const id=Date.now();
+  net.guests.forEach(g=>parts.forEach((lines,k)=>net.conn.send({t:"log",to:g.id,id,k,n:parts.length,lines})));
+}
+function showFullLog(st){
+  const L=fullLines(st);if(!L)return;
+  seeAll=true;$("log").innerHTML="";
+  L.forEach(l=>{const m=renderLine(l);if(m&&l.vis){const t=document.createElement("small");t.className="hint";t.style.cssText="display:block;opacity:.75";t.textContent="🎬 scène de "+l.vis.map(i=>(st.players[i]||{name:"?"}).name).join(", ");m.prepend(t);}});
+  seeAll=false;
+}
 function continueGame(st){
   if(!st||!st.over||!st.wins)return;
   st.taken=st.taken||[];
